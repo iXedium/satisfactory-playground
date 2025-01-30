@@ -1,4 +1,4 @@
-import data from "../../public/data.json";
+import data from "../data/data.json";
 
 export interface Item {
   id: string;
@@ -23,7 +23,7 @@ export interface DataStructure {
 
 export const loadData = (): DataStructure => {
   return {
-    items: data.items as Item[],
+    items: [...data.items].sort((a, b) => a.name.localeCompare(b.name)), // Sort once
     recipes: data.recipes as Recipe[],
   };
 };

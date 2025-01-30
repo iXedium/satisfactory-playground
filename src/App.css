@@ -1,3 +1,13 @@
+/* Global Styles */
+body {
+  background-color: #222; /* Dark Grey Background */
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Center Root Container */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -5,38 +15,34 @@
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Styling for Dropdowns & Buttons */
+select, input, button {
+  padding: 8px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+select, input {
+  background: #333;
+  color: white;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+button {
+  background: #646cff;
+  color: white;
+  cursor: pointer;
 }
 
-.card {
-  padding: 2em;
+button:hover {
+  background: #5058e0;
 }
 
-.read-the-docs {
-  color: #888;
+/* Container for Components */
+.container {
+  background: #333;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
 }
