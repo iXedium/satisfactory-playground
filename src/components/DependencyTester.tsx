@@ -1,49 +1,50 @@
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "../store";
-import {
-  calculateDependencyTree,
-  DependencyNode,
-} from "../utils/calculateDependencies";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../store";
+import { calculateDependencyTree } from "../utils/calculateDependencies";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
+import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
-import { dependencyStyles } from "../styles/dependencyStyles";
+
 
 type ViewMode = "accumulated" | "tree";
 
 const DependencyTester: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
   const items = useSelector((state: RootState) => state.data.items);
   const recipes = useSelector((state: RootState) => state.data.recipes);
-  const state = useSelector((state: RootState) => state);
+  const dependencies = useSelector(
+    (state: RootState) => state.dependencies,
+    (prev, next) => prev === next
+  );
+
 
   const [selectedItem, setSelectedItem] = useState("");
-  const [selectedRecipe, setSelectedRecipe] = useState("");
   const [itemCount, setItemCount] = useState(1);
-  const [dependencyTree, setDependencyTree] = useState<DependencyNode | null>(
-    null
-  );
-  const [accumulatedDependencies, setAccumulatedDependencies] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
 
-  const filteredRecipes = recipes.filter((recipe) => recipe.out[selectedItem]);
-
-  React.useEffect(() => {
-    if (filteredRecipes.length > 0) {
-      const defaultRecipe =
-        filteredRecipes.find(
-          (r) => r.name === items.find((i) => i.id === selectedItem)?.name
-        ) || filteredRecipes[0];
-      setSelectedRecipe(defaultRecipe.id);
-    }
-  }, [selectedItem, filteredRecipes, items]);
-
   const handleCalculate = () => {
-    if (selectedItem && selectedRecipe) {
-      const tree = calculateDependencyTree(selectedItem, itemCount, state);
-      setDependencyTree(tree);
+    if (selectedItem) {
+      const tree = calculateDependencyTree(
+        selectedItem,
+        itemCount,
+        state
+      );
+      const accumulated = calculateAccumulatedDependencies(
+        selectedItem,
+        itemCount,
+        state
+      );
 
-      const accumulated = calculateAccumulatedDependencies(selectedItem, itemCount, state);
-      setAccumulatedDependencies(accumulated);
+      dispatch(
+        setDependencies({
+          item: selectedItem,
+          count: itemCount,
+          tree,
+          accumulated,
+        })
+      );
     }
   };
 
@@ -63,22 +64,6 @@ const DependencyTester: React.FC = () => {
           </option>
         ))}
       </select>
-
-      {filteredRecipes.length > 0 && (
-        <>
-          <label>Recipe:</label>
-          <select
-            value={selectedRecipe}
-            onChange={(e) => setSelectedRecipe(e.target.value)}
-          >
-            {filteredRecipes.map((recipe) => (
-              <option key={recipe.id} value={recipe.id}>
-                {recipe.name}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
 
       <label>Count:</label>
       <input
@@ -101,39 +86,32 @@ const DependencyTester: React.FC = () => {
         </select>
       </div>
 
-      {viewMode === "accumulated" &&
-        Object.keys(accumulatedDependencies).length > 0 && (
-          <div style={{ textAlign: "left", paddingLeft: "10px" }}>
-            {" "}
-            {/* ✅ Left-aligned list */}
-            <h3>Accumulated Dependencies</h3>
-            <ul>
-              {/* Produced Item First */}
-              <li style={{ color: "#add8e6" }}>
-                {selectedItem}: {itemCount.toFixed(2)}
-              </li>
+      {viewMode === "accumulated" && dependencies.accumulatedDependencies && (
+        <div>
+          <h3>Accumulated Dependencies</h3>
+          <ul>
+            <li style={{ color: "#add8e6" }}>
+              {dependencies.selectedItem}: {dependencies.itemCount.toFixed(2)}
+            </li>
 
-              {Object.entries(accumulatedDependencies).map(([item, amount]) => (
+            {Object.entries(dependencies.accumulatedDependencies).map(
+              ([item, amount]) => (
                 <li
                   key={item}
-                  style={{
-                    color:
-                      amount < 0
-                        ? dependencyStyles.byproductColor
-                        : dependencyStyles.defaultColor,
-                  }}
+                  style={{ color: amount < 0 ? "#ffaaaa" : "inherit" }}
                 >
                   {item}: {amount.toFixed(2)}
                 </li>
-              ))}
-            </ul>
-          </div>
-        )}
+              )
+            )}
+          </ul>
+        </div>
+      )}
 
-      {viewMode === "tree" && dependencyTree && (
+      {viewMode === "tree" && dependencies.dependencyTree && (
         <div>
           <h3>Tree View</h3>
-          <DependencyTree dependencyTree={dependencyTree} />
+          <DependencyTree dependencyTree={dependencies.dependencyTree} />
         </div>
       )}
     </div>
