@@ -1,40 +1,49 @@
-import React, { useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "../store";
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { db } from "../data/dexieDB";
 import { calculateDependencyTree } from "../utils/calculateDependencies";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
+import { dependencyStyles } from "../styles/dependencyStyles";
+import { CSSProperties } from "react";
+
+import { Item } from "../types"; // ✅ Ensure you have a proper Item type
 
 
 type ViewMode = "accumulated" | "tree";
 
 const DependencyTester: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-
-  const items = useSelector((state: RootState) => state.data.items);
-  const recipes = useSelector((state: RootState) => state.data.recipes);
-  const dependencies = useSelector(
-    (state: RootState) => state.dependencies,
-    (prev, next) => prev === next
-  );
-
-
+  const dispatch = useDispatch();
+  const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
   const [itemCount, setItemCount] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
 
-  const handleCalculate = () => {
+  const listStyle: CSSProperties = { textAlign: "left", paddingLeft: "10px" };
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const itemsData = await db.items.toArray();
+      setItems(itemsData);
+    };
+    fetchData();
+  }, []);
+
+  const handleCalculate = async () => {
     if (selectedItem) {
-      const tree = calculateDependencyTree(
-        selectedItem,
-        itemCount,
-        state
-      );
+      const recipes = await db.recipes
+        .where("out")
+        .equals(selectedItem)
+        .toArray();
+      const tree = calculateDependencyTree(selectedItem, itemCount, {
+        recipes,
+      });
       const accumulated = calculateAccumulatedDependencies(
         selectedItem,
         itemCount,
-        state
+        { recipes }
       );
 
       dispatch(
@@ -86,32 +95,43 @@ const DependencyTester: React.FC = () => {
         </select>
       </div>
 
-      {viewMode === "accumulated" && dependencies.accumulatedDependencies && (
-        <div>
+      {viewMode === "accumulated" && (
+        <div style={dependencyStyles.listContainer}>
           <h3>Accumulated Dependencies</h3>
           <ul>
-            <li style={{ color: "#add8e6" }}>
-              {dependencies.selectedItem}: {dependencies.itemCount.toFixed(2)}
+            <li style={{ color: dependencyStyles.rootColor }}>
+              {selectedItem}: {itemCount.toFixed(2)}
             </li>
-
-            {Object.entries(dependencies.accumulatedDependencies).map(
-              ([item, amount]) => (
-                <li
-                  key={item}
-                  style={{ color: amount < 0 ? "#ffaaaa" : "inherit" }}
-                >
-                  {item}: {amount.toFixed(2)}
-                </li>
-              )
-            )}
+            {Object.entries(items).map(([item, amount]) => (
+              <li
+                key={item}
+                style={{
+                  color:
+                    amount < 0
+                      ? dependencyStyles.byproductColor
+                      : dependencyStyles.defaultColor,
+                }}
+              >
+                {item}: {amount.toFixed(2)}
+              </li>
+            ))}
           </ul>
         </div>
       )}
 
-      {viewMode === "tree" && dependencies.dependencyTree && (
+      {viewMode === "tree" && (
         <div>
           <h3>Tree View</h3>
-          <DependencyTree dependencyTree={dependencies.dependencyTree} />
+          <DependencyTree
+            dependencyTree={
+              dependencyTree ?? {
+                id: "",
+                amount: 0,
+                uniqueId: "",
+                children: [],
+              }
+            }
+          />
         </div>
       )}
     </div>
