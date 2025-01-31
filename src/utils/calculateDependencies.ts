@@ -4,6 +4,8 @@ export interface DependencyNode {
   id: string;
   amount: number;
   uniqueId: string; // ✅ Ensure uniqueness
+  isRoot?: boolean; // ✅ To mark the main produced item
+  isByproduct?: boolean; // ✅ To mark byproducts
   children?: DependencyNode[];
 }
 
@@ -29,10 +31,23 @@ export const calculateDependencyTree = (
     calculateDependencyTree(inputItem, (inputAmount ?? 0) * cyclesNeeded, state)
   );
 
+  // Detect byproducts (outputs that were not requested)
+  const byproducts = Object.entries(recipe.out)
+    .filter(([outputItem]) => outputItem !== itemId) // Exclude the requested output
+    .map(([outputItem, outputAmount]) => ({
+      id: outputItem,
+      amount: -((outputAmount ?? 0) * cyclesNeeded), // Negative to indicate excess
+      uniqueId: `${outputItem}-${nodeCounter++}`,
+      isByproduct: true,
+      children: [],
+    }));
+
+
   return {
     id: itemId,
     amount,
     uniqueId: `${itemId}-${nodeCounter++}`, // ✅ Ensure unique ID
-    children,
+    isRoot: true, // ✅ Mark the main produced item
+    children: [...children, ...byproducts], // ✅ Add dependencies and byproducts
   };
 };

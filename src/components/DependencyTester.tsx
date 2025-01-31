@@ -7,6 +7,7 @@ import {
 } from "../utils/calculateDependencies";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
 import DependencyTree from "./DependencyTree";
+import { dependencyStyles } from "../styles/dependencyStyles";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -100,19 +101,34 @@ const DependencyTester: React.FC = () => {
         </select>
       </div>
 
-
-      {viewMode === "accumulated" && Object.keys(accumulatedDependencies).length > 0 && (
-        <div>
-          <h3>Accumulated Dependencies</h3>
-          <ul>
-            {Object.entries(accumulatedDependencies).map(([item, amount]) => (
-              <li key={item}>
-                {item}: {amount.toFixed(2)}
+      {viewMode === "accumulated" &&
+        Object.keys(accumulatedDependencies).length > 0 && (
+          <div style={{ textAlign: "left", paddingLeft: "10px" }}>
+            {" "}
+            {/* ✅ Left-aligned list */}
+            <h3>Accumulated Dependencies</h3>
+            <ul>
+              {/* Produced Item First */}
+              <li style={{ color: "#add8e6" }}>
+                {selectedItem}: {itemCount.toFixed(2)}
               </li>
-            ))}
-          </ul>
-        </div>
-      )}
+
+              {Object.entries(accumulatedDependencies).map(([item, amount]) => (
+                <li
+                  key={item}
+                  style={{
+                    color:
+                      amount < 0
+                        ? dependencyStyles.byproductColor
+                        : dependencyStyles.defaultColor,
+                  }}
+                >
+                  {item}: {amount.toFixed(2)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
       {viewMode === "tree" && dependencyTree && (
         <div>

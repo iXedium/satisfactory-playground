@@ -3,6 +3,7 @@ import { RootState } from "../store";
 export interface AccumulatedDependency {
   id: string;
   amount: number;
+  isByproduct?: boolean;
 }
 
 export const calculateAccumulatedDependencies = (
@@ -29,6 +30,14 @@ export const calculateAccumulatedDependencies = (
 
     // Recursively process dependencies
     calculateAccumulatedDependencies(inputItem, totalRequired, state, results);
+
+    // Handle byproducts (subtracting from total needs)
+    for (const [byproduct, byproductAmount] of Object.entries(recipe.out)) {
+      if (byproduct !== itemId) {
+        const totalProduced = (byproductAmount ?? 0) * cyclesNeeded;
+        results[byproduct] = (results[byproduct] || 0) - totalProduced; // ✅ Reduce required amount
+      }
+    }
   }
 
   return results;
