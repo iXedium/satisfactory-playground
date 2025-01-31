@@ -1,9 +1,14 @@
-export const dependencyStyles = {
-  rootColor: "#add8e6", // ✅ Light blue for root item
-  byproductColor: "#ffaaaa", // ✅ Light red for byproducts
-  defaultColor: "inherit", // ✅ Normal color for everything else
+export const dependencyStyles: {
+  listContainer: React.CSSProperties;
+  rootColor: string;
+  byproductColor: string;
+  defaultColor: string;
+} = {
   listContainer: {
-    textAlign: "left",
+    textAlign: "left", // ✅ Now properly typed
     paddingLeft: "10px",
   },
+  rootColor: "#add8e6",
+  byproductColor: "#ffaaaa",
+  defaultColor: "inherit",
 };

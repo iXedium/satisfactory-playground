@@ -1,7 +1,7 @@
 import React from "react";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem2 } from "@mui/x-tree-view/TreeItem2";
-import { DependencyNode } from "../utils/calculateDependencies";
+import { DependencyNode } from "../utils/calculateDependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 
 interface DependencyTreeProps {

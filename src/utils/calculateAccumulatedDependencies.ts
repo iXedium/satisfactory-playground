@@ -1,4 +1,4 @@
-import { RootState } from "../store";
+import { db } from "../data/dexieDB";
 
 export interface AccumulatedDependency {
   id: string;
@@ -6,16 +6,14 @@ export interface AccumulatedDependency {
   isByproduct?: boolean;
 }
 
-export const calculateAccumulatedDependencies = (
+export const calculateAccumulatedDependencies = async (
   itemId: string,
   amount: number,
-  state: RootState,
   results: Record<string, number> = {}
-): Record<string, number> => {
-  const recipe = state.data.recipes.find((r) => r.out[itemId]);
+): Promise<Record<string, number>> => {
+  const recipe = await db.recipes.where("out").equals(itemId).first(); // ✅ Query Dexie
 
   if (!recipe) {
-    // If no recipe exists, assume it's a raw material
     results[itemId] = (results[itemId] || 0) + amount;
     return results;
   }
@@ -27,16 +25,14 @@ export const calculateAccumulatedDependencies = (
   for (const [inputItem, inputAmount] of Object.entries(recipe.in)) {
     const totalRequired = (inputAmount ?? 0) * cyclesNeeded;
     results[inputItem] = (results[inputItem] || 0) + totalRequired;
+    await calculateAccumulatedDependencies(inputItem, totalRequired, results);
+  }
 
-    // Recursively process dependencies
-    calculateAccumulatedDependencies(inputItem, totalRequired, state, results);
-
-    // Handle byproducts (subtracting from total needs)
-    for (const [byproduct, byproductAmount] of Object.entries(recipe.out)) {
-      if (byproduct !== itemId) {
-        const totalProduced = (byproductAmount ?? 0) * cyclesNeeded;
-        results[byproduct] = (results[byproduct] || 0) - totalProduced; // ✅ Reduce required amount
-      }
+  // Handle byproducts (subtracting from total needs)
+  for (const [byproduct, byproductAmount] of Object.entries(recipe.out)) {
+    if (byproduct !== itemId) {
+      const totalProduced = byproductAmount * cyclesNeeded;
+      results[byproduct] = (results[byproduct] || 0) - totalProduced; // ✅ Reduce required amount
     }
   }
 

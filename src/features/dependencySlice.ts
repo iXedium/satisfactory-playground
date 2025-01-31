@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { DependencyNode } from "../utils/calculateDependencies";
+import { DependencyNode } from "../utils/calculateDependencyTree";
 
 interface DependencyState {
   selectedItem: string | null;
