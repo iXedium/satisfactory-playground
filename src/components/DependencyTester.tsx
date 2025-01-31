@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "../store";
+import { RootState, AppDispatch, store } from "../store";
+import { db, Recipe } from "../data/dexieDB";
 import { calculateDependencyTree } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
 import { setDependencies } from "../features/dependencySlice";
@@ -14,39 +15,69 @@ const DependencyTester: React.FC = () => {
 
   const items = useSelector((state: RootState) => state.data.items);
   const dependencies = useSelector((state: RootState) => state.dependencies);
+  console.log("Redux Dependencies in Component:", dependencies); // ✅ Debugging
+
 
   const [selectedItem, setSelectedItem] = useState("");
+  const [selectedRecipe, setSelectedRecipe] = useState(""); // ✅ Add recipe state
   const [itemCount, setItemCount] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]); // ✅ Fix: Explicitly define the type
 
-  const handleCalculate = async () => {
+  // 🔹 Fetch recipes when item changes
+  useEffect(() => {
     if (selectedItem) {
-      const tree = await calculateDependencyTree(selectedItem, itemCount);
-      const accumulated = await calculateAccumulatedDependencies(
-        selectedItem,
-        itemCount
-      );
+      db.recipes
+        .toArray()
+        .then((allRecipes) => {
+          console.log("All Recipes:", allRecipes); // ✅ Debugging
 
-      dispatch(
-        setDependencies({
-          item: selectedItem,
-          count: itemCount,
-          tree,
-          accumulated,
+          const filtered = allRecipes.filter((recipe) =>
+            Object.keys(recipe.out).includes(selectedItem)
+          );
+
+          console.log("Filtered Recipes:", filtered); // ✅ Debugging
+
+          setFilteredRecipes(filtered); // ✅ Update dropdown options
+
+          if (filtered.length > 0) {
+            const defaultRecipe =
+              filtered.find((r) => r.name === items.find((i) => i.id === selectedItem)?.name) ||
+              filtered[0];
+            setSelectedRecipe(defaultRecipe.id); // ✅ Set default recipe
+          } else {
+            setSelectedRecipe(""); // ❌ No recipe found
+          }
         })
-      );
+        .catch((error) => console.error("Error fetching recipes:", error));
+    }
+  }, [selectedItem, items]);
+
+  // 🔹 Calculate dependencies
+  const handleCalculate = async () => {
+    if (selectedItem && selectedRecipe) {
+      const tree = await calculateDependencyTree(selectedItem, itemCount);
+      const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
+
+      console.log("Dependency Tree:", tree); // ✅ Debugging
+      console.log("Accumulated Dependencies:", accumulated); // ✅ Debugging
+
+      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+
+      // 🔹 Log Redux state after update
+      setTimeout(() => {
+        console.log("Redux State After Dispatch:", store.getState().dependencies);
+      }, 500);
     }
   };
+
 
   return (
     <div className="container">
       <h2>Dependency Tester</h2>
 
       <label>Item:</label>
-      <select
-        value={selectedItem}
-        onChange={(e) => setSelectedItem(e.target.value)}
-      >
+      <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)}>
         <option value="">Select an Item</option>
         {items.map((item) => (
           <option key={item.id} value={item.id}>
@@ -54,6 +85,19 @@ const DependencyTester: React.FC = () => {
           </option>
         ))}
       </select>
+
+      {filteredRecipes.length > 0 && (
+        <>
+          <label>Recipe:</label>
+          <select value={selectedRecipe} onChange={(e) => setSelectedRecipe(e.target.value)}>
+            {filteredRecipes.map((recipe) => (
+              <option key={recipe.id} value={recipe.id}>
+                {recipe.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
       <label>Count:</label>
       <input
@@ -67,10 +111,7 @@ const DependencyTester: React.FC = () => {
 
       <div>
         <label>View Mode:</label>
-        <select
-          value={viewMode}
-          onChange={(e) => setViewMode(e.target.value as ViewMode)}
-        >
+        <select value={viewMode} onChange={(e) => setViewMode(e.target.value as ViewMode)}>
           <option value="accumulated">Accumulated</option>
           <option value="tree">Tree</option>
         </select>
@@ -80,27 +121,20 @@ const DependencyTester: React.FC = () => {
         <div style={dependencyStyles.listContainer}>
           <h3>Accumulated Dependencies</h3>
           <ul>
-            <li style={{ color: dependencyStyles.rootColor }}>
-              {dependencies.selectedItem}: {dependencies.itemCount.toFixed(2)}
-            </li>
-            {Object.entries(dependencies.accumulatedDependencies).map(
-              ([item, amount]) => (
-                <li
-                  key={item}
-                  style={{
-                    color:
-                      amount < 0
-                        ? dependencyStyles.byproductColor
-                        : dependencyStyles.defaultColor,
-                  }}
-                >
+            {/* Ensure UI always renders something */}
+            {Object.keys(dependencies.accumulatedDependencies).length === 0 ? (
+              <li style={{ color: "red" }}>No dependencies found</li> // ✅ Debugging
+            ) : (
+              Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
+                <li key={item} style={{ color: amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor }}>
                   {item}: {amount.toFixed(2)}
                 </li>
-              )
+              ))
             )}
           </ul>
         </div>
       )}
+
 
       {viewMode === "tree" && dependencies.dependencyTree && (
         <div>
