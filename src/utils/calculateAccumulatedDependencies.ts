@@ -11,6 +11,11 @@ export const calculateAccumulatedDependencies = async (
   amount: number,
   results: Record<string, number> = {}
 ): Promise<Record<string, number>> => {
+  if (amount === 1) { // ✅ Log only for first level
+    console.log(`🔍 Accumulating dependencies for ${itemId}`);
+  }
+
+
   const recipe = await db.recipes.where("out").equals(itemId).first(); // ✅ Query Dexie
 
   if (!recipe) {
@@ -18,15 +23,18 @@ export const calculateAccumulatedDependencies = async (
     return results;
   }
 
+
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = amount / outputAmount;
 
-  // Accumulate all inputs
-  for (const [inputItem, inputAmount] of Object.entries(recipe.in)) {
-    const totalRequired = (inputAmount ?? 0) * cyclesNeeded;
-    results[inputItem] = (results[inputItem] || 0) + totalRequired;
-    await calculateAccumulatedDependencies(inputItem, totalRequired, results);
-  }
+  // Accumulate all inputs (await recursive calls)
+  await Promise.all(
+    Object.entries(recipe.in).map(async ([inputItem, inputAmount]) => {
+      const totalRequired = (inputAmount ?? 0) * cyclesNeeded;
+      results[inputItem] = (results[inputItem] || 0) + totalRequired;
+      await calculateAccumulatedDependencies(inputItem, totalRequired, results); // ✅ Ensure full resolution
+    })
+  );
 
   // Handle byproducts (subtracting from total needs)
   for (const [byproduct, byproductAmount] of Object.entries(recipe.out)) {

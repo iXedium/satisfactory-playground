@@ -15,9 +15,17 @@ export const calculateDependencyTree = async (
   itemId: string,
   amount: number
 ): Promise<DependencyNode> => {
-  const recipe = await db.recipes.where("out").equals(itemId).first(); // ✅ Query Dexie
+  console.log("Calculating Dependency Tree for:", itemId, "Amount:", amount); // ✅ Debugging
 
+  const allRecipes = await db.recipes.toArray();
+
+  // ✅ Only log recipe count instead of full data
+  console.log(`🔍 Loaded ${allRecipes.length} Recipes from Dexie.`);
+
+  // ✅ Only log when no recipe is found
+  const recipe = allRecipes.find((r) => Object.keys(r.out).includes(itemId));
   if (!recipe) {
+    console.warn(`⚠️ No recipe found for ${itemId}, assuming raw material.`);
     return {
       id: itemId,
       amount,
@@ -25,6 +33,14 @@ export const calculateDependencyTree = async (
       children: [],
     };
   }
+ else {
+    console.log(`✅ Recipe Found: ${recipe.name}`);
+  }
+
+  if (amount === 1) { // ✅ Log only for the first level
+    console.log(`🔍 Processing ${itemId} with amount ${amount}`);
+  }
+
 
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = amount / outputAmount;
@@ -49,6 +65,7 @@ export const calculateDependencyTree = async (
       isByproduct: true,
       children: [],
     }));
+
 
   return {
     id: itemId,

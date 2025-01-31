@@ -10,7 +10,7 @@ interface DependencyState {
 
 const initialState: DependencyState = {
   selectedItem: null,
-  itemCount: 1,
+  itemCount: 0,
   dependencyTree: null,
   accumulatedDependencies: {},
 };
@@ -28,6 +28,7 @@ const dependencySlice = createSlice({
         accumulated: Record<string, number>;
       }>
     ) => {
+      console.log("🔹 Updating Redux Dependencies:", action.payload); // ✅ Debugging
       state.selectedItem = action.payload.item;
       state.itemCount = action.payload.count;
       state.dependencyTree = action.payload.tree;

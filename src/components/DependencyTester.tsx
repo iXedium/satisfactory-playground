@@ -30,13 +30,9 @@ const DependencyTester: React.FC = () => {
       db.recipes
         .toArray()
         .then((allRecipes) => {
-          console.log("All Recipes:", allRecipes); // ✅ Debugging
-
           const filtered = allRecipes.filter((recipe) =>
             Object.keys(recipe.out).includes(selectedItem)
           );
-
-          console.log("Filtered Recipes:", filtered); // ✅ Debugging
 
           setFilteredRecipes(filtered); // ✅ Update dropdown options
 
@@ -57,16 +53,16 @@ const DependencyTester: React.FC = () => {
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
       const tree = await calculateDependencyTree(selectedItem, itemCount);
-      const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
+      console.log("🔍 Tree Calculation Result:", tree); // ✅ Debugging
 
-      console.log("Dependency Tree:", tree); // ✅ Debugging
-      console.log("Accumulated Dependencies:", accumulated); // ✅ Debugging
+      const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
+      console.log("🔍 Accumulated Dependencies Result:", accumulated); // ✅ Debugging
 
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
 
       // 🔹 Log Redux state after update
       setTimeout(() => {
-        console.log("Redux State After Dispatch:", store.getState().dependencies);
+        console.log("🔍 Redux State After Dispatch:", store.getState().dependencies);
       }, 500);
     }
   };
