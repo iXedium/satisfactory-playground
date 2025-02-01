@@ -51,21 +51,19 @@ const DependencyTester: React.FC = () => {
 
   // 🔹 Calculate dependencies
   const handleCalculate = async () => {
+    console.log("🔹 handleCalculate triggered for", selectedItem); // ✅ Debugging
+
     if (selectedItem && selectedRecipe) {
       const tree = await calculateDependencyTree(selectedItem, itemCount);
-      console.log("🔍 Tree Calculation Result:", tree); // ✅ Debugging
-
       const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
-      console.log("🔍 Accumulated Dependencies Result:", accumulated); // ✅ Debugging
+
+      console.log("🔍 Final Tree Calculation Result:", tree); // ✅ Debugging
+      console.log("🔍 Final Accumulated Dependencies:", accumulated); // ✅ Debugging
 
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
-
-      // 🔹 Log Redux state after update
-      setTimeout(() => {
-        console.log("🔍 Redux State After Dispatch:", store.getState().dependencies);
-      }, 500);
     }
   };
+
 
 
   return (
@@ -117,19 +115,20 @@ const DependencyTester: React.FC = () => {
         <div style={dependencyStyles.listContainer}>
           <h3>Accumulated Dependencies</h3>
           <ul>
-            {/* Ensure UI always renders something */}
-            {Object.keys(dependencies.accumulatedDependencies).length === 0 ? (
-              <li style={{ color: "red" }}>No dependencies found</li> // ✅ Debugging
-            ) : (
-              Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
-                <li key={item} style={{ color: amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor }}>
-                  {item}: {amount.toFixed(2)}
-                </li>
-              ))
-            )}
+            {/* ✅ Ensure the root item is displayed */}
+            <li style={{ color: dependencyStyles.rootColor }}>
+              {dependencies.selectedItem}: {dependencies.itemCount.toFixed(2)}
+            </li>
+
+            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
+              <li key={item} style={{ color: amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor }}>
+                {item}: {amount.toFixed(2)}
+              </li>
+            ))}
           </ul>
         </div>
       )}
+
 
 
       {viewMode === "tree" && dependencies.dependencyTree && (

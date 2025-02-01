@@ -6,43 +6,46 @@ export interface AccumulatedDependency {
   isByproduct?: boolean;
 }
 
+const visitedNodes = new Set<string>();
+const processCount: Record<string, number> = {}; // ✅ Track occurrences
+
 export const calculateAccumulatedDependencies = async (
   itemId: string,
   amount: number,
-  results: Record<string, number> = {}
+  results: Record<string, number> = {},
+  visitedNodes: Set<string> = new Set()
 ): Promise<Record<string, number>> => {
-  if (amount === 1) { // ✅ Log only for first level
-    console.log(`🔍 Accumulating dependencies for ${itemId}`);
+  if (visitedNodes.has(itemId)) {
+    console.warn(`⚠️ Circular dependency detected: ${itemId}, skipping.`);
+    return results;
   }
+  visitedNodes.add(itemId);
 
+  console.log(`🔍 Accumulating dependencies for ${itemId}`);
 
-  const recipe = await db.recipes.where("out").equals(itemId).first(); // ✅ Query Dexie
-
+  const recipe = await db.getRecipeByOutput(itemId);
   if (!recipe) {
     results[itemId] = (results[itemId] || 0) + amount;
     return results;
   }
 
+  console.log(`✅ Recipe Found: ${recipe.name}`);
 
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = amount / outputAmount;
 
-  // Accumulate all inputs (await recursive calls)
+  // ✅ Process only required inputs (ignore byproducts)
   await Promise.all(
     Object.entries(recipe.in).map(async ([inputItem, inputAmount]) => {
       const totalRequired = (inputAmount ?? 0) * cyclesNeeded;
       results[inputItem] = (results[inputItem] || 0) + totalRequired;
-      await calculateAccumulatedDependencies(inputItem, totalRequired, results); // ✅ Ensure full resolution
+      await calculateAccumulatedDependencies(inputItem, totalRequired, results, visitedNodes);
     })
   );
 
-  // Handle byproducts (subtracting from total needs)
-  for (const [byproduct, byproductAmount] of Object.entries(recipe.out)) {
-    if (byproduct !== itemId) {
-      const totalProduced = byproductAmount * cyclesNeeded;
-      results[byproduct] = (results[byproduct] || 0) - totalProduced; // ✅ Reduce required amount
-    }
-  }
-
   return results;
 };
+
+
+
+

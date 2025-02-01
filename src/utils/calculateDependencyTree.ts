@@ -9,69 +9,98 @@ export interface DependencyNode {
   children?: DependencyNode[];
 }
 
+const MAX_DEPTH = 200;
 let nodeCounter = 0;
+
+const processCount: Record<string, number> = {}; // ✅ Track occurrences
+
+const MAX_CALLS = 100; // ✅ Prevent excessive recursion
+let totalCalls = 0;
+
+const maxDepthPerItem: Record<string, number> = {}; // ✅ Track depth per item
+const MAX_DEPTH_PER_ITEM = 50; // ✅ Prevent infinite recursion for any single item
 
 export const calculateDependencyTree = async (
   itemId: string,
-  amount: number
+  amount: number,
+  depth: number = 0
 ): Promise<DependencyNode> => {
-  console.log("Calculating Dependency Tree for:", itemId, "Amount:", amount); // ✅ Debugging
+  console.log(`🔍 Processing ${itemId}, Depth: ${depth}`);
 
-  const allRecipes = await db.recipes.toArray();
-
-  // ✅ Only log recipe count instead of full data
-  console.log(`🔍 Loaded ${allRecipes.length} Recipes from Dexie.`);
-
-  // ✅ Only log when no recipe is found
-  const recipe = allRecipes.find((r) => Object.keys(r.out).includes(itemId));
+  const recipe = await db.getRecipeByOutput(itemId);
   if (!recipe) {
-    console.warn(`⚠️ No recipe found for ${itemId}, assuming raw material.`);
-    return {
-      id: itemId,
-      amount,
-      uniqueId: `${itemId}-${nodeCounter++}`,
-      children: [],
-    };
-  }
- else {
-    console.log(`✅ Recipe Found: ${recipe.name}`);
+    return { id: itemId, amount, uniqueId: `${itemId}-${depth}`, children: [] };
   }
 
-  if (amount === 1) { // ✅ Log only for the first level
-    console.log(`🔍 Processing ${itemId} with amount ${amount}`);
-  }
-
+  console.log(`✅ Recipe Found: ${recipe.name}`);
 
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = amount / outputAmount;
 
-  // Retrieve dependencies dynamically
-  const children: DependencyNode[] = [];
-  for (const [inputItem, inputAmount] of Object.entries(recipe.in)) {
-    const childNode = await calculateDependencyTree(
-      inputItem,
-      (inputAmount ?? 0) * cyclesNeeded
-    );
-    children.push(childNode);
-  }
+  // ✅ Only process main inputs (skip byproducts)
+  const children = await Promise.all(
+    Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
+      calculateDependencyTree(inputItem, (inputAmount ?? 0) * cyclesNeeded, depth + 1)
+    )
+  );
 
-  // Handle byproducts
+  // ✅ Add byproducts but do NOT process them
   const byproducts = Object.entries(recipe.out)
-    .filter(([outputItem]) => outputItem !== itemId)
+    .filter(([outputItem]) => outputItem !== itemId) // ✅ Ensure only byproducts
     .map(([outputItem, outputAmount]) => ({
       id: outputItem,
-      amount: -(outputAmount * cyclesNeeded), // ✅ Negative value for byproducts
-      uniqueId: `${outputItem}-${nodeCounter++}`,
+      amount: -(outputAmount * cyclesNeeded), // ✅ Negative production rate
+      uniqueId: `${outputItem}-${depth}`,
       isByproduct: true,
       children: [],
     }));
 
-
   return {
     id: itemId,
     amount,
-    uniqueId: `${itemId}-${nodeCounter++}`,
-    isRoot: true,
-    children: [...children, ...byproducts],
+    uniqueId: `${itemId}-${depth}`,
+    isRoot: depth === 0,
+    children: [...children, ...byproducts], // ✅ Include byproducts without processing them
   };
 };
+
+
+
+
+
+// export const calculateDependencyTree = async (
+//   itemId: string,
+//   amount: number,
+//   depth: number = 0
+// ): Promise<DependencyNode> => {
+//   if (depth === 0) {
+//     Object.keys(processCount).forEach((key) => delete processCount[key]); // ✅ Reset count for new calculations
+//     console.log("🔄 Reset process count for new calculation.");
+//   }
+
+//   processCount[itemId] = (processCount[itemId] || 0) + 1;
+
+//   console.log(`🔍 Processing ${itemId}, Depth: ${depth}, Count: ${processCount[itemId]}`);
+
+//   const recipe = await db.getRecipeByOutput(itemId);
+//   if (!recipe) {
+//     return { id: itemId, amount, uniqueId: `${itemId}-${depth}`, children: [] };
+//   }
+
+//   const outputAmount = recipe.out[itemId] ?? 1;
+//   const cyclesNeeded = amount / outputAmount;
+
+//   const children = await Promise.all(
+//     Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
+//       calculateDependencyTree(inputItem, (inputAmount ?? 0) * cyclesNeeded, depth + 1)
+//     )
+//   );
+
+//   return {
+//     id: itemId,
+//     amount,
+//     uniqueId: `${itemId}-${depth}`,
+//     children,
+//   };
+// };
+
