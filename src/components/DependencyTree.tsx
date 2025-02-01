@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem2 } from "@mui/x-tree-view/TreeItem2";
 import { DependencyNode } from "../utils/calculateDependencyTree";
@@ -9,6 +9,24 @@ interface DependencyTreeProps {
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree }) => {
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+
+  // ✅ Automatically expand all nodes when dependencyTree changes
+  useEffect(() => {
+    const getAllNodeIds = (node: DependencyNode, ids: string[] = []): string[] => {
+      ids.push(node.uniqueId);
+      node.children?.forEach((child) => getAllNodeIds(child, ids));
+      return ids;
+    };
+
+    if (dependencyTree) {
+      const allNodeIds = getAllNodeIds(dependencyTree);
+      setExpandedIds(allNodeIds);
+    }
+  }, [dependencyTree]);
+
+
   const getAllNodeIds = (
     node: DependencyNode,
     ids: string[] = []
@@ -18,14 +36,12 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree }) => {
     return ids;
   };
 
-  const expandedIds = getAllNodeIds(dependencyTree); // ✅ Get all node IDs for expansion
-
   const renderTree = (node: DependencyNode, isRoot = false) => {
     const itemColor = isRoot
       ? dependencyStyles.rootColor
       : node.isByproduct
-      ? dependencyStyles.byproductColor
-      : dependencyStyles.defaultColor; // ✅ Only root is blue
+        ? dependencyStyles.byproductColor
+        : dependencyStyles.defaultColor; // ✅ Only root is blue
 
     return (
       <TreeItem2
@@ -44,20 +60,19 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree }) => {
           </span>
         }
       >
-        {node.children &&
-          node.children.map((child) => renderTree(child, false))}{" "}
-        {/* ✅ Mark children as non-root */}
+        {Array.isArray(node.children)
+          ? node.children.map((child) => renderTree(child))
+          : null}
       </TreeItem2>
     );
   };
 
   return (
     <div style={{ textAlign: "left" }}>
-      {" "}
-      {/* ✅ Ensures left alignment */}
-      <SimpleTreeView defaultExpandedItems={expandedIds}>
-        {renderTree(dependencyTree, true)}{" "}
-        {/* ✅ Pass "true" only for the root */}
+      <SimpleTreeView aria-label="dependency-tree"
+        // expandedItems={expandedIds}
+        disableSelection>
+        {renderTree(dependencyTree, true)}
       </SimpleTreeView>
     </div>
   );
