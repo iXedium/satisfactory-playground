@@ -6,7 +6,6 @@ export interface AccumulatedDependency {
   isByproduct?: boolean;
 }
 
-const visitedNodes = new Set<string>();
 const processCount: Record<string, number> = {}; // ✅ Track occurrences
 
 export const calculateAccumulatedDependencies = async (
@@ -15,21 +14,13 @@ export const calculateAccumulatedDependencies = async (
   results: Record<string, number> = {},
   visitedNodes: Set<string> = new Set()
 ): Promise<Record<string, number>> => {
-  if (visitedNodes.has(itemId)) {
-    console.warn(`⚠️ Circular dependency detected: ${itemId}, skipping.`);
-    return results;
-  }
-  visitedNodes.add(itemId);
-
-  console.log(`🔍 Accumulating dependencies for ${itemId}`);
+  
 
   const recipe = await db.getRecipeByOutput(itemId);
   if (!recipe) {
     results[itemId] = (results[itemId] || 0) + amount;
     return results;
   }
-
-  console.log(`✅ Recipe Found: ${recipe.name}`);
 
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = amount / outputAmount;

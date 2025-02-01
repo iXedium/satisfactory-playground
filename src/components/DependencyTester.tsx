@@ -15,7 +15,7 @@ const DependencyTester: React.FC = () => {
 
   const items = useSelector((state: RootState) => state.data.items);
   const dependencies = useSelector((state: RootState) => state.dependencies);
-  console.log("Redux Dependencies in Component:", dependencies); // ✅ Debugging
+   // ✅ Debugging
 
 
   const [selectedItem, setSelectedItem] = useState("");
@@ -51,14 +51,15 @@ const DependencyTester: React.FC = () => {
 
   // 🔹 Calculate dependencies
   const handleCalculate = async () => {
-    console.log("🔹 handleCalculate triggered for", selectedItem); // ✅ Debugging
+    //  // ✅ Debugging
 
     if (selectedItem && selectedRecipe) {
-      const tree = await calculateDependencyTree(selectedItem, itemCount);
+      
+      const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
       const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
 
-      console.log("🔍 Final Tree Calculation Result:", tree); // ✅ Debugging
-      console.log("🔍 Final Accumulated Dependencies:", accumulated); // ✅ Debugging
+       // ✅ Debugging
+       // ✅ Debugging
 
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
     }

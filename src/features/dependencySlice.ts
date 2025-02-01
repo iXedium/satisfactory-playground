@@ -28,7 +28,7 @@ const dependencySlice = createSlice({
         accumulated: Record<string, number>;
       }>
     ) => {
-      console.log("🔹 Updating Redux Dependencies:", action.payload); // ✅ Debugging
+       // ✅ Debugging
       state.selectedItem = action.payload.item;
       state.itemCount = action.payload.count;
       state.dependencyTree = action.payload.tree;
