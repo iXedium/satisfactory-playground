@@ -25,31 +25,17 @@ class SatisfactoryDatabase extends Dexie {
       items: "id, name, category",
       recipes: "id, name",
     });
-    console.log("✅ Dexie Database Initialized"); // ✅ Debugging
+    console.log("✅ Dexie Database Initialized");
   }
 
   // ✅ Centralized fetch function for recipes
   async getRecipeByOutput(itemId: string): Promise<Recipe | undefined> {
+    // Dexie does not support "where" on objects, so we manually filter
     const allRecipes = await this.recipes.toArray();
     return allRecipes.find((r) => Object.keys(r.out).includes(itemId));
   }
-
-  // ✅ Ensure Database is Populated
-  async initializeDatabase(data: { items: Item[]; recipes: Recipe[] }) {
-    const itemCount = await this.items.count();
-    const recipeCount = await this.recipes.count();
-
-    if (itemCount === 0 || recipeCount === 0) {
-      console.log("🌱 Populating Database...");
-      await this.items.bulkAdd(data.items);
-      await this.recipes.bulkAdd(data.recipes);
-      console.log("✅ Database Populated!");
-    } else {
-      console.log("⚡ Database already contains data.");
-    }
-  }
 }
 
-// ✅ Create and Attach Database to `window` for Debugging
+// ✅ Create and export the Dexie database instance
 export const db = new SatisfactoryDatabase();
-(window as any).db = db;
+(window as any).db = db; // ✅ Attach to window for debugging

@@ -1,4 +1,4 @@
-import data from "../data/data.json";
+import data from "../../public/data.json";
 
 export interface Item {
   id: string;
