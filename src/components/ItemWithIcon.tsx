@@ -1,6 +1,5 @@
-import React from "react";
-import { db } from "../data/dexieDB";
-import { useLiveQuery } from "dexie-react-hooks";
+import React, { useEffect, useState } from "react";
+import { getIconForItem, getItemById } from "../data/dbQueries";
 import { iconStyles } from "../styles/iconStyles";
 
 interface ItemWithIconProps {
@@ -11,15 +10,13 @@ interface ItemWithIconProps {
 }
 
 const ItemWithIcon: React.FC<ItemWithIconProps> = ({ itemId, showName = true, amount, color = "inherit" }) => {
-  const item = useLiveQuery(
-    () => db.items.get(itemId),
-    [itemId]
-  );
+  const [item, setItem] = useState<any>(null);
+  const [icon, setIcon] = useState<any>(null);
 
-  const icon = useLiveQuery(
-    () => db.icons.get(itemId),
-    [itemId]
-  );
+  useEffect(() => {
+    getItemById(itemId).then(setItem);
+    getIconForItem(itemId).then(setIcon);
+  }, [itemId]);
 
   if (!item || !icon) return null;
 

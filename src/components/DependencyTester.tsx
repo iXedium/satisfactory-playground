@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store";
 import { Item, Recipe } from "../data/dexieDB";
-import { getComponents, getRecipesForItem } from "../data/dexieQueries";
 import { calculateDependencyTree } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
 import { setDependencies } from "../features/dependencySlice";
@@ -12,6 +11,7 @@ import ItemWithIcon from "./ItemWithIcon";
 import IconSelect from "./IconSelect";
 import RecipeSelect from "./RecipeSelect";
 import { uiStyles } from "../styles/uiStyles";
+import { getComponents, getRecipesForItem } from "../data/dbQueries";
 
 type ViewMode = "accumulated" | "tree";
 

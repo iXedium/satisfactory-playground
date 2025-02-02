@@ -1,4 +1,5 @@
-import { db, Recipe } from "../data/dexieDB";
+import { Recipe } from "../data/dexieDB";
+import { getRecipeById, getRecipeByOutput } from "../data/dbQueries";
 
 export interface DependencyNode {
   id: string;
@@ -21,10 +22,10 @@ export const calculateDependencyTree = async (
 
   if (depth === 0 && selectedRecipeId) {
     // ✅ Use the user-selected recipe only for the root item
-    recipe = await db.recipes.get(selectedRecipeId);
+    recipe = await getRecipeById(selectedRecipeId);
   } else {
-    // ✅ Reuse the existing function instead of fetching manually
-    recipe = await db.getRecipeByOutput(itemId);
+    // ✅ Use centralized query function
+    recipe = await getRecipeByOutput(itemId);
   }
   if (!recipe) {
     

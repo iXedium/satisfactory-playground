@@ -1,4 +1,4 @@
-import { db } from "../data/dexieDB";
+import { getRecipeByOutput } from "../data/dbQueries";
 
 export interface AccumulatedDependency {
   id: string;
@@ -16,7 +16,7 @@ export const calculateAccumulatedDependencies = async (
 ): Promise<Record<string, number>> => {
   
 
-  const recipe = await db.getRecipeByOutput(itemId);
+  const recipe = await getRecipeByOutput(itemId);
   if (!recipe) {
     results[itemId] = (results[itemId] || 0) + amount;
     return results;
