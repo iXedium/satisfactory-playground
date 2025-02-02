@@ -27,8 +27,6 @@ const DependencyTester: React.FC = () => {
   const [itemCount, setItemCount] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-  // Add state to store last calculated combination
-  const [lastCalculated, setLastCalculated] = useState<{ item: string; recipe: string }>({ item: "", recipe: "" });
 
   // Load components on mount
   useEffect(() => {
@@ -57,12 +55,9 @@ const DependencyTester: React.FC = () => {
   // Calculate dependencies
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
-      // Only calculate if either item or recipe changed
-      if (lastCalculated.item === selectedItem && lastCalculated.recipe === selectedRecipe) return;
       const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
       const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
-      setLastCalculated({ item: selectedItem, recipe: selectedRecipe });
     }
   };
 
@@ -125,7 +120,7 @@ const DependencyTester: React.FC = () => {
         </button>
       </div>
 
-      {dependencies.accumulatedDependencies && (
+      {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
         <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
           <h3 style={{ textAlign: "center" }}>Accumulated Dependencies</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>
