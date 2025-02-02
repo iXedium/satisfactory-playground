@@ -10,7 +10,7 @@ interface IconSelectProps {
   placeholder?: string;
 }
 
-const IconSelect: React.FC<IconSelectProps> = ({ 
+const ItemSelect: React.FC<IconSelectProps> = ({ 
   items, 
   value, 
   onChange, 
@@ -68,4 +68,4 @@ const IconSelect: React.FC<IconSelectProps> = ({
   );
 };
 
-export default IconSelect;
+export default ItemSelect;

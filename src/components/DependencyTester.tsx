@@ -8,7 +8,7 @@ import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 import ItemWithIcon from "./ItemWithIcon";
-import IconSelect from "./IconSelect";
+import ItemSelect from "./ItemSelect";
 import RecipeSelect from "./RecipeSelect";
 import { uiStyles } from "../styles/uiStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
@@ -66,7 +66,7 @@ const DependencyTester: React.FC = () => {
       <div style={uiStyles.container}>
         <div>
           <label style={uiStyles.formGroup}>Item:</label>
-          <IconSelect
+          <ItemSelect
             items={items}
             value={selectedItem}
             onChange={setSelectedItem}
