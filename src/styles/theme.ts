@@ -1,0 +1,21 @@
+export const theme = {
+  colors: {
+    primary: "#007bff",
+    background: "#fff",
+    dark: "#333",
+    hover: "rgba(0, 0, 0, 0.05)",
+    iconBg: "rgba(0, 0, 0, 0.1)",
+  },
+  border: {
+    radius: "4px",
+    style: "1px solid #ccc",
+  },
+  spacing: {
+    gap: "8px",
+    padding: "8px",
+    containerPadding: "12px 24px",
+  },
+  zIndex: {
+    dropdown: 1000,
+  },
+};

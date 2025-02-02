@@ -1,14 +1,16 @@
+import { theme } from "./theme";
+
 export const iconStyles = {
   container: {
     display: "inline-flex",
     alignItems: "center",
-    gap: "8px",
+    gap: theme.spacing.gap,
   },
   iconWrapper: {
     width: "40px", // Slightly larger to accommodate different icon sizes
     height: "40px",
-    backgroundColor: "rgba(0, 0, 0, 0.1)", // Slightly darker background
-    borderRadius: "4px",
+    backgroundColor: theme.colors.iconBg, // Slightly darker background
+    borderRadius: theme.border.radius,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -26,33 +28,33 @@ export const iconStyles = {
   customSelect: {
     width: "100%",
     minWidth: "200px",
-    padding: "8px",
+    padding: theme.spacing.padding,
     cursor: "pointer",
-    backgroundColor: "#333",
-    border: "1px solid #ccc",
-    borderRadius: "4px",
+    backgroundColor: theme.colors.dark,
+    border: theme.border.style,
+    borderRadius: theme.border.radius,
   },
   dropdown: {
     position: "absolute" as const,
     top: "100%",
     left: 0,
     right: 0,
-    backgroundColor: "#333",
-    border: "1px solid #ccc",
+    backgroundColor: theme.colors.dark,
+    border: theme.border.style,
     borderTop: "none",
-    borderRadius: "0 0 4px 4px",
+    borderRadius: `0 0 ${theme.border.radius} ${theme.border.radius}`,
     maxHeight: "300px",
     overflowY: "auto" as const,
-    zIndex: 1000,
+    zIndex: theme.zIndex.dropdown,
   },
   dropdownItem: {
-    padding: "8px",
+    padding: theme.spacing.padding,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: theme.spacing.gap,
     '&:hover': {
-      backgroundColor: "rgba(0, 0, 0, 0.05)",
+      backgroundColor: theme.colors.hover,
     },
   },
 };
