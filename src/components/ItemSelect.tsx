@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -25,13 +25,26 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
   onChange,
   placeholder = "Select an Item"
 }) => {
-  const selectedOption = items.find(item => item.id === value) || null;
+  // Add effect to set default selection when items load
+  useEffect(() => {
+    if (!value && items.length > 0) {
+      onChange(items[0].id);
+    }
+  }, [items, value, onChange]);
+
+  // Always derive a selected option, falling back to the first item.
+  const selectedOption = items.find(item => item.id === value) || (items.length > 0 ? items[0] : undefined);
   const [inputValue, setInputValue] = React.useState("");
+
+  // Render nothing until items are loaded.
+  if (items.length === 0) return null;
 
   return (
     <Autocomplete
+      // disable clearability
+      disableClearable
       options={items}
-      value={selectedOption}
+      value={selectedOption || undefined}
       inputValue={inputValue}
       filterOptions={filterOptions}
       onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
@@ -40,12 +53,15 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
         setInputValue(""); // Clear text on selection
       }}
       getOptionLabel={(option) => option.name}
-      renderOption={(props, option) => (
-        <li {...props}>
-          <Icon itemId={option.id} size="small" showWrapper={false} style={{ marginRight: "8px" }} />
-          {option.name}
-        </li>
-      )}
+      renderOption={(props, option) => {
+        const { key, ...rest } = props;
+        return (
+          <li key={key} {...rest}>
+            <Icon itemId={option.id} size="small" showWrapper={false} style={{ marginRight: "8px" }} />
+            {option.name}
+          </li>
+        );
+      }}
       renderInput={(params) => (
         <TextField
           {...params}
