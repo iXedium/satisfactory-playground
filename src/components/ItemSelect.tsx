@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Item } from "../data/dexieDB";
-import { iconStyles } from "../styles/iconStyles";
+import { itemSelectStyles } from "../styles/itemSelectStyles";
 import ItemWithIcon from "./ItemWithIcon";
 
 interface IconSelectProps {
@@ -34,10 +34,10 @@ const ItemSelect: React.FC<IconSelectProps> = ({
   const selectedItem = items.find(item => item.id === value);
 
   return (
-    <div ref={containerRef} style={iconStyles.selectContainer}>
+    <div ref={containerRef} style={itemSelectStyles.selectContainer}>
       {/* Selected Item Display */}
       <div
-        style={iconStyles.customSelect}
+        style={itemSelectStyles.customSelect}
         onClick={() => setIsOpen(!isOpen)}
       >
         {value && selectedItem ? (
@@ -49,11 +49,11 @@ const ItemSelect: React.FC<IconSelectProps> = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div style={iconStyles.dropdown}>
+        <div style={itemSelectStyles.dropdown}>
           {items.map((item) => (
             <div
               key={item.id}
-              style={iconStyles.dropdownItem}
+              style={itemSelectStyles.dropdownItem}
               onClick={() => {
                 onChange(item.id);
                 setIsOpen(false);
