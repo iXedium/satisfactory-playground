@@ -1,70 +1,67 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
 import { Item } from "../data/dexieDB";
-import { itemSelectStyles } from "../styles/itemSelectStyles";
-import ItemWithIcon from "./ItemWithIcon";
+import Icon from "./Icon"; // using the Icon component
 
-interface IconSelectProps {
+interface ItemSelectProps {
   items: Item[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
-const ItemSelect: React.FC<IconSelectProps> = ({ 
-  items, 
-  value, 
-  onChange, 
-  placeholder = "Select an Item" 
+// Using MUI's createFilterOptions with fuzzy search.
+const filterOptions = createFilterOptions({
+  matchFrom: "start",
+  stringify: (option: Item) => option.name,
+});
+
+const ItemSelect: React.FC<ItemSelectProps> = ({
+  items,
+  value,
+  onChange,
+  placeholder = "Select an Item"
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedItem = items.find(item => item.id === value);
+  const selectedOption = items.find(item => item.id === value) || null;
+  const [inputValue, setInputValue] = React.useState("");
 
   return (
-    <div ref={containerRef} style={itemSelectStyles.selectContainer}>
-      {/* Selected Item Display */}
-      <div
-        style={itemSelectStyles.customSelect}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {value && selectedItem ? (
-          <ItemWithIcon itemId={selectedItem.id} />
-        ) : (
-          placeholder
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {isOpen && (
-        <div style={itemSelectStyles.dropdown}>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={itemSelectStyles.dropdownItem}
-              onClick={() => {
-                onChange(item.id);
-                setIsOpen(false);
-              }}
-            >
-              <ItemWithIcon itemId={item.id} />
-            </div>
-          ))}
-        </div>
+    <Autocomplete
+      options={items}
+      value={selectedOption}
+      inputValue={inputValue}
+      filterOptions={filterOptions}
+      onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
+      onChange={(event, newValue) => {
+        onChange(newValue ? newValue.id : "");
+        setInputValue(""); // Clear text on selection
+      }}
+      getOptionLabel={(option) => option.name}
+      renderOption={(props, option) => (
+        <li {...props}>
+          <Icon itemId={option.id} size="small" showWrapper={false} style={{ marginRight: "8px" }} />
+          {option.name}
+        </li>
       )}
-    </div>
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          variant="outlined"
+          placeholder={placeholder}
+          InputProps={{
+            ...params.InputProps,
+            startAdornment: selectedOption ? (
+              <InputAdornment position="start">
+                <Icon itemId={selectedOption.id} size="small" showWrapper={false} />
+              </InputAdornment>
+            ) : null,
+          }}
+        />
+      )}
+      style={{ width: "100%" }}
+    />
   );
 };
 
