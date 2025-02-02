@@ -3,18 +3,18 @@ import { useEffect, useState } from 'react';
 import { getIconForItem } from '../data/dbQueries';
 import { iconStyles } from '../styles/iconStyles';
 
-// The sprite sheet contains 64x64 icons
-const SPRITE_ICON_SIZE = 64;
-const SPRITE_SHEET_COLS = 14; // 896/64
-const SPRITE_SHEET_ROWS = 15; // 960/64
+// Original sprite dimensions
+const ORIGINAL_ICON_SIZE = 64;
+const ORIGINAL_SHEET_WIDTH = 896;  // 14 * 64
+const ORIGINAL_SHEET_HEIGHT = 960; // 15 * 64
 
 export type IconSize = "tiny" | "small" | "medium" | "large";
 
 const sizeMap: Record<IconSize, number> = {
-  tiny: 16,
-  small: 32,
-  medium: 48,
-  large: 64
+  tiny: 16,    // Quarter size
+  small: 32,   // Half size
+  medium: 48,  // Three-quarters size
+  large: 64    // Original size
 };
 
 interface IconProps {
@@ -26,6 +26,11 @@ interface IconProps {
   color?: string;
 }
 
+interface IconData {
+  position: string;
+  color: string;
+}
+
 const Icon = memo(({ 
   itemId, 
   size = "small",
@@ -34,7 +39,7 @@ const Icon = memo(({
   className,
   color = "inherit"
 }: IconProps) => {
-  const [icon, setIcon] = useState<any>(null);
+  const [icon, setIcon] = useState<IconData | null>(null);
 
   useEffect(() => {
     getIconForItem(itemId).then(setIcon);
@@ -42,17 +47,28 @@ const Icon = memo(({
 
   if (!icon) return null;
 
-  const dimension = sizeMap[size];
+  const targetSize = sizeMap[size];
+  const scale = targetSize / ORIGINAL_ICON_SIZE;
   
+  // Parse the position string (e.g. "-64px -128px" -> [-64, -128])
+  const [x, y] = icon.position.split(' ').map((pos: string) => parseInt(pos));
+  
+  // Scale the position based on our target size
+  const scaledX = x * scale;
+  const scaledY = y * scale;
+  
+  const scaledSheetWidth = ORIGINAL_SHEET_WIDTH * scale;
+  const scaledSheetHeight = ORIGINAL_SHEET_HEIGHT * scale;
+
   const iconElement = (
     <div
       style={{
         ...iconStyles.icon,
-        background: `url('/icons.webp') ${icon.position}`,
-        backgroundSize: `${SPRITE_SHEET_COLS * SPRITE_ICON_SIZE}px ${SPRITE_SHEET_ROWS * SPRITE_ICON_SIZE}px`,
-        width: `${dimension}px`,
-        height: `${dimension}px`,
-        backgroundRepeat: 'no-repeat',
+        width: `${targetSize}px`,
+        height: `${targetSize}px`,
+        background: `url('/icons.webp') ${scaledX}px ${scaledY}px`,
+        backgroundSize: `${scaledSheetWidth}px ${scaledSheetHeight}px`,
+        imageRendering: 'pixelated',
         ...style
       }}
       className={className}
@@ -65,10 +81,10 @@ const Icon = memo(({
   return (
     <div 
       style={{ 
-        ...iconStyles.iconWrapper, 
+        ...iconStyles.iconWrapper,
         color,
-        width: `${dimension + 8}px`, // Add some padding
-        height: `${dimension + 8}px`,
+        width: `${targetSize + 8}px`,
+        height: `${targetSize + 8}px`,
       }}
     >
       {iconElement}
