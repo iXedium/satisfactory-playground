@@ -119,8 +119,8 @@ const DependencyTester: React.FC = () => {
         </button>
       </div>
 
-      {viewMode === "accumulated" && dependencies.accumulatedDependencies && (
-        <div style={dependencyStyles.listContainer}>
+      {dependencies.accumulatedDependencies && (
+        <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
           <h3>Accumulated Dependencies</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {/* Root item */}
@@ -148,8 +148,8 @@ const DependencyTester: React.FC = () => {
         </div>
       )}
 
-      {viewMode === "tree" && dependencies.dependencyTree && (
-        <div>
+      {dependencies.dependencyTree && (
+        <div style={{ display: viewMode === "tree" ? "block" : "none" }}>
           <h3>Tree View</h3>
           <DependencyTree dependencyTree={dependencies.dependencyTree} />
         </div>
