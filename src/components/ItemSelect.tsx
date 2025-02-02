@@ -4,6 +4,7 @@ import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import { Item } from "../data/dexieDB";
 import Icon from "./Icon"; // using the Icon component
+import { itemSelectStyles } from "../styles/itemSelectStyles"; // new import
 
 interface ItemSelectProps {
   items: Item[];
@@ -58,9 +59,18 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
               </InputAdornment>
             ) : null,
           }}
+          sx={itemSelectStyles.autocompleteInput} // using the new style property from itemSelectStyles
         />
       )}
-      style={{ width: "100%" }}
+      style={itemSelectStyles.autocomplete}
+      componentsProps={{
+        paper: {
+          style: itemSelectStyles.autocompletePaper,
+        },
+      }}
+      sx={{
+        '& .MuiAutocomplete-listbox': itemSelectStyles.autocompleteListbox,
+      }}
     />
   );
 };

@@ -3,6 +3,7 @@ export const theme = {
     primary: "#007bff",
     background: "#fff",
     dark: "#333",
+    darker: "#222",
     hover: "rgba(0, 0, 0, 0.05)",
     iconBg: "rgba(0, 0, 0, 0.1)",
   },

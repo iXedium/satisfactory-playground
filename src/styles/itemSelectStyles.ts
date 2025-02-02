@@ -37,4 +37,24 @@ export const itemSelectStyles = {
       backgroundColor: theme.colors.hover,
     },
   },
+  autocomplete: {
+    width: "100%",
+  },
+  autocompletePaper: {
+    backgroundColor: theme.colors.darker, // using theme value instead of "#222"
+    color: theme.colors.background,       // using theme background (e.g., white)
+  },
+  autocompleteListbox: {
+    backgroundColor: theme.colors.dark, // using theme value
+    color: theme.colors.background,       // using theme value
+  },
+  // New property for the TextField input style including text and border color
+  autocompleteInput: {
+    '& .MuiInputBase-input': {
+      color: theme.colors.background, // text color for the selected option
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: "#ccc", // derived from theme.border.style (e.g. "1px solid #ccc")
+    },
+  },
 };

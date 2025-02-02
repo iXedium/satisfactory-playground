@@ -19,7 +19,7 @@ export const recipeSelectStyles = {
     top: "100%",
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.dark,
+    backgroundColor: theme.colors.darker,
     border: theme.border.style,
     borderTop: "none",
     borderRadius: `0 0 ${theme.border.radius} ${theme.border.radius}`,
