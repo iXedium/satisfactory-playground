@@ -25,15 +25,18 @@ interface IconProps {
   style?: CSSProperties;
   className?: string;
   color?: string;
+  // Expose wrapper padding
+  wrapperPadding?: number;
 }
 
 const Icon = memo(({ 
   itemId, 
-  size = "small",
+  size = "tiny",
   showWrapper = true, 
   style, 
   className,
-  color = "inherit"
+  color = "inherit",
+  wrapperPadding = 4  // default padding in pixels
 }: IconProps) => {
   const [icon, setIcon] = useState<IconType | null>(null);
 
@@ -45,26 +48,24 @@ const Icon = memo(({
 
   const targetSize = sizeMap[size];
   const scale = targetSize / ORIGINAL_ICON_SIZE;
-  
-  // Parse the position string (e.g. "-64px -128px" -> [-64, -128])
-  const [x, y] = icon.position.split(' ').map((pos: string) => parseInt(pos));
-  
-  // Scale the position based on our target size
-  const scaledX = x * scale;
-  const scaledY = y * scale;
-  
+
+  // Parse the original position (e.g., "-64px -128px")
+  const [origX, origY] = icon.position.split(' ').map((pos: string) => parseInt(pos));
+  // Compute the scaled background properties
+  const scaledX = origX * scale;
+  const scaledY = origY * scale;
   const scaledSheetWidth = ORIGINAL_SHEET_WIDTH * scale;
   const scaledSheetHeight = ORIGINAL_SHEET_HEIGHT * scale;
 
+  // Render the icon element with proper background settings; note: do not set position here.
   const iconElement = (
     <div
       style={{
-        ...iconStyles.icon,
         width: `${targetSize}px`,
         height: `${targetSize}px`,
         backgroundImage: `url('/icons.webp')`,
-        backgroundPosition: `${scaledX}px ${scaledY}px`,
         backgroundSize: `${scaledSheetWidth}px ${scaledSheetHeight}px`,
+        backgroundPosition: `${scaledX}px ${scaledY}px`,
         imageRendering: 'pixelated',
         ...style
       }}
@@ -77,11 +78,16 @@ const Icon = memo(({
 
   return (
     <div 
-      style={{ 
+      style={{
         ...iconStyles.iconWrapper,
         color,
-        width: `${targetSize + 8}px`,
-        height: `${targetSize + 8}px`,
+        width: `${targetSize + 2 * wrapperPadding}px`,
+        height: `${targetSize + 2 * wrapperPadding}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: `${wrapperPadding}px`,
+        overflow: 'hidden'
       }}
     >
       {iconElement}

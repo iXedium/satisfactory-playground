@@ -11,10 +11,10 @@ interface ItemWithIconProps {
   size?: IconSize;
 }
 
-const ItemWithIcon: React.FC<ItemWithIconProps> = ({ 
-  itemId, 
-  showName = true, 
-  amount, 
+const ItemWithIcon: React.FC<ItemWithIconProps> = ({
+  itemId,
+  showName = true,
+  amount,
   color = "inherit",
   size = "small"
 }) => {
@@ -28,7 +28,10 @@ const ItemWithIcon: React.FC<ItemWithIconProps> = ({
 
   return (
     <div style={{ ...iconStyles.container, color }}>
-      <Icon itemId={itemId} color={color} size={size} />
+      <Icon itemId={itemId} color={color}
+        size={size}
+        wrapperPadding={1}
+      />
       {showName && (
         <span>
           {item.name}
