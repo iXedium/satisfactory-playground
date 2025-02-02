@@ -2,6 +2,7 @@ import { CSSProperties, memo } from 'react';
 import { useEffect, useState } from 'react';
 import { getIconForItem } from '../data/dbQueries';
 import { iconStyles } from '../styles/iconStyles';
+import { Icon as IconType } from '../data/dexieDB';
 
 // Original sprite dimensions
 const ORIGINAL_ICON_SIZE = 64;
@@ -26,11 +27,6 @@ interface IconProps {
   color?: string;
 }
 
-interface IconData {
-  position: string;
-  color: string;
-}
-
 const Icon = memo(({ 
   itemId, 
   size = "small",
@@ -39,10 +35,10 @@ const Icon = memo(({
   className,
   color = "inherit"
 }: IconProps) => {
-  const [icon, setIcon] = useState<IconData | null>(null);
+  const [icon, setIcon] = useState<IconType | null>(null);
 
   useEffect(() => {
-    getIconForItem(itemId).then(setIcon);
+    getIconForItem(itemId).then(iconData => setIcon(iconData || null));
   }, [itemId]);
 
   if (!icon) return null;
@@ -66,7 +62,8 @@ const Icon = memo(({
         ...iconStyles.icon,
         width: `${targetSize}px`,
         height: `${targetSize}px`,
-        background: `url('/icons.webp') ${scaledX}px ${scaledY}px`,
+        backgroundImage: `url('/icons.webp')`,
+        backgroundPosition: `${scaledX}px ${scaledY}px`,
         backgroundSize: `${scaledSheetWidth}px ${scaledSheetHeight}px`,
         imageRendering: 'pixelated',
         ...style
