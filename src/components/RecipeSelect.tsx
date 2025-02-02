@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Recipe } from "../data/dexieDB";
-import { iconStyles } from "../styles/iconStyles";
+import { recipeSelectStyles } from "../styles/recipeSelectStyles";
 
 interface RecipeSelectProps {
   recipes: Recipe[];
@@ -9,11 +9,11 @@ interface RecipeSelectProps {
   placeholder?: string;
 }
 
-const RecipeSelect: React.FC<RecipeSelectProps> = ({
-  recipes,
-  value,
-  onChange,
-  placeholder = "Select a Recipe"
+const RecipeSelect: React.FC<RecipeSelectProps> = ({ 
+  recipes, 
+  value, 
+  onChange, 
+  placeholder = "Select a Recipe" 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,7 +24,6 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -32,29 +31,30 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
   const selectedRecipe = recipes.find(recipe => recipe.id === value);
 
   return (
-    <div ref={containerRef} style={iconStyles.selectContainer}>
+    <div ref={containerRef} style={recipeSelectStyles.selectContainer}>
       <div
-        style={iconStyles.customSelect}
+        style={recipeSelectStyles.customSelect}
         onClick={() => setIsOpen(!isOpen)}
       >
-        {value && selectedRecipe ? selectedRecipe.name : placeholder}
+        {value && selectedRecipe ? (
+          <span>{selectedRecipe.name}</span>
+        ) : (
+          placeholder
+        )}
       </div>
 
       {isOpen && (
-        <div style={iconStyles.dropdown}>
+        <div style={recipeSelectStyles.dropdown}>
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
-              style={{
-                ...iconStyles.dropdownItem,
-                backgroundColor: recipe.id === value ? "rgba(0, 0, 0, 0.05)" : undefined
-              }}
+              style={recipeSelectStyles.dropdownItem}
               onClick={() => {
                 onChange(recipe.id);
                 setIsOpen(false);
               }}
             >
-              {recipe.name}
+              <span>{recipe.name}</span>
             </div>
           ))}
         </div>
