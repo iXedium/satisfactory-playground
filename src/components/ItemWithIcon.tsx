@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { getItemById } from "../data/dbQueries";
 import { iconStyles } from "../styles/iconStyles";
-import Icon from "./Icon";
+import Icon, { IconSize } from "./Icon";
 
 interface ItemWithIconProps {
   itemId: string;
   showName?: boolean;
   amount?: number;
   color?: string;
+  size?: IconSize;
 }
 
-const ItemWithIcon: React.FC<ItemWithIconProps> = ({ itemId, showName = true, amount, color = "inherit" }) => {
+const ItemWithIcon: React.FC<ItemWithIconProps> = ({ 
+  itemId, 
+  showName = true, 
+  amount, 
+  color = "inherit",
+  size = "small"
+}) => {
   const [item, setItem] = useState<any>(null);
 
   useEffect(() => {
@@ -21,7 +28,7 @@ const ItemWithIcon: React.FC<ItemWithIconProps> = ({ itemId, showName = true, am
 
   return (
     <div style={{ ...iconStyles.container, color }}>
-      <Icon itemId={itemId} color={color} />
+      <Icon itemId={itemId} color={color} size={size} />
       {showName && (
         <span>
           {item.name}
