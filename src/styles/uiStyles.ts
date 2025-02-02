@@ -17,7 +17,7 @@ export const uiStyles = {
     border: theme.border.style,
     borderRadius: theme.border.radius,
     fontSize: "16px",
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.dark,
   },
   button: {
     padding: theme.spacing.containerPadding,

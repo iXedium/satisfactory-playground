@@ -12,6 +12,7 @@ import ItemSelect from "./ItemSelect";
 import RecipeSelect from "./RecipeSelect";
 import { uiStyles } from "../styles/uiStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
+import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switch
 
 type ViewMode = "accumulated" | "tree";
 
@@ -97,16 +98,15 @@ const DependencyTester: React.FC = () => {
           />
         </div>
 
+        {/* Replace dropdown with switch */}
         <div>
           <label style={uiStyles.formGroup}>View Mode:</label>
-          <select 
-            value={viewMode} 
-            onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            style={uiStyles.select}
-          >
-            <option value="accumulated">Accumulated</option>
-            <option value="tree">Tree</option>
-          </select>
+          <ViewModeSwitch
+            mode={viewMode === "tree" ? "tree" : "list"}
+            onToggle={(mode) =>
+              setViewMode(mode === "list" ? "accumulated" : "tree")
+            }
+          />
         </div>
 
         <button

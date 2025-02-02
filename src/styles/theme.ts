@@ -18,4 +18,11 @@ export const theme = {
   zIndex: {
     dropdown: 1000,
   },
+  // New switch styling entries
+  switch: {
+    track: "#ccc",
+    activeTrack: "#007bff",
+    knob: "#fff",
+    label: "white",
+  },
 };
