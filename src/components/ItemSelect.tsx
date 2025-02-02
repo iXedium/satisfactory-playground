@@ -14,7 +14,7 @@ interface ItemSelectProps {
 
 // Using MUI's createFilterOptions with fuzzy search.
 const filterOptions = createFilterOptions({
-  matchFrom: "start",
+  matchFrom: "any",
   stringify: (option: Item) => option.name,
 });
 
