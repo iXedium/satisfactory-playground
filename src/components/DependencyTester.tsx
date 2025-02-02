@@ -8,6 +8,10 @@ import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedD
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
+import ItemWithIcon from "./ItemWithIcon";
+import IconSelect from "./IconSelect";
+import RecipeSelect from "./RecipeSelect";
+import { uiStyles } from "../styles/uiStyles";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -46,7 +50,7 @@ const DependencyTester: React.FC = () => {
     }
   }, [selectedItem, items]);
 
-  // 🔹 Calculate dependencies
+  // Calculate dependencies
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
       const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
@@ -55,72 +59,94 @@ const DependencyTester: React.FC = () => {
     }
   };
 
-
-
   return (
     <div className="container">
       <h2>Dependency Tester</h2>
 
-      <label>Item:</label>
-      <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)}>
-        <option value="">Select an Item</option>
-        {items.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-      </select>
+      <div style={uiStyles.container}>
+        <div>
+          <label style={uiStyles.formGroup}>Item:</label>
+          <IconSelect
+            items={items}
+            value={selectedItem}
+            onChange={setSelectedItem}
+            placeholder="Select an Item"
+          />
+        </div>
 
-      {filteredRecipes.length > 0 && (
-        <>
-          <label>Recipe:</label>
-          <select value={selectedRecipe} onChange={(e) => setSelectedRecipe(e.target.value)}>
-            {filteredRecipes.map((recipe) => (
-              <option key={recipe.id} value={recipe.id}>
-                {recipe.name}
-              </option>
-            ))}
+        {filteredRecipes.length > 0 && (
+          <div>
+            <label style={uiStyles.formGroup}>Recipe:</label>
+            <RecipeSelect
+              recipes={filteredRecipes}
+              value={selectedRecipe}
+              onChange={setSelectedRecipe}
+              placeholder="Select a Recipe"
+            />
+          </div>
+        )}
+
+        <div>
+          <label style={uiStyles.formGroup}>Count:</label>
+          <input
+            type="number"
+            min="1"
+            value={itemCount}
+            onChange={(e) => setItemCount(Number(e.target.value))}
+            style={uiStyles.input}
+          />
+        </div>
+
+        <div>
+          <label style={uiStyles.formGroup}>View Mode:</label>
+          <select 
+            value={viewMode} 
+            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            style={uiStyles.select}
+          >
+            <option value="accumulated">Accumulated</option>
+            <option value="tree">Tree</option>
           </select>
-        </>
-      )}
+        </div>
 
-      <label>Count:</label>
-      <input
-        type="number"
-        min="1"
-        value={itemCount}
-        onChange={(e) => setItemCount(Number(e.target.value))}
-      />
-
-      <button onClick={handleCalculate}>Calculate</button>
-
-      <div>
-        <label>View Mode:</label>
-        <select value={viewMode} onChange={(e) => setViewMode(e.target.value as ViewMode)}>
-          <option value="accumulated">Accumulated</option>
-          <option value="tree">Tree</option>
-        </select>
+        <button
+          onClick={handleCalculate}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0056b3"}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#007bff"}
+          style={uiStyles.button}
+        >
+          Calculate
+        </button>
       </div>
 
       {viewMode === "accumulated" && dependencies.accumulatedDependencies && (
         <div style={dependencyStyles.listContainer}>
           <h3>Accumulated Dependencies</h3>
-          <ul>
-            {/* ✅ Ensure the root item is displayed */}
-            <li style={{ color: dependencyStyles.rootColor }}>
-              {dependencies.selectedItem}: {dependencies.itemCount.toFixed(2)}
-            </li>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {/* Root item */}
+            {dependencies.selectedItem && (
+              <li style={{ marginBottom: "8px" }}>
+                <ItemWithIcon 
+                  itemId={dependencies.selectedItem} 
+                  amount={dependencies.itemCount}
+                  color={dependencyStyles.rootColor} 
+                />
+              </li>
+            )}
 
+            {/* Dependencies */}
             {Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
-              <li key={item} style={{ color: amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor }}>
-                {item}: {amount.toFixed(2)}
+              <li key={item} style={{ marginBottom: "8px" }}>
+                <ItemWithIcon 
+                  itemId={item} 
+                  amount={amount}
+                  color={amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor} 
+                />
               </li>
             ))}
           </ul>
         </div>
       )}
-
-
 
       {viewMode === "tree" && dependencies.dependencyTree && (
         <div>
