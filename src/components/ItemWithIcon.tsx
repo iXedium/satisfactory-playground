@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { getIconForItem, getItemById } from "../data/dbQueries";
+import { getItemById } from "../data/dbQueries";
 import { iconStyles } from "../styles/iconStyles";
+import Icon from "./Icon";
 
 interface ItemWithIconProps {
   itemId: string;
@@ -11,28 +12,16 @@ interface ItemWithIconProps {
 
 const ItemWithIcon: React.FC<ItemWithIconProps> = ({ itemId, showName = true, amount, color = "inherit" }) => {
   const [item, setItem] = useState<any>(null);
-  const [icon, setIcon] = useState<any>(null);
 
   useEffect(() => {
     getItemById(itemId).then(setItem);
-    getIconForItem(itemId).then(setIcon);
   }, [itemId]);
 
-  if (!item || !icon) return null;
+  if (!item) return null;
 
   return (
     <div style={{ ...iconStyles.container, color }}>
-      <div style={iconStyles.iconWrapper}>
-        <div
-          style={{
-            ...iconStyles.icon,
-            background: `url('/icons.webp') ${icon.position}`,
-            backgroundSize: "896px 960px", // Full sprite sheet size
-            width: "32px",
-            height: "32px",
-          }}
-        />
-      </div>
+      <Icon itemId={itemId} color={color} />
       {showName && (
         <span>
           {item.name}
