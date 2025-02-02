@@ -15,15 +15,23 @@ export interface Recipe {
   out: Record<string, number>;
 }
 
+export interface Icon {
+  id: string;
+  position: string;
+  color: string;
+}
+
 class SatisfactoryDatabase extends Dexie {
   items!: Dexie.Table<Item, string>;
   recipes!: Dexie.Table<Recipe, string>;
+  icons!: Dexie.Table<Icon, string>;
 
   constructor() {
     super("SatisfactoryDB");
-    this.version(1).stores({
+    this.version(3).stores({
       items: "id, name, category",
-      recipes: "id, name",
+      recipes: "id, name, *out", // Index out field for querying by output item
+      icons: "id",
     });
     
   }

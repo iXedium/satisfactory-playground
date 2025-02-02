@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch, store } from "../store";
-import { db, Recipe } from "../data/dexieDB";
+import { RootState, AppDispatch } from "../store";
+import { Item, Recipe } from "../data/dexieDB";
+import { getComponents, getRecipesForItem } from "../data/dexieQueries";
 import { calculateDependencyTree } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
 import { setDependencies } from "../features/dependencySlice";
@@ -12,55 +13,44 @@ type ViewMode = "accumulated" | "tree";
 
 const DependencyTester: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-
-  const items = useSelector((state: RootState) => state.data.items);
   const dependencies = useSelector((state: RootState) => state.dependencies);
-   // ✅ Debugging
 
-
+  const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
-  const [selectedRecipe, setSelectedRecipe] = useState(""); // ✅ Add recipe state
+  const [selectedRecipe, setSelectedRecipe] = useState("");
   const [itemCount, setItemCount] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
-  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]); // ✅ Fix: Explicitly define the type
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
 
-  // 🔹 Fetch recipes when item changes
+  // Load components on mount
+  useEffect(() => {
+    getComponents().then(setItems).catch(console.error);
+  }, []);
+
+  // Fetch recipes when item changes
   useEffect(() => {
     if (selectedItem) {
-      db.recipes
-        .toArray()
-        .then((allRecipes) => {
-          const filtered = allRecipes.filter((recipe) =>
-            Object.keys(recipe.out).includes(selectedItem)
-          );
-
-          setFilteredRecipes(filtered); // ✅ Update dropdown options
-
-          if (filtered.length > 0) {
+      getRecipesForItem(selectedItem)
+        .then((recipes) => {
+          setFilteredRecipes(recipes);
+          if (recipes.length > 0) {
             const defaultRecipe =
-              filtered.find((r) => r.name === items.find((i) => i.id === selectedItem)?.name) ||
-              filtered[0];
-            setSelectedRecipe(defaultRecipe.id); // ✅ Set default recipe
+              recipes.find((r) => r.name === items.find((i) => i.id === selectedItem)?.name) ||
+              recipes[0];
+            setSelectedRecipe(defaultRecipe.id);
           } else {
-            setSelectedRecipe(""); // ❌ No recipe found
+            setSelectedRecipe("");
           }
         })
-        .catch((error) => console.error("Error fetching recipes:", error));
+        .catch(console.error);
     }
   }, [selectedItem, items]);
 
   // 🔹 Calculate dependencies
   const handleCalculate = async () => {
-    //  // ✅ Debugging
-
     if (selectedItem && selectedRecipe) {
-      
       const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
       const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
-
-       // ✅ Debugging
-       // ✅ Debugging
-
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
     }
   };
