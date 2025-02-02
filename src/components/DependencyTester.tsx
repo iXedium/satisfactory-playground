@@ -13,6 +13,7 @@ import RecipeSelect from "./RecipeSelect";
 import { uiStyles } from "../styles/uiStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
 import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switch
+import { alignProperty } from "@mui/material/styles/cssUtils";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -121,7 +122,7 @@ const DependencyTester: React.FC = () => {
 
       {dependencies.accumulatedDependencies && (
         <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
-          <h3>Accumulated Dependencies</h3>
+          <h3 style={{ textAlign: "center" }}>Accumulated Dependencies</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {/* Root item */}
             {dependencies.selectedItem && (
