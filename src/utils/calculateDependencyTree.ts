@@ -21,7 +21,7 @@ export const calculateDependencyTree = async (
   depth: number = 0,
   affectedBranches: NodePath[] = []
 ): Promise<DependencyNode> => {
-  console.log("calculateDependencyTree called:", { itemId, amount, rootRecipeId, recipeMap, depth, affectedBranches });
+  // console.log("calculateDependencyTree called:", { itemId, amount, rootRecipeId, recipeMap, depth, affectedBranches });
 
   const nodeId = `${itemId}-${depth}`; // Create consistent node ID
 

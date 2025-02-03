@@ -85,7 +85,7 @@ const DependencyTester: React.FC = () => {
   };
 
   const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
-    console.log('handleTreeRecipeChange called:', { nodeId, recipeId });
+    // console.log('handleTreeRecipeChange called:', { nodeId, recipeId });
     
     const affectedBranches = dependencies.dependencyTree 
       ? findAffectedBranches(dependencies.dependencyTree, nodeId)

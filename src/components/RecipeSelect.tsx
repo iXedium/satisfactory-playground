@@ -92,7 +92,7 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
               onMouseDown={(e) => {  // Change from onClick to onMouseDown
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Recipe selected:', recipe.id);
+                // console.log('Recipe selected:', recipe.id);
                 onChange(recipe.id);
                 setIsOpen(false);
               }}
