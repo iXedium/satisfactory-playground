@@ -13,19 +13,22 @@ export const recipeSelectStyles = {
     backgroundColor: theme.colors.dark,
     border: theme.border.style,
     borderRadius: theme.border.radius,
+    color: theme.colors.text,
   },
   dropdown: {
-    position: "absolute" as const,
-    top: "100%",
+    position: 'absolute' as const,
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: theme.colors.darker,
     border: theme.border.style,
-    borderTop: "none",
-    borderRadius: `0 0 ${theme.border.radius} ${theme.border.radius}`,
-    maxHeight: "300px",
-    overflowY: "auto" as const,
-    zIndex: theme.zIndex.dropdown,
+    borderRadius: theme.border.radius,
+    marginTop: '4px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    zIndex: 1000, // Ensure it appears above other content
+    maxHeight: '200px',
+    overflowY: 'auto' as const,
+    color: theme.colors.text,
   },
   dropdownItem: {
     padding: theme.spacing.padding,
@@ -36,5 +39,6 @@ export const recipeSelectStyles = {
     '&:hover': {
       backgroundColor: theme.colors.hover,
     },
+    color: theme.colors.text,
   },
 };

@@ -1,3 +1,5 @@
+import { text } from "stream/consumers";
+
 export const theme = {
   colors: {
     primary: "#007bff",
@@ -6,6 +8,7 @@ export const theme = {
     darker: "#222",
     hover: "rgba(0, 0, 0, 0.05)",
     iconBg: "rgba(0, 0, 0, 0.1)",
+    text: "#eee",
   },
   border: {
     radius: "4px",
