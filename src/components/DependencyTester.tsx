@@ -28,6 +28,13 @@ const DependencyTester: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
 
+  // Add state to track last calculated values
+  const [lastCalculated, setLastCalculated] = useState<{
+    item: string;
+    recipe: string;
+    count: number;
+  } | null>(null);
+
   // Load components on mount
   useEffect(() => {
     getComponents().then(setItems).catch(console.error);
@@ -50,12 +57,27 @@ const DependencyTester: React.FC = () => {
     }
   }, [selectedItem]);
 
-  // Calculate dependencies
+  // Update calculate handler with dependency checking
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
-      const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
-      const accumulated = calculateAccumulatedFromTree(tree);
-      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+      // Check if calculation is needed
+      const needsCalculation = !lastCalculated 
+        || lastCalculated.item !== selectedItem
+        || lastCalculated.recipe !== selectedRecipe
+        || lastCalculated.count !== itemCount;
+
+      if (needsCalculation) {
+        const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
+        const accumulated = calculateAccumulatedFromTree(tree);
+        dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+        
+        // Update last calculated state
+        setLastCalculated({
+          item: selectedItem,
+          recipe: selectedRecipe,
+          count: itemCount
+        });
+      }
     }
   };
 
