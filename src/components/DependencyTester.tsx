@@ -81,6 +81,21 @@ const DependencyTester: React.FC = () => {
     }
   };
 
+  const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
+    // Recalculate the entire tree with the new recipe
+    if (selectedItem && selectedRecipe) {
+      const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
+      const accumulated = calculateAccumulatedFromTree(tree);
+      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+      
+      setLastCalculated({
+        item: selectedItem,
+        recipe: selectedRecipe,
+        count: itemCount
+      });
+    }
+  };
+
   return (
     <div className="container">
       <h2>Dependency Tester</h2>
@@ -172,7 +187,10 @@ const DependencyTester: React.FC = () => {
       {dependencies.dependencyTree && (
         <div style={{ display: viewMode === "tree" ? "block" : "none" }}>
           <h3>Tree View</h3>
-          <DependencyTree dependencyTree={dependencies.dependencyTree} />
+          <DependencyTree 
+            dependencyTree={dependencies.dependencyTree}
+            onRecipeChange={handleTreeRecipeChange}
+          />
         </div>
       )}
     </div>

@@ -4,12 +4,14 @@ import { TreeItem2 } from "@mui/x-tree-view/TreeItem2";
 import { DependencyNode } from "../utils/calculateDependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 import ItemWithIcon from "./ItemWithIcon";
+import RecipeSelect from "./RecipeSelect";
 
 interface DependencyTreeProps {
   dependencyTree: DependencyNode;
+  onRecipeChange?: (nodeId: string, recipeId: string) => void;
 }
 
-const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree }) => {
+const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecipeChange }) => {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   const getAllNodeIds = (node: DependencyNode, path: string): string[] => {
@@ -43,12 +45,21 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree }) => {
         key={path}
         itemId={path}
         label={
-          <div style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ItemWithIcon 
               itemId={node.id} 
               amount={node.amount}
               color={itemColor}
             />
+            {node.availableRecipes && node.availableRecipes.length > 0 && !node.isByproduct && (
+              <RecipeSelect
+                recipes={node.availableRecipes}
+                value={node.selectedRecipeId || ""}
+                onChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
+                placeholder="Select Recipe"
+                style={{ minWidth: "200px" }}
+              />
+            )}
           </div>
         }
       >

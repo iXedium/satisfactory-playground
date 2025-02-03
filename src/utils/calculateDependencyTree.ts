@@ -1,5 +1,5 @@
 import { Recipe } from "../data/dexieDB";
-import { getRecipeById, getRecipeByOutput } from "../data/dbQueries";
+import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data/dbQueries";
 
 export interface DependencyNode {
   id: string;
@@ -7,6 +7,8 @@ export interface DependencyNode {
   uniqueId: string;
   isRoot?: boolean;
   isByproduct?: boolean;
+  selectedRecipeId?: string;
+  availableRecipes?: Recipe[];
   children?: DependencyNode[];
 }
 
@@ -18,6 +20,9 @@ export const calculateDependencyTree = async (
 ): Promise<DependencyNode> => {
   console.log("calculateDependencyTree called:", { itemId, amount, selectedRecipeId, depth });
 
+  // Get available recipes for this item
+  const availableRecipes = await getRecipesForItem(itemId);
+  
   let recipe: Recipe | undefined;
 
   if (depth === 0 && selectedRecipeId) {
@@ -29,7 +34,13 @@ export const calculateDependencyTree = async (
   }
   if (!recipe) {
     
-    return { id: itemId, amount, uniqueId: `${itemId}-${depth}`, children: [] };
+    return { 
+      id: itemId, 
+      amount, 
+      uniqueId: `${itemId}-${depth}`,
+      availableRecipes,
+      children: [] 
+    };
   }
 
   const outputAmount = recipe.out[itemId] ?? 1;
@@ -58,6 +69,8 @@ export const calculateDependencyTree = async (
     amount,
     uniqueId: `${itemId}-${depth}`,
     isRoot: depth === 0,
+    selectedRecipeId: recipe.id,
+    availableRecipes,
     children: [...children, ...byproducts], // ✅ Include byproducts without processing them
   };
 };
