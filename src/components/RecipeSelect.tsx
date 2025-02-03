@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import ReactDOM from "react-dom";
 import { Recipe } from "../data/dexieDB";
-import { recipeSelectStyles } from "../styles/recipeSelectStyles";
 import { theme } from '../styles/theme';
 import DropdownPortal from './DropdownPortal';
+import { recipeSelectStyles } from "../styles/recipeSelectStyles";
 
 interface RecipeSelectProps {
   recipes: Recipe[];
@@ -26,20 +25,13 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
   const selectedRecipe = recipes.find(recipe => recipe.id === value);
 
   return (
-    <div style={{ position: 'relative', ...style }} ref={buttonRef}>
+    <div style={{ ...recipeSelectStyles.selectContainer, ...style }} ref={buttonRef}>
       <div
         onClick={(e) => {
-          e.stopPropagation();  // Stop event from reaching tree
+          e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        style={{
-          padding: theme.spacing.padding,
-          border: `1px solid ${theme.colors.dropdown.border}`,
-          borderRadius: theme.border.radius,
-          cursor: 'pointer',
-          backgroundColor: theme.colors.dropdown.background,
-          color: theme.colors.dropdown.text,
-        }}
+        style={recipeSelectStyles.customSelect}
       >
         {selectedRecipe ? selectedRecipe.name : placeholder}
       </div>
@@ -50,31 +42,29 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
         onClose={() => setIsOpen(false)}
       >
         <div 
-          onClick={(e) => e.stopPropagation()}  // Stop event from reaching tree
-          style={{
-          backgroundColor: theme.colors.dropdown.background,
-          border: `1px solid ${theme.colors.dropdown.border}`,
-          borderRadius: theme.border.radius,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          maxHeight: '300px',
-          overflowY: 'auto',
-        }}>
+          onClick={(e) => e.stopPropagation()}
+          style={recipeSelectStyles.dropdown}
+        >
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
               onClick={(e) => {
-                e.stopPropagation();  // Stop event from reaching tree
+                e.stopPropagation();
                 onChange(recipe.id);
                 setIsOpen(false);
               }}
               style={{
-                padding: theme.spacing.padding,
-                cursor: 'pointer',
-                backgroundColor: recipe.id === value ? theme.colors.dropdown.hoverBackground : 'transparent',
-                color: theme.colors.dropdown.text,
-                '&:hover': {
-                  backgroundColor: theme.colors.dropdown.hoverBackground,
-                },
+                ...recipeSelectStyles.dropdownItem,
+                ...(recipe.id === value ? recipeSelectStyles.dropdownItemSelected : {}),
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.dropdown.hoverBackground;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 
+                  recipe.id === value ? 
+                    theme.colors.dropdown.hoverBackground : 
+                    'transparent';
               }}
             >
               {recipe.name}

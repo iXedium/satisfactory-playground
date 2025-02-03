@@ -21,22 +21,24 @@ export const calculateDependencyTree = async (
   depth: number = 0,
   affectedBranches: NodePath[] = []
 ): Promise<DependencyNode> => {
-  // console.log("calculateDependencyTree called:", { itemId, amount, rootRecipeId, recipeMap, depth, affectedBranches });
+  const nodeId = `${itemId}-${depth}`;
 
-  const nodeId = `${itemId}-${depth}`; // Create consistent node ID
+  // Only check if current node or its children are affected
+  // Remove parent check since changes don't affect upstream
+  const isAffected = affectedBranches.some(b => 
+    b.nodeId === nodeId || // Direct match
+    b.nodeId.startsWith(`${nodeId}-`) // Child nodes only
+  );
 
-  // Only use cache if the node is NOT in affected branches
-  if (affectedBranches.length > 0 && 
-      !affectedBranches.find(b => b.nodeId === nodeId) && 
-      !affectedBranches.find(b => b.nodeId.startsWith(nodeId))) {
-    const existingNode = await getNodeFromCache(nodeId);
-    if (existingNode) {
-      return existingNode;
+  if (!isAffected && affectedBranches.length > 0) {
+    const cachedNode = await getNodeFromCache(nodeId);
+    if (cachedNode) {
+      return cachedNode;
     }
   }
 
-  // Force clear cache for affected nodes
-  if (affectedBranches.find(b => b.nodeId === nodeId)) {
+  // Clear cache for affected node
+  if (isAffected) {
     await clearNodeFromCache(nodeId);
   }
 

@@ -1,3 +1,5 @@
+import { theme } from "./theme";
+
 export const dependencyStyles: {
   listContainer: React.CSSProperties;
   rootColor: string;
@@ -5,8 +7,10 @@ export const dependencyStyles: {
   defaultColor: string;
 } = {
   listContainer: {
-    textAlign: "left", // ✅ Now properly typed
-    paddingLeft: "10px",
+    backgroundColor: theme.colors.dark,
+    padding: theme.spacing.padding,
+    borderRadius: theme.border.radius,
+    color: theme.colors.text,
   },
   rootColor: "#add8e6",
   byproductColor: "#ffaaaa",

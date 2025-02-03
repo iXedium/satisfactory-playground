@@ -50,3 +50,15 @@ export const theme = {
     label: "white",
   },
 };
+
+export const injectThemeVariables = () => {
+  const root = document.documentElement;
+  const { colors, border, spacing } = theme;
+
+  root.style.setProperty('--dropdown-background', colors.dropdown.background);
+  root.style.setProperty('--dropdown-hover-background', colors.dropdown.hoverBackground);
+  root.style.setProperty('--dropdown-text', colors.dropdown.text);
+  root.style.setProperty('--dropdown-border', colors.dropdown.border);
+  root.style.setProperty('--border-radius', border.radius);
+  root.style.setProperty('--spacing-padding', spacing.padding);
+};

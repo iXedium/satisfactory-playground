@@ -6,6 +6,9 @@ import { dependencyStyles } from "../styles/dependencyStyles";
 import ItemWithIcon from "./ItemWithIcon";
 import RecipeSelect from "./RecipeSelect";
 import ItemNode from "./ItemNode";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../store";
+import { setExpandedNodes } from "../features/treeUiSlice";
 
 interface DependencyTreeProps {
   dependencyTree: DependencyNode;
@@ -13,7 +16,8 @@ interface DependencyTreeProps {
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecipeChange }) => {
-  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const dispatch = useDispatch();
+  const expandedIds = useSelector((state: RootState) => state.treeUi.expandedNodes);
 
   const getAllNodeIds = (node: DependencyNode, path: string): string[] => {
     const currentId = path;
@@ -29,10 +33,19 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
 
   useEffect(() => {
     if (dependencyTree) {
-      const allIds = getAllNodeIds(dependencyTree, dependencyTree.uniqueId);
-      setExpandedIds(allIds);
+      const allNewIds = getAllNodeIds(dependencyTree, dependencyTree.uniqueId);
+      
+      // Only auto-expand nodes that haven't been explicitly collapsed
+      // and nodes that are completely new
+      const newExpandedIds = allNewIds.filter(id => {
+        const wasCollapsed = !expandedIds.includes(id);
+        const isNewNode = !expandedIds.some(oldId => oldId.startsWith(id) || id.startsWith(oldId));
+        return !wasCollapsed || isNewNode;
+      });
+
+      dispatch(setExpandedNodes(newExpandedIds));
     }
-  }, [dependencyTree]);
+  }, [dependencyTree, dispatch]);
 
   const renderTree = (node: DependencyNode, path: string, isRoot = false) => {
     return (
@@ -47,7 +60,12 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
             isByproduct={node.isByproduct}
             recipes={node.availableRecipes}
             selectedRecipeId={node.selectedRecipeId}
-            onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
+            onRecipeChange={(recipeId) => {
+              // Only trigger if the recipe actually changed
+              if (recipeId !== node.selectedRecipeId) {
+                onRecipeChange?.(node.uniqueId, recipeId);
+              }
+            }}
           />
         }
       >
@@ -65,7 +83,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
         aria-label="dependency-tree"
         expandedItems={expandedIds}
         onExpandedItemsChange={(_event, newExpandedIds: string[]) =>
-          setExpandedIds(newExpandedIds)
+          dispatch(setExpandedNodes(newExpandedIds))
         }
         disableSelection
       >

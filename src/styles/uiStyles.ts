@@ -18,11 +18,12 @@ export const uiStyles = {
     borderRadius: theme.border.radius,
     fontSize: "16px",
     backgroundColor: theme.colors.dark,
+    color: theme.colors.text,
   },
   button: {
     padding: theme.spacing.containerPadding,
     backgroundColor: theme.colors.buttonDefault,
-    color: "white",
+    color: theme.colors.text,
     border: "none",
     borderRadius: theme.border.radius,
     fontSize: "16px",
@@ -35,5 +36,7 @@ export const uiStyles = {
     border: theme.border.style,
     borderRadius: theme.border.radius,
     fontSize: "16px",
+    backgroundColor: theme.colors.dark,
+    color: theme.colors.text,
   },
 };
