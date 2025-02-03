@@ -1,5 +1,3 @@
-import { text } from "stream/consumers";
-
 export const theme = {
   colors: {
     primary: "#007bff",

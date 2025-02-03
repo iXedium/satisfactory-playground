@@ -7,13 +7,11 @@ import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromT
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
-import ItemWithIcon from "./ItemWithIcon";
 import ItemSelect from "./ItemSelect";
 import RecipeSelect from "./RecipeSelect";
 import { uiStyles } from "../styles/uiStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
 import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switch
-import { alignProperty } from "@mui/material/styles/cssUtils";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import ItemNode from "./ItemNode";
