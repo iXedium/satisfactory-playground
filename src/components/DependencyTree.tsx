@@ -5,6 +5,7 @@ import { DependencyNode } from "../utils/calculateDependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 import ItemWithIcon from "./ItemWithIcon";
 import RecipeSelect from "./RecipeSelect";
+import ItemNode from "./ItemNode";
 
 interface DependencyTreeProps {
   dependencyTree: DependencyNode;
@@ -34,36 +35,20 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
   }, [dependencyTree]);
 
   const renderTree = (node: DependencyNode, path: string, isRoot = false) => {
-    const itemColor = isRoot
-      ? dependencyStyles.rootColor
-      : node.isByproduct
-        ? dependencyStyles.byproductColor
-        : dependencyStyles.defaultColor;
-
     return (
       <TreeItem2
         key={path}
         itemId={path}
         label={
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <ItemWithIcon 
-              itemId={node.id} 
-              amount={node.amount}
-              color={itemColor}
-            />
-            {node.availableRecipes && node.availableRecipes.length > 0 && !node.isByproduct && (
-              <RecipeSelect
-                recipes={node.availableRecipes}
-                value={node.selectedRecipeId || ""}
-                onChange={(recipeId) => {
-                  // console.log('Recipe changed in tree:', { nodeId: node.uniqueId, recipeId, node });
-                  onRecipeChange?.(node.uniqueId, recipeId);
-                }}
-                placeholder="Select Recipe"
-                style={{ minWidth: "200px" }}
-              />
-            )}
-          </div>
+          <ItemNode
+            itemId={node.id}
+            amount={node.amount}
+            isRoot={isRoot}
+            isByproduct={node.isByproduct}
+            recipes={node.availableRecipes}
+            selectedRecipeId={node.selectedRecipeId}
+            onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
+          />
         }
       >
         {node.children &&

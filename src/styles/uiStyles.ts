@@ -21,7 +21,7 @@ export const uiStyles = {
   },
   button: {
     padding: theme.spacing.containerPadding,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.buttonDefault,
     color: "white",
     border: "none",
     borderRadius: theme.border.radius,

@@ -16,6 +16,8 @@ import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switc
 import { alignProperty } from "@mui/material/styles/cssUtils";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
+import ItemNode from "./ItemNode";
+import { theme } from '../styles/theme';
 
 type ViewMode = "accumulated" | "tree";
 
@@ -172,8 +174,8 @@ const DependencyTester: React.FC = () => {
 
         <button
           onClick={handleCalculate}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0056b3"}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#007bff"}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
           style={uiStyles.button}
         >
           Calculate
@@ -187,10 +189,10 @@ const DependencyTester: React.FC = () => {
             {/* Root item */}
             {dependencies.selectedItem && (
               <li style={{ marginBottom: "8px" }}>
-                <ItemWithIcon 
-                  itemId={dependencies.selectedItem} 
+                <ItemNode
+                  itemId={dependencies.selectedItem}
                   amount={dependencies.itemCount}
-                  color={dependencyStyles.rootColor} 
+                  isRoot={true}
                 />
               </li>
             )}
@@ -198,10 +200,10 @@ const DependencyTester: React.FC = () => {
             {/* Dependencies */}
             {Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
               <li key={item} style={{ marginBottom: "8px" }}>
-                <ItemWithIcon 
-                  itemId={item} 
+                <ItemNode
+                  itemId={item}
                   amount={amount}
-                  color={amount < 0 ? dependencyStyles.byproductColor : dependencyStyles.defaultColor} 
+                  isByproduct={amount < 0}
                 />
               </li>
             ))}

@@ -9,6 +9,26 @@ export const theme = {
     hover: "rgba(0, 0, 0, 0.05)",
     iconBg: "rgba(0, 0, 0, 0.1)",
     text: "#eee",
+    
+    // Node colors
+    nodeRoot: '#4caf50',
+    nodeByproduct: '#ff9800',
+    nodeDefault: '#2196f3',
+    
+    // Node background
+    nodeBg: 'rgba(0, 0, 0, 0.04)',
+    
+    // Button hover states
+    buttonHover: '#0056b3',
+    buttonDefault: '#007bff',
+    
+    // Dropdown specific colors
+    dropdown: {
+      background: '#333',
+      hoverBackground: '#444',
+      text: '#fff',
+      border: '#555',
+    },
   },
   border: {
     radius: "4px",

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Recipe } from "../data/dexieDB";
 import { recipeSelectStyles } from "../styles/recipeSelectStyles";
+import { theme } from '../styles/theme';
+import DropdownPortal from './DropdownPortal';
 
 interface RecipeSelectProps {
   recipes: Recipe[];
@@ -19,90 +21,67 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
   style
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-
-  const [portalContainer] = useState(() => {
-    const div = document.createElement('div');
-    document.body.appendChild(div);
-    return div;
-  });
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    return () => {
-      document.body.removeChild(portalContainer);
-    };
-  }, [portalContainer]);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   const selectedRecipe = recipes.find(recipe => recipe.id === value);
 
   return (
-    <div 
-      ref={containerRef} 
-      style={{ ...recipeSelectStyles.selectContainer, ...(style || {}) }}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div style={{ position: 'relative', ...style }} ref={buttonRef}>
       <div
-        style={recipeSelectStyles.customSelect}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();  // Stop event from reaching tree
+          setIsOpen(!isOpen);
+        }}
+        style={{
+          padding: theme.spacing.padding,
+          border: `1px solid ${theme.colors.dropdown.border}`,
+          borderRadius: theme.border.radius,
+          cursor: 'pointer',
+          backgroundColor: theme.colors.dropdown.background,
+          color: theme.colors.dropdown.text,
+        }}
       >
-        {value && selectedRecipe ? (
-          <span>{selectedRecipe.name}</span>
-        ) : (
-          placeholder
-        )}
+        {selectedRecipe ? selectedRecipe.name : placeholder}
       </div>
 
-      {isOpen && ReactDOM.createPortal(
+      <DropdownPortal
+        anchorEl={buttonRef.current}
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+      >
         <div 
+          onClick={(e) => e.stopPropagation()}  // Stop event from reaching tree
           style={{
-            ...recipeSelectStyles.dropdown,
-            position: 'fixed',
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
-            width: dropdownPosition.width,
-          }}
-          onClick={e => e.stopPropagation()}
-        >
+          backgroundColor: theme.colors.dropdown.background,
+          border: `1px solid ${theme.colors.dropdown.border}`,
+          borderRadius: theme.border.radius,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          maxHeight: '300px',
+          overflowY: 'auto',
+        }}>
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
-              style={recipeSelectStyles.dropdownItem}
-              onMouseDown={(e) => {  // Change from onClick to onMouseDown
-                e.preventDefault();
-                e.stopPropagation();
-                // console.log('Recipe selected:', recipe.id);
+              onClick={(e) => {
+                e.stopPropagation();  // Stop event from reaching tree
                 onChange(recipe.id);
                 setIsOpen(false);
               }}
+              style={{
+                padding: theme.spacing.padding,
+                cursor: 'pointer',
+                backgroundColor: recipe.id === value ? theme.colors.dropdown.hoverBackground : 'transparent',
+                color: theme.colors.dropdown.text,
+                '&:hover': {
+                  backgroundColor: theme.colors.dropdown.hoverBackground,
+                },
+              }}
             >
-              <span>{recipe.name}</span>
+              {recipe.name}
             </div>
           ))}
-        </div>,
-        portalContainer  // Use dedicated portal container
-      )}
+        </div>
+      </DropdownPortal>
     </div>
   );
 };
