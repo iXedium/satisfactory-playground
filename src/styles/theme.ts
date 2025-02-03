@@ -9,9 +9,9 @@ export const theme = {
     text: "#eee",
     
     // Node colors
-    nodeRoot: '#4caf50',
-    nodeByproduct: '#ff9800',
-    nodeDefault: '#2196f3',
+    nodeRoot: '#8DA8E3FF',
+    nodeByproduct: '#DF917DFF',
+    nodeDefault: '#E4E4E4FF',
     
     // Node background
     nodeBg: 'rgba(0, 0, 0, 0.04)',
