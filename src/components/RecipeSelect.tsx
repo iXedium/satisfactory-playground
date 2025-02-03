@@ -22,6 +22,12 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
+  const [portalContainer] = useState(() => {
+    const div = document.createElement('div');
+    document.body.appendChild(div);
+    return div;
+  });
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -43,13 +49,19 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      document.body.removeChild(portalContainer);
+    };
+  }, [portalContainer]);
+
   const selectedRecipe = recipes.find(recipe => recipe.id === value);
 
   return (
     <div 
       ref={containerRef} 
       style={{ ...recipeSelectStyles.selectContainer, ...(style || {}) }}
-      onClick={(e) => e.stopPropagation()} // Stop propagation here instead
+      onClick={(e) => e.stopPropagation()}
     >
       <div
         style={recipeSelectStyles.customSelect}
@@ -63,18 +75,24 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
       </div>
 
       {isOpen && ReactDOM.createPortal(
-        <div style={{
-          ...recipeSelectStyles.dropdown,
-          position: 'fixed',
-          top: dropdownPosition.top,
-          left: dropdownPosition.left,
-          width: dropdownPosition.width,
-        }}>
+        <div 
+          style={{
+            ...recipeSelectStyles.dropdown,
+            position: 'fixed',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
               style={recipeSelectStyles.dropdownItem}
-              onClick={() => {
+              onMouseDown={(e) => {  // Change from onClick to onMouseDown
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Recipe selected:', recipe.id);
                 onChange(recipe.id);
                 setIsOpen(false);
               }}
@@ -83,7 +101,7 @@ const RecipeSelect: React.FC<RecipeSelectProps> = ({
             </div>
           ))}
         </div>,
-        document.body
+        portalContainer  // Use dedicated portal container
       )}
     </div>
   );

@@ -55,7 +55,10 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
               <RecipeSelect
                 recipes={node.availableRecipes}
                 value={node.selectedRecipeId || ""}
-                onChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
+                onChange={(recipeId) => {
+                  console.log('Recipe changed in tree:', { nodeId: node.uniqueId, recipeId, node });
+                  onRecipeChange?.(node.uniqueId, recipeId);
+                }}
                 placeholder="Select Recipe"
                 style={{ minWidth: "200px" }}
               />

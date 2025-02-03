@@ -14,12 +14,15 @@ import { uiStyles } from "../styles/uiStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
 import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switch
 import { alignProperty } from "@mui/material/styles/cssUtils";
+import { setRecipeSelection } from "../features/recipeSelectionsSlice";
+import { findAffectedBranches } from "../utils/treeDiffing";
 
 type ViewMode = "accumulated" | "tree";
 
 const DependencyTester: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const dependencies = useSelector((state: RootState) => state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
@@ -67,7 +70,7 @@ const DependencyTester: React.FC = () => {
         || lastCalculated.count !== itemCount;
 
       if (needsCalculation) {
-        const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
+        const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe, recipeSelections);
         const accumulated = calculateAccumulatedFromTree(tree);
         dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
         
@@ -82,12 +85,34 @@ const DependencyTester: React.FC = () => {
   };
 
   const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
-    // Recalculate the entire tree with the new recipe
+    console.log('handleTreeRecipeChange called:', { nodeId, recipeId });
+    
+    const affectedBranches = dependencies.dependencyTree 
+      ? findAffectedBranches(dependencies.dependencyTree, nodeId)
+      : [];
+    
+    // Create updated recipe selections map
+    const updatedRecipeSelections = {
+      ...recipeSelections,
+      [nodeId]: recipeId
+    };
+    
+    // Update recipe selection in Redux
+    dispatch(setRecipeSelection({ nodeId, recipeId }));
+
+    // Use updated selections map instead of waiting for state update
     if (selectedItem && selectedRecipe) {
-      const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
+      const tree = await calculateDependencyTree(
+        selectedItem, 
+        itemCount, 
+        selectedRecipe, 
+        updatedRecipeSelections,  // Use updated map here
+        0,
+        affectedBranches
+      );
       const accumulated = calculateAccumulatedFromTree(tree);
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
-      
+
       setLastCalculated({
         item: selectedItem,
         recipe: selectedRecipe,
