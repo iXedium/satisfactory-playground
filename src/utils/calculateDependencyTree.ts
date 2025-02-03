@@ -16,7 +16,7 @@ export const calculateDependencyTree = async (
   selectedRecipeId: string | null, // ✅ Explicitly pass the correct recipe
   depth: number = 0
 ): Promise<DependencyNode> => {
-  
+  console.log("calculateDependencyTree called:", { itemId, amount, selectedRecipeId, depth });
 
   let recipe: Recipe | undefined;
 

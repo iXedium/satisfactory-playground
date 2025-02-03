@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store";
 import { Item, Recipe } from "../data/dexieDB";
 import { calculateDependencyTree } from "../utils/calculateDependencyTree";
-import { calculateAccumulatedDependencies } from "../utils/calculateAccumulatedDependencies";
+import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
@@ -40,9 +40,7 @@ const DependencyTester: React.FC = () => {
         .then((recipes) => {
           setFilteredRecipes(recipes);
           if (recipes.length > 0) {
-            const defaultRecipe =
-              recipes.find((r) => r.name === items.find((i) => i.id === selectedItem)?.name) ||
-              recipes[0];
+            const defaultRecipe = recipes.find((r) => r.id === selectedItem) || recipes[0];
             setSelectedRecipe(defaultRecipe.id);
           } else {
             setSelectedRecipe("");
@@ -50,13 +48,13 @@ const DependencyTester: React.FC = () => {
         })
         .catch(console.error);
     }
-  }, [selectedItem, items]);
+  }, [selectedItem]);
 
   // Calculate dependencies
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
       const tree = await calculateDependencyTree(selectedItem, itemCount, selectedRecipe);
-      const accumulated = await calculateAccumulatedDependencies(selectedItem, itemCount);
+      const accumulated = calculateAccumulatedFromTree(tree);
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
     }
   };

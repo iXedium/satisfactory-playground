@@ -14,7 +14,7 @@ export const calculateAccumulatedDependencies = async (
   results: Record<string, number> = {},
   visitedNodes: Set<string> = new Set()
 ): Promise<Record<string, number>> => {
-  
+  console.log("calculateAccumulatedDependencies called:", { itemId, amount });
 
   const recipe = await getRecipeByOutput(itemId);
   if (!recipe) {
