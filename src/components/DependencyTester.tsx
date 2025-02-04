@@ -28,7 +28,7 @@ const DependencyTester: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState("");
   const [itemCount, setItemCount] = useState(1);
-  const [viewMode, setViewMode] = useState<ViewMode>("accumulated");
+  const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
 
   // Add state to track last calculated values
