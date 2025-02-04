@@ -24,12 +24,14 @@ export const calculateDependencyTree = async (
   rootRecipeId: string | null,
   recipeMap: Record<string, string> = {},  // Add recipe map parameter
   depth: number = 0,
-  affectedBranches: NodePath[] = []
+  affectedBranches: NodePath[] = [],
+  parentId: string = ''  // Add parentId parameter
 ): Promise<DependencyNode> => {
   const start = performance.now();
   console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
 
-  const nodeId = `${itemId}-${depth}`;
+  // Create unique ID that includes parent path
+  const nodeId = parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`;
 
   // Only check if current node or its children are affected
   // Remove parent check since changes don't affect upstream
@@ -86,7 +88,8 @@ export const calculateDependencyTree = async (
         null, 
         recipeMap,
         depth + 1,
-        affectedBranches
+        affectedBranches,
+        nodeId  // Pass current nodeId as parent
       )
     )
   );
@@ -97,7 +100,7 @@ export const calculateDependencyTree = async (
     .map(([outputItem, outputAmount]) => ({
       id: outputItem,
       amount: -(outputAmount * cyclesNeeded), // ✅ Negative production rate
-      uniqueId: `${outputItem}-${depth}`,
+      uniqueId: `${nodeId}-${outputItem}-${depth}`,  // Include parent path
       isByproduct: true,
       children: [],
     }));
