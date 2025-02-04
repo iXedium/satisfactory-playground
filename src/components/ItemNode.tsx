@@ -25,7 +25,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   recipes,
   selectedRecipeId,
   onRecipeChange,
-  size = "medium"
+  size = "large"
 }) => {
   const [item, setItem] = useState<any>(null);
 
@@ -44,7 +44,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'auto 1fr auto',
+      gridTemplateColumns: 'auto minmax(0, 1fr) auto', // prevent middle column from expanding too much
       gridTemplateAreas: `
         "icon name amount"
         "icon content content"
@@ -54,14 +54,19 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       borderRadius: '4px',
       backgroundColor: theme.colors.nodeBg,
       minHeight: '64px', // Ensures consistent height for nodes
-      alignItems: 'start'
+      alignItems: 'start',
+      position: 'relative', // Add this to establish new stacking context
+      overflow: 'visible'   // Ensure dropdowns can overflow
     }}>
-      {/* Icon section - spans 2 rows */}
+      {/* Icon section - modified styles for vertical centering */}
       <div style={{ 
         gridArea: 'icon',
         display: 'flex',
         alignItems: 'center',
-        color: getItemColor()
+        justifyContent: 'center',
+        alignSelf: 'stretch',  // Make container fill grid area height
+        color: getItemColor(),
+        padding: '4px'         // Optional padding to prevent icon from touching edges
       }}>
         <Icon 
           itemId={itemId} 
@@ -93,23 +98,31 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         {amount !== undefined && `${amount.toFixed(2)}/min`}
       </div>
 
-      {/* Content section - for recipe select and future additions */}
+      {/* Content section - updated styles */}
       <div style={{ 
         gridArea: 'content',
         display: 'flex',
         gap: '12px',
-        alignItems: 'center'
+        alignItems: 'center',
+        minWidth: 0,        // Prevent flex blowout
+        position: 'relative' // For dropdown positioning
       }}>
         {recipes && recipes.length > 0 && !isByproduct && (
-          <RecipeSelect
-            recipes={recipes}
-            value={selectedRecipeId || ''}
-            onChange={(recipeId) => onRecipeChange?.(recipeId) || null}
-            placeholder="Select Recipe"
-            style={{ 
-              minWidth: '180px'
-            }}
-          />
+          <div style={{
+            position: 'relative',
+            minWidth: '180px',
+            maxWidth: '100%'
+          }}>
+            <RecipeSelect
+              recipes={recipes}
+              value={selectedRecipeId || ''}
+              onChange={(recipeId) => onRecipeChange?.(recipeId) || null}
+              placeholder="Select Recipe"
+              style={{ 
+                width: '100%'
+              }}
+            />
+          </div>
         )}
         {/* Future content can be added here */}
       </div>

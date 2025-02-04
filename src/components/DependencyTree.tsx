@@ -75,7 +75,11 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
   };
 
   return (
-    <div style={{ textAlign: "left" }}>
+    <div style={{ 
+      textAlign: "left",
+      position: 'relative',  // New stacking context
+      overflow: 'visible'    // Allow dropdowns to overflow
+    }}>
       <SimpleTreeView
         aria-label="dependency-tree"
         expandedItems={expandedIds}
@@ -83,6 +87,10 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
           dispatch(setExpandedNodes(newExpandedIds))
         }
         disableSelection
+        style={{
+          position: 'relative', // New stacking context
+          zIndex: 0            // Base z-index for tree
+        }}
       >
         {renderTree(dependencyTree, dependencyTree.uniqueId, true)}
       </SimpleTreeView>
