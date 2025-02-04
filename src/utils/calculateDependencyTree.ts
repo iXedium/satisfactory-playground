@@ -13,6 +13,11 @@ export interface DependencyNode {
   children?: DependencyNode[];
 }
 
+const logPerf = (label: string, start: number) => {
+  const elapsed = performance.now() - start;
+  console.log(`[${new Date().toISOString()}] ${label}: ${elapsed.toFixed(2)}ms`);
+};
+
 export const calculateDependencyTree = async (
   itemId: string,
   amount: number,
@@ -21,6 +26,9 @@ export const calculateDependencyTree = async (
   depth: number = 0,
   affectedBranches: NodePath[] = []
 ): Promise<DependencyNode> => {
+  const start = performance.now();
+  console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
+
   const nodeId = `${itemId}-${depth}`;
 
   // Only check if current node or its children are affected
@@ -106,7 +114,26 @@ export const calculateDependencyTree = async (
 
   // Store result in cache
   await cacheNode(nodeId, result);
+
+  console.log(`[${new Date().toISOString()}] Tree calculation complete`, {
+    nodeCount: countNodes(result),
+    depth: getTreeDepth(result)
+  });
+  logPerf('Total tree calculation', start);
+
   return result;
+};
+
+// Helper functions to analyze tree
+const countNodes = (node: DependencyNode): number => {
+  let count = 1;
+  node.children?.forEach(child => count += countNodes(child));
+  return count;
+};
+
+const getTreeDepth = (node: DependencyNode): number => {
+  if (!node.children?.length) return 1;
+  return 1 + Math.max(...node.children.map(getTreeDepth));
 };
 
 // Add simple cache functions
@@ -124,3 +151,4 @@ const cacheNode = async (nodeId: string, node: DependencyNode): Promise<void> =>
 const clearNodeFromCache = async (nodeId: string): Promise<void> => {
   nodeCache.delete(nodeId);
 };
+

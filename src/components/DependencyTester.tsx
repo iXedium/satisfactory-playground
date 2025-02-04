@@ -5,7 +5,6 @@ import { Item, Recipe } from "../data/dexieDB";
 import { calculateDependencyTree } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
 import { setDependencies } from "../features/dependencySlice";
-import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 import ItemSelect from "./ItemSelect";
 import RecipeSelect from "./RecipeSelect";
@@ -16,6 +15,9 @@ import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import ItemNode from "./ItemNode";
 import { theme } from '../styles/theme';
+import ArboristTree from './ArboristTree';  // Add this import
+import { setExpandedNodes } from "../features/treeUiSlice";
+// import DependencyTree from "./DependencyTree"; // Comment out or remove
 
 type ViewMode = "accumulated" | "tree";
 
@@ -212,9 +214,11 @@ const DependencyTester: React.FC = () => {
       {dependencies.dependencyTree && (
         <div style={{ display: viewMode === "tree" ? "block" : "none" }}>
           <h3>Tree View</h3>
-          <DependencyTree 
+          <ArboristTree 
             dependencyTree={dependencies.dependencyTree}
             onRecipeChange={handleTreeRecipeChange}
+            expandedIds={expandedIds}
+            onExpandedChange={(ids) => dispatch(setExpandedNodes(ids))}
           />
         </div>
       )}
