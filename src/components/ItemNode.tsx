@@ -95,7 +95,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         textAlign: 'right',
         alignSelf: 'center'
       }}>
-        {amount !== undefined && `${amount.toFixed(2)}/min`}
+        {amount !== undefined && amount.toFixed(2)}
       </div>
 
       {/* Content section - updated styles */}
