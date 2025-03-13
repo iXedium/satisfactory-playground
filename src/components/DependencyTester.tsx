@@ -121,6 +121,13 @@ const DependencyTester: React.FC = () => {
     }
   };
 
+  // Calculate the height offset based on actual UI elements:
+  // - h2 title: ~40px
+  // - Controls container: ~120px (with padding)
+  // - Margins and padding: ~40px
+  // Total: ~200px
+  const HEADER_OFFSET = 200;
+
   return (
     <div className="container">
       <h2>Dependency Tester</h2>
@@ -210,12 +217,21 @@ const DependencyTester: React.FC = () => {
       )}
 
       {dependencies.dependencyTree && (
-        <div style={{ display: viewMode === "tree" ? "block" : "none" }}>
+        <div style={{ 
+          display: viewMode === "tree" ? "block" : "none",  // Changed from flex to block
+          width: '100%'
+          // Remove fixed height to let content flow naturally
+        }}>
           <h3>Tree View</h3>
-          <DependencyTree 
-            dependencyTree={dependencies.dependencyTree}
-            onRecipeChange={handleTreeRecipeChange}
-          />
+          <div style={{ 
+            width: '100%'  // Ensure full width
+            // Remove flex and height constraints
+          }}>
+            <DependencyTree 
+              dependencyTree={dependencies.dependencyTree}
+              onRecipeChange={handleTreeRecipeChange}
+            />
+          </div>
         </div>
       )}
     </div>

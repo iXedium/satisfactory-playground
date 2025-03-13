@@ -30,6 +30,7 @@ interface ItemNodeProps {
   size?: IconSize;
   excess?: number;  // Keep as optional in interface
   onExcessChange?: (excess: number) => void;
+  style?: React.CSSProperties;  // Add style prop
 }
 
 const ItemNode: React.FC<ItemNodeProps> = ({
@@ -42,7 +43,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onRecipeChange,
   size = "large",
   excess = 0,  // Set default to 0 here
-  onExcessChange
+  onExcessChange,
+  style
 }) => {
   const [item, setItem] = useState<any>(null);
   const [localExcess, setLocalExcess] = useState(excess); // Add local state
@@ -114,11 +116,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         gap: '8px',
         padding: '8px 12px',
         borderRadius: '4px',
-        backgroundColor: theme.colors.nodeBg,
         minHeight: '64px', // Ensures consistent height for nodes
         alignItems: 'start',
         position: 'relative', // Add this to establish new stacking context
-        overflow: 'visible'   // Ensure dropdowns can overflow
+        overflow: 'visible',   // Ensure dropdowns can overflow
+        ...style  // Add style prop
       }}>
         {/* Icon section - modified styles for vertical centering */}
         <div style={{ 

@@ -15,7 +15,7 @@ export interface DependencyNode {
 
 const logPerf = (label: string, start: number) => {
   const elapsed = performance.now() - start;
-  console.log(`[${new Date().toISOString()}] ${label}: ${elapsed.toFixed(2)}ms`);
+  // console.log(`[${new Date().toISOString()}] ${label}: ${elapsed.toFixed(2)}ms`);
 };
 
 export const calculateDependencyTree = async (
@@ -28,7 +28,7 @@ export const calculateDependencyTree = async (
   parentId: string = ''  // Add parentId parameter
 ): Promise<DependencyNode> => {
   const start = performance.now();
-  console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
+  // console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
 
   // Create unique ID that includes parent path
   const nodeId = parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`;
@@ -118,10 +118,10 @@ export const calculateDependencyTree = async (
   // Store result in cache
   await cacheNode(nodeId, result);
 
-  console.log(`[${new Date().toISOString()}] Tree calculation complete`, {
-    nodeCount: countNodes(result),
-    depth: getTreeDepth(result)
-  });
+  // console.log(`[${new Date().toISOString()}] Tree calculation complete`, {
+  //   nodeCount: countNodes(result),
+  //   depth: getTreeDepth(result)
+  // });
   logPerf('Total tree calculation', start);
 
   return result;
