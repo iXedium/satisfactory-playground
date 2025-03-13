@@ -5,9 +5,16 @@ import TreeNode from './TreeNode';
 interface DependencyTreeProps {
   dependencyTree: DependencyNode;
   onRecipeChange?: (nodeId: string, recipeId: string) => void;
+  onExcessChange?: (nodeId: string, excess: number) => void;
+  excessMap: Record<string, number>;
 }
 
-const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecipeChange }) => {
+const DependencyTree: React.FC<DependencyTreeProps> = ({ 
+  dependencyTree, 
+  onRecipeChange,
+  onExcessChange,
+  excessMap 
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -22,6 +29,8 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({ dependencyTree, onRecip
         node={dependencyTree}
         depth={0}
         onRecipeChange={onRecipeChange}
+        onExcessChange={onExcessChange}
+        excessMap={excessMap}
       />
     </div>
   );

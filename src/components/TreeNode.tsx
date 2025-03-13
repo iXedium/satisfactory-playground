@@ -7,9 +7,17 @@ interface TreeNodeProps {
   node: DependencyNode;
   depth: number;
   onRecipeChange?: (nodeId: string, recipeId: string) => void;
+  onExcessChange?: (nodeId: string, excess: number) => void;
+  excessMap: Record<string, number>;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, onRecipeChange }) => {
+const TreeNode: React.FC<TreeNodeProps> = ({ 
+  node, 
+  depth, 
+  onRecipeChange,
+  onExcessChange,
+  excessMap 
+}) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
@@ -51,6 +59,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, onRecipeChange }) => {
           selectedRecipeId={node.selectedRecipeId}
           onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
           style={{ backgroundColor: 'transparent' }}  // Remove ItemNode background
+          excess={excessMap[node.uniqueId] || 0}
+          onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
         />
       </div>
 
@@ -62,6 +72,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, onRecipeChange }) => {
               node={child}
               depth={depth + 1}
               onRecipeChange={onRecipeChange}
+              onExcessChange={onExcessChange}
+              excessMap={excessMap}
             />
           ))}
         </div>

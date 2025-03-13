@@ -30,6 +30,7 @@ const DependencyTester: React.FC = () => {
   const [itemCount, setItemCount] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
+  const [excessMap, setExcessMap] = useState<Record<string, number>>({});
 
   // Add state to track last calculated values
   const [lastCalculated, setLastCalculated] = useState<{
@@ -118,6 +119,26 @@ const DependencyTester: React.FC = () => {
         recipe: selectedRecipe,
         count: itemCount
       });
+    }
+  };
+
+  const handleExcessChange = async (nodeId: string, excess: number) => {
+    const newExcessMap = { ...excessMap, [nodeId]: excess };
+    setExcessMap(newExcessMap);
+
+    if (selectedItem && selectedRecipe) {
+      const tree = await calculateDependencyTree(
+        selectedItem,
+        itemCount,
+        selectedRecipe,
+        recipeSelections,
+        0,
+        [], // No affected branches needed
+        '',
+        newExcessMap  // Pass excess map to calculation
+      );
+      const accumulated = calculateAccumulatedFromTree(tree);
+      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
     }
   };
 
@@ -230,6 +251,8 @@ const DependencyTester: React.FC = () => {
             <DependencyTree 
               dependencyTree={dependencies.dependencyTree}
               onRecipeChange={handleTreeRecipeChange}
+              onExcessChange={handleExcessChange}  // Add excess handler
+              excessMap={excessMap}  // Pass excess map
             />
           </div>
         </div>

@@ -11,6 +11,7 @@ export interface DependencyNode {
   selectedRecipeId?: string;
   availableRecipes?: Recipe[];
   children?: DependencyNode[];
+  excess: number;  // Add excess field
 }
 
 const logPerf = (label: string, start: number) => {
@@ -25,7 +26,8 @@ export const calculateDependencyTree = async (
   recipeMap: Record<string, string> = {},  // Add recipe map parameter
   depth: number = 0,
   affectedBranches: NodePath[] = [],
-  parentId: string = ''  // Add parentId parameter
+  parentId: string = '',  // Add parentId parameter
+  excessMap: Record<string, number> = {}  // Add excessMap parameter
 ): Promise<DependencyNode> => {
   const start = performance.now();
   // console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
@@ -72,12 +74,13 @@ export const calculateDependencyTree = async (
       amount, 
       uniqueId: nodeId,
       availableRecipes,
-      children: [] 
+      children: [],
+      excess: excessMap[nodeId] || 0  // Add excess from map
     };
   }
 
   const outputAmount = recipe.out[itemId] ?? 1;
-  const cyclesNeeded = amount / outputAmount;
+  const cyclesNeeded = (amount + (excessMap[nodeId] || 0)) / outputAmount;  // Add excess to required amount
 
   // Pass recipeMap to child calculations
   const children = await Promise.all(
@@ -89,7 +92,8 @@ export const calculateDependencyTree = async (
         recipeMap,
         depth + 1,
         affectedBranches,
-        nodeId  // Pass current nodeId as parent
+        nodeId,  // Pass current nodeId as parent
+        excessMap  // Pass excessMap to child calculations
       )
     )
   );
@@ -103,9 +107,10 @@ export const calculateDependencyTree = async (
       uniqueId: `${nodeId}-${outputItem}-${depth}`,  // Include parent path
       isByproduct: true,
       children: [],
-    }));
+      excess: 0  // Add default excess
+    } as DependencyNode));  // Cast to DependencyNode
 
-  const result = {
+  const result: DependencyNode = {
     id: itemId,
     amount,
     uniqueId: nodeId,
@@ -113,6 +118,7 @@ export const calculateDependencyTree = async (
     selectedRecipeId: recipe.id,
     availableRecipes,
     children: [...children, ...byproducts], // ✅ Include byproducts without processing them
+    excess: excessMap[nodeId] || 0  // Add excess from map
   };
 
   // Store result in cache
