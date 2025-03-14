@@ -1,48 +1,254 @@
 /* Global Styles */
-body {
-  background-color: #222; /* Dark Grey Background */
-  color: white;
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
+:root {
+  --primary: #ff7a00;
+  --primary-dark: #cc6200;
+  --secondary: #2d3744;
+  --accent: #00b8ff;
+  --background: #1a1e24;
+  --surface: #2d3744;
+  --surface-light: #3a4654;
+  --text: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
 }
 
-/* Center Root Container */
+body {
+  background-color: var(--background);
+  background-image: linear-gradient(45deg, #1a1e24 25%, #1d2228 25%, #1d2228 50%, #1a1e24 50%, #1a1e24 75%, #1d2228 75%, #1d2228 100%);
+  background-size: 20px 20px;
+  color: var(--text);
+  font-family: 'Roboto', 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Root Container */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  margin: 0;
+  padding: 1.5rem;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Controls Layout */
+.controls-container {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: fit-content;
+}
+
+.controls-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Styling for Dropdowns & Buttons */
 select, input, button {
-  padding: 8px;
-  margin: 5px;
-  border: none;
-  border-radius: 5px;
+  padding: 10px 16px;
+  margin: 6px;
+  border: 2px solid var(--surface-light);
+  border-radius: 6px;
   font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 select, input {
-  background: #333;
-  color: white;
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--surface-light);
+}
+
+select:hover, input:hover {
+  border-color: var(--primary);
+}
+
+select:focus, input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 184, 255, 0.2);
 }
 
 button {
-  background: #646cff;
-  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--text);
   cursor: pointer;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
 }
 
 button:hover {
-  background: #5058e0;
+  background: linear-gradient(135deg, #ff8c1a, var(--primary));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Container for Components */
 .container {
-  background: #333;
+  background: var(--surface);
   padding: 20px;
-  border-radius: 10px;
-  margin-top: 20px;
+  border-radius: 12px;
+  margin: 0 0 20px 0;  /* Changed margin-top to overall margin */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+              0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--surface-light);
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0; /* Allow container to shrink */
+  display: flex;
+  flex-direction: column;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.container h2 {
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+}
+
+/* Controls Layout Refinements */
+.controls-container {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.controls-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Node Banding */
+[class*="nodeContainer"]:nth-child(odd) {
+  background: var(--surface-light) !important;
+}
+
+[class*="nodeContainer"]:nth-child(even) {
+  background: var(--surface) !important;
+}
+
+/* Icon Background Fix */
+img {
+  background-color: var(--background) !important;
+  padding: 2px;
+}
+
+/* Tree View Container Fix */
+[class*="listContainer"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[class*="listContainer"] ul {
+  margin: 0;
+  padding: 0;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 2rem;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-light);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Node Hover Effects */
+[class*="nodeContainer"] {
+  cursor: pointer;
+}
+
+[class*="nodeContainer"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Enhanced Tree Visualization */
+[class*="listContainer"] > div {
+  position: relative;
+}
+
+[class*="listContainer"] > div::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, 
+    var(--primary) 0%,
+    var(--accent) 100%);
+  opacity: 0.3;
+}
+
+[class*="listContainer"] > div:hover::before {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+/* Item Icon Enhancement */
+img {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+img:hover {
+  transform: scale(1.1);
 }

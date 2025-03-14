@@ -1,51 +1,53 @@
 export const theme = {
   colors: {
-    primary: "#007bff",
-    background: "#fff",
-    dark: "#333",
-    darker: "#222",
-    hover: "rgba(0, 0, 0, 0.05)",
-    iconBg: "rgba(0, 0, 0, 0.1)",
-    text: "#eee",
+    primary: "#ff7a00",
+    secondary: "#00b8ff",
+    background: "#1a1e24",
+    dark: "#2d3744",
+    darker: "#1a1e24",
+    hover: "rgba(255, 122, 0, 0.1)",
+    iconBg: "rgba(255, 122, 0, 0.15)",
+    text: "#ffffff",
+    textSecondary: "rgba(255, 255, 255, 0.7)",
     
-    // Node colors
-    nodeRoot: '#8DA8E3FF',
-    nodeByproduct: '#DF917DFF',
-    nodeDefault: '#E4E4E4FF',
+    // Node colors - Industrial theme
+    nodeRoot: '#ff7a00', // Primary orange for root
+    nodeByproduct: '#00b8ff', // Secondary blue for byproducts
+    nodeDefault: '#8c9baa', // Neutral industrial gray
     
-    // Node background
-    nodeBg: 'rgba(0, 0, 0, 0.04)',
+    // Node background with metallic feel
+    nodeBg: 'linear-gradient(145deg, #2d3744, #3a4654)',
     
-    // Button hover states
-    buttonHover: '#0056b3',
-    buttonDefault: '#007bff',
+    // Button states
+    buttonHover: '#ff8c1a',
+    buttonDefault: '#ff7a00',
     
     // Dropdown specific colors
     dropdown: {
-      background: '#333',
-      hoverBackground: '#444',
-      text: '#fff',
-      border: '#555',
+      background: '#2d3744',
+      hoverBackground: '#3a4654',
+      text: '#ffffff',
+      border: '#4a5664',
     },
   },
   border: {
-    radius: "4px",
-    style: "1px solid #ccc",
+    radius: "6px",
+    style: "1px solid #4a5664",
   },
   spacing: {
-    gap: "8px",
-    padding: "8px",
-    containerPadding: "12px 24px",
+    gap: "12px",
+    padding: "12px",
+    containerPadding: "16px 32px",
   },
   zIndex: {
     dropdown: 1000,
   },
-  // New switch styling entries
+  // Switch styling with industrial theme
   switch: {
-    track: "#ccc",
-    activeTrack: "#007bff",
-    knob: "#fff",
-    label: "white",
+    track: "#4a5664",
+    activeTrack: "#ff7a00",
+    knob: "#ffffff",
+    label: "#ffffff",
   },
 };
 

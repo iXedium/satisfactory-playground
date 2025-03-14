@@ -151,66 +151,60 @@ const DependencyTester: React.FC = () => {
 
   return (
     <div className="container">
-      <h2>Dependency Tester</h2>
+      <div className="controls-container">
+        <div className="controls-section">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div>
+              <ItemSelect
+                items={items}
+                value={selectedItem}
+                onChange={setSelectedItem}
+                placeholder="Select an Item"
+              />
+            </div>
 
-      <div style={uiStyles.container}>
-        <div>
-          <label style={uiStyles.formGroup}>Item:</label>
-          <ItemSelect
-            items={items}
-            value={selectedItem}
-            onChange={setSelectedItem}
-            placeholder="Select an Item"
-          />
-        </div>
+            {filteredRecipes.length > 0 && (
+              <div>
+                <RecipeSelect
+                  recipes={filteredRecipes}
+                  value={selectedRecipe}
+                  onChange={setSelectedRecipe}
+                  placeholder="Select a Recipe"
+                />
+              </div>
+            )}
 
-        {filteredRecipes.length > 0 && (
-          <div>
-            <label style={uiStyles.formGroup}>Recipe:</label>
-            <RecipeSelect
-              recipes={filteredRecipes}
-              value={selectedRecipe}
-              onChange={setSelectedRecipe}
-              placeholder="Select a Recipe"
-            />
+            <div style={{ width: '100px' }}>
+              <input
+                type="number"
+                min="1"
+                value={itemCount}
+                onChange={(e) => setItemCount(Number(e.target.value))}
+                placeholder="Count"
+              />
+            </div>
           </div>
-        )}
-
-        <div>
-          <label style={uiStyles.formGroup}>Count:</label>
-          <input
-            type="number"
-            min="1"
-            value={itemCount}
-            onChange={(e) => setItemCount(Number(e.target.value))}
-            style={uiStyles.input}
-          />
         </div>
 
-        {/* Replace dropdown with switch */}
-        <div>
-          <label style={uiStyles.formGroup}>View Mode:</label>
+        <div className="controls-section" style={{ marginLeft: 'auto' }}>
           <ViewModeSwitch
             mode={viewMode === "tree" ? "tree" : "list"}
             onToggle={(mode) =>
               setViewMode(mode === "list" ? "accumulated" : "tree")
             }
           />
+          <button
+            onClick={handleCalculate}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
+          >
+            Calculate
+          </button>
         </div>
-
-        <button
-          onClick={handleCalculate}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
-          style={uiStyles.button}
-        >
-          Calculate
-        </button>
       </div>
 
       {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
         <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
-          <h3 style={{ textAlign: "center" }}>Accumulated Dependencies</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {/* Root item */}
             {dependencies.selectedItem && (
@@ -239,20 +233,16 @@ const DependencyTester: React.FC = () => {
 
       {dependencies.dependencyTree && (
         <div style={{ 
-          display: viewMode === "tree" ? "block" : "none",  // Changed from flex to block
-          width: '100%'
-          // Remove fixed height to let content flow naturally
+          display: viewMode === "tree" ? "block" : "none",
+          width: '100%',
+          marginTop: '16px',
         }}>
-          <h3>Tree View</h3>
-          <div style={{ 
-            width: '100%'  // Ensure full width
-            // Remove flex and height constraints
-          }}>
+          <div style={{ ...dependencyStyles.listContainer }}>
             <DependencyTree 
               dependencyTree={dependencies.dependencyTree}
               onRecipeChange={handleTreeRecipeChange}
-              onExcessChange={handleExcessChange}  // Add excess handler
-              excessMap={excessMap}  // Pass excess map
+              onExcessChange={handleExcessChange}
+              excessMap={excessMap}
             />
           </div>
         </div>
