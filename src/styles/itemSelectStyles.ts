@@ -7,7 +7,10 @@ export const itemSelectStyles = {
   },
   customSelect: {
     width: "100%",
-    padding: "10px 16px",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
+    padding: "0 16px",
     cursor: "pointer",
     backgroundColor: theme.colors.dark,
     border: `2px solid ${theme.colors.dropdown.border}`,
@@ -45,6 +48,7 @@ export const itemSelectStyles = {
   },
   autocomplete: {
     width: "250px",
+    height: "40px",
   },
   autocompletePaper: {
     backgroundColor: theme.colors.dropdown.background,
@@ -63,6 +67,9 @@ export const itemSelectStyles = {
     '& .MuiInputBase-input': {
       color: theme.colors.text,
       backgroundColor: theme.colors.dropdown.background,
+      height: "40px",
+      padding: "0 16px",
+      boxSizing: "border-box",
     },
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: theme.colors.dropdown.border,
