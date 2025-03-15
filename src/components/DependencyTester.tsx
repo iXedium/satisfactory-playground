@@ -31,6 +31,8 @@ const DependencyTester: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [excessMap, setExcessMap] = useState<Record<string, number>>({});
+  const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
+  const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
 
   // Add state to track last calculated values
   const [lastCalculated, setLastCalculated] = useState<{
@@ -142,6 +144,20 @@ const DependencyTester: React.FC = () => {
     }
   };
 
+  const handleMachineCountChange = (nodeId: string, count: number) => {
+    setMachineCountMap(prev => ({
+      ...prev,
+      [nodeId]: count
+    }));
+  };
+
+  const handleMachineMultiplierChange = (nodeId: string, multiplier: number) => {
+    setMachineMultiplierMap(prev => ({
+      ...prev,
+      [nodeId]: multiplier
+    }));
+  };
+
   return (
     <div className="container" >
       <div style={{
@@ -208,7 +224,7 @@ const DependencyTester: React.FC = () => {
             <button
               onClick={handleCalculate}
               style={{
-                height: '32px',
+                height: '44px',
                 padding: '0 24px',
                 fontSize: '14px',
                 fontWeight: 500,
@@ -246,19 +262,56 @@ const DependencyTester: React.FC = () => {
                   amount={dependencies.itemCount}
                   isRoot={true}
                   index={0}
+                  recipes={filteredRecipes}
+                  selectedRecipeId={selectedRecipe}
+                  onRecipeChange={(recipeId) => {
+                    setSelectedRecipe(recipeId);
+                    handleCalculate();
+                  }}
+                  excess={excessMap[dependencies.selectedItem] || 0}
+                  onExcessChange={(excess) => {
+                    if (dependencies.selectedItem) {
+                      handleExcessChange(dependencies.selectedItem, excess);
+                    }
+                  }}
+                  machineCount={machineCountMap[dependencies.selectedItem] || 1}
+                  onMachineCountChange={(count) => {
+                    if (dependencies.selectedItem) {
+                      handleMachineCountChange(dependencies.selectedItem, count);
+                    }
+                  }}
+                  machineMultiplier={machineMultiplierMap[dependencies.selectedItem] || 1}
+                  onMachineMultiplierChange={(multiplier) => {
+                    if (dependencies.selectedItem) {
+                      handleMachineMultiplierChange(dependencies.selectedItem, multiplier);
+                    }
+                  }}
                 />
               </li>
             )}
-            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount], index) => (
-              <li key={item} style={{ marginBottom: "8px" }}>
-                <ItemNode
-                  itemId={item}
-                  amount={amount}
-                  isByproduct={amount < 0}
-                  index={index + 1}
-                />
-              </li>
-            ))}
+            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount], index) => {
+              const nodeId = `${item}-0`;
+              const recipes = filteredRecipes.filter((r) => r.id === item) || [];
+              return (
+                <li key={item} style={{ marginBottom: "8px" }}>
+                  <ItemNode
+                    itemId={item}
+                    amount={amount}
+                    isByproduct={amount < 0}
+                    index={index + 1}
+                    recipes={recipes}
+                    selectedRecipeId={recipeSelections[nodeId] || ''}
+                    onRecipeChange={(recipeId) => handleTreeRecipeChange(nodeId, recipeId)}
+                    excess={excessMap[item] || 0}
+                    onExcessChange={(excess) => handleExcessChange(item, excess)}
+                    machineCount={machineCountMap[item] || 1}
+                    onMachineCountChange={(count) => handleMachineCountChange(item, count)}
+                    machineMultiplier={machineMultiplierMap[item] || 1}
+                    onMachineMultiplierChange={(multiplier) => handleMachineMultiplierChange(item, multiplier)}
+                  />
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -273,6 +326,10 @@ const DependencyTester: React.FC = () => {
             onRecipeChange={handleTreeRecipeChange}
             onExcessChange={handleExcessChange}
             excessMap={excessMap}
+            machineCountMap={machineCountMap}
+            onMachineCountChange={handleMachineCountChange}
+            machineMultiplierMap={machineMultiplierMap}
+            onMachineMultiplierChange={handleMachineMultiplierChange}
           />
         </div>
       )}

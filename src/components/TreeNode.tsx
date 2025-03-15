@@ -9,6 +9,10 @@ interface TreeNodeProps {
   onRecipeChange?: (nodeId: string, recipeId: string) => void;
   onExcessChange?: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
+  machineCountMap?: Record<string, number>;
+  onMachineCountChange?: (nodeId: string, count: number) => void;
+  machineMultiplierMap?: Record<string, number>;
+  onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -16,7 +20,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   depth, 
   onRecipeChange,
   onExcessChange,
-  excessMap 
+  excessMap,
+  machineCountMap = {},
+  onMachineCountChange,
+  machineMultiplierMap = {},
+  onMachineMultiplierChange
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
@@ -87,6 +95,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           excess={excessMap[node.uniqueId] || 0}
           onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
           onIconClick={hasChildren ? handleToggle : undefined}
+          index={depth} // Pass depth as index for consistent banding
+          machineCount={machineCountMap[node.uniqueId] || 1}
+          onMachineCountChange={(count) => onMachineCountChange?.(node.uniqueId, count)}
+          machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
+          onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
         />
       </div>
 
@@ -100,6 +113,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               onRecipeChange={onRecipeChange}
               onExcessChange={onExcessChange}
               excessMap={excessMap}
+              machineCountMap={machineCountMap}
+              onMachineCountChange={onMachineCountChange}
+              machineMultiplierMap={machineMultiplierMap}
+              onMachineMultiplierChange={onMachineMultiplierChange}
             />
           ))}
         </div>
