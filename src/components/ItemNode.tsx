@@ -3,7 +3,6 @@ import Icon, { IconSize } from './Icon';
 import { Recipe } from '../data/dexieDB';
 import { theme } from '../styles/theme';
 import { getItemById } from "../data/dbQueries";
-import { iconStyles } from "../styles/iconStyles";
 import StyledSelect from './shared/StyledSelect';
 import StyledInput from './shared/StyledInput';
 
@@ -78,7 +77,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   return (
     <div style={baseStyles}>
       <div style={{ gridArea: 'icon' }}>
-        <Icon itemId={itemId} size={size} style={{ backgroundColor: theme.colors.iconBg }} />
+        <Icon itemId={itemId} size={size} style={{ backgroundColor: theme.colors.dark }} />
       </div>
 
       <div style={{ 

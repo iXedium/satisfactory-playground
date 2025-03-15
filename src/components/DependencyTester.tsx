@@ -174,7 +174,7 @@ const DependencyTester: React.FC = () => {
               style={{ minWidth: '250px', maxWidth: '300px', flex: '1' }}
               renderOption={(option) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.darker }} />
+                  <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
                   {option.name}
                 </div>
               )}

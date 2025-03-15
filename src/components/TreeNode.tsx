@@ -23,15 +23,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   
   // Calculate background color based on depth
   const getBackgroundColor = (depth: number) => {
-    const baseColor = theme.colors.nodeBg;
-    if (depth === 0) return baseColor;
+    // Start with a lighter base and make subtle changes with depth
+    const baseRGB = [50, 60, 75];  // Slightly lighter base color
+    const darkenStep = 5;  // More subtle darkening per level
     
-    // Add a subtle darkening effect for each depth level
-    const darkenAmount = Math.min(depth * 0.05, 0.3); // Cap at 30% darker
-    return `linear-gradient(145deg, 
-      rgba(45, 55, 68, ${0.5 + darkenAmount}), 
-      rgba(58, 70, 84, ${0.5 + darkenAmount})
-    )`;
+    // Calculate darkened RGB values based on depth
+    const r = Math.max(baseRGB[0] - (depth * darkenStep), 30);  // Don't go darker than 30
+    const g = Math.max(baseRGB[1] - (depth * darkenStep), 40);  // Don't go darker than 40
+    const b = Math.max(baseRGB[2] - (depth * darkenStep), 55);  // Don't go darker than 55
+    
+    return `rgb(${r}, ${g}, ${b})`;
   };
 
   return (
@@ -39,13 +40,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '20px 1fr',
+          gridTemplateColumns: '16px 1fr',
           alignItems: 'center',
-          gap: '4px',
+          gap: '2px',
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
-          paddingLeft: `${depth * 24}px`
+          paddingLeft: `${depth * 20}px`,
+          borderRadius: theme.border.radius
         }}
       >
         <div
@@ -55,9 +57,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           }}
           style={{ 
             cursor: hasChildren ? 'pointer' : 'default',
-            padding: '8px 0 8px 8px',  // Add padding around caret
+            padding: '8px 0',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '16px'
           }}
         >
           {hasChildren ? (isExpanded ? "▼" : "▶") : ""}

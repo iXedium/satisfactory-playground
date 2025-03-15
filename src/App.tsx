@@ -12,8 +12,6 @@ const App: React.FC = () => {
   return (
 
     <div>
-      {/* <h2 style={{ textAlign: "center" }}>Satisfactory Playground</h2> */}
-      {/* <DataDebug /> */}
       <DependencyTester />
     </div>
   );

@@ -6,7 +6,7 @@ export const theme = {
     dark: "#2d3744",
     darker: "#1a1e24",
     hover: "rgba(255, 122, 0, 0.1)",
-    iconBg: "rgba(255, 122, 0, 0.15)",
+    // iconBg: "rgba(255, 122, 0, 0.15)",
     text: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
     
