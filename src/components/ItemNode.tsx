@@ -260,22 +260,29 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '8px',
-      marginBottom: '8px',
-      backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-      borderRadius: theme.border.radius,
-      padding: '8px',
-      ...style
-    }}>
+    <div 
+      style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '8px',
+        backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
+        borderRadius: theme.border.radius,
+        padding: '8px',
+        ...style
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Left section - Item info */}
       <div style={{
         ...sectionStyle,
         borderLeft: `4px solid ${getItemColor()}`,
         flex: 2,
         minWidth: '300px',
-      }}>
+        position: 'relative',
+        zIndex: 1,
+      }}
+      onClick={(e) => e.stopPropagation()}
+      >
         {/* Item icon */}
         <div 
           style={{ 
@@ -283,7 +290,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             marginRight: '8px',
             alignSelf: 'flex-start',
           }}
-          onClick={onIconClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onIconClick) onIconClick();
+          }}
         >
           <Icon itemId={itemId} size={size} />
         </div>
@@ -295,7 +305,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           flex: 1,
           justifyContent: 'space-between',
           height: '100%',
-        }}>
+          position: 'relative',
+          zIndex: 1,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
           {/* Item name and nominal rate */}
           <div style={{ 
             display: 'flex', 
@@ -313,7 +327,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           </div>
           
           {/* Recipe selector - aligned to bottom */}
-          <div style={{ marginTop: 'auto' }}>
+          <div 
+            style={{ marginTop: 'auto', position: 'relative', zIndex: 2 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {recipes && recipes.length > 0 && onRecipeChange && (
               <StyledSelect
                 value={selectedRecipeId || ''}
@@ -334,7 +351,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           borderLeft: `4px solid ${theme.colors.secondary}`,
           flex: 1,
           minWidth: '250px',
-        }}>
+          position: 'relative',
+          zIndex: 1,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
           {/* Machine icon - same size as item icon */}
           <div style={{ marginRight: '8px' }}>
             <Icon itemId={machine.id} size={size} />
@@ -346,7 +367,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             flexDirection: 'column',
             flex: 1,
             gap: '4px',
-          }}>
+            position: 'relative',
+            zIndex: 1,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
             {/* Machine name */}
             <div style={{ 
               fontWeight: 'bold', 
@@ -363,21 +388,35 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               display: 'flex', 
               gap: '8px', 
               alignItems: 'center',
-            }}>
+              position: 'relative',
+              zIndex: 2,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            >
               {/* Machine count */}
               <StyledInput
                 ref={machineCountRef}
                 type="number"
                 value={localMachineCount}
-                onChange={(e) => handleMachineCountChange(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, localMachineCount, (val) => {
-                  setLocalMachineCount(val);
-                  onMachineCountChange?.(val);
-                }, 1)}
-                onFocus={handleFocus}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleMachineCountChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  handleKeyDown(e, localMachineCount, (val) => {
+                    setLocalMachineCount(val);
+                    onMachineCountChange?.(val);
+                  }, 1);
+                }}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  handleFocus(e);
+                }}
                 variant="compact"
-                style={inputFieldStyle}
+                style={{...inputFieldStyle, position: 'relative', zIndex: 2}}
                 min={1}
+                onClick={(e) => e.stopPropagation()}
               />
               
               {/* Max button */}
@@ -385,8 +424,13 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 style={{
                   ...buttonStyle,
                   backgroundColor: theme.colors.secondary,
+                  position: 'relative',
+                  zIndex: 2,
                 }}
-                onClick={handleOptimizeMachines}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOptimizeMachines();
+                }}
                 title="Set machine count for 100% efficiency"
               >
                 MAX
@@ -397,15 +441,25 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 ref={machineMultiplierRef}
                 type="number"
                 value={localMachineMultiplier}
-                onChange={(e) => handleMachineMultiplierChange(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, localMachineMultiplier, (val) => {
-                  setLocalMachineMultiplier(val);
-                  onMachineMultiplierChange?.(val);
-                }, 1)}
-                onFocus={handleFocus}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleMachineMultiplierChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  handleKeyDown(e, localMachineMultiplier, (val) => {
+                    setLocalMachineMultiplier(val);
+                    onMachineMultiplierChange?.(val);
+                  }, 1);
+                }}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  handleFocus(e);
+                }}
                 variant="compact"
-                style={inputFieldStyle}
+                style={{...inputFieldStyle, position: 'relative', zIndex: 2}}
                 min={1}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           </div>
@@ -418,13 +472,21 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         borderLeft: `4px solid ${getEfficiencyColor()}`,
         flex: 1,
         minWidth: '250px',
-      }}>
+        position: 'relative',
+        zIndex: 1,
+      }}
+      onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column',
           width: '100%',
           gap: '8px',
-        }}>
+          position: 'relative',
+          zIndex: 1,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
           {/* First row: Efficiency and Rate */}
           <div style={{ 
             display: 'flex',
@@ -435,6 +497,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             <div style={{ 
               display: 'flex',
               alignItems: 'center',
+              position: 'relative',
+              zIndex: 2,
             }}>
               <span>Efficiency:</span>
               <span 
@@ -444,8 +508,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   fontWeight: 'bold',
                   position: 'relative',
                   marginLeft: '4px',
+                  zIndex: 2,
                 }}
-                onClick={copyEfficiencyValue}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyEfficiencyValue();
+                }}
                 title="Click to copy decimal value"
               >
                 {efficiency.toFixed(2)}%
@@ -486,10 +554,21 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               alignItems: 'center',
               width: '100%',
               justifyContent: 'space-between',
-            }}>
+              position: 'relative',
+              zIndex: 2,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            >
               <button 
-                style={buttonStyle}
-                onClick={handleResetExcess}
+                style={{
+                  ...buttonStyle,
+                  position: 'relative',
+                  zIndex: 2,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResetExcess();
+                }}
                 title="Reset excess to zero"
               >
                 RESET
@@ -499,14 +578,23 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 ref={excessRef}
                 type="number"
                 value={localExcess}
-                onChange={(e) => handleExcessChange(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, localExcess, (val) => {
-                  setLocalExcess(val);
-                  onExcessChange?.(val);
-                })}
-                onFocus={handleFocus}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleExcessChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  handleKeyDown(e, localExcess, (val) => {
+                    setLocalExcess(val);
+                    onExcessChange?.(val);
+                  });
+                }}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  handleFocus(e);
+                }}
                 variant="compact"
-                style={{ ...inputFieldStyle, width: '80px' }}
+                style={{ ...inputFieldStyle, width: '80px', position: 'relative', zIndex: 2 }}
                 onClick={(e) => e.stopPropagation()}
               />
               
@@ -514,8 +602,13 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 style={{
                   ...buttonStyle,
                   backgroundColor: theme.colors.secondary,
+                  position: 'relative',
+                  zIndex: 2,
                 }}
-                onClick={handleMaxExcess}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMaxExcess();
+                }}
                 title="Set excess for 100% efficiency"
               >
                 MAX

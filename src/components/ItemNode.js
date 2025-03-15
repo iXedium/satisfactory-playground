@@ -197,6 +197,8 @@ const ItemNode = ({ itemId, amount, isRoot = false, isByproduct = false, recipes
                     borderLeft: `4px solid ${getItemColor()}`,
                     flex: 2,
                     minWidth: '300px',
+                    position: 'relative',
+                    zIndex: 1,
                 }, children: [_jsx("div", { style: {
                             cursor: onIconClick ? 'pointer' : 'default',
                             marginRight: '8px',
@@ -207,22 +209,28 @@ const ItemNode = ({ itemId, amount, isRoot = false, isByproduct = false, recipes
                             flex: 1,
                             justifyContent: 'space-between',
                             height: '100%',
+                            position: 'relative',
+                            zIndex: 1,
                         }, children: [_jsxs("div", { style: {
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     fontWeight: 'bold',
                                     color: getItemColor(),
-                                }, children: [_jsx("span", { children: item.name }), nominalRate > 0 && (_jsxs("span", { style: { fontSize: '12px', opacity: 0.8 }, children: [nominalRate.toFixed(2), "/min"] }))] }), _jsx("div", { style: { marginTop: 'auto' }, children: recipes && recipes.length > 0 && onRecipeChange && (_jsx(StyledSelect, { value: selectedRecipeId || '', onChange: onRecipeChange, options: recipes, variant: "compact", style: { width: '100%' } })) })] })] }), machine && !isByproduct && (_jsxs("div", { style: {
+                                }, children: [_jsx("span", { children: item.name }), nominalRate > 0 && (_jsxs("span", { style: { fontSize: '12px', opacity: 0.8 }, children: [nominalRate.toFixed(2), "/min"] }))] }), _jsx("div", { style: { marginTop: 'auto', position: 'relative', zIndex: 2 }, children: recipes && recipes.length > 0 && onRecipeChange && (_jsx(StyledSelect, { value: selectedRecipeId || '', onChange: onRecipeChange, options: recipes, variant: "compact", style: { width: '100%' } })) })] })] }), machine && !isByproduct && (_jsxs("div", { style: {
                     ...sectionStyle,
                     borderLeft: `4px solid ${theme.colors.secondary}`,
                     flex: 1,
                     minWidth: '250px',
+                    position: 'relative',
+                    zIndex: 1,
                 }, children: [_jsx("div", { style: { marginRight: '8px' }, children: _jsx(Icon, { itemId: machine.id, size: size }) }), _jsxs("div", { style: {
                             display: 'flex',
                             flexDirection: 'column',
                             flex: 1,
                             gap: '4px',
+                            position: 'relative',
+                            zIndex: 1,
                         }, children: [_jsx("div", { style: {
                                     fontWeight: 'bold',
                                     color: theme.colors.secondary,
@@ -233,25 +241,33 @@ const ItemNode = ({ itemId, amount, isRoot = false, isByproduct = false, recipes
                                     display: 'flex',
                                     gap: '8px',
                                     alignItems: 'center',
+                                    position: 'relative',
+                                    zIndex: 2,
                                 }, children: [_jsx(StyledInput, { ref: machineCountRef, type: "number", value: localMachineCount, onChange: (e) => handleMachineCountChange(e.target.value), onKeyDown: (e) => handleKeyDown(e, localMachineCount, (val) => {
                                             setLocalMachineCount(val);
                                             onMachineCountChange?.(val);
-                                        }, 1), onFocus: handleFocus, variant: "compact", style: inputFieldStyle, min: 1 }), _jsx("button", { style: {
+                                        }, 1), onFocus: handleFocus, variant: "compact", style: { ...inputFieldStyle, position: 'relative', zIndex: 2 }, min: 1 }), _jsx("button", { style: {
                                             ...buttonStyle,
                                             backgroundColor: theme.colors.secondary,
+                                            position: 'relative',
+                                            zIndex: 2,
                                         }, onClick: handleOptimizeMachines, title: "Set machine count for 100% efficiency", children: "MAX" }), _jsx(StyledInput, { ref: machineMultiplierRef, type: "number", value: localMachineMultiplier, onChange: (e) => handleMachineMultiplierChange(e.target.value), onKeyDown: (e) => handleKeyDown(e, localMachineMultiplier, (val) => {
                                             setLocalMachineMultiplier(val);
                                             onMachineMultiplierChange?.(val);
-                                        }, 1), onFocus: handleFocus, variant: "compact", style: inputFieldStyle, min: 1 })] })] })] })), _jsx("div", { style: {
+                                        }, 1), onFocus: handleFocus, variant: "compact", style: { ...inputFieldStyle, position: 'relative', zIndex: 2 }, min: 1 })] })] })] })), _jsx("div", { style: {
                     ...sectionStyle,
                     borderLeft: `4px solid ${getEfficiencyColor()}`,
                     flex: 1,
                     minWidth: '250px',
+                    position: 'relative',
+                    zIndex: 1,
                 }, children: _jsxs("div", { style: {
                         display: 'flex',
                         flexDirection: 'column',
                         width: '100%',
                         gap: '8px',
+                        position: 'relative',
+                        zIndex: 1,
                     }, children: [_jsxs("div", { style: {
                                 display: 'flex',
                                 justifyContent: 'space-between',
@@ -259,12 +275,15 @@ const ItemNode = ({ itemId, amount, isRoot = false, isByproduct = false, recipes
                             }, children: [_jsxs("div", { style: {
                                         display: 'flex',
                                         alignItems: 'center',
+                                        position: 'relative',
+                                        zIndex: 2,
                                     }, children: [_jsx("span", { children: "Efficiency:" }), _jsxs("span", { style: {
                                                 color: getEfficiencyColor(),
                                                 cursor: 'pointer',
                                                 fontWeight: 'bold',
                                                 position: 'relative',
                                                 marginLeft: '4px',
+                                                zIndex: 2,
                                             }, onClick: copyEfficiencyValue, title: "Click to copy decimal value", children: [efficiency.toFixed(2), "%", showEfficiencyTooltip && (_jsx("div", { style: {
                                                         position: 'absolute',
                                                         bottom: '100%',
@@ -285,12 +304,20 @@ const ItemNode = ({ itemId, amount, isRoot = false, isByproduct = false, recipes
                                 alignItems: 'center',
                                 width: '100%',
                                 justifyContent: 'space-between',
-                            }, children: [_jsx("button", { style: buttonStyle, onClick: handleResetExcess, title: "Reset excess to zero", children: "RESET" }), _jsx(StyledInput, { ref: excessRef, type: "number", value: localExcess, onChange: (e) => handleExcessChange(e.target.value), onKeyDown: (e) => handleKeyDown(e, localExcess, (val) => {
+                                position: 'relative',
+                                zIndex: 2,
+                            }, children: [_jsx("button", { style: {
+                                        ...buttonStyle,
+                                        position: 'relative',
+                                        zIndex: 2,
+                                    }, onClick: handleResetExcess, title: "Reset excess to zero", children: "RESET" }), _jsx(StyledInput, { ref: excessRef, type: "number", value: localExcess, onChange: (e) => handleExcessChange(e.target.value), onKeyDown: (e) => handleKeyDown(e, localExcess, (val) => {
                                         setLocalExcess(val);
                                         onExcessChange?.(val);
-                                    }), onFocus: handleFocus, variant: "compact", style: { ...inputFieldStyle, width: '80px' }, onClick: (e) => e.stopPropagation() }), _jsx("button", { style: {
+                                    }), onFocus: handleFocus, variant: "compact", style: { ...inputFieldStyle, width: '80px', position: 'relative', zIndex: 2 }, onClick: (e) => e.stopPropagation() }), _jsx("button", { style: {
                                         ...buttonStyle,
                                         backgroundColor: theme.colors.secondary,
+                                        position: 'relative',
+                                        zIndex: 2,
                                     }, onClick: handleMaxExcess, title: "Set excess for 100% efficiency", children: "MAX" })] }))] }) })] }));
 };
 export default ItemNode;

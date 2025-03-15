@@ -46,7 +46,7 @@ const DropdownContainer = styled('div')({
   maxHeight: '300px',
   overflowY: 'auto',
   overflowX: 'hidden',
-  zIndex: 1000,
+  zIndex: 9999,
   display: 'flex',
   flexDirection: 'column'
 });
@@ -158,7 +158,10 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     <SelectContainer style={style}>
       <SelectButton
         ref={buttonRef}
-        onClick={handleToggleDropdown}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggleDropdown();
+        }}
         $variant={variant}
         $disabled={disabled}
       >
@@ -176,21 +179,28 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
           setHighlightedIndex(-1);
         }}
       >
-        <DropdownContainer>
+        <DropdownContainer onClick={(e) => e.stopPropagation()}>
           <SearchInput
             ref={inputRef}
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => {
+              e.stopPropagation();
+              setSearchTerm(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              handleKeyDown(e);
+            }}
             placeholder="Search..."
             onClick={(e) => e.stopPropagation()}
           />
-          <div ref={listRef} style={{ overflow: 'auto', minWidth: 0 }}>
+          <div ref={listRef} style={{ overflow: 'auto', minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
             {filteredOptions.map((option, index) => (
               <DropdownItem
                 key={option.id}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onChange(option.id);
                   setIsOpen(false);
                   setSearchTerm('');

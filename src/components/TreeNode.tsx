@@ -53,15 +53,15 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     <div>
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '0px 1fr',
+          display: 'flex',
           alignItems: 'center',
-          gap: '1px',
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
           paddingLeft: `${depth * 16}px`,
-          borderRadius: theme.border.radius
+          borderRadius: theme.border.radius,
+          position: 'relative',
+          zIndex: 0
         }}
       >
         <div
@@ -71,36 +71,40 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '14px',
+            width: '30px',
             cursor: hasChildren ? 'pointer' : 'default',
-            zIndex: 1  // Ensure chevron is above other elements
+            zIndex: 1
           }}
         >
           {hasChildren ? (isExpanded ? "▼" : "▶") : ""}
         </div>
 
-        <ItemNode
-          itemId={node.id}
-          amount={node.amount}
-          isRoot={node.isRoot}
-          isByproduct={node.isByproduct}
-          recipes={node.availableRecipes}
-          selectedRecipeId={node.selectedRecipeId}
-          onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
-          style={{ 
-            backgroundColor: 'transparent',
-            pointerEvents: 'none',
-            paddingLeft: '14px'  // Add padding to prevent content from overlapping chevron
-          }}
-          excess={excessMap[node.uniqueId] || 0}
-          onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
-          onIconClick={hasChildren ? handleToggle : undefined}
-          index={depth} // Pass depth as index for consistent banding
-          machineCount={machineCountMap[node.uniqueId] || 1}
-          onMachineCountChange={(count) => onMachineCountChange?.(node.uniqueId, count)}
-          machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
-          onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
-        />
+        <div style={{ 
+          flex: 1,
+          position: 'relative',
+          zIndex: 2
+        }}>
+          <ItemNode
+            itemId={node.id}
+            amount={node.amount}
+            isRoot={node.isRoot}
+            isByproduct={node.isByproduct}
+            recipes={node.availableRecipes}
+            selectedRecipeId={node.selectedRecipeId}
+            onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
+            style={{ 
+              backgroundColor: 'transparent'
+            }}
+            excess={excessMap[node.uniqueId] || 0}
+            onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
+            onIconClick={hasChildren ? handleToggle : undefined}
+            index={depth}
+            machineCount={machineCountMap[node.uniqueId] || 1}
+            onMachineCountChange={(count) => onMachineCountChange?.(node.uniqueId, count)}
+            machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
+            onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
+          />
+        </div>
       </div>
 
       {isExpanded && hasChildren && (
