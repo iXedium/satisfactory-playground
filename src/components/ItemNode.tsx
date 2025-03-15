@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Icon, { IconSize } from './Icon';
-import { Recipe } from '../data/dexieDB';
+import { Recipe, Item } from '../data/dexieDB';
 import { theme } from '../styles/theme';
 import { getItemById } from "../data/dbQueries";
 import StyledSelect from './shared/StyledSelect';
@@ -37,7 +37,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   index = 0,
   onIconClick
 }) => {
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   }, [excess]);
 
   useEffect(() => {
-    getItemById(itemId).then(setItem);
+    getItemById(itemId).then(item => setItem(item || null));
   }, [itemId]);
 
   const getItemColor = () => {
