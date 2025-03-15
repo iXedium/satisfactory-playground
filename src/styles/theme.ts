@@ -9,6 +9,7 @@ export const theme = {
     // iconBg: "rgba(255, 122, 0, 0.15)",
     text: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
+    iconBg: '#333333',
     
     // Node colors - Industrial theme
     nodeRoot: '#ff7a00', // Primary orange for root

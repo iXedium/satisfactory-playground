@@ -1,4 +1,21 @@
 import { theme } from "./theme";
+import { styled } from '@mui/material/styles';
+
+// Create a styled component for the node container
+const StyledNodeContainer = styled('div')({
+  margin: '8px 4px',
+  padding: '12px',
+  background: theme.colors.darker,
+  borderRadius: theme.border.radius,
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  border: `1px solid ${theme.colors.dropdown.border}`,
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  maxWidth: 'fit-content',
+  position: 'relative',
+  '&:nth-child(odd)': {
+    backgroundColor: theme.colors.dark,
+  },
+});
 
 export const dependencyStyles: {
   listContainer: React.CSSProperties;
@@ -34,9 +51,6 @@ export const dependencyStyles: {
     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
     maxWidth: 'fit-content',
     position: 'relative',
-    '&:nth-child(odd)': {
-      backgroundColor: theme.colors.dark,
-    },
   },
   nodeContent: {
     display: 'flex',
@@ -46,3 +60,6 @@ export const dependencyStyles: {
     letterSpacing: '0.02em',
   },
 };
+
+// Export the styled component for use where nth-child is needed
+export const NodeContainer = StyledNodeContainer;

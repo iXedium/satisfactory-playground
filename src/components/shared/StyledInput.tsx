@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { styled } from '@mui/material/styles';
 import { theme } from '../../styles/theme';
 
@@ -33,15 +33,20 @@ const StyledInputBase = styled('input')<{ $variant?: 'default' | 'compact' }>(({
   }
 }));
 
-const StyledInput: React.FC<StyledInputProps> = ({ variant = 'default', style, ...props }) => {
-  return (
-    <StyledInputBase
-      $variant={variant}
-      className="no-spinners"
-      style={style}
-      {...props}
-    />
-  );
-};
+const StyledInput = forwardRef<HTMLInputElement, StyledInputProps>(
+  ({ variant = 'default', style, ...props }, ref) => {
+    return (
+      <StyledInputBase
+        ref={ref}
+        $variant={variant}
+        className="no-spinners"
+        style={style}
+        {...props}
+      />
+    );
+  }
+);
+
+StyledInput.displayName = 'StyledInput';
 
 export default StyledInput; 

@@ -49,46 +49,103 @@ const DependencyTester: React.FC = () => {
   // Fetch recipes when item changes
   useEffect(() => {
     if (selectedItem) {
+      console.log(`Fetching recipes for item: ${selectedItem}`);
+      
+      // Clear previous recipe selection
+      setSelectedRecipe("");
+      
       getRecipesForItem(selectedItem)
         .then((recipes) => {
-          setFilteredRecipes(recipes);
+          console.log(`Found ${recipes.length} recipes for ${selectedItem}:`, recipes);
+          
           if (recipes.length > 0) {
+            setFilteredRecipes(recipes);
+            
+            // Find the default recipe (either matching the item ID or the first one)
             const defaultRecipe = recipes.find((r) => r.id === selectedItem) || recipes[0];
-            setSelectedRecipe(defaultRecipe.id);
+            console.log(`Setting default recipe: ${defaultRecipe.id}`);
+            
+            // Use setTimeout to ensure the state update happens after the filteredRecipes are set
+            setTimeout(() => {
+              setSelectedRecipe(defaultRecipe.id);
+              console.log(`Selected recipe set to: ${defaultRecipe.id}`);
+            }, 0);
           } else {
+            console.warn(`No recipes found for ${selectedItem}`);
+            setFilteredRecipes([]);
             setSelectedRecipe("");
           }
         })
-        .catch(console.error);
+        .catch(error => {
+          console.error(`Error fetching recipes for ${selectedItem}:`, error);
+          setFilteredRecipes([]);
+          setSelectedRecipe("");
+        });
+    } else {
+      console.log('No item selected, clearing recipes');
+      setFilteredRecipes([]);
+      setSelectedRecipe("");
     }
   }, [selectedItem]);
+
+  // Debug when recipe selection changes
+  useEffect(() => {
+    console.log(`Recipe selection changed to: ${selectedRecipe}`);
+  }, [selectedRecipe]);
+
+  // Debug when filtered recipes change
+  useEffect(() => {
+    console.log(`Filtered recipes updated: ${filteredRecipes.length} recipes available`);
+  }, [filteredRecipes]);
 
   // Update calculate handler with dependency checking
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
-      // Check if calculation is needed
-      const needsCalculation = !lastCalculated 
-        || lastCalculated.item !== selectedItem
-        || lastCalculated.recipe !== selectedRecipe
-        || lastCalculated.count !== itemCount;
-
-      if (needsCalculation) {
-        const tree = await calculateDependencyTree(
-          selectedItem,
-          itemCount,
-          selectedRecipe,
-          recipeSelections
-        );
-        const accumulated = calculateAccumulatedFromTree(tree);
-        dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+      try {
+        console.log(`Calculating dependencies for ${selectedItem} using recipe ${selectedRecipe} with count ${itemCount}`);
         
-        // Update last calculated state
-        setLastCalculated({
-          item: selectedItem,
-          recipe: selectedRecipe,
-          count: itemCount
-        });
+        // Check if calculation is needed
+        const needsCalculation = !lastCalculated 
+          || lastCalculated.item !== selectedItem
+          || lastCalculated.recipe !== selectedRecipe
+          || lastCalculated.count !== itemCount;
+
+        if (needsCalculation) {
+          console.log("Recalculation needed, fetching dependency tree...");
+          const tree = await calculateDependencyTree(
+            selectedItem,
+            itemCount,
+            selectedRecipe,
+            recipeSelections
+          );
+          
+          if (!tree) {
+            console.error("Failed to calculate dependency tree");
+            return;
+          }
+          
+          console.log("Calculating accumulated dependencies...");
+          const accumulated = calculateAccumulatedFromTree(tree);
+          
+          console.log("Dispatching dependencies to store...");
+          dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+          
+          // Update last calculated state
+          setLastCalculated({
+            item: selectedItem,
+            recipe: selectedRecipe,
+            count: itemCount
+          });
+          
+          console.log("Calculation complete");
+        } else {
+          console.log("No recalculation needed, using cached results");
+        }
+      } catch (error) {
+        console.error("Error in handleCalculate:", error);
       }
+    } else {
+      console.warn("Cannot calculate: Missing item or recipe selection");
     }
   };
 
@@ -195,15 +252,40 @@ const DependencyTester: React.FC = () => {
                 </div>
               )}
             />
-            {filteredRecipes.length > 0 && (
-              <StyledSelect
-                value={selectedRecipe}
-                onChange={setSelectedRecipe}
-                options={filteredRecipes}
-                placeholder="Select a Recipe"
-                style={{ minWidth: '250px', maxWidth: '300px', flex: '1' }}
-              />
-            )}
+            
+            {/* Recipe dropdown - always show it but disable if no recipes */}
+            <StyledSelect
+              value={selectedRecipe}
+              onChange={setSelectedRecipe}
+              options={filteredRecipes}
+              placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
+              style={{ 
+                minWidth: '250px', 
+                maxWidth: '300px', 
+                flex: '1',
+                opacity: selectedItem ? 1 : 0.7
+              }}
+              disabled={!selectedItem || filteredRecipes.length === 0}
+              renderOption={(option) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 'bold' }}>{option.name}</span>
+                  </div>
+                  {option.id === selectedRecipe && (
+                    <div style={{ 
+                      fontSize: '12px', 
+                      color: theme.colors.textSecondary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span>Selected</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
+            
             <StyledInput
               type="number"
               min="1"

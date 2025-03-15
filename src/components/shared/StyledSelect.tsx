@@ -11,29 +11,32 @@ interface StyledSelectProps {
   style?: React.CSSProperties;
   renderOption?: (option: { id: string; name: string }) => React.ReactNode;
   variant?: 'default' | 'compact';
+  disabled?: boolean;
 }
 
 const SelectContainer = styled('div')({
   position: 'relative'
 });
 
-const SelectButton = styled('div')<{ $variant?: 'default' | 'compact' }>(({ $variant = 'default' }) => ({
-  height: $variant === 'compact' ? '28px' : '32px',
-  padding: $variant === 'compact' ? '4px 12px' : '6px 12px',
-  fontSize: $variant === 'compact' ? '13px' : '14px',
-  border: `2px solid ${theme.colors.dropdown.border}`,
-  borderRadius: theme.border.radius,
-  background: theme.colors.dark,
-  color: theme.colors.text,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-  transition: 'all 0.2s ease-in-out',
-  ':hover': {
-    borderColor: theme.colors.primary
-  }
-}));
+const SelectButton = styled('div')<{ $variant?: 'default' | 'compact'; $disabled?: boolean }>(
+  ({ $variant = 'default', $disabled = false }) => ({
+    height: $variant === 'compact' ? '28px' : '32px',
+    padding: $variant === 'compact' ? '4px 12px' : '6px 12px',
+    fontSize: $variant === 'compact' ? '13px' : '14px',
+    border: `2px solid ${$disabled ? theme.colors.dropdown.border + '80' : theme.colors.dropdown.border}`,
+    borderRadius: theme.border.radius,
+    background: $disabled ? theme.colors.dark + '80' : theme.colors.dark,
+    color: $disabled ? theme.colors.text + '80' : theme.colors.text,
+    cursor: $disabled ? 'not-allowed' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+    transition: 'all 0.2s ease-in-out',
+    ':hover': {
+      borderColor: $disabled ? theme.colors.dropdown.border + '80' : theme.colors.primary
+    }
+  })
+);
 
 const DropdownContainer = styled('div')({
   background: theme.colors.dark,
@@ -79,7 +82,8 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
   placeholder = "Select an option",
   style,
   renderOption,
-  variant = 'default'
+  variant = 'default',
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,12 +149,18 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     }
   };
 
+  const handleToggleDropdown = () => {
+    if (disabled) return;
+    setIsOpen(!isOpen);
+  };
+
   return (
     <SelectContainer style={style}>
       <SelectButton
         ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggleDropdown}
         $variant={variant}
+        $disabled={disabled}
       >
         {selectedOption ? (
           renderOption ? renderOption(selectedOption) : selectedOption.name
@@ -159,7 +169,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
 
       <DropdownPortal
         anchorEl={buttonRef.current}
-        open={isOpen}
+        open={isOpen && !disabled}
         onClose={() => {
           setIsOpen(false);
           setSearchTerm('');
