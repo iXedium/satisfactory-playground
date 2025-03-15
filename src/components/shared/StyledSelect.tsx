@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { styled } from '@mui/material/styles';
 import { theme } from '../../styles/theme';
 import DropdownPortal from '../DropdownPortal';
 
@@ -11,6 +12,65 @@ interface StyledSelectProps {
   renderOption?: (option: { id: string; name: string }) => React.ReactNode;
   variant?: 'default' | 'compact';
 }
+
+const SelectContainer = styled('div')({
+  position: 'relative'
+});
+
+const SelectButton = styled('div')<{ $variant?: 'default' | 'compact' }>(({ $variant = 'default' }) => ({
+  height: $variant === 'compact' ? '28px' : '32px',
+  padding: $variant === 'compact' ? '4px 12px' : '6px 12px',
+  fontSize: $variant === 'compact' ? '13px' : '14px',
+  border: `2px solid ${theme.colors.dropdown.border}`,
+  borderRadius: theme.border.radius,
+  background: theme.colors.dark,
+  color: theme.colors.text,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  transition: 'all 0.2s ease-in-out',
+  ':hover': {
+    borderColor: theme.colors.primary
+  }
+}));
+
+const DropdownContainer = styled('div')({
+  background: theme.colors.dark,
+  border: `2px solid ${theme.colors.dropdown.border}`,
+  borderRadius: theme.border.radius,
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+  maxHeight: '300px',
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  zIndex: 1000,
+  display: 'flex',
+  flexDirection: 'column'
+});
+
+const SearchInput = styled('input')({
+  width: '100%',
+  padding: '8px 12px',
+  paddingRight: '24px',
+  background: theme.colors.darker,
+  border: 'none',
+  borderBottom: `1px solid ${theme.colors.dropdown.border}`,
+  color: theme.colors.text,
+  fontSize: '14px',
+  outline: 'none',
+  boxSizing: 'border-box',
+  minWidth: 0
+});
+
+const DropdownItem = styled('div')<{ $highlighted?: boolean }>(({ $highlighted }) => ({
+  padding: '8px 12px',
+  cursor: 'pointer',
+  transition: 'background-color 0.2s ease',
+  backgroundColor: $highlighted ? theme.colors.dropdown.hoverBackground : 'transparent',
+  ':hover': {
+    backgroundColor: theme.colors.dropdown.hoverBackground
+  }
+}));
 
 const StyledSelect: React.FC<StyledSelectProps> = ({
   value,
@@ -51,35 +111,25 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
-          prev < filteredOptions.length - 1 ? prev + 1 : prev
-        );
-        // Scroll into view if needed
-        if (listRef.current && highlightedIndex >= 0) {
-          const items = listRef.current.getElementsByClassName('dropdown-item');
-          const nextItem = items[highlightedIndex + 1];
-          if (nextItem) {
-            nextItem.scrollIntoView({ block: 'nearest' });
-          }
-        }
+        setHighlightedIndex(prev => {
+          const next = prev + 1 >= filteredOptions.length ? 0 : prev + 1;
+          const element = listRef.current?.children[next];
+          element?.scrollIntoView({ block: 'nearest' });
+          return next;
+        });
         break;
-
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => prev > 0 ? prev - 1 : prev);
-        // Scroll into view if needed
-        if (listRef.current && highlightedIndex > 0) {
-          const items = listRef.current.getElementsByClassName('dropdown-item');
-          const prevItem = items[highlightedIndex - 1];
-          if (prevItem) {
-            prevItem.scrollIntoView({ block: 'nearest' });
-          }
-        }
+        setHighlightedIndex(prev => {
+          const next = prev - 1 < 0 ? filteredOptions.length - 1 : prev - 1;
+          const element = listRef.current?.children[next];
+          element?.scrollIntoView({ block: 'nearest' });
+          return next;
+        });
         break;
-
       case 'Enter':
         e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
+        if (highlightedIndex >= 0) {
           const selectedOption = filteredOptions[highlightedIndex];
           onChange(selectedOption.id);
           setIsOpen(false);
@@ -87,7 +137,6 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
           setHighlightedIndex(-1);
         }
         break;
-
       case 'Escape':
         setIsOpen(false);
         setSearchTerm('');
@@ -96,64 +145,17 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     }
   };
 
-  const baseStyles: React.CSSProperties = {
-    height: variant === 'compact' ? '28px' : '32px',
-    padding: variant === 'compact' ? '4px 12px' : '6px 12px',
-    fontSize: variant === 'compact' ? '13px' : '14px',
-    border: `2px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    background: theme.colors.dark,
-    color: theme.colors.text,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-    transition: 'all 0.2s ease-in-out',
-    '&:hover': {
-      borderColor: theme.colors.dropdown.borderHover
-    }
-  };
-
-  const dropdownStyles: React.CSSProperties = {
-    background: theme.colors.dark,
-    border: `2px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-    maxHeight: '300px',
-    overflowY: 'auto',
-    zIndex: 1000
-  };
-
-  const dropdownItemStyles: React.CSSProperties = {
-    padding: '8px 12px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s ease',
-    '&:hover': {
-      backgroundColor: theme.colors.dropdown.hoverBackground
-    }
-  };
-
-  const searchInputStyles: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    background: theme.colors.darker,
-    border: 'none',
-    borderBottom: `1px solid ${theme.colors.dropdown.border}`,
-    color: theme.colors.text,
-    fontSize: '14px',
-    outline: 'none'
-  };
-
   return (
-    <div style={{ position: 'relative', ...style }} ref={buttonRef}>
-      <div
+    <SelectContainer style={style}>
+      <SelectButton
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        style={baseStyles}
+        $variant={variant}
       >
         {selectedOption ? (
           renderOption ? renderOption(selectedOption) : selectedOption.name
         ) : placeholder}
-      </div>
+      </SelectButton>
 
       <DropdownPortal
         anchorEl={buttonRef.current}
@@ -164,40 +166,35 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
           setHighlightedIndex(-1);
         }}
       >
-        <div style={dropdownStyles}>
-          <input
+        <DropdownContainer>
+          <SearchInput
             ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search..."
-            style={searchInputStyles}
             onClick={(e) => e.stopPropagation()}
           />
-          <div ref={listRef} style={{ overflow: 'auto' }}>
+          <div ref={listRef} style={{ overflow: 'auto', minWidth: 0 }}>
             {filteredOptions.map((option, index) => (
-              <div
+              <DropdownItem
                 key={option.id}
-                className="dropdown-item"
                 onClick={() => {
                   onChange(option.id);
                   setIsOpen(false);
                   setSearchTerm('');
                   setHighlightedIndex(-1);
                 }}
-                style={{
-                  ...dropdownItemStyles,
-                  backgroundColor: index === highlightedIndex ? theme.colors.dropdown.hoverBackground : 'transparent'
-                }}
+                $highlighted={index === highlightedIndex}
               >
                 {renderOption ? renderOption(option) : option.name}
-              </div>
+              </DropdownItem>
             ))}
           </div>
-        </div>
+        </DropdownContainer>
       </DropdownPortal>
-    </div>
+    </SelectContainer>
   );
 };
 
