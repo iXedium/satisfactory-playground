@@ -49,29 +49,22 @@ const DependencyTester: React.FC = () => {
   // Fetch recipes when item changes
   useEffect(() => {
     if (selectedItem) {
-      console.log(`Fetching recipes for item: ${selectedItem}`);
-      
       // Clear previous recipe selection
       setSelectedRecipe("");
       
       getRecipesForItem(selectedItem)
         .then((recipes) => {
-          console.log(`Found ${recipes.length} recipes for ${selectedItem}:`, recipes);
-          
           if (recipes.length > 0) {
             setFilteredRecipes(recipes);
             
             // Find the default recipe (either matching the item ID or the first one)
             const defaultRecipe = recipes.find((r) => r.id === selectedItem) || recipes[0];
-            console.log(`Setting default recipe: ${defaultRecipe.id}`);
             
             // Use setTimeout to ensure the state update happens after the filteredRecipes are set
             setTimeout(() => {
               setSelectedRecipe(defaultRecipe.id);
-              console.log(`Selected recipe set to: ${defaultRecipe.id}`);
             }, 0);
           } else {
-            console.warn(`No recipes found for ${selectedItem}`);
             setFilteredRecipes([]);
             setSelectedRecipe("");
           }
@@ -82,28 +75,15 @@ const DependencyTester: React.FC = () => {
           setSelectedRecipe("");
         });
     } else {
-      console.log('No item selected, clearing recipes');
       setFilteredRecipes([]);
       setSelectedRecipe("");
     }
   }, [selectedItem]);
 
-  // Debug when recipe selection changes
-  useEffect(() => {
-    console.log(`Recipe selection changed to: ${selectedRecipe}`);
-  }, [selectedRecipe]);
-
-  // Debug when filtered recipes change
-  useEffect(() => {
-    console.log(`Filtered recipes updated: ${filteredRecipes.length} recipes available`);
-  }, [filteredRecipes]);
-
   // Update calculate handler with dependency checking
   const handleCalculate = async () => {
     if (selectedItem && selectedRecipe) {
       try {
-        console.log(`Calculating dependencies for ${selectedItem} using recipe ${selectedRecipe} with count ${itemCount}`);
-        
         // Check if calculation is needed
         const needsCalculation = !lastCalculated 
           || lastCalculated.item !== selectedItem
@@ -111,7 +91,6 @@ const DependencyTester: React.FC = () => {
           || lastCalculated.count !== itemCount;
 
         if (needsCalculation) {
-          console.log("Recalculation needed, fetching dependency tree...");
           const tree = await calculateDependencyTree(
             selectedItem,
             itemCount,
@@ -124,10 +103,8 @@ const DependencyTester: React.FC = () => {
             return;
           }
           
-          console.log("Calculating accumulated dependencies...");
           const accumulated = calculateAccumulatedFromTree(tree);
           
-          console.log("Dispatching dependencies to store...");
           dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
           
           // Update last calculated state
@@ -136,16 +113,10 @@ const DependencyTester: React.FC = () => {
             recipe: selectedRecipe,
             count: itemCount
           });
-          
-          console.log("Calculation complete");
-        } else {
-          console.log("No recalculation needed, using cached results");
         }
       } catch (error) {
         console.error("Error in handleCalculate:", error);
       }
-    } else {
-      console.warn("Cannot calculate: Missing item or recipe selection");
     }
   };
 

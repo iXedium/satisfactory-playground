@@ -15,9 +15,7 @@ const App: React.FC = () => {
         injectThemeVariables();
         
         // Initialize database
-        console.log("Initializing database...");
         await populateDexie();
-        console.log("Database initialization complete");
         setDbStatus('ready');
       } catch (error) {
         console.error("Failed to initialize application:", error);

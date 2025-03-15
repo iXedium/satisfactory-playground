@@ -6,6 +6,15 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     include: ["@mui/x-tree-view"]
+  },
+  server: {
+    hmr: {
+      overlay: true,
+      timeout: 5000
+    },
+    watch: {
+      usePolling: true,
+      interval: 100
+    }
   }
-
 })

@@ -20,23 +20,18 @@ export const getRecipeById = async (id: string): Promise<Recipe | undefined> => 
 
 // Retrieve recipes that produce a specific item.
 export const getRecipesForItem = async (itemId: string): Promise<Recipe[]> => {
-  console.log(`Looking for recipes with output: ${itemId}`);
   try {
     // First try to find recipes where the item is in the "out" field
     const recipes = await db.recipes.filter(recipe => {
       return recipe.out && Object.keys(recipe.out).includes(itemId);
     }).toArray();
     
-    console.log(`Found ${recipes.length} recipes for ${itemId} using filter method`);
-    
     if (recipes.length === 0) {
       // If no recipes found, try a different approach
-      console.log(`No recipes found with filter, trying direct query`);
       const allRecipes = await db.recipes.toArray();
       const matchingRecipes = allRecipes.filter(recipe => 
         recipe.out && Object.keys(recipe.out).includes(itemId)
       );
-      console.log(`Found ${matchingRecipes.length} recipes using direct query`);
       return matchingRecipes;
     }
     
@@ -78,13 +73,11 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
     // First get the recipe to find the producer
     const recipe = await getRecipeById(recipeId);
     if (!recipe || !recipe.producers || recipe.producers.length === 0) {
-      console.warn(`No producers found for recipe: ${recipeId}`);
       return null;
     }
     
     // Use the first producer in the list
     const producerId = recipe.producers[0];
-    console.log(`Looking for machine data for producer: ${producerId}`);
     
     try {
       // Fetch the machine data from data.json
@@ -103,11 +96,8 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
       );
       
       if (!machineData || !machineData.machine) {
-        console.warn(`No machine data found for producer: ${producerId}`);
         return null;
       }
-      
-      console.log(`Found machine data for ${machineData.name}`);
       
       // Return the machine data with its ID and name
       return {
@@ -119,7 +109,6 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
       console.error("Error fetching or parsing data.json:", fetchError);
       
       // Fallback to a default machine if data.json can't be loaded
-      console.log("Using fallback machine data");
       return {
         id: producerId,
         name: "Unknown Machine",
