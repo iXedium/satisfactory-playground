@@ -21,6 +21,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
   
+  const handleToggle = () => {
+    if (hasChildren) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
   // Calculate background color based on depth
   const getBackgroundColor = (depth: number) => {
     // Start with a lighter base and make subtle changes with depth
@@ -40,28 +46,26 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '16px 1fr',
+          gridTemplateColumns: '0px 1fr',
           alignItems: 'center',
-          gap: '2px',
+          gap: '1px',
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
-          paddingLeft: `${depth * 20}px`,
+          paddingLeft: `${depth * 16}px`,
           borderRadius: theme.border.radius
         }}
       >
         <div
-          onClick={(e) => {
-            e.stopPropagation();
-            if (hasChildren) setIsExpanded(!isExpanded);
-          }}
+          onClick={handleToggle}
           style={{ 
-            cursor: hasChildren ? 'pointer' : 'default',
             padding: '8px 0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '16px'
+            width: '14px',
+            cursor: hasChildren ? 'pointer' : 'default',
+            zIndex: 1  // Ensure chevron is above other elements
           }}
         >
           {hasChildren ? (isExpanded ? "▼" : "▶") : ""}
@@ -75,9 +79,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           recipes={node.availableRecipes}
           selectedRecipeId={node.selectedRecipeId}
           onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
-          style={{ backgroundColor: 'transparent' }}  // Remove ItemNode background
+          style={{ 
+            backgroundColor: 'transparent',
+            pointerEvents: 'none',
+            paddingLeft: '14px'  // Add padding to prevent content from overlapping chevron
+          }}
           excess={excessMap[node.uniqueId] || 0}
           onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
+          onIconClick={hasChildren ? handleToggle : undefined}
         />
       </div>
 

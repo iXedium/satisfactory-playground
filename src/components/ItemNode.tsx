@@ -19,6 +19,7 @@ interface ItemNodeProps {
   onExcessChange?: (excess: number) => void;
   style?: React.CSSProperties;
   index?: number; // Add index prop for alternating backgrounds
+  onIconClick?: () => void;  // Add new prop for icon click handling
 }
 
 const ItemNode: React.FC<ItemNodeProps> = ({
@@ -33,7 +34,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   excess = 0,
   onExcessChange,
   style,
-  index = 0
+  index = 0,
+  onIconClick
 }) => {
   const [item, setItem] = useState<any>(null);
   const [localExcess, setLocalExcess] = useState(excess);
@@ -76,7 +78,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   return (
     <div style={baseStyles}>
-      <div style={{ gridArea: 'icon' }}>
+      <div 
+        style={{ 
+          gridArea: 'icon',
+          cursor: onIconClick ? 'pointer' : 'default',
+          pointerEvents: 'auto'
+        }}
+        onClick={onIconClick}
+      >
         <Icon itemId={itemId} size={size} style={{ backgroundColor: theme.colors.dark }} />
       </div>
 
@@ -84,7 +93,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         gridArea: 'content',
         display: 'flex',
         flexDirection: 'column',
-        gap: '4px'
+        gap: '4px',
+        pointerEvents: 'auto'
       }}>
         <span>{item.name}</span>
         {recipes && recipes.length > 0 && onRecipeChange && (
@@ -103,7 +113,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: '4px',
-        alignItems: 'flex-end'
+        alignItems: 'flex-end',
+        pointerEvents: 'auto'
       }}>
         <span>{amount.toFixed(2)}/min</span>
         {onExcessChange && (
