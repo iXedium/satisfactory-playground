@@ -20,6 +20,19 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
+  
+  // Calculate background color based on depth
+  const getBackgroundColor = (depth: number) => {
+    const baseColor = theme.colors.nodeBg;
+    if (depth === 0) return baseColor;
+    
+    // Add a subtle darkening effect for each depth level
+    const darkenAmount = Math.min(depth * 0.05, 0.3); // Cap at 30% darker
+    return `linear-gradient(145deg, 
+      rgba(45, 55, 68, ${0.5 + darkenAmount}), 
+      rgba(58, 70, 84, ${0.5 + darkenAmount})
+    )`;
+  };
 
   return (
     <div>
@@ -29,9 +42,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           gridTemplateColumns: '20px 1fr',
           alignItems: 'center',
           gap: '4px',
-          backgroundColor: theme.colors.nodeBg,
+          background: getBackgroundColor(depth),
           marginBottom: '8px',
-          padding: '0 12px 0 0',  // Remove right padding to extend background
+          padding: '0 12px 0 0',
           paddingLeft: `${depth * 24}px`
         }}
       >

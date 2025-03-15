@@ -7,14 +7,15 @@ import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromT
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
-import ItemSelect from "./ItemSelect";
-import RecipeSelect from "./RecipeSelect";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
-import ViewModeSwitch from "./ViewModeSwitch"; // new import for view mode switch
+import ViewModeSwitch from "./ViewModeSwitch";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import ItemNode from "./ItemNode";
 import { theme } from '../styles/theme';
+import StyledSelect from "./shared/StyledSelect";
+import StyledInput from "./shared/StyledInput";
+import Icon from "./Icon";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -37,12 +38,6 @@ const DependencyTester: React.FC = () => {
     recipe: string;
     count: number;
   } | null>(null);
-
-  // Add new states for input focus and hover
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const [isInputHovered, setIsInputHovered] = useState(false);
-  const [isButtonHovered, setIsButtonHovered] = useState(false);
-  const [isButtonActive, setIsButtonActive] = useState(false);
 
   // Load components on mount
   useEffect(() => {
@@ -148,9 +143,9 @@ const DependencyTester: React.FC = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container" >
       <div style={{
-        padding: '16px',
+        padding: '12px',
         background: theme.colors.dark,
         borderRadius: theme.border.radius,
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
@@ -161,90 +156,64 @@ const DependencyTester: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '12px'
         }}>
           {/* Left group: Production controls */}
           <div style={{ 
             display: 'flex', 
-            gap: '16px', 
+            gap: '12px', 
             alignItems: 'center',
             flexWrap: 'wrap',
             flex: '1'
           }}>
-            <div style={{ 
-              minWidth: '250px',
-              maxWidth: '300px',
-              flex: '1'
-            }}>
-              <ItemSelect
-                items={items}
-                value={selectedItem}
-                onChange={setSelectedItem}
-                placeholder="Select an Item"
-              />
-            </div>
+            <StyledSelect
+              value={selectedItem}
+              onChange={setSelectedItem}
+              options={items}
+              placeholder="Select an Item"
+              style={{ minWidth: '250px', maxWidth: '300px', flex: '1' }}
+              renderOption={(option) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.darker }} />
+                  {option.name}
+                </div>
+              )}
+            />
             {filteredRecipes.length > 0 && (
-              <div style={{ 
-                minWidth: '250px',
-                maxWidth: '300px',
-                flex: '1'
-              }}>
-                <RecipeSelect
-                  recipes={filteredRecipes}
-                  value={selectedRecipe}
-                  onChange={setSelectedRecipe}
-                  placeholder="Select a Recipe"
-                />
-              </div>
+              <StyledSelect
+                value={selectedRecipe}
+                onChange={setSelectedRecipe}
+                options={filteredRecipes}
+                placeholder="Select a Recipe"
+                style={{ minWidth: '250px', maxWidth: '300px', flex: '1' }}
+              />
             )}
-            <input
+            <StyledInput
               type="number"
               min="1"
               value={itemCount}
               onChange={(e) => setItemCount(Number(e.target.value))}
-              onFocus={() => setIsInputFocused(true)}
-              onBlur={() => setIsInputFocused(false)}
-              onMouseEnter={() => setIsInputHovered(true)}
-              onMouseLeave={() => setIsInputHovered(false)}
               placeholder="Count"
-              style={{
-                width: '120px',
-                height: '40px',
-                textAlign: 'right',
-                paddingRight: '12px',
-                paddingLeft: '12px',
-                border: `2px solid ${isInputFocused ? theme.colors.primary : isInputHovered ? theme.colors.dropdown.border : theme.colors.dropdown.border}`,
-                borderRadius: theme.border.radius,
-                background: theme.colors.dark,
-                color: theme.colors.text,
-                fontSize: '14px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                transition: 'all 0.2s ease-in-out',
-                outline: 'none'
-              }}
+              style={{ width: '120px' }}
             />
           </div>
 
           {/* Right group: Calculate button and view toggle */}
           <div style={{ 
             display: 'flex', 
-            gap: '16px', 
+            gap: '12px', 
             alignItems: 'center',
             flexShrink: 0
           }}>
             <button
               onClick={handleCalculate}
-              onMouseEnter={() => setIsButtonHovered(true)}
-              onMouseLeave={() => setIsButtonHovered(false)}
-              onMouseDown={() => setIsButtonActive(true)}
-              onMouseUp={() => setIsButtonActive(false)}
               style={{
-                height: '40px',
+                height: '32px',
                 padding: '0 24px',
                 fontSize: '14px',
                 fontWeight: 500,
                 borderRadius: theme.border.radius,
-                background: isButtonHovered ? theme.colors.buttonHover : theme.colors.buttonDefault,
+                background: theme.colors.buttonDefault,
                 color: theme.colors.text,
                 border: 'none',
                 cursor: 'pointer',
@@ -252,17 +221,16 @@ const DependencyTester: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s ease-in-out',
-                boxShadow: isButtonActive ? '0 2px 4px rgba(0, 0, 0, 0.2)' : isButtonHovered ? '0 3px 6px rgba(0, 0, 0, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.2)',
-                transform: isButtonActive ? 'translateY(0)' : isButtonHovered ? 'translateY(-1px)' : 'none'
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
             >
               Calculate
             </button>
             <ViewModeSwitch
               mode={viewMode === "tree" ? "tree" : "list"}
-              onToggle={(mode) =>
-                setViewMode(mode === "list" ? "accumulated" : "tree")
-              }
+              onToggle={(mode) => setViewMode(mode === "list" ? "accumulated" : "tree")}
             />
           </div>
         </div>
@@ -277,15 +245,17 @@ const DependencyTester: React.FC = () => {
                   itemId={dependencies.selectedItem}
                   amount={dependencies.itemCount}
                   isRoot={true}
+                  index={0}
                 />
               </li>
             )}
-            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount]) => (
+            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount], index) => (
               <li key={item} style={{ marginBottom: "8px" }}>
                 <ItemNode
                   itemId={item}
                   amount={amount}
                   isByproduct={amount < 0}
+                  index={index + 1}
                 />
               </li>
             ))}
@@ -294,15 +264,16 @@ const DependencyTester: React.FC = () => {
       )}
 
       {dependencies.dependencyTree && (
-        <div style={{ display: viewMode === "tree" ? "block" : "none", width: "100%", marginTop: "16px" }}>
-          <div style={{ ...dependencyStyles.listContainer }}>
-            <DependencyTree 
-              dependencyTree={dependencies.dependencyTree}
-              onRecipeChange={handleTreeRecipeChange}
-              onExcessChange={handleExcessChange}
-              excessMap={excessMap}
-            />
-          </div>
+        <div style={{ 
+          ...dependencyStyles.listContainer, 
+          display: viewMode === "tree" ? "block" : "none"
+        }}>
+          <DependencyTree 
+            dependencyTree={dependencies.dependencyTree}
+            onRecipeChange={handleTreeRecipeChange}
+            onExcessChange={handleExcessChange}
+            excessMap={excessMap}
+          />
         </div>
       )}
     </div>
