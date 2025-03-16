@@ -8,7 +8,6 @@ import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { dependencyStyles } from "../styles/dependencyStyles";
 import { getComponents, getRecipesForItem } from "../data/dbQueries";
-import ViewModeSwitch from "./ViewModeSwitch";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import { theme } from '../styles/theme';
@@ -16,6 +15,7 @@ import StyledSelect from "./shared/StyledSelect";
 import StyledInput from "./shared/StyledInput";
 import Icon from "./Icon";
 import AccumulatedView from "./AccumulatedView";
+import CommandBar from "./CommandBar";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -198,7 +198,13 @@ const DependencyTester: React.FC = () => {
   };
 
   return (
-    <div className="container" >
+    <div className="container">
+      {/* Add CommandBar at the top */}
+      <CommandBar 
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+      
       <div style={{
         padding: '12px',
         background: theme.colors.dark,
@@ -214,7 +220,7 @@ const DependencyTester: React.FC = () => {
           gap: '12px',
           width: '100%'
         }}>
-          {/* Left group: Production controls */}
+          {/* Left group: Item, recipe, and count selectors */}
           <div style={{ 
             display: 'flex', 
             gap: '12px', 
@@ -288,7 +294,7 @@ const DependencyTester: React.FC = () => {
             />
           </div>
 
-          {/* Right group: Calculate button and view toggle */}
+          {/* Right group: Calculate button only (removed view toggle) */}
           <div style={{ 
             display: 'flex', 
             gap: '12px', 
@@ -320,10 +326,6 @@ const DependencyTester: React.FC = () => {
             >
               Calculate
             </button>
-            <ViewModeSwitch
-              mode={viewMode === "tree" ? "tree" : "list"}
-              onToggle={(mode) => setViewMode(mode === "list" ? "accumulated" : "tree")}
-            />
           </div>
         </div>
       </div>

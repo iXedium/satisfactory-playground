@@ -361,7 +361,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 {nominalRate.toFixed(2)}
               </span>
             )}
-          </div>
+        </div>
 
           {/* Recipe selector - aligned to bottom */}
           <div
@@ -506,7 +506,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               {/* Multiplier */}
               <StyledInput
                 ref={machineMultiplierRef}
-                type="number"
+            type="number"
                 value={localMachineMultiplier}
                 onChange={(e) => {
                   e.stopPropagation();

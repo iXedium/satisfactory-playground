@@ -3,8 +3,11 @@ import { Switch, styled } from "@mui/material";
 import { theme } from "../styles/theme";
 
 interface ViewModeSwitchProps {
-  mode: "list" | "tree";
-  onToggle: (mode: "list" | "tree") => void;
+  // Support both old and new interfaces
+  mode?: "list" | "tree";
+  onToggle?: (mode: "list" | "tree") => void;
+  viewMode?: "tree" | "accumulated";
+  onChange?: (mode: "tree" | "accumulated") => void;
 }
 
 const OrangeSwitch = styled(Switch)({
@@ -22,13 +25,35 @@ const OrangeSwitch = styled(Switch)({
   },
 });
 
-const ViewModeSwitch: React.FC<ViewModeSwitchProps> = ({ mode, onToggle }) => {
+const ViewModeSwitch: React.FC<ViewModeSwitchProps> = ({ 
+  mode, 
+  onToggle,
+  viewMode,
+  onChange,
+  ...props
+}) => {
+  // Handle both interfaces
+  const isTreeMode = mode !== undefined ? mode === "tree" : viewMode === "tree";
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    
+    // Call the appropriate handler based on which props were provided
+    if (onToggle) {
+      onToggle(isChecked ? "tree" : "list");
+    }
+    
+    if (onChange) {
+      onChange(isChecked ? "tree" : "accumulated");
+    }
+  };
+  
   return (
     <OrangeSwitch
-      checked={mode === "tree"}
-      onChange={(e) => onToggle(e.target.checked ? "tree" : "list")}
+      checked={isTreeMode}
+      onChange={handleChange}
       size="small"
-      data-view-mode-switch
+      {...props}
     />
   );
 };
