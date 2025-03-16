@@ -73,11 +73,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
 
   // Styles
   const commandBarStyle: React.CSSProperties = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
     backgroundColor: theme.colors.dark,
     padding: "12px 16px",
     borderBottom: `1px solid ${theme.colors.dropdown.border}`,
@@ -86,8 +81,8 @@ const CommandBar: React.FC<CommandBarProps> = ({
     gap: "12px",
     boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
     borderRadius: theme.border.radius,
-    marginBottom: "16px",
     width: "100%",
+    boxSizing: "border-box",
   };
 
   const rowStyle: React.CSSProperties = {
@@ -363,26 +358,35 @@ const CommandBar: React.FC<CommandBarProps> = ({
         {/* Add Button */}
         <button
           onClick={onCalculate}
+          disabled={!selectedItem || !selectedRecipe}
           style={{
             height: '44px',
             padding: '0 24px',
             fontSize: '14px',
             fontWeight: 500,
             borderRadius: theme.border.radius,
-            background: theme.colors.buttonDefault,
-            color: theme.colors.text,
+            background: (!selectedItem || !selectedRecipe) ? theme.colors.darker : theme.colors.buttonDefault,
+            color: (!selectedItem || !selectedRecipe) ? theme.colors.textSecondary : theme.colors.text,
             border: 'none',
-            cursor: 'pointer',
+            cursor: (!selectedItem || !selectedRecipe) ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             transition: 'all 0.2s ease-in-out',
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
             whiteSpace: 'nowrap',
-            marginLeft: 'auto'
+            marginRight: '16px'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
+          onMouseEnter={(e) => {
+            if (selectedItem && selectedRecipe) {
+              e.currentTarget.style.backgroundColor = theme.colors.buttonHover;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (selectedItem && selectedRecipe) {
+              e.currentTarget.style.backgroundColor = theme.colors.buttonDefault;
+            }
+          }}
         >
           Add
         </button>

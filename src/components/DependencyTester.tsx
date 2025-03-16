@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
@@ -29,6 +29,9 @@ const DependencyTester: React.FC = () => {
   const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
   const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
+  const [commandBarHeight, setCommandBarHeight] = useState(100);
+  
+  const commandBarRef = useRef<HTMLDivElement>(null);
 
   // Add state to track last calculated values
   const [lastCalculated, setLastCalculated] = useState<{
@@ -41,6 +44,40 @@ const DependencyTester: React.FC = () => {
   useEffect(() => {
     getComponents().then(setItems).catch(console.error);
   }, []);
+
+  // Update command bar height on resize and when add item section is toggled
+  useEffect(() => {
+    const updateCommandBarHeight = () => {
+      // Force a reflow to ensure we get the correct height
+      setTimeout(() => {
+        if (commandBarRef.current) {
+          const height = commandBarRef.current.getBoundingClientRect().height;
+          console.log("CommandBar height:", height);
+          setCommandBarHeight(height - 10); // Add some extra padding
+        }
+      }, 0);
+    };
+
+    // Initial measurement
+    updateCommandBarHeight();
+
+    // Set up resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      updateCommandBarHeight();
+    });
+    
+    if (commandBarRef.current) {
+      resizeObserver.observe(commandBarRef.current);
+    }
+
+    // Set up window resize listener for good measure
+    window.addEventListener('resize', updateCommandBarHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateCommandBarHeight);
+    };
+  }, [isAddItemCollapsed]);
 
   // Update calculate handler with dependency checking
   const handleCalculate = async () => {
@@ -167,22 +204,33 @@ const DependencyTester: React.FC = () => {
       width: '100%',
       position: 'relative',
       overflow: 'auto',
-      paddingTop: isAddItemCollapsed ? '80px' : '160px', // Adjust padding based on Add Item section visibility
+      paddingTop: `${commandBarHeight}px`, // Dynamic padding based on CommandBar height
     }}>
       {/* CommandBar with integrated item selection */}
-      <CommandBar 
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        items={items}
-        selectedItem={selectedItem}
-        onItemChange={setSelectedItem}
-        selectedRecipe={selectedRecipe}
-        onRecipeChange={setSelectedRecipe}
-        itemCount={itemCount}
-        onItemCountChange={setItemCount}
-        onCalculate={handleCalculate}
-        onAddItemSectionToggle={setIsAddItemCollapsed}
-      />
+      <div 
+        ref={commandBarRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+        }}
+      >
+        <CommandBar 
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          items={items}
+          selectedItem={selectedItem}
+          onItemChange={setSelectedItem}
+          selectedRecipe={selectedRecipe}
+          onRecipeChange={setSelectedRecipe}
+          itemCount={itemCount}
+          onItemCountChange={setItemCount}
+          onCalculate={handleCalculate}
+          onAddItemSectionToggle={setIsAddItemCollapsed}
+        />
+      </div>
 
       {/* Main content area */}
       {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
