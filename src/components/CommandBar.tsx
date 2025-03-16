@@ -6,7 +6,7 @@ import StyledInput from "./shared/StyledInput";
 import Icon from "./Icon";
 import { Item, Recipe } from "../data/dexieDB";
 import { getRecipesForItem } from "../data/dbQueries";
-import CustomCheckbox from "./shared/CustomCheckbox";
+import StyledCheckbox from "./shared/StyledCheckbox";
 
 interface CommandBarProps {
   viewMode: "tree" | "accumulated";
@@ -207,25 +207,39 @@ const CommandBar: React.FC<CommandBarProps> = ({
               onChange={handleDepthChange}
               variant="compact"
               style={{ width: "120px" }}
+              renderOption={(option) => (
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    padding: '4px 8px',
+                    backgroundColor: option.id === "all" ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                    borderRadius: theme.border.radius,
+                  }}
+                >
+                  <span>{option.name}</span>
+                </div>
+              )}
             />
           </div>
         </div>
 
         {/* Display Options Section */}
         <div style={sectionStyle}>
-          <CustomCheckbox 
+          <StyledCheckbox 
             checked={accumulateExtensions} 
             onChange={toggleAccumulateExtensions}
             label="Accumulate Extensions"
           />
           
-          <CustomCheckbox 
+          <StyledCheckbox 
             checked={showMachines} 
             onChange={toggleShowMachines}
             label="Show Machines"
           />
           
-          <CustomCheckbox 
+          <StyledCheckbox 
             checked={compactView} 
             onChange={toggleCompactView}
             label="Compact View"
@@ -290,7 +304,14 @@ const CommandBar: React.FC<CommandBarProps> = ({
             flex: '1 1 auto'
           }}
           renderOption={(option) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              padding: '4px 8px',
+              backgroundColor: option.id === selectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+              borderRadius: theme.border.radius,
+            }}>
               <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
               {option.name}
             </div>

@@ -1,40 +1,34 @@
 import React from "react";
 import { theme } from "../../styles/theme";
 
-interface CustomCheckboxProps {
+interface StyledCheckboxProps {
   checked?: boolean;
   onChange?: () => void;
   label?: string;
 }
 
-const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ 
+const StyledCheckbox: React.FC<StyledCheckboxProps> = ({ 
   checked = false, 
   onChange,
   label
 }) => {
-  const customCheckboxStyle: React.CSSProperties = {
+  const checkboxStyle: React.CSSProperties = {
     position: "relative",
-    width: "16px",
-    height: "16px",
+    width: "24px",
+    height: "24px",
     backgroundColor: theme.colors.darker,
-    borderRadius: "3px",
+    borderRadius: "4px",
     border: `1px solid ${theme.colors.dropdown.border}`,
     display: "inline-block",
     cursor: "pointer",
   };
 
-  const customCheckboxCheckedStyle: React.CSSProperties = {
-    ...customCheckboxStyle,
-    backgroundColor: theme.colors.darker,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-  };
-
   const checkmarkStyle: React.CSSProperties = {
     position: "absolute",
-    top: "3px",
-    left: "3px",
-    width: "8px",
-    height: "8px",
+    top: "2px",
+    left: "2px",
+    width: "18px",
+    height: "18px",
     backgroundColor: theme.colors.primary,
     borderRadius: "2px",
   };
@@ -58,11 +52,8 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
 
   if (label) {
     return (
-      <label style={checkboxLabelStyle}>
-        <div 
-          style={checked ? customCheckboxCheckedStyle : customCheckboxStyle}
-          onClick={handleClick}
-        >
+      <label style={checkboxLabelStyle} onClick={handleClick}>
+        <div style={checkboxStyle}>
           {checked && <span style={checkmarkStyle}></span>}
         </div>
         {label}
@@ -72,7 +63,7 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
 
   return (
     <div 
-      style={checked ? customCheckboxCheckedStyle : customCheckboxStyle}
+      style={checkboxStyle}
       onClick={handleClick}
     >
       {checked && <span style={checkmarkStyle}></span>}
@@ -80,4 +71,4 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
   );
 };
 
-export default CustomCheckbox; 
+export default StyledCheckbox; 
