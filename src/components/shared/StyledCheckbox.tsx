@@ -14,8 +14,8 @@ const StyledCheckbox: React.FC<StyledCheckboxProps> = ({
 }) => {
   const checkboxStyle: React.CSSProperties = {
     position: "relative",
-    width: "24px",
-    height: "24px",
+    width: "25px",
+    height: "25px",
     backgroundColor: theme.colors.darker,
     borderRadius: "4px",
     border: `1px solid ${theme.colors.dropdown.border}`,
@@ -25,10 +25,10 @@ const StyledCheckbox: React.FC<StyledCheckboxProps> = ({
 
   const checkmarkStyle: React.CSSProperties = {
     position: "absolute",
-    top: "2px",
-    left: "2px",
-    width: "18px",
-    height: "18px",
+    top: "3px",
+    left: "3px",
+    width: "19px",
+    height: "19px",
     backgroundColor: theme.colors.primary,
     borderRadius: "2px",
   };
