@@ -44,6 +44,30 @@ const CommandBar: React.FC<CommandBarProps> = ({
   const handleToggleMachines = () => {};
   const handleSearch = () => {};
   const handleToggleCompact = () => {};
+  
+  // State for checkboxes
+  const [accumulateExtensions, setAccumulateExtensions] = useState(false);
+  const [showMachines, setShowMachines] = useState(true);
+  const [compactView, setCompactView] = useState(false);
+  
+  // Checkbox handlers
+  const toggleAccumulateExtensions = () => {
+    setAccumulateExtensions(!accumulateExtensions);
+    // Logic will be added later
+    handleAccumulateExtensions();
+  };
+  
+  const toggleShowMachines = () => {
+    setShowMachines(!showMachines);
+    // Logic will be added later
+    handleToggleMachines();
+  };
+  
+  const toggleCompactView = () => {
+    setCompactView(!compactView);
+    // Logic will be added later
+    handleToggleCompact();
+  };
 
   // Fetch recipes when item changes
   useEffect(() => {
@@ -51,6 +75,16 @@ const CommandBar: React.FC<CommandBarProps> = ({
       getRecipesForItem(selectedItem)
         .then((recipes) => {
           setFilteredRecipes(recipes);
+          
+          // Find the recipe with the same name as the item, or fall back to the first recipe
+          if (recipes.length > 0) {
+            const matchingRecipe = recipes.find(recipe => recipe.id === selectedItem);
+            if (matchingRecipe) {
+              onRecipeChange(matchingRecipe.id);
+            } else {
+              onRecipeChange(recipes[0].id);
+            }
+          }
         })
         .catch(error => {
           console.error(`Error fetching recipes for ${selectedItem}:`, error);
@@ -59,7 +93,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
     } else {
       setFilteredRecipes([]);
     }
-  }, [selectedItem]);
+  }, [selectedItem, onRecipeChange]);
 
   // Depth options for dropdown
   const depthOptions = [
@@ -170,8 +204,11 @@ const CommandBar: React.FC<CommandBarProps> = ({
     <div 
       style={checked ? customCheckboxCheckedStyle : customCheckboxStyle}
       onClick={(e) => {
+        e.preventDefault();
         e.stopPropagation();
-        if (onChange) onChange();
+        if (onChange) {
+          onChange();
+        }
       }}
     >
       {checked && <span style={checkmarkStyle}></span>}
@@ -228,17 +265,17 @@ const CommandBar: React.FC<CommandBarProps> = ({
         {/* Display Options Section */}
         <div style={sectionStyle}>
           <label style={checkboxLabelStyle}>
-            <CustomCheckbox onChange={handleAccumulateExtensions} />
+            <CustomCheckbox onChange={toggleAccumulateExtensions} />
             Accumulate Extensions
           </label>
           
           <label style={checkboxLabelStyle}>
-            <CustomCheckbox checked={true} onChange={handleToggleMachines} />
+            <CustomCheckbox checked={showMachines} onChange={toggleShowMachines} />
             Show Machines
           </label>
           
           <label style={checkboxLabelStyle}>
-            <CustomCheckbox onChange={handleToggleCompact} />
+            <CustomCheckbox checked={compactView} onChange={toggleCompactView} />
             Compact View
           </label>
         </div>
