@@ -31,6 +31,7 @@ interface ListNodeProps {
   machineMultiplier?: number;
   onMachineMultiplierChange?: (multiplier: number) => void;
   onConsumerClick?: (nodeId: string) => void;
+  showExtensions?: boolean;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -49,12 +50,18 @@ const ListNode: React.FC<ListNodeProps> = ({
   machineMultiplier = 1,
   onMachineMultiplierChange,
   onConsumerClick,
+  showExtensions = true,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
   const [consumers, setConsumers] = useState<ConsumptionDetail[]>([]);
   const dependencyTree = useSelector((state: RootState) => state.dependencies.dependencyTree);
   const nodeRef = useRef<HTMLDivElement>(null);
+  
+  // Update expanded state when showExtensions changes
+  useEffect(() => {
+    setExpanded(showExtensions);
+  }, [showExtensions]);
 
   // Fetch item data
   useEffect(() => {

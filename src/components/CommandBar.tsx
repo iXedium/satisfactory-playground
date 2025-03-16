@@ -20,7 +20,18 @@ interface CommandBarProps {
   onItemCountChange: (count: number) => void;
   onCalculate: () => void;
   onAddItemSectionToggle?: (isCollapsed: boolean) => void;
+  onExpandCollapseAll?: (expand: boolean) => void;
+  onShowExtensionsChange?: (show: boolean) => void;
 }
+
+const depthOptions = [
+  { id: "all", name: "All" },
+  { id: "1", name: "1" },
+  { id: "2", name: "2" },
+  { id: "3", name: "3" },
+  { id: "4", name: "4" },
+  { id: "5", name: "5" },
+];
 
 const CommandBar: React.FC<CommandBarProps> = ({
   viewMode,
@@ -34,22 +45,25 @@ const CommandBar: React.FC<CommandBarProps> = ({
   onItemCountChange,
   onCalculate,
   onAddItemSectionToggle,
+  onExpandCollapseAll,
+  onShowExtensionsChange,
 }) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-
-  // Placeholder functions for future implementation
-  const handleExpandCollapseAll = () => {};
-  const handleDepthChange = () => {};
-  const handleAccumulateExtensions = () => {};
-  const handleToggleMachines = () => {};
-  const handleSearch = () => {};
-  const handleToggleCompact = () => {};
   
   // State for checkboxes
   const [accumulateExtensions, setAccumulateExtensions] = useState(false);
   const [showMachines, setShowMachines] = useState(true);
   const [compactView, setCompactView] = useState(false);
+  const [showExtensions, setShowExtensions] = useState(true);
+  const [expandAll, setExpandAll] = useState(true);
+  
+  // Placeholder functions for future implementation
+  const handleDepthChange = () => {};
+  const handleAccumulateExtensions = () => {};
+  const handleToggleMachines = () => {};
+  const handleSearch = () => {};
+  const handleToggleCompact = () => {};
   
   // Checkbox handlers
   const toggleAccumulateExtensions = () => {
@@ -69,42 +83,57 @@ const CommandBar: React.FC<CommandBarProps> = ({
     // Logic will be added later
     handleToggleCompact();
   };
+  
+  // Handle show extensions toggle (for list view)
+  const toggleShowExtensions = () => {
+    const newValue = !showExtensions;
+    setShowExtensions(newValue);
+    // Call the parent's show extensions function
+    if (onShowExtensionsChange) {
+      onShowExtensionsChange(newValue);
+    }
+  };
+  
+  // Handle expand/collapse all button (for tree view)
+  const handleExpandCollapseAll = () => {
+    const newValue = !expandAll;
+    setExpandAll(newValue);
+    if (onExpandCollapseAll) {
+      onExpandCollapseAll(newValue);
+    }
+  };
 
   // Fetch recipes when item changes
   useEffect(() => {
     if (selectedItem) {
-      getRecipesForItem(selectedItem)
-        .then((recipes) => {
-          setFilteredRecipes(recipes);
-          
-          // Find the recipe with the same name as the item, or fall back to the first recipe
-          if (recipes.length > 0) {
-            const matchingRecipe = recipes.find(recipe => recipe.id === selectedItem);
-            if (matchingRecipe) {
-              onRecipeChange(matchingRecipe.id);
-            } else {
-              onRecipeChange(recipes[0].id);
-            }
+      getRecipesForItem(selectedItem).then((recipes) => {
+        setFilteredRecipes(recipes || []);
+        
+        // If we have recipes and no recipe is selected, select the first one
+        // or the one that matches the item name
+        if (recipes && recipes.length > 0 && !selectedRecipe) {
+          // Try to find a recipe with the same name as the item
+          const matchingRecipe = recipes.find(r => r.name === items.find(i => i.id === selectedItem)?.name);
+          if (matchingRecipe) {
+            onRecipeChange(matchingRecipe.id);
+          } else {
+            onRecipeChange(recipes[0].id);
           }
-        })
-        .catch(error => {
-          console.error(`Error fetching recipes for ${selectedItem}:`, error);
-          setFilteredRecipes([]);
-        });
+        }
+      });
     } else {
       setFilteredRecipes([]);
     }
-  }, [selectedItem, onRecipeChange]);
+  }, [selectedItem, items, selectedRecipe, onRecipeChange]);
 
-  // Depth options for dropdown
-  const depthOptions = [
-    { id: "all", name: "All Depths" },
-    { id: "1", name: "Depth 1" },
-    { id: "2", name: "Depth 2" },
-    { id: "3", name: "Depth 3" },
-    { id: "4", name: "Depth 4" },
-    { id: "5", name: "Depth 5" },
-  ];
+  // Notify parent when section is toggled
+  const toggleItemSection = () => {
+    const newState = !isItemSectionCollapsed;
+    setIsItemSectionCollapsed(newState);
+    if (onAddItemSectionToggle) {
+      onAddItemSectionToggle(newState);
+    }
+  };
 
   // Styles
   const commandBarStyle: React.CSSProperties = {
@@ -164,15 +193,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
     width: "200px",
   };
 
-  // Notify parent when section is toggled
-  const toggleItemSection = () => {
-    const newState = !isItemSectionCollapsed;
-    setIsItemSectionCollapsed(newState);
-    if (onAddItemSectionToggle) {
-      onAddItemSectionToggle(newState);
-    }
-  };
-
   return (
     <div style={commandBarStyle}>
       {/* Row 1 - Main controls */}
@@ -192,11 +212,11 @@ const CommandBar: React.FC<CommandBarProps> = ({
           <button 
             style={buttonStyle}
             onClick={handleExpandCollapseAll}
-            title="Expand or collapse all extensions"
+            title={expandAll ? "Collapse all nodes" : "Expand all nodes"}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
           >
-            Expand All
+            {expandAll ? "Collapse All" : "Expand All"}
           </button>
           
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -227,6 +247,12 @@ const CommandBar: React.FC<CommandBarProps> = ({
 
         {/* Display Options Section */}
         <div style={sectionStyle}>
+          <StyledCheckbox 
+            checked={showExtensions} 
+            onChange={toggleShowExtensions}
+            label="Show Extensions"
+          />
+          
           <StyledCheckbox 
             checked={accumulateExtensions} 
             onChange={toggleAccumulateExtensions}

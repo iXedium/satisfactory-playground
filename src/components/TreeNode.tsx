@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
 import { theme } from '../styles/theme';
@@ -13,6 +13,7 @@ interface TreeNodeProps {
   onMachineCountChange?: (nodeId: string, count: number) => void;
   machineMultiplierMap?: Record<string, number>;
   onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
+  expandedNodes?: Record<string, boolean>;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -24,10 +25,18 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   machineCountMap = {},
   onMachineCountChange,
   machineMultiplierMap = {},
-  onMachineMultiplierChange
+  onMachineMultiplierChange,
+  expandedNodes = {}
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
+  
+  // Update isExpanded when expandedNodes changes
+  useEffect(() => {
+    if (node.uniqueId in expandedNodes) {
+      setIsExpanded(expandedNodes[node.uniqueId]);
+    }
+  }, [expandedNodes, node.uniqueId]);
   
   const handleToggle = () => {
     if (hasChildren) {
@@ -122,6 +131,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               onMachineCountChange={onMachineCountChange}
               machineMultiplierMap={machineMultiplierMap}
               onMachineMultiplierChange={onMachineMultiplierChange}
+              expandedNodes={expandedNodes}
             />
           ))}
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
-import { calculateDependencyTree } from "../utils/calculateDependencyTree";
+import { calculateDependencyTree, DependencyNode } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
 import { setDependencies } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
@@ -30,8 +30,12 @@ const DependencyTester: React.FC = () => {
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
   const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
   const [commandBarHeight, setCommandBarHeight] = useState(100);
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [showExtensions, setShowExtensions] = useState(true);
   
   const commandBarRef = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const accumulatedViewRef = useRef<HTMLDivElement>(null);
 
   // Add state to track last calculated values
   const [lastCalculated, setLastCalculated] = useState<{
@@ -195,6 +199,53 @@ const DependencyTester: React.FC = () => {
       [nodeId]: multiplier
     }));
   };
+  
+  // Handle expand/collapse all nodes in tree view
+  const handleExpandCollapseAll = (expand: boolean) => {
+    if (!dependencies.dependencyTree) return;
+    
+    // Create a function to recursively collect all node IDs
+    const collectNodeIds = (node: DependencyNode, ids: Record<string, boolean> = {}) => {
+      if (!node) return ids;
+      
+      // Set this node's expanded state
+      ids[node.uniqueId] = expand;
+      
+      // Process children recursively
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          collectNodeIds(child, ids);
+        }
+      }
+      
+      return ids;
+    };
+    
+    // Collect all node IDs and set their expanded state
+    const newExpandedNodes = collectNodeIds(dependencies.dependencyTree);
+    setExpandedNodes(newExpandedNodes);
+    
+    // Force a re-render of the tree
+    if (treeRef.current) {
+      treeRef.current.style.opacity = '0.99';
+      setTimeout(() => {
+        if (treeRef.current) treeRef.current.style.opacity = '1';
+      }, 10);
+    }
+  };
+  
+  // Handle show/hide extensions in list view
+  const handleShowExtensionsChange = (show: boolean) => {
+    setShowExtensions(show);
+    
+    // Force a re-render of the accumulated view
+    if (accumulatedViewRef.current) {
+      accumulatedViewRef.current.style.opacity = '0.99';
+      setTimeout(() => {
+        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
+      }, 10);
+    }
+  };
 
   return (
     <div style={{
@@ -229,12 +280,20 @@ const DependencyTester: React.FC = () => {
           onItemCountChange={setItemCount}
           onCalculate={handleCalculate}
           onAddItemSectionToggle={setIsAddItemCollapsed}
+          onExpandCollapseAll={handleExpandCollapseAll}
+          onShowExtensionsChange={handleShowExtensionsChange}
         />
       </div>
 
       {/* Main content area */}
       {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
-        <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
+        <div 
+          ref={accumulatedViewRef}
+          style={{ 
+            ...dependencyStyles.listContainer, 
+            display: viewMode === "accumulated" ? "block" : "none" 
+          }}
+        >
           <AccumulatedView
             onRecipeChange={handleTreeRecipeChange}
             onExcessChange={handleExcessChange}
@@ -243,15 +302,19 @@ const DependencyTester: React.FC = () => {
             onMachineCountChange={handleMachineCountChange}
             machineMultiplierMap={machineMultiplierMap}
             onMachineMultiplierChange={handleMachineMultiplierChange}
+            showExtensions={showExtensions}
           />
         </div>
       )}
 
       {dependencies.dependencyTree && (
-        <div style={{ 
-          ...dependencyStyles.listContainer, 
-          display: viewMode === "tree" ? "block" : "none"
-        }}>
+        <div 
+          ref={treeRef}
+          style={{ 
+            ...dependencyStyles.listContainer, 
+            display: viewMode === "tree" ? "block" : "none"
+          }}
+        >
           <DependencyTree 
             dependencyTree={dependencies.dependencyTree}
             onRecipeChange={handleTreeRecipeChange}
@@ -261,6 +324,7 @@ const DependencyTester: React.FC = () => {
             onMachineCountChange={handleMachineCountChange}
             machineMultiplierMap={machineMultiplierMap}
             onMachineMultiplierChange={handleMachineMultiplierChange}
+            expandedNodes={expandedNodes}
           />
         </div>
       )}
