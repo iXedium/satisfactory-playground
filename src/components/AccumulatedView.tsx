@@ -18,6 +18,7 @@ interface AccumulatedViewProps {
   onMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   showExtensions?: boolean;
   accumulateExtensions?: boolean;
+  showMachineSection?: boolean;
 }
 
 interface GroupedItem {
@@ -48,6 +49,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
   onMachineMultiplierChange,
   showExtensions = true,
   accumulateExtensions = false,
+  showMachineSection = true,
 }) => {
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
@@ -416,6 +418,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               onConsumerClick={scrollToNode}
               showExtensions={showExtensions}
               accumulateExtensions={accumulateExtensions}
+              showMachines={showMachineSection}
             />
           </div>
         );

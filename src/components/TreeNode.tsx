@@ -14,6 +14,7 @@ interface TreeNodeProps {
   machineMultiplierMap?: Record<string, number>;
   onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
   expandedNodes?: Record<string, boolean>;
+  showMachineSection?: boolean;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -26,7 +27,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onMachineCountChange,
   machineMultiplierMap = {},
   onMachineMultiplierChange,
-  expandedNodes = {}
+  expandedNodes = {},
+  showMachineSection = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
@@ -113,6 +115,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             onMachineCountChange={(count) => onMachineCountChange?.(node.uniqueId, count)}
             machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
             onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
+            showMachines={showMachineSection}
           />
         </div>
       </div>
@@ -132,6 +135,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               machineMultiplierMap={machineMultiplierMap}
               onMachineMultiplierChange={onMachineMultiplierChange}
               expandedNodes={expandedNodes}
+              showMachineSection={showMachineSection}
             />
           ))}
         </div>

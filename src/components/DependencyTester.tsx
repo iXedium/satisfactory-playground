@@ -33,6 +33,7 @@ const DependencyTester: React.FC = () => {
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [showExtensions, setShowExtensions] = useState(true);
   const [accumulateExtensions, setAccumulateExtensions] = useState(false);
+  const [showMachines, setShowMachines] = useState(true);
   
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -261,6 +262,25 @@ const DependencyTester: React.FC = () => {
     }
   };
 
+  // Handle show machines toggle
+  const handleShowMachinesChange = (show: boolean) => {
+    setShowMachines(show);
+    
+    // Force a re-render of both views
+    if (treeRef.current) {
+      treeRef.current.style.opacity = '0.99';
+      setTimeout(() => {
+        if (treeRef.current) treeRef.current.style.opacity = '1';
+      }, 10);
+    }
+    if (accumulatedViewRef.current) {
+      accumulatedViewRef.current.style.opacity = '0.99';
+      setTimeout(() => {
+        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
+      }, 10);
+    }
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -298,6 +318,7 @@ const DependencyTester: React.FC = () => {
           onShowExtensionsChange={handleShowExtensionsChange}
           onAccumulateExtensionsChange={handleAccumulateExtensionsChange}
           accumulateExtensions={accumulateExtensions}
+          onShowMachinesChange={handleShowMachinesChange}
         />
       </div>
 
@@ -320,6 +341,7 @@ const DependencyTester: React.FC = () => {
             onMachineMultiplierChange={handleMachineMultiplierChange}
             showExtensions={showExtensions}
             accumulateExtensions={accumulateExtensions}
+            showMachineSection={showMachines}
           />
         </div>
       )}
@@ -342,6 +364,7 @@ const DependencyTester: React.FC = () => {
             machineMultiplierMap={machineMultiplierMap}
             onMachineMultiplierChange={handleMachineMultiplierChange}
             expandedNodes={expandedNodes}
+            showMachineSection={showMachines}
           />
         </div>
       )}

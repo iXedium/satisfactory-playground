@@ -40,6 +40,7 @@ interface ListNodeProps {
   onConsumerClick?: (nodeId: string) => void;
   showExtensions?: boolean;
   accumulateExtensions?: boolean;
+  showMachines?: boolean;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -60,6 +61,7 @@ const ListNode: React.FC<ListNodeProps> = ({
   onConsumerClick,
   showExtensions = true,
   accumulateExtensions = false,
+  showMachines = true,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
@@ -164,6 +166,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           machineMultiplier={machineMultiplier}
           onMachineMultiplierChange={onMachineMultiplierChange}
           onIconClick={hasConsumers ? toggleExpanded : undefined}
+          showMachines={showMachines}
         />
       </div>
 

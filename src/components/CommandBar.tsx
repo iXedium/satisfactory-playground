@@ -25,6 +25,7 @@ interface CommandBarProps {
   onShowExtensionsChange?: (show: boolean) => void;
   onAccumulateExtensionsChange?: (accumulate: boolean) => void;
   accumulateExtensions?: boolean;
+  onShowMachinesChange?: (show: boolean) => void;
 }
 
 const depthOptions = [
@@ -52,6 +53,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
   onShowExtensionsChange,
   onAccumulateExtensionsChange,
   accumulateExtensions = false,
+  onShowMachinesChange,
 }) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
@@ -64,15 +66,16 @@ const CommandBar: React.FC<CommandBarProps> = ({
   
   // Placeholder functions for future implementation
   const handleDepthChange = () => {};
-  const handleToggleMachines = () => {};
   const handleSearch = () => {};
   const handleToggleCompact = () => {};
   
   // Checkbox handlers
   const toggleShowMachines = () => {
-    setShowMachines(!showMachines);
-    // Logic will be added later
-    handleToggleMachines();
+    const newValue = !showMachines;
+    setShowMachines(newValue);
+    if (onShowMachinesChange) {
+      onShowMachinesChange(newValue);
+    }
   };
   
   const toggleCompactView = () => {

@@ -24,6 +24,7 @@ interface ItemNodeProps {
   onMachineCountChange?: (count: number) => void;
   machineMultiplier?: number;
   onMachineMultiplierChange?: (multiplier: number) => void;
+  showMachines?: boolean;
 }
 
 interface Machine {
@@ -53,6 +54,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onMachineCountChange,
   machineMultiplier = 1,
   onMachineMultiplierChange,
+  showMachines = true,
 }) => {
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
@@ -308,7 +310,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         style={{
           ...sectionStyle,
           borderLeft: `4px solid ${getItemColor()}`,
-          flex: 2,
+          flex: showMachines ? 2 : 3,
           minWidth: "200px",
           position: "relative",
           zIndex: 1,
@@ -396,7 +398,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       </div>
 
       {/* Middle section - Machine info */}
-      {machine && !isByproduct && (
+      {machine && !isByproduct && showMachines && (
         <div
           style={{
             ...sectionStyle,

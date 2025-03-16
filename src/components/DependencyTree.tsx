@@ -12,6 +12,7 @@ interface DependencyTreeProps {
   machineMultiplierMap?: Record<string, number>;
   onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
   expandedNodes?: Record<string, boolean>;
+  showMachineSection?: boolean;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({ 
@@ -23,7 +24,8 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   onMachineCountChange,
   machineMultiplierMap = {},
   onMachineMultiplierChange,
-  expandedNodes = {}
+  expandedNodes = {},
+  showMachineSection = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +48,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         machineMultiplierMap={machineMultiplierMap}
         onMachineMultiplierChange={onMachineMultiplierChange}
         expandedNodes={expandedNodes}
+        showMachineSection={showMachineSection}
       />
     </div>
   );
