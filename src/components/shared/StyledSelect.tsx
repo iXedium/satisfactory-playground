@@ -9,7 +9,7 @@ interface StyledSelectProps {
   options: Array<{ id: string; name: string }>;
   placeholder?: string;
   style?: React.CSSProperties;
-  renderOption?: (option: { id: string; name: string }) => React.ReactNode;
+  renderOption?: (option: { id: string; name: string }, isInDropdown: boolean) => React.ReactNode;
   variant?: 'default' | 'compact';
   disabled?: boolean;
 }
@@ -166,7 +166,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
         $disabled={disabled}
       >
         {selectedOption ? (
-          renderOption ? renderOption(selectedOption) : selectedOption.name
+          renderOption ? renderOption(selectedOption, false) : selectedOption.name
         ) : placeholder}
       </SelectButton>
 
@@ -208,7 +208,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                 }}
                 $highlighted={index === highlightedIndex}
               >
-                {renderOption ? renderOption(option) : option.name}
+                {renderOption ? renderOption(option, true) : option.name}
               </DropdownItem>
             ))}
           </div>

@@ -375,6 +375,20 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 options={recipes}
                 variant="compact"
                 style={{ width: "100%" }}
+                renderOption={(option, isInDropdown) => (
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      padding: '4px 8px',
+                      backgroundColor: isInDropdown && option.id === selectedRecipeId ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                      borderRadius: theme.border.radius,
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold' }}>{option.name}</span>
+                  </div>
+                )}
               />
             )}
           </div>

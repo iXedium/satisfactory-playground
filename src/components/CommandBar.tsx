@@ -207,14 +207,14 @@ const CommandBar: React.FC<CommandBarProps> = ({
               onChange={handleDepthChange}
               variant="compact"
               style={{ width: "120px" }}
-              renderOption={(option) => (
+              renderOption={(option, isInDropdown) => (
                 <div 
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '8px',
                     padding: '4px 8px',
-                    backgroundColor: option.id === "all" ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                    backgroundColor: isInDropdown && option.id === "all" ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
                     borderRadius: theme.border.radius,
                   }}
                 >
@@ -303,13 +303,13 @@ const CommandBar: React.FC<CommandBarProps> = ({
             maxWidth: '300px', 
             flex: '1 1 auto'
           }}
-          renderOption={(option) => (
+          renderOption={(option, isInDropdown) => (
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
               gap: '8px',
               padding: '4px 8px',
-              backgroundColor: option.id === selectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+              backgroundColor: isInDropdown && option.id === selectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
               borderRadius: theme.border.radius,
             }}>
               <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
@@ -331,14 +331,14 @@ const CommandBar: React.FC<CommandBarProps> = ({
             opacity: selectedItem ? 1 : 0.7
           }}
           disabled={!selectedItem || filteredRecipes.length === 0}
-          renderOption={(option) => (
+          renderOption={(option, isInDropdown) => (
             <div 
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '8px',
                 padding: '4px 8px',
-                backgroundColor: option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                backgroundColor: isInDropdown && option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
                 borderRadius: theme.border.radius,
               }}
             >
