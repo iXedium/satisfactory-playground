@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Icon, { IconSize } from "./Icon";
 import { Recipe, Item } from "../data/dexieDB";
 import { theme } from "../styles/theme";
 import { getItemById, getMachineForRecipe } from "../data/dbQueries";
 import StyledSelect from "./shared/StyledSelect";
 import StyledInput from "./shared/StyledInput";
-import { useWindowSize } from "../hooks/useDebounce";
 
 interface ItemNodeProps {
   itemId: string;
@@ -70,95 +69,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const machineMultiplierRef = useRef<HTMLInputElement>(null);
   const excessRef = useRef<HTMLInputElement>(null);
 
-  // Get debounced window size for responsive calculations
-  useWindowSize(250);
-
-  const getItemColor = () => {
-    if (isRoot) return theme.colors.nodeRoot;
-    if (isByproduct) return theme.colors.nodeByproduct;
-    return theme.colors.nodeDefault;
-  };
-
-  const getEfficiencyColor = () => {
-    if (efficiency > 100) return theme.colors.efficiency.over;
-    if (efficiency < 100) return theme.colors.efficiency.under;
-    return theme.colors.efficiency.perfect;
-  };
-
-  // Base styles
-  const buttonStyle: React.CSSProperties = {
-    padding: "4px 8px",
-    fontSize: "12px",
-    backgroundColor: theme.colors.buttonDefault,
-    color: theme.colors.text,
-    border: "none",
-    borderRadius: theme.border.radius,
-    cursor: "pointer",
-    fontWeight: "bold",
-    height: "32px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: "30px",
-  };
-
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: "4px 8px",
-    height: "28px",
-  };
-
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: `${theme.colors.dark}`,
-    borderRadius: theme.border.radius,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    padding: "8px",
-    display: "flex",
-    alignItems: "center",
-    height: "100%",
-  };
-
-  // Memoize styles that depend on window size
-  const containerStyles = useMemo<React.CSSProperties>(() => ({
-    display: "flex",
-    gap: "4px",
-    backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
-    borderRadius: theme.border.radius,
-    padding: "4px",
-    ...style,
-  }), [index, style]);
-
-  const leftSectionStyles = useMemo<React.CSSProperties>(() => ({
-    ...sectionStyle,
-    borderLeft: `4px solid ${getItemColor()}`,
-    flex: 2,
-    minWidth: "200px",
-    position: "relative",
-    zIndex: 1,
-  }), [getItemColor, sectionStyle]);
-
-  const middleSectionStyles = useMemo<React.CSSProperties>(() => ({
-    ...sectionStyle,
-    borderLeft: `4px solid ${theme.colors.secondary}`,
-    flex: 1,
-    maxWidth: "265px",
-    position: "relative",
-    zIndex: 1,
-  }), [sectionStyle]);
-
-  const rightSectionStyles = useMemo<React.CSSProperties>(() => ({
-    ...sectionStyle,
-    borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
-    flex: 1,
-    minWidth: "160px",
-    maxWidth: "200px",
-    position: "relative",
-    zIndex: 1,
-  }), [sectionStyle, isByproduct, getEfficiencyColor]);
-
   useEffect(() => {
     setLocalExcess(excess);
   }, [excess]);
@@ -218,6 +128,18 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     recipes,
     itemId,
   ]);
+
+  const getItemColor = () => {
+    if (isRoot) return theme.colors.nodeRoot;
+    if (isByproduct) return theme.colors.nodeByproduct;
+    return theme.colors.nodeDefault;
+  };
+
+  const getEfficiencyColor = () => {
+    if (efficiency > 100) return theme.colors.efficiency.over;
+    if (efficiency < 100) return theme.colors.efficiency.under;
+    return theme.colors.efficiency.perfect;
+  };
 
   const handleExcessChange = (value: string) => {
     const numValue = value === "" ? 0 : Number(value);
@@ -312,14 +234,66 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   if (!item) return null;
 
+  // Button styles
+  const buttonStyle: React.CSSProperties = {
+    padding: "4px 8px",
+    fontSize: "12px",
+    backgroundColor: theme.colors.buttonDefault,
+    color: theme.colors.text,
+    border: "none",
+    borderRadius: theme.border.radius,
+    cursor: "pointer",
+    fontWeight: "bold",
+    height: "32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "30px",
+  };
+
+  // Input field styles
+  const inputFieldStyle: React.CSSProperties = {
+    backgroundColor: theme.colors.darker,
+    color: theme.colors.text,
+    border: `1px solid ${theme.colors.dropdown.border}`,
+    borderRadius: theme.border.radius,
+    padding: "4px 8px",
+    height: "28px",
+  };
+
+  // Section container styles
+  const sectionStyle: React.CSSProperties = {
+    backgroundColor: `${theme.colors.dark}`,
+    borderRadius: theme.border.radius,
+    border: `1px solid ${theme.colors.dropdown.border}`,
+    padding: "8px",
+    display: "flex",
+    alignItems: "center",
+    height: "100%",
+  };
+
   return (
     <div
-      style={containerStyles}
+      style={{
+        display: "flex",
+        gap: "4px",
+        backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+        borderRadius: theme.border.radius,
+        padding: "4px",
+        ...style,
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Left section - Item info */}
       <div
-        style={leftSectionStyles}
+        style={{
+          ...sectionStyle,
+          borderLeft: `4px solid ${getItemColor()}`,
+          flex: 2,
+          minWidth: "200px",
+          position: "relative",
+          zIndex: 1,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Item icon */}
@@ -366,7 +340,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 {nominalRate.toFixed(2)}/min
               </span>
             )}
-          </div>
+        </div>
 
           {/* Recipe selector - aligned to bottom */}
           <div
@@ -389,7 +363,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       {/* Middle section - Machine info */}
       {machine && !isByproduct && (
         <div
-          style={middleSectionStyles}
+          style={{
+            ...sectionStyle,
+            borderLeft: `4px solid ${theme.colors.secondary}`,
+            flex: 1,
+            maxWidth: "265px",
+            position: "relative",
+            zIndex: 1,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Machine icon - same size as item icon */}
@@ -489,7 +470,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               {/* Multiplier */}
               <StyledInput
                 ref={machineMultiplierRef}
-                type="number"
+            type="number"
                 value={localMachineMultiplier}
                 onChange={(e) => {
                   e.stopPropagation();
@@ -528,7 +509,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
       {/* Right section - Efficiency and rate */}
       <div
-        style={rightSectionStyles}
+        style={{
+          ...sectionStyle,
+          borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
+          flex: 1,
+          minWidth: "160px",
+          maxWidth: "200px",
+          position: "relative",
+          zIndex: 1,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -693,4 +682,4 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   );
 };
 
-export default React.memo(ItemNode);
+export default ItemNode;
