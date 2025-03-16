@@ -6,21 +6,20 @@ export const theme = {
     dark: "#2d3744",
     darker: "#1a1e24",
     hover: "rgba(255, 122, 0, 0.1)",
-    // iconBg: "rgba(255, 122, 0, 0.15)",
     text: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
-    iconBg: '#333333',
+    iconBg: '#2d3744',
     
     // Node colors - Industrial theme
     nodeRoot: '#ff7a00', // Primary orange for root
     nodeByproduct: '#ff3333', // Sharp red for byproducts
     nodeDefault: '#8c9baa', // Neutral industrial gray
     
-    // Efficiency colors - Muted theme
+    // Efficiency colors - Bolder theme
     efficiency: {
-      perfect: '#4a8c4a', // Muted green for 100%
-      under: '#8c7a4a', // Muted yellow for under 100%
-      over: '#8c4a4a', // Muted red for over 100%
+      perfect: '#5aaa5a', // Bolder green for 100%
+      under: '#aa9a5a', // Bolder yellow for under 100%
+      over: '#aa5a5a', // Bolder red for over 100%
     },
     
     // Node background with metallic feel

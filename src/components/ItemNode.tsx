@@ -321,6 +321,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             height: "100%",
             position: "relative",
             zIndex: 1,
+            gap: "10px",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -331,16 +332,17 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               justifyContent: "space-between",
               alignItems: "center",
               fontWeight: "bold",
-              color: isByproduct ? theme.colors.nodeByproduct : getItemColor(),
+              color: theme.colors.text,
+              fontSize: "16px",
             }}
           >
             <span>{item.name}</span>
             {nominalRate > 0 && !isByproduct && (
-              <span style={{ fontSize: "12px", opacity: 0.8 }}>
-                {nominalRate.toFixed(2)}/min
+              <span style={{ fontSize: "14px", opacity: 0.8 }}>
+                {nominalRate.toFixed(2)}
               </span>
             )}
-        </div>
+          </div>
 
           {/* Recipe selector - aligned to bottom */}
           <div
@@ -384,7 +386,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               display: "flex",
               flexDirection: "column",
               flex: 1,
-              gap: "4px",
+              gap: "10px",
               position: "relative",
               zIndex: 1,
             }}
@@ -394,10 +396,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             <div
               style={{
                 fontWeight: "bold",
-                color: theme.colors.secondary,
+                color: theme.colors.text,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                fontSize: "16px",
               }}
             >
               {machine.name}
@@ -470,7 +473,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               {/* Multiplier */}
               <StyledInput
                 ref={machineMultiplierRef}
-            type="number"
+                type="number"
                 value={localMachineMultiplier}
                 onChange={(e) => {
                   e.stopPropagation();
@@ -517,6 +520,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           maxWidth: "200px",
           position: "relative",
           zIndex: 1,
+          height: isByproduct ? "64px" : "auto", // Make byproduct section same height as others
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -528,6 +532,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             gap: "10px",
             position: "relative",
             zIndex: 1,
+            justifyContent: isByproduct ? "center" : "flex-start", // Center content for byproducts
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -557,6 +562,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     position: "relative",
                     marginLeft: "0px",
                     zIndex: 2,
+                    fontSize: "16px",
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -594,9 +600,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 fontWeight: "bold",
                 color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text,
                 marginLeft: isByproduct ? "auto" : "4px",
+                fontSize: "16px",
               }}
             >
-              <span>{Math.abs(amount).toFixed(2)}/min</span>
+              <span>{Math.abs(amount).toFixed(2)}</span>
             </div>
           </div>
 
