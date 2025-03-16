@@ -15,6 +15,13 @@ interface ConsumptionDetail {
   itemName?: string;
 }
 
+interface AccumulatedConsumption {
+  itemId: string;
+  totalAmount: number;
+  nodeIds: string[];
+  itemName?: string;
+}
+
 interface ListNodeProps {
   itemId: string;
   amount: number;
@@ -32,6 +39,7 @@ interface ListNodeProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   onConsumerClick?: (nodeId: string) => void;
   showExtensions?: boolean;
+  accumulateExtensions?: boolean;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -51,10 +59,12 @@ const ListNode: React.FC<ListNodeProps> = ({
   onMachineMultiplierChange,
   onConsumerClick,
   showExtensions = true,
+  accumulateExtensions = false,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
   const [consumers, setConsumers] = useState<ConsumptionDetail[]>([]);
+  const [accumulatedConsumers, setAccumulatedConsumers] = useState<AccumulatedConsumption[]>([]);
   const dependencyTree = useSelector((state: RootState) => state.dependencies.dependencyTree);
   const nodeRef = useRef<HTMLDivElement>(null);
   
@@ -95,8 +105,34 @@ const ListNode: React.FC<ListNodeProps> = ({
 
     findConsumers(dependencyTree).then(foundConsumers => {
       setConsumers(foundConsumers);
+      
+      // Calculate accumulated consumers
+      if (accumulateExtensions) {
+        const accumulated: Record<string, AccumulatedConsumption> = {};
+        
+        foundConsumers.forEach(consumer => {
+          if (!accumulated[consumer.itemId]) {
+            accumulated[consumer.itemId] = {
+              itemId: consumer.itemId,
+              totalAmount: 0,
+              nodeIds: [],
+              itemName: consumer.itemName
+            };
+          }
+          
+          accumulated[consumer.itemId].totalAmount += consumer.amount;
+          accumulated[consumer.itemId].nodeIds.push(consumer.nodeId);
+        });
+        
+        // Convert to array and sort by amount (descending)
+        const accumulatedArray = Object.values(accumulated).sort((a, b) => 
+          b.totalAmount - a.totalAmount
+        );
+        
+        setAccumulatedConsumers(accumulatedArray);
+      }
     });
-  }, [dependencyTree, itemId]);
+  }, [dependencyTree, itemId, accumulateExtensions]);
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -104,10 +140,14 @@ const ListNode: React.FC<ListNodeProps> = ({
 
   if (!item) return null;
 
+  // Determine which consumers to display
+  const displayConsumers = accumulateExtensions ? accumulatedConsumers : consumers;
+  const hasConsumers = displayConsumers.length > 0;
+
   return (
     <div ref={nodeRef}>
       {/* Main item node */}
-      <div style={{ marginBottom: consumers.length > 0 ? "4px" : "0" }}>
+      <div style={{ marginBottom: hasConsumers ? "4px" : "0" }}>
         <ItemNode
           itemId={itemId}
           amount={amount}
@@ -123,12 +163,12 @@ const ListNode: React.FC<ListNodeProps> = ({
           onMachineCountChange={onMachineCountChange}
           machineMultiplier={machineMultiplier}
           onMachineMultiplierChange={onMachineMultiplierChange}
-          onIconClick={consumers.length > 0 ? toggleExpanded : undefined}
+          onIconClick={hasConsumers ? toggleExpanded : undefined}
         />
       </div>
 
       {/* Expandable indicator */}
-      {consumers.length > 0 && (
+      {hasConsumers && (
         <div 
           onClick={toggleExpanded}
           style={{ 
@@ -144,7 +184,7 @@ const ListNode: React.FC<ListNodeProps> = ({
       )}
 
       {/* Consumption details section */}
-      {expanded && consumers.length > 0 && (
+      {expanded && hasConsumers && (
         <div style={{ 
           marginLeft: "24px",
           backgroundColor: theme.colors.dark,
@@ -153,37 +193,91 @@ const ListNode: React.FC<ListNodeProps> = ({
           overflow: "hidden",
           marginBottom: "8px"
         }}>
-          {consumers.map((consumer, idx) => (
-            <div 
-              key={`${consumer.itemId}-${idx}`}
-              style={{ 
-                display: "flex", 
-                justifyContent: "space-between", 
-                alignItems: "center",
-                padding: "8px",
-                backgroundColor: idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
-                cursor: "pointer",
-                transition: "background-color 0.2s"
-              }}
-              onClick={() => onConsumerClick?.(consumer.nodeId)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 122, 0, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent";
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <Icon itemId={consumer.itemId} size="small" />
-                <span style={{ marginLeft: "8px", color: theme.colors.text }}>
-                  {consumer.itemName || consumer.itemId}
+          {accumulateExtensions ? (
+            // Accumulated view
+            accumulatedConsumers.map((consumer, idx) => (
+              <div 
+                key={`${consumer.itemId}-${idx}`}
+                style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center",
+                  padding: "8px",
+                  backgroundColor: idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+                  cursor: consumer.nodeIds.length === 1 ? "pointer" : "default",
+                  transition: "background-color 0.2s"
+                }}
+                onClick={() => {
+                  // If there's only one node, we can navigate to it
+                  if (consumer.nodeIds.length === 1) {
+                    onConsumerClick?.(consumer.nodeIds[0]);
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (consumer.nodeIds.length === 1) {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 122, 0, 0.1)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (consumer.nodeIds.length === 1) {
+                    e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent";
+                  }
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <Icon itemId={consumer.itemId} size="small" />
+                  <span style={{ marginLeft: "8px", color: theme.colors.text }}>
+                    {consumer.itemName || consumer.itemId}
+                    {consumer.nodeIds.length > 1 && (
+                      <span style={{ 
+                        fontSize: "12px", 
+                        opacity: 0.7, 
+                        marginLeft: "6px" 
+                      }}>
+                        ({consumer.nodeIds.length} instances)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <span style={{ color: theme.colors.text }}>
+                  {consumer.totalAmount.toFixed(2)}/min
                 </span>
               </div>
-              <span style={{ color: theme.colors.text }}>
-                {consumer.amount.toFixed(2)}/min
-              </span>
-            </div>
-          ))}
+            ))
+          ) : (
+            // Detailed view
+            consumers.map((consumer, idx) => (
+              <div 
+                key={`${consumer.itemId}-${idx}`}
+                style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center",
+                  padding: "8px",
+                  backgroundColor: idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onClick={() => onConsumerClick?.(consumer.nodeId)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(255, 122, 0, 0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <Icon itemId={consumer.itemId} size="small" />
+                  <span style={{ marginLeft: "8px", color: theme.colors.text }}>
+                    {consumer.itemName || consumer.itemId}
+                  </span>
+                </div>
+                <span style={{ color: theme.colors.text }}>
+                  {consumer.amount.toFixed(2)}/min
+                </span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

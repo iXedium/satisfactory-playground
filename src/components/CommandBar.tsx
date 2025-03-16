@@ -4,13 +4,17 @@ import StyledSelect from "./shared/StyledSelect";
 import ViewModeSwitch from "./ViewModeSwitch";
 import StyledInput from "./shared/StyledInput";
 import Icon from "./Icon";
-import { Item, Recipe } from "../data/dexieDB";
+import { Item } from "../data/dexieDB";
 import { getRecipesForItem } from "../data/dbQueries";
 import StyledCheckbox from "./shared/StyledCheckbox";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { commandBarStyles } from "../styles/commandBarStyles";
+import { Recipe } from "../data/dexieDB";
 
 interface CommandBarProps {
-  viewMode: "tree" | "accumulated";
-  onViewModeChange: (mode: "tree" | "accumulated") => void;
+  viewMode: "accumulated" | "tree";
+  onViewModeChange: (mode: "accumulated" | "tree") => void;
   items: Item[];
   selectedItem: string;
   onItemChange: (itemId: string) => void;
@@ -19,9 +23,11 @@ interface CommandBarProps {
   itemCount: number;
   onItemCountChange: (count: number) => void;
   onCalculate: () => void;
-  onAddItemSectionToggle?: (isCollapsed: boolean) => void;
+  onAddItemSectionToggle: (isCollapsed: boolean) => void;
   onExpandCollapseAll?: (expand: boolean) => void;
   onShowExtensionsChange?: (show: boolean) => void;
+  onAccumulateExtensionsChange?: (accumulate: boolean) => void;
+  accumulateExtensions?: boolean;
 }
 
 const depthOptions = [
@@ -47,31 +53,28 @@ const CommandBar: React.FC<CommandBarProps> = ({
   onAddItemSectionToggle,
   onExpandCollapseAll,
   onShowExtensionsChange,
+  onAccumulateExtensionsChange,
+  accumulateExtensions = false,
 }) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   
   // State for checkboxes
-  const [accumulateExtensions, setAccumulateExtensions] = useState(false);
   const [showMachines, setShowMachines] = useState(true);
   const [compactView, setCompactView] = useState(false);
   const [showExtensions, setShowExtensions] = useState(true);
   const [expandAll, setExpandAll] = useState(true);
   
+  const dependencies = useSelector((state: RootState) => state.dependencies);
+  const hasTree = !!dependencies.dependencyTree;
+  
   // Placeholder functions for future implementation
   const handleDepthChange = () => {};
-  const handleAccumulateExtensions = () => {};
   const handleToggleMachines = () => {};
   const handleSearch = () => {};
   const handleToggleCompact = () => {};
   
   // Checkbox handlers
-  const toggleAccumulateExtensions = () => {
-    setAccumulateExtensions(!accumulateExtensions);
-    // Logic will be added later
-    handleAccumulateExtensions();
-  };
-  
   const toggleShowMachines = () => {
     setShowMachines(!showMachines);
     // Logic will be added later
@@ -84,18 +87,15 @@ const CommandBar: React.FC<CommandBarProps> = ({
     handleToggleCompact();
   };
   
-  // Handle show extensions toggle (for list view)
   const toggleShowExtensions = () => {
     const newValue = !showExtensions;
     setShowExtensions(newValue);
-    // Call the parent's show extensions function
     if (onShowExtensionsChange) {
       onShowExtensionsChange(newValue);
     }
   };
   
-  // Handle expand/collapse all button (for tree view)
-  const handleExpandCollapseAll = () => {
+  const toggleExpandAll = () => {
     const newValue = !expandAll;
     setExpandAll(newValue);
     if (onExpandCollapseAll) {
@@ -103,36 +103,34 @@ const CommandBar: React.FC<CommandBarProps> = ({
     }
   };
 
-  // Fetch recipes when item changes
+  const handleAccumulateExtensionsChange = () => {
+    if (onAccumulateExtensionsChange) {
+      onAccumulateExtensionsChange(!accumulateExtensions);
+    }
+  };
+
+  // Load recipes when selected item changes
   useEffect(() => {
     if (selectedItem) {
-      getRecipesForItem(selectedItem).then((recipes) => {
-        setFilteredRecipes(recipes || []);
-        
-        // If we have recipes and no recipe is selected, select the first one
-        // or the one that matches the item name
-        if (recipes && recipes.length > 0 && !selectedRecipe) {
-          // Try to find a recipe with the same name as the item
-          const matchingRecipe = recipes.find(r => r.name === items.find(i => i.id === selectedItem)?.name);
-          if (matchingRecipe) {
-            onRecipeChange(matchingRecipe.id);
-          } else {
+      getRecipesForItem(selectedItem)
+        .then(recipes => {
+          setFilteredRecipes(recipes);
+          // Auto-select first recipe if none selected
+          if (recipes.length > 0 && !selectedRecipe) {
             onRecipeChange(recipes[0].id);
           }
-        }
-      });
+        })
+        .catch(console.error);
     } else {
       setFilteredRecipes([]);
     }
-  }, [selectedItem, items, selectedRecipe, onRecipeChange]);
-
-  // Notify parent when section is toggled
+  }, [selectedItem, selectedRecipe, onRecipeChange]);
+  
+  // Handle item section collapse
   const toggleItemSection = () => {
     const newState = !isItemSectionCollapsed;
     setIsItemSectionCollapsed(newState);
-    if (onAddItemSectionToggle) {
-      onAddItemSectionToggle(newState);
-    }
+    onAddItemSectionToggle(newState);
   };
 
   // Styles
@@ -211,7 +209,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
         <div style={sectionStyle}>
           <button 
             style={buttonStyle}
-            onClick={handleExpandCollapseAll}
+            onClick={toggleExpandAll}
             title={expandAll ? "Collapse all nodes" : "Expand all nodes"}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
@@ -255,7 +253,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
           
           <StyledCheckbox 
             checked={accumulateExtensions} 
-            onChange={toggleAccumulateExtensions}
+            onChange={handleAccumulateExtensionsChange}
             label="Accumulate Extensions"
           />
           

@@ -1,11 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { DependencyNode } from "../utils/calculateDependencyTree";
+import { AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
 
 interface DependencyState {
   selectedItem: string | null;
   itemCount: number;
   dependencyTree: DependencyNode | null;
-  accumulatedDependencies: Record<string, number>;
+  accumulatedDependencies: Record<string, AccumulatedNode>;
 }
 
 const initialState: DependencyState = {
@@ -25,7 +26,7 @@ const dependencySlice = createSlice({
         item: string;
         count: number;
         tree: DependencyNode;
-        accumulated: Record<string, number>;
+        accumulated: Record<string, AccumulatedNode>;
       }>
     ) => {
        // ✅ Debugging

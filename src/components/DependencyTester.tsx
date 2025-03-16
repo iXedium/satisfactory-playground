@@ -32,6 +32,7 @@ const DependencyTester: React.FC = () => {
   const [commandBarHeight, setCommandBarHeight] = useState(100);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [showExtensions, setShowExtensions] = useState(true);
+  const [accumulateExtensions, setAccumulateExtensions] = useState(false);
   
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -246,6 +247,19 @@ const DependencyTester: React.FC = () => {
       }, 10);
     }
   };
+  
+  // Handle accumulate extensions toggle
+  const handleAccumulateExtensionsChange = (accumulate: boolean) => {
+    setAccumulateExtensions(accumulate);
+    
+    // Force a re-render of the accumulated view
+    if (accumulatedViewRef.current) {
+      accumulatedViewRef.current.style.opacity = '0.99';
+      setTimeout(() => {
+        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
+      }, 10);
+    }
+  };
 
   return (
     <div style={{
@@ -282,6 +296,8 @@ const DependencyTester: React.FC = () => {
           onAddItemSectionToggle={setIsAddItemCollapsed}
           onExpandCollapseAll={handleExpandCollapseAll}
           onShowExtensionsChange={handleShowExtensionsChange}
+          onAccumulateExtensionsChange={handleAccumulateExtensionsChange}
+          accumulateExtensions={accumulateExtensions}
         />
       </div>
 
@@ -303,6 +319,7 @@ const DependencyTester: React.FC = () => {
             machineMultiplierMap={machineMultiplierMap}
             onMachineMultiplierChange={handleMachineMultiplierChange}
             showExtensions={showExtensions}
+            accumulateExtensions={accumulateExtensions}
           />
         </div>
       )}

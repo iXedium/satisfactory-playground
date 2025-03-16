@@ -5,6 +5,7 @@ import ListNode from "./ListNode";
 import { Recipe, Item } from "../data/dexieDB";
 import { getRecipesForItem, getItemById } from "../data/dbQueries";
 import { DependencyNode } from "../utils/calculateDependencyTree";
+import { AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
 
 interface AccumulatedViewProps {
   onRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -15,6 +16,7 @@ interface AccumulatedViewProps {
   machineMultiplierMap: Record<string, number>;
   onMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   showExtensions?: boolean;
+  accumulateExtensions?: boolean;
 }
 
 interface GroupedItem {
@@ -44,10 +46,22 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
   machineMultiplierMap,
   onMachineMultiplierChange,
   showExtensions = true,
+  accumulateExtensions = false,
 }) => {
   const dependencies = useSelector((state: RootState) => state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
   const [groupedItems, setGroupedItems] = useState<GroupedItem[]>([]);
-  const [recipeMap, setRecipeMap] = useState<Record<string, Recipe[]>>({});
+  const [itemsMap, setItemsMap] = useState<Record<string, Item>>({});
+  const [recipesMap, setRecipesMap] = useState<Record<string, Recipe[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "amount" | "depth">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showByproducts, setShowByproducts] = useState(true);
+  const [showRawMaterials, setShowRawMaterials] = useState(true);
+  const [showIntermediates, setShowIntermediates] = useState(true);
+  const [showMachines, setShowMachines] = useState(true);
+  const [compactView, setCompactView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -173,7 +187,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
         newRecipeMap[itemId] = recipeResults[index];
       });
       
-      setRecipeMap(newRecipeMap);
+      setRecipesMap(newRecipeMap);
       
       // Apply names to items
       Object.keys(items).forEach(key => {
@@ -200,7 +214,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
     };
     
     fetchRecipes();
-  }, [dependencies, machineCountMap, machineMultiplierMap, excessMap]);
+  }, [dependencies, machineCountMap, machineMultiplierMap, excessMap, showExtensions, accumulateExtensions]);
 
   // Find the consumer item in our list by its nodeId
   const scrollToNode = (nodeId: string) => {
@@ -273,6 +287,91 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
     }
   };
 
+  // Process the dependency tree to create grouped items
+  const processTree = async () => {
+    if (!dependencies.accumulatedDependencies) return;
+    
+    const grouped: Record<string, GroupedItem> = {};
+    const itemIds = new Set<string>();
+    const newRecipeMap: Record<string, Recipe[]> = {};
+    
+    // First pass: collect all items and their total amounts
+    Object.entries(dependencies.accumulatedDependencies).forEach(([nodeId, node]) => {
+      // Skip extension nodes if not showing extensions or not accumulating them
+      if (node.isExtension && (!showExtensions || !accumulateExtensions)) {
+        return;
+      }
+      
+      const itemId = node.itemId;
+      itemIds.add(itemId);
+      
+      if (!grouped[itemId]) {
+        grouped[itemId] = {
+          itemId,
+          amount: 0,
+          recipes: [],
+          selectedRecipeId: node.recipeId,
+          isByproduct: node.isByproduct || false,
+          nodeIds: [],
+          name: node.name,
+          depth: node.depth || 0,
+          normalizedMachineCount: 0,
+        };
+      }
+      
+      // Add this node's contribution
+      grouped[itemId].amount += node.amount;
+      grouped[itemId].nodeIds.push(nodeId);
+      
+      // Update the normalized machine count
+      const machineCount = machineCountMap[nodeId] || 0;
+      const multiplier = machineMultiplierMap[nodeId] || 1;
+      grouped[itemId].normalizedMachineCount += machineCount * multiplier;
+    });
+    
+    // ... rest of the function ...
+  };
+
+  // Filter and sort the grouped items
+  const getFilteredAndSortedItems = () => {
+    return groupedItems
+      .filter(item => {
+        // Apply search filter
+        const nameMatch = item.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        if (searchTerm && !nameMatch) return false;
+        
+        // Apply type filters
+        if (item.isByproduct && !showByproducts) return false;
+        
+        // Determine if it's a raw material (no recipe)
+        const isRawMaterial = !item.recipes || item.recipes.length === 0;
+        if (isRawMaterial && !showRawMaterials) return false;
+        
+        // Determine if it's an intermediate product
+        const isIntermediate = !item.isByproduct && !isRawMaterial;
+        if (isIntermediate && !showIntermediates) return false;
+        
+        return true;
+      })
+      .sort((a, b) => {
+        // Apply sorting
+        if (sortBy === "name") {
+          return sortDirection === "asc" 
+            ? (a.name || "").localeCompare(b.name || "")
+            : (b.name || "").localeCompare(a.name || "");
+        } else if (sortBy === "amount") {
+          return sortDirection === "asc" 
+            ? a.amount - b.amount
+            : b.amount - a.amount;
+        } else if (sortBy === "depth") {
+          return sortDirection === "asc" 
+            ? a.depth - b.depth
+            : b.depth - a.depth;
+        }
+        return 0;
+      });
+  };
+
   return (
     <div ref={containerRef} style={{ padding: "8px" }}>
       {groupedItems.map((item, index) => {
@@ -303,7 +402,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               amount={item.amount}
               isRoot={nodeId === dependencies.dependencyTree?.uniqueId}
               isByproduct={item.isByproduct}
-              recipes={recipeMap[item.itemId] || []}
+              recipes={recipesMap[item.itemId] || []}
               selectedRecipeId={item.selectedRecipeId}
               onRecipeChange={(recipeId) => onRecipeChange(nodeId, recipeId)}
               excess={totalExcess}
@@ -315,6 +414,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange(nodeId, multiplier)}
               onConsumerClick={scrollToNode}
               showExtensions={showExtensions}
+              accumulateExtensions={accumulateExtensions}
             />
           </div>
         );
