@@ -1,24 +1,63 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { theme } from "../styles/theme";
 import StyledSelect from "./shared/StyledSelect";
 import ViewModeSwitch from "./ViewModeSwitch";
+import StyledInput from "./shared/StyledInput";
+import Icon from "./Icon";
+import { Item, Recipe } from "../data/dexieDB";
+import { getRecipesForItem } from "../data/dbQueries";
 
 interface CommandBarProps {
   viewMode: "tree" | "accumulated";
   onViewModeChange: (mode: "tree" | "accumulated") => void;
+  items: Item[];
+  selectedItem: string;
+  onItemChange: (itemId: string) => void;
+  selectedRecipe: string;
+  onRecipeChange: (recipeId: string) => void;
+  itemCount: number;
+  onItemCountChange: (count: number) => void;
+  onCalculate: () => void;
 }
 
 const CommandBar: React.FC<CommandBarProps> = ({
   viewMode,
   onViewModeChange,
+  items,
+  selectedItem,
+  onItemChange,
+  selectedRecipe,
+  onRecipeChange,
+  itemCount,
+  onItemCountChange,
+  onCalculate,
 }) => {
+  const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
+
   // Placeholder functions for future implementation
   const handleExpandCollapseAll = () => {};
-  const handleDepthChange = (depth: string) => {};
+  const handleDepthChange = () => {};
   const handleAccumulateExtensions = () => {};
   const handleToggleMachines = () => {};
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {};
+  const handleSearch = () => {};
   const handleToggleCompact = () => {};
+
+  // Fetch recipes when item changes
+  useEffect(() => {
+    if (selectedItem) {
+      getRecipesForItem(selectedItem)
+        .then((recipes) => {
+          setFilteredRecipes(recipes);
+        })
+        .catch(error => {
+          console.error(`Error fetching recipes for ${selectedItem}:`, error);
+          setFilteredRecipes([]);
+        });
+    } else {
+      setFilteredRecipes([]);
+    }
+  }, [selectedItem]);
 
   // Depth options for dropdown
   const depthOptions = [
@@ -32,30 +71,35 @@ const CommandBar: React.FC<CommandBarProps> = ({
 
   // Styles
   const commandBarStyle: React.CSSProperties = {
-    position: "sticky",
+    position: "fixed",
     top: 0,
-    zIndex: 100,
-    backgroundColor: theme.colors.darker,
-    padding: "8px 16px",
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: theme.colors.dark,
+    padding: "12px 16px",
     borderBottom: `1px solid ${theme.colors.dropdown.border}`,
     display: "flex",
     flexDirection: "column",
-    gap: "8px",
+    gap: "12px",
     boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+    borderRadius: theme.border.radius,
+    marginBottom: "16px",
+    width: "100%",
   };
 
   const rowStyle: React.CSSProperties = {
     display: "flex",
     flexWrap: "wrap",
-    gap: "12px",
+    gap: "16px",
     alignItems: "center",
   };
 
   const sectionStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    padding: "0 8px",
+    gap: "12px",
+    padding: "0 12px",
     borderRight: `1px solid ${theme.colors.dropdown.border}`,
   };
 
@@ -75,24 +119,47 @@ const CommandBar: React.FC<CommandBarProps> = ({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-  };
-
-  const activeButtonStyle: React.CSSProperties = {
-    ...buttonStyle,
-    backgroundColor: theme.colors.primary,
+    transition: "background-color 0.2s",
   };
 
   const checkboxLabelStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    gap: "6px",
+    gap: "8px",
     color: theme.colors.text,
     fontSize: "14px",
     cursor: "pointer",
   };
 
+  const customCheckboxStyle: React.CSSProperties = {
+    position: "relative",
+    width: "16px",
+    height: "16px",
+    backgroundColor: theme.colors.darker,
+    borderRadius: "3px",
+    border: `1px solid ${theme.colors.dropdown.border}`,
+    display: "inline-block",
+    cursor: "pointer",
+  };
+
+  const customCheckboxCheckedStyle: React.CSSProperties = {
+    ...customCheckboxStyle,
+    backgroundColor: theme.colors.darker,
+    border: `1px solid ${theme.colors.dropdown.border}`,
+  };
+
+  const checkmarkStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "3px",
+    left: "3px",
+    width: "8px",
+    height: "8px",
+    backgroundColor: theme.colors.primary,
+    borderRadius: "2px",
+  };
+
   const searchStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.dark,
+    backgroundColor: theme.colors.darker,
     color: theme.colors.text,
     border: `1px solid ${theme.colors.dropdown.border}`,
     borderRadius: theme.border.radius,
@@ -100,6 +167,19 @@ const CommandBar: React.FC<CommandBarProps> = ({
     fontSize: "14px",
     width: "200px",
   };
+
+  // Custom checkbox component
+  const CustomCheckbox = ({ checked = false, onChange }: { checked?: boolean, onChange?: () => void }) => (
+    <div 
+      style={checked ? customCheckboxCheckedStyle : customCheckboxStyle}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onChange) onChange();
+      }}
+    >
+      {checked && <span style={checkmarkStyle}></span>}
+    </div>
+  );
 
   return (
     <div style={commandBarStyle}>
@@ -121,6 +201,8 @@ const CommandBar: React.FC<CommandBarProps> = ({
             style={buttonStyle}
             onClick={handleExpandCollapseAll}
             title="Expand or collapse all extensions"
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
           >
             Expand All
           </button>
@@ -140,32 +222,22 @@ const CommandBar: React.FC<CommandBarProps> = ({
         {/* Display Options Section */}
         <div style={sectionStyle}>
           <label style={checkboxLabelStyle}>
-            <input 
-              type="checkbox" 
-              onChange={handleAccumulateExtensions}
-            />
+            <CustomCheckbox onChange={handleAccumulateExtensions} />
             Accumulate Extensions
           </label>
           
           <label style={checkboxLabelStyle}>
-            <input 
-              type="checkbox" 
-              onChange={handleToggleMachines}
-              defaultChecked
-            />
+            <CustomCheckbox checked={true} onChange={handleToggleMachines} />
             Show Machines
           </label>
           
           <label style={checkboxLabelStyle}>
-            <input 
-              type="checkbox" 
-              onChange={handleToggleCompact}
-            />
+            <CustomCheckbox onChange={handleToggleCompact} />
             Compact View
           </label>
         </div>
 
-        {/* Search Section */}
+        {/* Search and Additional Controls Section */}
         <div style={lastSectionStyle}>
           <input
             type="text"
@@ -173,22 +245,159 @@ const CommandBar: React.FC<CommandBarProps> = ({
             style={searchStyle}
             onChange={handleSearch}
           />
-        </div>
-      </div>
-
-      {/* Row 2 - Additional controls (for future use) */}
-      <div style={rowStyle}>
-        <div style={lastSectionStyle}>
-          <button style={buttonStyle} disabled>
+          
+          <button 
+            style={buttonStyle} 
+            disabled
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonDefault)}
+          >
             Save
           </button>
-          <button style={buttonStyle} disabled>
+          <button 
+            style={buttonStyle} 
+            disabled
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonDefault)}
+          >
             Load
           </button>
-          <button style={buttonStyle} disabled>
+          <button 
+            style={buttonStyle} 
+            disabled
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonDefault)}
+          >
             Compare
           </button>
         </div>
+      </div>
+
+      {/* Item Selection Section - Collapsible */}
+      <div style={{
+        display: isItemSectionCollapsed ? 'none' : 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        alignItems: 'center',
+        padding: '8px 0',
+        borderTop: `1px solid ${theme.colors.dropdown.border}`,
+        marginTop: '4px',
+      }}>
+        {/* Item Selector */}
+        <StyledSelect
+          value={selectedItem}
+          onChange={onItemChange}
+          options={items}
+          placeholder="Select an Item"
+          style={{ 
+            minWidth: '180px', 
+            maxWidth: '300px', 
+            flex: '1 1 auto'
+          }}
+          renderOption={(option) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
+              {option.name}
+            </div>
+          )}
+        />
+        
+        {/* Recipe Selector */}
+        <StyledSelect
+          value={selectedRecipe}
+          onChange={onRecipeChange}
+          options={filteredRecipes}
+          placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
+          style={{ 
+            minWidth: '180px', 
+            maxWidth: '300px', 
+            flex: '1 1 auto',
+            opacity: selectedItem ? 1 : 0.7
+          }}
+          disabled={!selectedItem || filteredRecipes.length === 0}
+          renderOption={(option) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 'bold' }}>{option.name}</span>
+              </div>
+              {option.id === selectedRecipe && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: theme.colors.textSecondary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <span>Selected</span>
+                </div>
+              )}
+            </div>
+          )}
+        />
+        
+        {/* Item Count */}
+        <StyledInput
+          type="number"
+          min="1"
+          value={itemCount}
+          onChange={(e) => onItemCountChange(Number(e.target.value))}
+          placeholder="Count"
+          style={{ 
+            width: '120px',
+            minWidth: '80px',
+            flex: '0 1 auto'
+          }}
+        />
+        
+        {/* Add Button */}
+        <button
+          onClick={onCalculate}
+          style={{
+            height: '44px',
+            padding: '0 24px',
+            fontSize: '14px',
+            fontWeight: 500,
+            borderRadius: theme.border.radius,
+            background: theme.colors.buttonDefault,
+            color: theme.colors.text,
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s ease-in-out',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+            whiteSpace: 'nowrap',
+            marginLeft: 'auto'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}
+        >
+          Add
+        </button>
+      </div>
+
+      {/* Toggle button for collapsing/expanding item section */}
+      <div 
+        style={{
+          position: 'absolute',
+          bottom: '-12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          cursor: 'pointer',
+          backgroundColor: theme.colors.dark,
+          borderRadius: '0 0 4px 4px',
+          padding: '2px 12px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+          zIndex: 1001,
+          border: `1px solid ${theme.colors.dropdown.border}`,
+          borderTop: 'none',
+        }}
+        onClick={() => setIsItemSectionCollapsed(!isItemSectionCollapsed)}
+      >
+        <span style={{ color: theme.colors.text, fontSize: '12px' }}>
+          {isItemSectionCollapsed ? '▼ Show Item Selection' : '▲ Hide Item Selection'}
+        </span>
       </div>
     </div>
   );
