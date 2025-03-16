@@ -18,6 +18,7 @@ interface CommandBarProps {
   itemCount: number;
   onItemCountChange: (count: number) => void;
   onCalculate: () => void;
+  onAddItemSectionToggle?: (isCollapsed: boolean) => void;
 }
 
 const CommandBar: React.FC<CommandBarProps> = ({
@@ -31,6 +32,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
   itemCount,
   onItemCountChange,
   onCalculate,
+  onAddItemSectionToggle,
 }) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
@@ -180,6 +182,15 @@ const CommandBar: React.FC<CommandBarProps> = ({
       {checked && <span style={checkmarkStyle}></span>}
     </div>
   );
+
+  // Notify parent when section is toggled
+  const toggleItemSection = () => {
+    const newState = !isItemSectionCollapsed;
+    setIsItemSectionCollapsed(newState);
+    if (onAddItemSectionToggle) {
+      onAddItemSectionToggle(newState);
+    }
+  };
 
   return (
     <div style={commandBarStyle}>
@@ -393,10 +404,10 @@ const CommandBar: React.FC<CommandBarProps> = ({
           border: `1px solid ${theme.colors.dropdown.border}`,
           borderTop: 'none',
         }}
-        onClick={() => setIsItemSectionCollapsed(!isItemSectionCollapsed)}
+        onClick={toggleItemSection}
       >
         <span style={{ color: theme.colors.text, fontSize: '12px' }}>
-          {isItemSectionCollapsed ? '▼ Show Item Selection' : '▲ Hide Item Selection'}
+          {isItemSectionCollapsed ? '▼ Show Add Item' : '▲ Hide Add Item'}
         </span>
       </div>
     </div>

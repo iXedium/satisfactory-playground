@@ -28,6 +28,7 @@ const DependencyTester: React.FC = () => {
   const [excessMap, setExcessMap] = useState<Record<string, number>>({});
   const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
+  const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
 
   // Add state to track last calculated values
   const [lastCalculated, setLastCalculated] = useState<{
@@ -166,7 +167,7 @@ const DependencyTester: React.FC = () => {
       width: '100%',
       position: 'relative',
       overflow: 'auto',
-      paddingTop: '120px', // Padding for CommandBar
+      paddingTop: isAddItemCollapsed ? '80px' : '160px', // Adjust padding based on Add Item section visibility
     }}>
       {/* CommandBar with integrated item selection */}
       <CommandBar 
@@ -180,6 +181,7 @@ const DependencyTester: React.FC = () => {
         itemCount={itemCount}
         onItemCountChange={setItemCount}
         onCalculate={handleCalculate}
+        onAddItemSectionToggle={setIsAddItemCollapsed}
       />
 
       {/* Main content area */}
