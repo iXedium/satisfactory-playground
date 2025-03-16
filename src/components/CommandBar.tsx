@@ -6,6 +6,7 @@ import StyledInput from "./shared/StyledInput";
 import Icon from "./Icon";
 import { Item, Recipe } from "../data/dexieDB";
 import { getRecipesForItem } from "../data/dbQueries";
+import CustomCheckbox from "./shared/CustomCheckbox";
 
 interface CommandBarProps {
   viewMode: "tree" | "accumulated";
@@ -153,42 +154,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
     transition: "background-color 0.2s",
   };
 
-  const checkboxLabelStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    color: theme.colors.text,
-    fontSize: "14px",
-    cursor: "pointer",
-  };
-
-  const customCheckboxStyle: React.CSSProperties = {
-    position: "relative",
-    width: "16px",
-    height: "16px",
-    backgroundColor: theme.colors.darker,
-    borderRadius: "3px",
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    display: "inline-block",
-    cursor: "pointer",
-  };
-
-  const customCheckboxCheckedStyle: React.CSSProperties = {
-    ...customCheckboxStyle,
-    backgroundColor: theme.colors.darker,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-  };
-
-  const checkmarkStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "3px",
-    left: "3px",
-    width: "8px",
-    height: "8px",
-    backgroundColor: theme.colors.primary,
-    borderRadius: "2px",
-  };
-
   const searchStyle: React.CSSProperties = {
     backgroundColor: theme.colors.darker,
     color: theme.colors.text,
@@ -198,22 +163,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
     fontSize: "14px",
     width: "200px",
   };
-
-  // Custom checkbox component
-  const CustomCheckbox = ({ checked = false, onChange }: { checked?: boolean, onChange?: () => void }) => (
-    <div 
-      style={checked ? customCheckboxCheckedStyle : customCheckboxStyle}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (onChange) {
-          onChange();
-        }
-      }}
-    >
-      {checked && <span style={checkmarkStyle}></span>}
-    </div>
-  );
 
   // Notify parent when section is toggled
   const toggleItemSection = () => {
@@ -264,20 +213,23 @@ const CommandBar: React.FC<CommandBarProps> = ({
 
         {/* Display Options Section */}
         <div style={sectionStyle}>
-          <label style={checkboxLabelStyle}>
-            <CustomCheckbox onChange={toggleAccumulateExtensions} />
-            Accumulate Extensions
-          </label>
+          <CustomCheckbox 
+            checked={accumulateExtensions} 
+            onChange={toggleAccumulateExtensions}
+            label="Accumulate Extensions"
+          />
           
-          <label style={checkboxLabelStyle}>
-            <CustomCheckbox checked={showMachines} onChange={toggleShowMachines} />
-            Show Machines
-          </label>
+          <CustomCheckbox 
+            checked={showMachines} 
+            onChange={toggleShowMachines}
+            label="Show Machines"
+          />
           
-          <label style={checkboxLabelStyle}>
-            <CustomCheckbox checked={compactView} onChange={toggleCompactView} />
-            Compact View
-          </label>
+          <CustomCheckbox 
+            checked={compactView} 
+            onChange={toggleCompactView}
+            label="Compact View"
+          />
         </div>
 
         {/* Search and Additional Controls Section */}
@@ -359,21 +311,17 @@ const CommandBar: React.FC<CommandBarProps> = ({
           }}
           disabled={!selectedItem || filteredRecipes.length === 0}
           renderOption={(option) => (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 'bold' }}>{option.name}</span>
-              </div>
-              {option.id === selectedRecipe && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: theme.colors.textSecondary,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <span>Selected</span>
-                </div>
-              )}
+            <div 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                padding: '4px 8px',
+                backgroundColor: option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                borderRadius: theme.border.radius,
+              }}
+            >
+              <span style={{ fontWeight: 'bold' }}>{option.name}</span>
             </div>
           )}
         />
