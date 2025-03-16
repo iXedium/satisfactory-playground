@@ -27,6 +27,27 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
+  // Add global wheel event handler to prevent browser zoom on inputs
+  useEffect(() => {
+    const preventZoomOnInputs = (e: WheelEvent) => {
+      // Check if the event target is an input element and Ctrl key is pressed
+      if (
+        e.ctrlKey && 
+        (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    // Add the event listener with the capture phase to intercept before browser zoom
+    window.addEventListener('wheel', preventZoomOnInputs, { passive: false });
+
+    // Clean up
+    return () => {
+      window.removeEventListener('wheel', preventZoomOnInputs);
+    };
+  }, []);
+
   // Loading state
   if (dbStatus === 'loading') {
     return (

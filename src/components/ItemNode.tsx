@@ -227,6 +227,25 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     }
   };
 
+  // Handle mouse wheel events for numeric inputs
+  const handleWheel = (
+    e: React.WheelEvent<HTMLInputElement>,
+    currentValue: number,
+    setter: (value: number) => void,
+    min: number = 0
+  ) => {
+    e.preventDefault(); // Prevent page scrolling
+    
+    let step = 1;
+    if (e.ctrlKey) step = 10;
+    if (e.shiftKey) step = 100;
+    
+    // Wheel delta is negative when scrolling down, positive when scrolling up
+    const delta = e.deltaY < 0 ? 1 : -1;
+    const newValue = Math.max(min, currentValue + (delta * step));
+    setter(newValue);
+  };
+
   // Handle focus to select all content
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
@@ -438,6 +457,20 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     1
                   );
                 }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  if (document.activeElement === machineCountRef.current) {
+                    handleWheel(
+                      e,
+                      localMachineCount,
+                      (val) => {
+                        setLocalMachineCount(val);
+                        onMachineCountChange?.(val);
+                      },
+                      1
+                    );
+                  }
+                }}
                 onFocus={(e) => {
                   e.stopPropagation();
                   handleFocus(e);
@@ -490,6 +523,20 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     },
                     1
                   );
+                }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  if (document.activeElement === machineMultiplierRef.current) {
+                    handleWheel(
+                      e,
+                      localMachineMultiplier,
+                      (val) => {
+                        setLocalMachineMultiplier(val);
+                        onMachineMultiplierChange?.(val);
+                      },
+                      1
+                    );
+                  }
                 }}
                 onFocus={(e) => {
                   e.stopPropagation();
@@ -650,6 +697,19 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     setLocalExcess(val);
                     onExcessChange?.(val);
                   });
+                }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                  if (document.activeElement === excessRef.current) {
+                    handleWheel(
+                      e,
+                      localExcess,
+                      (val) => {
+                        setLocalExcess(val);
+                        onExcessChange?.(val);
+                      }
+                    );
+                  }
                 }}
                 onFocus={(e) => {
                   e.stopPropagation();

@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect, useRef } from 'react';
 import { styled } from '@mui/material/styles';
 import { theme } from '../../styles/theme';
 
@@ -35,9 +35,45 @@ const StyledInputBase = styled('input')<{ $variant?: 'default' | 'compact' }>(({
 
 const StyledInput = forwardRef<HTMLInputElement, StyledInputProps>(
   ({ variant = 'default', style, ...props }, ref) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    
+    // Combine the forwarded ref with our local ref
+    const setRefs = (element: HTMLInputElement | null) => {
+      // Update the local ref
+      if (inputRef.current !== element) {
+        inputRef.current = element;
+      }
+      
+      // Forward the ref
+      if (typeof ref === 'function') {
+        ref(element);
+      } else if (ref) {
+        ref.current = element;
+      }
+    };
+    
+    // Add wheel event handler to prevent page scrolling when input is focused
+    useEffect(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      
+      const handleWheel = (e: WheelEvent) => {
+        if (document.activeElement === input) {
+          e.preventDefault();
+        }
+      };
+      
+      // Use the capture phase to ensure we get the event before the browser
+      input.addEventListener('wheel', handleWheel, { passive: false });
+      
+      return () => {
+        input.removeEventListener('wheel', handleWheel);
+      };
+    }, []);
+    
     return (
       <StyledInputBase
-        ref={ref}
+        ref={setRefs}
         $variant={variant}
         className="no-spinners"
         style={style}
