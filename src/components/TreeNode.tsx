@@ -63,6 +63,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           position: 'relative',
           zIndex: 0
         }}
+        data-node-id={node.uniqueId}
       >
         <div
           onClick={handleToggle}

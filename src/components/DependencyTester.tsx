@@ -11,11 +11,11 @@ import { getComponents, getRecipesForItem } from "../data/dbQueries";
 import ViewModeSwitch from "./ViewModeSwitch";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
-import ItemNode from "./ItemNode";
 import { theme } from '../styles/theme';
 import StyledSelect from "./shared/StyledSelect";
 import StyledInput from "./shared/StyledInput";
 import Icon from "./Icon";
+import AccumulatedView from "./AccumulatedView";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -157,18 +157,29 @@ const DependencyTester: React.FC = () => {
     setExcessMap(newExcessMap);
 
     if (selectedItem && selectedRecipe) {
+      // Find affected branches when excess changes
+      const affectedBranches = dependencies.dependencyTree 
+        ? findAffectedBranches(dependencies.dependencyTree, nodeId)
+        : [];
+
       const tree = await calculateDependencyTree(
         selectedItem,
         itemCount,
         selectedRecipe,
         recipeSelections,
         0,
-        [], // No affected branches needed
+        affectedBranches, // Pass affected branches
         '',
         newExcessMap
       );
       const accumulated = calculateAccumulatedFromTree(tree);
       dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+
+      setLastCalculated({
+        item: selectedItem,
+        recipe: selectedRecipe,
+        count: itemCount
+      });
     }
   };
 
@@ -319,65 +330,15 @@ const DependencyTester: React.FC = () => {
 
       {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
         <div style={{ ...dependencyStyles.listContainer, display: viewMode === "accumulated" ? "block" : "none" }}>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {dependencies.selectedItem && (
-              <li style={{ marginBottom: "8px" }}>
-                <ItemNode
-                  itemId={dependencies.selectedItem}
-                  amount={dependencies.itemCount}
-                  isRoot={true}
-                  index={0}
-                  recipes={filteredRecipes}
-                  selectedRecipeId={selectedRecipe}
-                  onRecipeChange={(recipeId) => {
-                    setSelectedRecipe(recipeId);
-                    handleCalculate();
-                  }}
-                  excess={excessMap[dependencies.selectedItem] || 0}
-                  onExcessChange={(excess) => {
-                    if (dependencies.selectedItem) {
-                      handleExcessChange(dependencies.selectedItem, excess);
-                    }
-                  }}
-                  machineCount={machineCountMap[dependencies.selectedItem] || 1}
-                  onMachineCountChange={(count) => {
-                    if (dependencies.selectedItem) {
-                      handleMachineCountChange(dependencies.selectedItem, count);
-                    }
-                  }}
-                  machineMultiplier={machineMultiplierMap[dependencies.selectedItem] || 1}
-                  onMachineMultiplierChange={(multiplier) => {
-                    if (dependencies.selectedItem) {
-                      handleMachineMultiplierChange(dependencies.selectedItem, multiplier);
-                    }
-                  }}
-                />
-              </li>
-            )}
-            {Object.entries(dependencies.accumulatedDependencies).map(([item, amount], index) => {
-              const nodeId = `${item}-0`;
-              const recipes = filteredRecipes.filter((r) => r.id === item) || [];
-              return (
-                <li key={item} style={{ marginBottom: "8px" }}>
-                  <ItemNode
-                    itemId={item}
-                    amount={amount}
-                    isByproduct={amount < 0}
-                    index={index + 1}
-                    recipes={recipes}
-                    selectedRecipeId={recipeSelections[nodeId] || ''}
-                    onRecipeChange={(recipeId) => handleTreeRecipeChange(nodeId, recipeId)}
-                    excess={excessMap[item] || 0}
-                    onExcessChange={(excess) => handleExcessChange(item, excess)}
-                    machineCount={machineCountMap[item] || 1}
-                    onMachineCountChange={(count) => handleMachineCountChange(item, count)}
-                    machineMultiplier={machineMultiplierMap[item] || 1}
-                    onMachineMultiplierChange={(multiplier) => handleMachineMultiplierChange(item, multiplier)}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <AccumulatedView
+            onRecipeChange={handleTreeRecipeChange}
+            onExcessChange={handleExcessChange}
+            excessMap={excessMap}
+            machineCountMap={machineCountMap}
+            onMachineCountChange={handleMachineCountChange}
+            machineMultiplierMap={machineMultiplierMap}
+            onMachineMultiplierChange={handleMachineMultiplierChange}
+          />
         </div>
       )}
 

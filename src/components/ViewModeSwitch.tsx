@@ -28,6 +28,7 @@ const ViewModeSwitch: React.FC<ViewModeSwitchProps> = ({ mode, onToggle }) => {
       checked={mode === "tree"}
       onChange={(e) => onToggle(e.target.checked ? "tree" : "list")}
       size="small"
+      data-view-mode-switch
     />
   );
 };
