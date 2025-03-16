@@ -39,9 +39,10 @@ class SatisfactoryDatabase extends Dexie {
   // ✅ Centralized fetch function for recipes
   async getRecipeByOutput(itemId: string): Promise<Recipe | undefined> {
     const allRecipes = await this.recipes.toArray();
+    const item = await this.items.get(itemId);
 
-    // ✅ First, find the recipe where the name matches the itemId (Default Recipe)
-    let recipe = allRecipes.find((r) => r.id === itemId);
+    // ✅ First, find the recipe where the name matches the item name (Default Recipe)
+    let recipe = item ? allRecipes.find((r) => r.name === item.name) : undefined;
 
     // ✅ If no exact match is found, fall back to any valid recipe
     if (!recipe) {

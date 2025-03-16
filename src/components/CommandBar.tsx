@@ -7,9 +7,6 @@ import Icon from "./Icon";
 import { Item } from "../data/dexieDB";
 import { getRecipesForItem } from "../data/dbQueries";
 import StyledCheckbox from "./shared/StyledCheckbox";
-import { useSelector } from "react-redux";
-import { RootState } from "../store";
-import { commandBarStyles } from "../styles/commandBarStyles";
 import { Recipe } from "../data/dexieDB";
 
 interface CommandBarProps {
@@ -65,9 +62,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
   const [showExtensions, setShowExtensions] = useState(true);
   const [expandAll, setExpandAll] = useState(true);
   
-  const dependencies = useSelector((state: RootState) => state.dependencies);
-  const hasTree = !!dependencies.dependencyTree;
-  
   // Placeholder functions for future implementation
   const handleDepthChange = () => {};
   const handleToggleMachines = () => {};
@@ -115,16 +109,25 @@ const CommandBar: React.FC<CommandBarProps> = ({
       getRecipesForItem(selectedItem)
         .then(recipes => {
           setFilteredRecipes(recipes);
-          // Auto-select first recipe if none selected
-          if (recipes.length > 0 && !selectedRecipe) {
-            onRecipeChange(recipes[0].id);
+          // Always select a default recipe when the item changes
+          if (recipes.length > 0) {
+            // Try to find a recipe with the same name as the item
+            const selectedItemObj = items.find(i => i.id === selectedItem);
+            const matchingRecipe = recipes.find(r => r.name === selectedItemObj?.name);
+            
+            if (matchingRecipe) {
+              onRecipeChange(matchingRecipe.id);
+            } else {
+              // Fall back to first recipe if no matching name found
+              onRecipeChange(recipes[0].id);
+            }
           }
         })
         .catch(console.error);
     } else {
       setFilteredRecipes([]);
     }
-  }, [selectedItem, selectedRecipe, onRecipeChange]);
+  }, [selectedItem, onRecipeChange, items]);
   
   // Handle item section collapse
   const toggleItemSection = () => {
