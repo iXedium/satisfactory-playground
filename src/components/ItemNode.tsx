@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import Icon, { IconSize } from './Icon';
-import { Recipe, Item } from '../data/dexieDB';
-import { theme } from '../styles/theme';
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import Icon, { IconSize } from "./Icon";
+import { Recipe, Item } from "../data/dexieDB";
+import { theme } from "../styles/theme";
 import { getItemById, getMachineForRecipe } from "../data/dbQueries";
-import StyledSelect from './shared/StyledSelect';
-import StyledInput from './shared/StyledInput';
+import StyledSelect from "./shared/StyledSelect";
+import StyledInput from "./shared/StyledInput";
+import { useWindowSize } from "../hooks/useDebounce";
 
 interface ItemNodeProps {
   itemId: string;
@@ -52,21 +53,111 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   machineCount = 1,
   onMachineCountChange,
   machineMultiplier = 1,
-  onMachineMultiplierChange
+  onMachineMultiplierChange,
 }) => {
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
-  const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
+  const [localMachineMultiplier, setLocalMachineMultiplier] =
+    useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [efficiency, setEfficiency] = useState(100);
   const [showEfficiencyTooltip, setShowEfficiencyTooltip] = useState(false);
   const [nominalRate, setNominalRate] = useState(0);
-  
+
   // Refs for input elements to handle selection
   const machineCountRef = useRef<HTMLInputElement>(null);
   const machineMultiplierRef = useRef<HTMLInputElement>(null);
   const excessRef = useRef<HTMLInputElement>(null);
+
+  // Get debounced window size for responsive calculations
+  useWindowSize(250);
+
+  const getItemColor = () => {
+    if (isRoot) return theme.colors.nodeRoot;
+    if (isByproduct) return theme.colors.nodeByproduct;
+    return theme.colors.nodeDefault;
+  };
+
+  const getEfficiencyColor = () => {
+    if (efficiency > 100) return theme.colors.efficiency.over;
+    if (efficiency < 100) return theme.colors.efficiency.under;
+    return theme.colors.efficiency.perfect;
+  };
+
+  // Base styles
+  const buttonStyle: React.CSSProperties = {
+    padding: "4px 8px",
+    fontSize: "12px",
+    backgroundColor: theme.colors.buttonDefault,
+    color: theme.colors.text,
+    border: "none",
+    borderRadius: theme.border.radius,
+    cursor: "pointer",
+    fontWeight: "bold",
+    height: "32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "30px",
+  };
+
+  const inputFieldStyle: React.CSSProperties = {
+    backgroundColor: theme.colors.darker,
+    color: theme.colors.text,
+    border: `1px solid ${theme.colors.dropdown.border}`,
+    borderRadius: theme.border.radius,
+    padding: "4px 8px",
+    height: "28px",
+  };
+
+  const sectionStyle: React.CSSProperties = {
+    backgroundColor: `${theme.colors.dark}`,
+    borderRadius: theme.border.radius,
+    border: `1px solid ${theme.colors.dropdown.border}`,
+    padding: "8px",
+    display: "flex",
+    alignItems: "center",
+    height: "100%",
+  };
+
+  // Memoize styles that depend on window size
+  const containerStyles = useMemo<React.CSSProperties>(() => ({
+    display: "flex",
+    gap: "4px",
+    backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+    borderRadius: theme.border.radius,
+    padding: "4px",
+    ...style,
+  }), [index, style]);
+
+  const leftSectionStyles = useMemo<React.CSSProperties>(() => ({
+    ...sectionStyle,
+    borderLeft: `4px solid ${getItemColor()}`,
+    flex: 2,
+    minWidth: "200px",
+    position: "relative",
+    zIndex: 1,
+  }), [getItemColor, sectionStyle]);
+
+  const middleSectionStyles = useMemo<React.CSSProperties>(() => ({
+    ...sectionStyle,
+    borderLeft: `4px solid ${theme.colors.secondary}`,
+    flex: 1,
+    maxWidth: "265px",
+    position: "relative",
+    zIndex: 1,
+  }), [sectionStyle]);
+
+  const rightSectionStyles = useMemo<React.CSSProperties>(() => ({
+    ...sectionStyle,
+    borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
+    flex: 1,
+    minWidth: "160px",
+    maxWidth: "200px",
+    position: "relative",
+    zIndex: 1,
+  }), [sectionStyle, isByproduct, getEfficiencyColor]);
 
   useEffect(() => {
     setLocalExcess(excess);
@@ -81,12 +172,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   }, [machineMultiplier]);
 
   useEffect(() => {
-    getItemById(itemId).then(item => setItem(item || null));
+    getItemById(itemId).then((item) => setItem(item || null));
   }, [itemId]);
 
   useEffect(() => {
     if (selectedRecipeId) {
-      getMachineForRecipe(selectedRecipeId).then(machineData => {
+      getMachineForRecipe(selectedRecipeId).then((machineData) => {
         if (machineData) {
           setMachine(machineData);
         }
@@ -97,53 +188,51 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   // Calculate efficiency and nominal rate whenever relevant values change
   useEffect(() => {
     if (machine && selectedRecipeId && recipes) {
-      const recipe = recipes.find(r => r.id === selectedRecipeId);
+      const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
         const outputAmount = recipe.out[itemId] || 1;
         const cyclesPerMinute = 60 / recipe.time;
         const itemsPerMinute = outputAmount * cyclesPerMinute;
-        
+
         // Calculate nominal production rate (per machine)
         const nominalRatePerMachine = itemsPerMinute * machine.speed;
         setNominalRate(nominalRatePerMachine);
-        
+
         // Calculate total production capacity with all machines
-        const totalMachineCapacity = localMachineCount * localMachineMultiplier * nominalRatePerMachine;
-        
+        const totalMachineCapacity =
+          localMachineCount * localMachineMultiplier * nominalRatePerMachine;
+
         // Calculate efficiency (actual needed / total capacity)
         const neededAmount = amount + localExcess;
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
     }
-  }, [amount, localExcess, localMachineCount, localMachineMultiplier, machine, selectedRecipeId, recipes, itemId]);
-
-  const getItemColor = () => {
-    if (isRoot) return theme.colors.nodeRoot;
-    if (isByproduct) return theme.colors.nodeByproduct;
-    return theme.colors.nodeDefault;
-  };
-
-  const getEfficiencyColor = () => {
-    if (efficiency > 100) return theme.colors.nodeByproduct; // Red for over 100%
-    if (efficiency < 100) return '#CCAA00'; // Yellow for under 100%
-    return theme.colors.nodeRoot; // Green for exactly 100%
-  };
+  }, [
+    amount,
+    localExcess,
+    localMachineCount,
+    localMachineMultiplier,
+    machine,
+    selectedRecipeId,
+    recipes,
+    itemId,
+  ]);
 
   const handleExcessChange = (value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === "" ? 0 : Number(value);
     setLocalExcess(numValue);
     onExcessChange?.(numValue);
   };
 
   const handleMachineCountChange = (value: string) => {
-    const numValue = Math.max(1, value === '' ? 1 : Math.floor(Number(value)));
+    const numValue = Math.max(1, value === "" ? 1 : Math.floor(Number(value)));
     setLocalMachineCount(numValue);
     onMachineCountChange?.(numValue);
   };
 
   const handleMachineMultiplierChange = (value: string) => {
-    const numValue = Math.max(1, value === '' ? 1 : Math.floor(Number(value)));
+    const numValue = Math.max(1, value === "" ? 1 : Math.floor(Number(value)));
     setLocalMachineMultiplier(numValue);
     onMachineMultiplierChange?.(numValue);
   };
@@ -155,15 +244,16 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const handleMaxExcess = () => {
     if (machine && selectedRecipeId && recipes) {
-      const recipe = recipes.find(r => r.id === selectedRecipeId);
+      const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
         // Calculate the total production capacity
-        const totalCapacity = localMachineCount * localMachineMultiplier * nominalRate;
-        
+        const totalCapacity =
+          localMachineCount * localMachineMultiplier * nominalRate;
+
         // Calculate excess needed for 100% efficiency
         const excessNeeded = totalCapacity - amount;
         const roundedExcess = Math.max(0, Math.round(excessNeeded * 100) / 100);
-        
+
         setLocalExcess(roundedExcess);
         onExcessChange?.(roundedExcess);
       }
@@ -172,12 +262,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const handleOptimizeMachines = () => {
     if (machine && selectedRecipeId && recipes) {
-      const recipe = recipes.find(r => r.id === selectedRecipeId);
+      const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
         // Calculate optimal machine count for 100% efficiency
         const neededAmount = amount + localExcess;
-        const optimalMachines = Math.ceil(neededAmount / (nominalRate * localMachineMultiplier));
-        
+        const optimalMachines = Math.ceil(
+          neededAmount / (nominalRate * localMachineMultiplier)
+        );
+
         setLocalMachineCount(optimalMachines);
         onMachineCountChange?.(optimalMachines);
       }
@@ -202,11 +294,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     if (e.ctrlKey) step = 10;
     if (e.shiftKey) step = 100;
 
-    if (e.key === 'ArrowUp') {
+    if (e.key === "ArrowUp") {
       e.preventDefault();
       const newValue = Math.max(min, currentValue + step);
       setter(newValue);
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
       const newValue = Math.max(min, currentValue - step);
       setter(newValue);
@@ -220,75 +312,22 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   if (!item) return null;
 
-  // Button styles
-  const buttonStyle: React.CSSProperties = {
-    padding: '4px 8px',
-    fontSize: '12px',
-    backgroundColor: theme.colors.buttonDefault,
-    color: theme.colors.text,
-    border: 'none',
-    borderRadius: theme.border.radius,
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    height: '28px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '50px',
-  };
-
-  // Input field styles
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: '4px 8px',
-    width: '60px',
-    height: '28px',
-  };
-
-  // Section container styles
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: `${theme.colors.dark}`,
-    borderRadius: theme.border.radius,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    padding: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    height: '100%',
-  };
-
   return (
-    <div 
-      style={{
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '8px',
-        backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-        borderRadius: theme.border.radius,
-        padding: '8px',
-        ...style
-      }}
+    <div
+      style={containerStyles}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Left section - Item info */}
-      <div style={{
-        ...sectionStyle,
-        borderLeft: `4px solid ${getItemColor()}`,
-        flex: 2,
-        minWidth: '300px',
-        position: 'relative',
-        zIndex: 1,
-      }}
-      onClick={(e) => e.stopPropagation()}
+      <div
+        style={leftSectionStyles}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Item icon */}
-        <div 
-          style={{ 
-            cursor: onIconClick ? 'pointer' : 'default',
-            marginRight: '8px',
-            alignSelf: 'flex-start',
+        <div
+          style={{
+            cursor: onIconClick ? "pointer" : "default",
+            marginRight: "8px",
+            alignSelf: "flex-start",
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -297,101 +336,102 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         >
           <Icon itemId={itemId} size={size} />
         </div>
-        
+
         {/* Item info and recipe */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          flex: 1,
-          justifyContent: 'space-between',
-          height: '100%',
-          position: 'relative',
-          zIndex: 1,
-        }}
-        onClick={(e) => e.stopPropagation()}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            justifyContent: "space-between",
+            height: "100%",
+            position: "relative",
+            zIndex: 1,
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Item name and nominal rate */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontWeight: 'bold',
-            color: getItemColor(),
-          }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontWeight: "bold",
+              color: isByproduct ? theme.colors.nodeByproduct : getItemColor(),
+            }}
+          >
             <span>{item.name}</span>
-            {nominalRate > 0 && (
-              <span style={{ fontSize: '12px', opacity: 0.8 }}>
+            {nominalRate > 0 && !isByproduct && (
+              <span style={{ fontSize: "12px", opacity: 0.8 }}>
                 {nominalRate.toFixed(2)}/min
               </span>
             )}
           </div>
-          
+
           {/* Recipe selector - aligned to bottom */}
-          <div 
-            style={{ marginTop: 'auto', position: 'relative', zIndex: 2 }}
+          <div
+            style={{ marginTop: "auto", position: "relative", zIndex: 2 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {recipes && recipes.length > 0 && onRecipeChange && (
+            {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && (
               <StyledSelect
-                value={selectedRecipeId || ''}
+                value={selectedRecipeId || ""}
                 onChange={onRecipeChange}
                 options={recipes}
                 variant="compact"
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               />
             )}
           </div>
         </div>
       </div>
-      
+
       {/* Middle section - Machine info */}
       {machine && !isByproduct && (
-        <div style={{
-          ...sectionStyle,
-          borderLeft: `4px solid ${theme.colors.secondary}`,
-          flex: 1,
-          minWidth: '250px',
-          position: 'relative',
-          zIndex: 1,
-        }}
-        onClick={(e) => e.stopPropagation()}
+        <div
+          style={middleSectionStyles}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Machine icon - same size as item icon */}
-          <div style={{ marginRight: '8px' }}>
+          <div style={{ marginRight: "8px" }}>
             <Icon itemId={machine.id} size={size} />
           </div>
-          
+
           {/* Machine details in column layout */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            flex: 1,
-            gap: '4px',
-            position: 'relative',
-            zIndex: 1,
-          }}
-          onClick={(e) => e.stopPropagation()}
-          >
-            {/* Machine name */}
-            <div style={{ 
-              fontWeight: 'bold', 
-              color: theme.colors.secondary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
-              {machine.name}
-            </div>
-            
-            {/* Machine controls in row */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px', 
-              alignItems: 'center',
-              position: 'relative',
-              zIndex: 2,
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              gap: "4px",
+              position: "relative",
+              zIndex: 1,
             }}
             onClick={(e) => e.stopPropagation()}
+          >
+            {/* Machine name */}
+            <div
+              style={{
+                fontWeight: "bold",
+                color: theme.colors.secondary,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {machine.name}
+            </div>
+
+            {/* Machine controls in row */}
+            <div
+              style={{
+                display: "flex",
+                gap: "0px",
+                alignItems: "center",
+                position: "relative",
+                zIndex: 2,
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Machine count */}
               <StyledInput
@@ -404,27 +444,37 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  handleKeyDown(e, localMachineCount, (val) => {
-                    setLocalMachineCount(val);
-                    onMachineCountChange?.(val);
-                  }, 1);
+                  handleKeyDown(
+                    e,
+                    localMachineCount,
+                    (val) => {
+                      setLocalMachineCount(val);
+                      onMachineCountChange?.(val);
+                    },
+                    1
+                  );
                 }}
                 onFocus={(e) => {
                   e.stopPropagation();
                   handleFocus(e);
                 }}
                 variant="compact"
-                style={{...inputFieldStyle, position: 'relative', zIndex: 2}}
+                style={{
+                  ...inputFieldStyle,
+                  position: "relative",
+                  zIndex: 2,
+                  maxWidth: "40px",
+                }}
                 min={1}
                 onClick={(e) => e.stopPropagation()}
               />
-              
+
               {/* Max button */}
-              <button 
+              <button
                 style={{
                   ...buttonStyle,
                   backgroundColor: theme.colors.secondary,
-                  position: 'relative',
+                  position: "relative",
                   zIndex: 2,
                 }}
                 onClick={(e) => {
@@ -433,9 +483,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 title="Set machine count for 100% efficiency"
               >
-                MAX
+                M
               </button>
-              
+
               {/* Multiplier */}
               <StyledInput
                 ref={machineMultiplierRef}
@@ -447,17 +497,27 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  handleKeyDown(e, localMachineMultiplier, (val) => {
-                    setLocalMachineMultiplier(val);
-                    onMachineMultiplierChange?.(val);
-                  }, 1);
+                  handleKeyDown(
+                    e,
+                    localMachineMultiplier,
+                    (val) => {
+                      setLocalMachineMultiplier(val);
+                      onMachineMultiplierChange?.(val);
+                    },
+                    1
+                  );
                 }}
                 onFocus={(e) => {
                   e.stopPropagation();
                   handleFocus(e);
                 }}
                 variant="compact"
-                style={{...inputFieldStyle, position: 'relative', zIndex: 2}}
+                style={{
+                  ...inputFieldStyle,
+                  position: "relative",
+                  zIndex: 2,
+                  maxWidth: "40px",
+                }}
                 min={1}
                 onClick={(e) => e.stopPropagation()}
               />
@@ -465,104 +525,110 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Right section - Efficiency and rate */}
-      <div style={{
-        ...sectionStyle,
-        borderLeft: `4px solid ${getEfficiencyColor()}`,
-        flex: 1,
-        minWidth: '250px',
-        position: 'relative',
-        zIndex: 1,
-      }}
-      onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          width: '100%',
-          gap: '8px',
-          position: 'relative',
-          zIndex: 1,
-        }}
+      <div
+        style={rightSectionStyles}
         onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            gap: "10px",
+            position: "relative",
+            zIndex: 1,
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* First row: Efficiency and Rate */}
-          <div style={{ 
-            display: 'flex',
-            justifyContent: 'space-between',
-            width: '100%',
-          }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              width: "100%",
+            }}
+          >
             {/* Efficiency */}
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              position: 'relative',
-              zIndex: 2,
-            }}>
-              <span>Efficiency:</span>
-              <span 
-                style={{ 
-                  color: getEfficiencyColor(),
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  position: 'relative',
-                  marginLeft: '4px',
+            {!isByproduct && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  position: "relative",
                   zIndex: 2,
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyEfficiencyValue();
-                }}
-                title="Click to copy decimal value"
               >
-                {efficiency.toFixed(2)}%
-                {showEfficiencyTooltip && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    right: '0',
-                    backgroundColor: theme.colors.dark,
-                    padding: '4px 8px',
-                    borderRadius: theme.border.radius,
-                    fontSize: '12px',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                    zIndex: 10,
-                  }}>
-                    Copied!
-                  </div>
-                )}
-              </span>
-            </div>
-            
+                <span
+                  style={{
+                    color: getEfficiencyColor(),
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    position: "relative",
+                    marginLeft: "0px",
+                    zIndex: 2,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyEfficiencyValue();
+                  }}
+                  title="Click to copy decimal value"
+                >
+                  {efficiency.toFixed(2)}%
+                  {showEfficiencyTooltip && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "100%",
+                        right: "0",
+                        backgroundColor: theme.colors.dark,
+                        padding: "4px 8px",
+                        borderRadius: theme.border.radius,
+                        fontSize: "12px",
+                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+                        zIndex: 10,
+                      }}
+                    >
+                      Copied!
+                    </div>
+                  )}
+                </span>
+              </div>
+            )}
+
             {/* Rate */}
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              fontWeight: 'bold',
-            }}>
-              <span>Rate:</span>
-              <span style={{ marginLeft: '4px' }}>{amount.toFixed(2)}/min</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: "bold",
+                color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text,
+                marginLeft: isByproduct ? "auto" : "4px",
+              }}
+            >
+              <span>{Math.abs(amount).toFixed(2)}/min</span>
             </div>
           </div>
-          
+
           {/* Second row: Excess controls */}
-          {onExcessChange && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px', 
-              alignItems: 'center',
-              width: '100%',
-              justifyContent: 'space-between',
-              position: 'relative',
-              zIndex: 2,
-            }}
-            onClick={(e) => e.stopPropagation()}
+          {onExcessChange && !isByproduct && (
+            <div
+              style={{
+                display: "flex",
+                gap: "0px",
+                alignItems: "center",
+                width: "100%",
+                justifyContent: "space-between",
+                position: "relative",
+                zIndex: 2,
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <button 
+              <button
                 style={{
                   ...buttonStyle,
-                  position: 'relative',
+                  position: "relative",
                   zIndex: 2,
                 }}
                 onClick={(e) => {
@@ -571,9 +637,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 title="Reset excess to zero"
               >
-                RESET
+                R
               </button>
-              
+
               <StyledInput
                 ref={excessRef}
                 type="number"
@@ -594,15 +660,21 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   handleFocus(e);
                 }}
                 variant="compact"
-                style={{ ...inputFieldStyle, width: '80px', position: 'relative', zIndex: 2 }}
+                style={{ 
+                  ...inputFieldStyle,
+                  minWidth: "50px",
+                  maxWidth: "120px",
+                  position: "relative",
+                  zIndex: 2,
+                }}
                 onClick={(e) => e.stopPropagation()}
               />
-              
-              <button 
+
+              <button
                 style={{
                   ...buttonStyle,
                   backgroundColor: theme.colors.secondary,
-                  position: 'relative',
+                  position: "relative",
                   zIndex: 2,
                 }}
                 onClick={(e) => {
@@ -611,7 +683,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 title="Set excess for 100% efficiency"
               >
-                MAX
+                M
               </button>
             </div>
           )}
@@ -621,4 +693,4 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   );
 };
 
-export default ItemNode;
+export default React.memo(ItemNode);

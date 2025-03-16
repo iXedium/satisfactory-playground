@@ -200,7 +200,8 @@ const DependencyTester: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: '12px',
+          width: '100%'
         }}>
           {/* Left group: Production controls */}
           <div style={{ 
@@ -208,14 +209,19 @@ const DependencyTester: React.FC = () => {
             gap: '12px', 
             alignItems: 'center',
             flexWrap: 'wrap',
-            flex: '1'
+            flex: '1 1 auto',
+            minWidth: '0'
           }}>
             <StyledSelect
               value={selectedItem}
               onChange={setSelectedItem}
               options={items}
               placeholder="Select an Item"
-              style={{ minWidth: '250px', maxWidth: '300px', flex: '1' }}
+              style={{ 
+                minWidth: '180px', 
+                maxWidth: '300px', 
+                flex: '1 1 auto'
+              }}
               renderOption={(option) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
@@ -231,9 +237,9 @@ const DependencyTester: React.FC = () => {
               options={filteredRecipes}
               placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
               style={{ 
-                minWidth: '250px', 
+                minWidth: '180px', 
                 maxWidth: '300px', 
-                flex: '1',
+                flex: '1 1 auto',
                 opacity: selectedItem ? 1 : 0.7
               }}
               disabled={!selectedItem || filteredRecipes.length === 0}
@@ -263,7 +269,11 @@ const DependencyTester: React.FC = () => {
               value={itemCount}
               onChange={(e) => setItemCount(Number(e.target.value))}
               placeholder="Count"
-              style={{ width: '120px' }}
+              style={{ 
+                width: '120px',
+                minWidth: '80px',
+                flex: '0 1 auto'
+              }}
             />
           </div>
 
@@ -272,7 +282,8 @@ const DependencyTester: React.FC = () => {
             display: 'flex', 
             gap: '12px', 
             alignItems: 'center',
-            flexShrink: 0
+            flexShrink: 0,
+            marginLeft: 'auto'
           }}>
             <button
               onClick={handleCalculate}
@@ -290,7 +301,8 @@ const DependencyTester: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s ease-in-out',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonHover}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.buttonDefault}

@@ -38,13 +38,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   // Calculate background color based on depth
   const getBackgroundColor = (depth: number) => {
     // Start with a lighter base and make subtle changes with depth
-    const baseRGB = [50, 60, 75];  // Slightly lighter base color
-    const darkenStep = 5;  // More subtle darkening per level
+    const baseRGB = [90, 100, 110];  // Slightly lighter base color
+    const darkenStep = 10;  // More subtle darkening per level
     
     // Calculate darkened RGB values based on depth
-    const r = Math.max(baseRGB[0] - (depth * darkenStep), 30);  // Don't go darker than 30
-    const g = Math.max(baseRGB[1] - (depth * darkenStep), 40);  // Don't go darker than 40
-    const b = Math.max(baseRGB[2] - (depth * darkenStep), 55);  // Don't go darker than 55
+    const r = Math.max(baseRGB[0] - (depth * darkenStep), 10);  // Don't go darker than 30
+    const g = Math.max(baseRGB[1] - (depth * darkenStep), 20);  // Don't go darker than 40
+    const b = Math.max(baseRGB[2] - (depth * darkenStep), 35);  // Don't go darker than 55
     
     return `rgb(${r}, ${g}, ${b})`;
   };
@@ -58,7 +58,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
-          paddingLeft: `${depth * 16}px`,
+          paddingLeft: `${depth * 32}px`,
           borderRadius: theme.border.radius,
           position: 'relative',
           zIndex: 0
