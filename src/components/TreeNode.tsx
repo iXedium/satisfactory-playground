@@ -14,7 +14,10 @@ interface TreeNodeProps {
   machineMultiplierMap?: Record<string, number>;
   onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
   expandedNodes?: Record<string, boolean>;
+  onNodeExpandChange?: (nodeId: string, expanded: boolean) => void;
   showMachineSection?: boolean;
+  isRoot?: boolean;
+  onDelete?: (treeId: string) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -28,7 +31,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   machineMultiplierMap = {},
   onMachineMultiplierChange,
   expandedNodes = {},
-  showMachineSection = true
+  onNodeExpandChange,
+  showMachineSection = true,
+  isRoot = false,
+  onDelete
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
@@ -42,7 +48,18 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   
   const handleToggle = () => {
     if (hasChildren) {
-      setIsExpanded(!isExpanded);
+      const newExpanded = !isExpanded;
+      setIsExpanded(newExpanded);
+      if (onNodeExpandChange) {
+        onNodeExpandChange(node.uniqueId, newExpanded);
+      }
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(node.uniqueId);
     }
   };
 
@@ -118,6 +135,41 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             showMachines={showMachineSection}
           />
         </div>
+
+        {isRoot && onDelete && (
+          <button
+            onClick={handleDelete}
+            style={{
+              position: 'absolute',
+              right: '8px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'rgba(255, 0, 0, 0.1)',
+              border: '1px solid rgba(255, 0, 0, 0.3)',
+              color: '#ff3333',
+              cursor: 'pointer',
+              padding: '2px 8px',
+              borderRadius: theme.border.radius,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 3,
+              fontSize: '16px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+              e.currentTarget.style.color = '#ff0000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+              e.currentTarget.style.color = '#ff3333';
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {isExpanded && hasChildren && (
@@ -135,7 +187,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               machineMultiplierMap={machineMultiplierMap}
               onMachineMultiplierChange={onMachineMultiplierChange}
               expandedNodes={expandedNodes}
+              onNodeExpandChange={onNodeExpandChange}
               showMachineSection={showMachineSection}
+              isRoot={false}
+              onDelete={onDelete}
             />
           ))}
         </div>

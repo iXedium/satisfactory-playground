@@ -3,16 +3,12 @@ import { DependencyNode } from "../utils/calculateDependencyTree";
 import { AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
 
 interface DependencyState {
-  selectedItem: string | null;
-  itemCount: number;
-  dependencyTree: DependencyNode | null;
+  dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
   accumulatedDependencies: Record<string, AccumulatedNode>;
 }
 
 const initialState: DependencyState = {
-  selectedItem: null,
-  itemCount: 0,
-  dependencyTree: null,
+  dependencyTrees: {},
   accumulatedDependencies: {},
 };
 
@@ -23,20 +19,24 @@ const dependencySlice = createSlice({
     setDependencies: (
       state,
       action: PayloadAction<{
-        item: string;
-        count: number;
+        treeId: string;  // Unique identifier for the tree
         tree: DependencyNode;
         accumulated: Record<string, AccumulatedNode>;
       }>
     ) => {
-       // ✅ Debugging
-      state.selectedItem = action.payload.item;
-      state.itemCount = action.payload.count;
-      state.dependencyTree = action.payload.tree;
+      state.dependencyTrees[action.payload.treeId] = action.payload.tree;
       state.accumulatedDependencies = action.payload.accumulated;
+    },
+    deleteTree: (
+      state,
+      action: PayloadAction<{
+        treeId: string;
+      }>
+    ) => {
+      delete state.dependencyTrees[action.payload.treeId];
     },
   },
 });
 
-export const { setDependencies } = dependencySlice.actions;
+export const { setDependencies, deleteTree } = dependencySlice.actions;
 export default dependencySlice.reducer;

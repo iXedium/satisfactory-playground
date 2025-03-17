@@ -4,14 +4,14 @@ import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
 import { calculateDependencyTree, DependencyNode } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
-import { setDependencies } from "../features/dependencySlice";
+import { setDependencies, deleteTree } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
-import { dependencyStyles } from "../styles/dependencyStyles";
 import { getComponents } from "../data/dbQueries";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import AccumulatedView from "./AccumulatedView";
 import CommandBar from "./CommandBar";
+import { theme } from "../styles/theme";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -19,17 +19,15 @@ const DependencyTester: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
-
+  const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState("");
   const [itemCount, setItemCount] = useState(1);
-  const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [excessMap, setExcessMap] = useState<Record<string, number>>({});
   const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
   const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
-  const [commandBarHeight, setCommandBarHeight] = useState(100);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [showExtensions, setShowExtensions] = useState(true);
   const [accumulateExtensions, setAccumulateExtensions] = useState(false);
@@ -39,96 +37,84 @@ const DependencyTester: React.FC = () => {
   const treeRef = useRef<HTMLDivElement>(null);
   const accumulatedViewRef = useRef<HTMLDivElement>(null);
 
-  // Add state to track last calculated values
-  const [lastCalculated, setLastCalculated] = useState<{
-    item: string;
-    recipe: string;
-    count: number;
-  } | null>(null);
-
-  // Load components on mount
   useEffect(() => {
-    getComponents().then(setItems).catch(console.error);
+    // Initial load of items from the database
+    getComponents().then(loadedItems => {
+      if (loadedItems) {
+        setItems(loadedItems);
+      }
+    });
   }, []);
 
-  // Update command bar height on resize and when add item section is toggled
-  useEffect(() => {
-    const updateCommandBarHeight = () => {
-      // Force a reflow to ensure we get the correct height
-      setTimeout(() => {
-        if (commandBarRef.current) {
-          const height = commandBarRef.current.getBoundingClientRect().height;
-          console.log("CommandBar height:", height);
-          setCommandBarHeight(height - 10); // Add some extra padding
-        }
-      }, 0);
-    };
-
-    // Initial measurement
-    updateCommandBarHeight();
-
-    // Set up resize observer
-    const resizeObserver = new ResizeObserver(() => {
-      updateCommandBarHeight();
-    });
-    
-    if (commandBarRef.current) {
-      resizeObserver.observe(commandBarRef.current);
-    }
-
-    // Set up window resize listener for good measure
-    window.addEventListener('resize', updateCommandBarHeight);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateCommandBarHeight);
-    };
-  }, [isAddItemCollapsed]);
+  // Generate a unique ID for a new tree
+  const generateTreeId = (itemId: string): string => {
+    const timestamp = Date.now();
+    return `${itemId}-${timestamp}`;
+  };
 
   // Update calculate handler with dependency checking
   const handleCalculate = async () => {
-    if (selectedItem && selectedRecipe) {
-      try {
-        // Check if calculation is needed
-        const needsCalculation = !lastCalculated 
-          || lastCalculated.item !== selectedItem
-          || lastCalculated.recipe !== selectedRecipe
-          || lastCalculated.count !== itemCount;
-
-        if (needsCalculation) {
-          const tree = await calculateDependencyTree(
-            selectedItem,
-            itemCount,
-            selectedRecipe,
-            recipeSelections
-          );
-          
-          if (!tree) {
-            console.error("Failed to calculate dependency tree");
-            return;
-          }
-          
-          const accumulated = calculateAccumulatedFromTree(tree);
-          
-          dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
-          
-          // Update last calculated state
-          setLastCalculated({
-            item: selectedItem,
-            recipe: selectedRecipe,
-            count: itemCount
-          });
-        }
-      } catch (error) {
-        console.error("Error in handleCalculate:", error);
+    if (!selectedItem || !selectedRecipe) return;
+    
+    try {
+      const treeId = generateTreeId(selectedItem);
+      
+      // Calculate the dependency tree
+      const tree = await calculateDependencyTree(
+        selectedItem,
+        itemCount,
+        selectedRecipe,
+        recipeSelections,
+        0,
+        [],
+        '',
+        excessMap
+      );
+      
+      if (!tree) {
+        console.error("Failed to calculate dependency tree");
+        return;
       }
+      
+      // Calculate accumulated values from the tree
+      const accumulated = calculateAccumulatedFromTree(tree);
+      
+      // Update the tree in Redux
+      dispatch(setDependencies({
+        treeId,
+        tree,
+        accumulated
+      }));
+      
+      // Save recipe selection to Redux
+      dispatch(setRecipeSelection({
+        nodeId: selectedItem,
+        recipeId: selectedRecipe
+      }));
+      
+      // Wait for state update and then recalculate heights
+      setTimeout(() => {
+        if (treeRef.current) {
+          treeRef.current.style.opacity = '0.99';
+          setTimeout(() => {
+            if (treeRef.current) treeRef.current.style.opacity = '1';
+          }, 10);
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error calculating dependency tree:", error);
     }
   };
 
   const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
-    const affectedBranches = dependencies.dependencyTree 
-      ? findAffectedBranches(dependencies.dependencyTree, nodeId)
-      : [];
+    // Find which tree this node belongs to
+    const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
+      findNodeById(dependencies.dependencyTrees[id], nodeId)
+    );
+
+    if (!treeId) return;
+
+    const affectedBranches = findAffectedBranches(dependencies.dependencyTrees[treeId], nodeId);
     
     const updatedRecipeSelections = {
       ...recipeSelections,
@@ -137,23 +123,18 @@ const DependencyTester: React.FC = () => {
     
     dispatch(setRecipeSelection({ nodeId, recipeId }));
 
-    if (selectedItem && selectedRecipe) {
-      const tree = await calculateDependencyTree(
-        selectedItem, 
-        itemCount, 
-        selectedRecipe, 
-        updatedRecipeSelections,
-        0,
-        affectedBranches
-      );
-      const accumulated = calculateAccumulatedFromTree(tree);
-      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
+    const tree = await calculateDependencyTree(
+      dependencies.dependencyTrees[treeId].id, 
+      dependencies.dependencyTrees[treeId].amount, 
+      recipeId, 
+      updatedRecipeSelections,
+      0,
+      affectedBranches
+    );
 
-      setLastCalculated({
-        item: selectedItem,
-        recipe: selectedRecipe,
-        count: itemCount
-      });
+    if (tree) {
+      const accumulated = calculateAccumulatedFromTree(tree);
+      dispatch(setDependencies({ treeId, tree, accumulated }));
     }
   };
 
@@ -161,30 +142,29 @@ const DependencyTester: React.FC = () => {
     const newExcessMap = { ...excessMap, [nodeId]: excess };
     setExcessMap(newExcessMap);
 
-    if (selectedItem && selectedRecipe) {
-      // Find affected branches when excess changes
-      const affectedBranches = dependencies.dependencyTree 
-        ? findAffectedBranches(dependencies.dependencyTree, nodeId)
-        : [];
+    // Find which tree this node belongs to
+    const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
+      findNodeById(dependencies.dependencyTrees[id], nodeId)
+    );
 
-      const tree = await calculateDependencyTree(
-        selectedItem,
-        itemCount,
-        selectedRecipe,
-        recipeSelections,
-        0,
-        affectedBranches, // Pass affected branches
-        '',
-        newExcessMap
-      );
+    if (!treeId) return;
+
+    const affectedBranches = findAffectedBranches(dependencies.dependencyTrees[treeId], nodeId);
+
+    const tree = await calculateDependencyTree(
+      dependencies.dependencyTrees[treeId].id,
+      dependencies.dependencyTrees[treeId].amount,
+      dependencies.dependencyTrees[treeId].selectedRecipeId || "",
+      recipeSelections,
+      0,
+      affectedBranches,
+      '',
+      newExcessMap
+    );
+
+    if (tree) {
       const accumulated = calculateAccumulatedFromTree(tree);
-      dispatch(setDependencies({ item: selectedItem, count: itemCount, tree, accumulated }));
-
-      setLastCalculated({
-        item: selectedItem,
-        recipe: selectedRecipe,
-        count: itemCount
-      });
+      dispatch(setDependencies({ treeId, tree, accumulated }));
     }
   };
 
@@ -201,30 +181,32 @@ const DependencyTester: React.FC = () => {
       [nodeId]: multiplier
     }));
   };
+
+  const handleDeleteTree = (treeId: string) => {
+    dispatch(deleteTree({ treeId }));
+  };
   
   // Handle expand/collapse all nodes in tree view
   const handleExpandCollapseAll = (expand: boolean) => {
-    if (!dependencies.dependencyTree) return;
+    const newExpandedNodes: Record<string, boolean> = {};
     
-    // Create a function to recursively collect all node IDs
-    const collectNodeIds = (node: DependencyNode, ids: Record<string, boolean> = {}) => {
-      if (!node) return ids;
-      
-      // Set this node's expanded state
-      ids[node.uniqueId] = expand;
-      
-      // Process children recursively
-      if (node.children && node.children.length > 0) {
-        for (const child of node.children) {
-          collectNodeIds(child, ids);
+    // Process each tree
+    Object.values(dependencies.dependencyTrees).forEach(tree => {
+      const collectNodeIds = (node: DependencyNode) => {
+        if (!node) return;
+        
+        newExpandedNodes[node.uniqueId] = expand;
+        
+        if (node.children && node.children.length > 0) {
+          for (const child of node.children) {
+            collectNodeIds(child);
+          }
         }
-      }
+      };
       
-      return ids;
-    };
+      collectNodeIds(tree);
+    });
     
-    // Collect all node IDs and set their expanded state
-    const newExpandedNodes = collectNodeIds(dependencies.dependencyTree);
     setExpandedNodes(newExpandedNodes);
     
     // Force a re-render of the tree
@@ -235,50 +217,19 @@ const DependencyTester: React.FC = () => {
       }, 10);
     }
   };
-  
-  // Handle show/hide extensions in list view
-  const handleShowExtensionsChange = (show: boolean) => {
-    setShowExtensions(show);
-    
-    // Force a re-render of the accumulated view
-    if (accumulatedViewRef.current) {
-      accumulatedViewRef.current.style.opacity = '0.99';
-      setTimeout(() => {
-        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
-      }, 10);
-    }
-  };
-  
-  // Handle accumulate extensions toggle
-  const handleAccumulateExtensionsChange = (accumulate: boolean) => {
-    setAccumulateExtensions(accumulate);
-    
-    // Force a re-render of the accumulated view
-    if (accumulatedViewRef.current) {
-      accumulatedViewRef.current.style.opacity = '0.99';
-      setTimeout(() => {
-        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
-      }, 10);
-    }
-  };
 
-  // Handle show machines toggle
-  const handleShowMachinesChange = (show: boolean) => {
-    setShowMachines(show);
+  // Helper function to find a node by ID in a tree
+  const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
+    if (tree.uniqueId === nodeId) return tree;
     
-    // Force a re-render of both views
-    if (treeRef.current) {
-      treeRef.current.style.opacity = '0.99';
-      setTimeout(() => {
-        if (treeRef.current) treeRef.current.style.opacity = '1';
-      }, 10);
+    if (tree.children) {
+      for (const child of tree.children) {
+        const found = findNodeById(child, nodeId);
+        if (found) return found;
+      }
     }
-    if (accumulatedViewRef.current) {
-      accumulatedViewRef.current.style.opacity = '0.99';
-      setTimeout(() => {
-        if (accumulatedViewRef.current) accumulatedViewRef.current.style.opacity = '1';
-      }, 10);
-    }
+    
+    return null;
   };
 
   return (
@@ -288,86 +239,88 @@ const DependencyTester: React.FC = () => {
       height: '100%',
       width: '100%',
       position: 'relative',
-      overflow: 'auto',
-      paddingTop: `${commandBarHeight}px`, // Dynamic padding based on CommandBar height
+      overflow: 'hidden'
     }}>
-      {/* CommandBar with integrated item selection */}
-      <div 
-        ref={commandBarRef}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-        }}
-      >
-        <CommandBar 
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        backgroundColor: theme.colors.background
+      }}>
+        <CommandBar
+          ref={commandBarRef}
           items={items}
           selectedItem={selectedItem}
-          onItemChange={setSelectedItem}
+          onItemSelect={setSelectedItem}
           selectedRecipe={selectedRecipe}
-          onRecipeChange={setSelectedRecipe}
+          onRecipeSelect={setSelectedRecipe}
           itemCount={itemCount}
           onItemCountChange={setItemCount}
           onCalculate={handleCalculate}
-          onAddItemSectionToggle={setIsAddItemCollapsed}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           onExpandCollapseAll={handleExpandCollapseAll}
-          onShowExtensionsChange={handleShowExtensionsChange}
-          onAccumulateExtensionsChange={handleAccumulateExtensionsChange}
+          showExtensions={showExtensions}
+          onShowExtensionsChange={setShowExtensions}
           accumulateExtensions={accumulateExtensions}
-          onShowMachinesChange={handleShowMachinesChange}
+          onAccumulateExtensionsChange={setAccumulateExtensions}
+          showMachines={showMachines}
+          onShowMachinesChange={setShowMachines}
+          isAddItemCollapsed={isAddItemCollapsed}
+          onAddItemCollapsedChange={setIsAddItemCollapsed}
         />
       </div>
-
-      {/* Main content area */}
-      {Object.keys(dependencies.accumulatedDependencies || {}).length > 0 && (
-        <div 
-          ref={accumulatedViewRef}
-          style={{ 
-            ...dependencyStyles.listContainer, 
-            display: viewMode === "accumulated" ? "block" : "none" 
-          }}
-        >
-          <AccumulatedView
-            onRecipeChange={handleTreeRecipeChange}
-            onExcessChange={handleExcessChange}
-            excessMap={excessMap}
-            machineCountMap={machineCountMap}
-            onMachineCountChange={handleMachineCountChange}
-            machineMultiplierMap={machineMultiplierMap}
-            onMachineMultiplierChange={handleMachineMultiplierChange}
-            showExtensions={showExtensions}
-            accumulateExtensions={accumulateExtensions}
-            showMachineSection={showMachines}
-          />
-        </div>
-      )}
-
-      {dependencies.dependencyTree && (
-        <div 
-          ref={treeRef}
-          style={{ 
-            ...dependencyStyles.listContainer, 
-            display: viewMode === "tree" ? "block" : "none"
-          }}
-        >
-          <DependencyTree 
-            dependencyTree={dependencies.dependencyTree}
-            onRecipeChange={handleTreeRecipeChange}
-            onExcessChange={handleExcessChange}
-            excessMap={excessMap}
-            machineCountMap={machineCountMap}
-            onMachineCountChange={handleMachineCountChange}
-            machineMultiplierMap={machineMultiplierMap}
-            onMachineMultiplierChange={handleMachineMultiplierChange}
-            expandedNodes={expandedNodes}
-            showMachineSection={showMachines}
-          />
-        </div>
-      )}
+      
+      <div style={{ 
+        flex: 1,
+        overflow: 'auto',
+        padding: '8px'
+      }}>
+        {viewMode === "tree" ? (
+          <div ref={treeRef}>
+            {Object.entries(dependencies.dependencyTrees).map(([treeId, tree]) => (
+              <DependencyTree
+                key={treeId}
+                tree={tree}
+                onRecipeChange={handleTreeRecipeChange}
+                onExcessChange={handleExcessChange}
+                excessMap={excessMap}
+                machineCountMap={machineCountMap}
+                onMachineCountChange={handleMachineCountChange}
+                machineMultiplierMap={machineMultiplierMap}
+                onMachineMultiplierChange={handleMachineMultiplierChange}
+                expandedNodes={expandedNodes}
+                onNodeExpandChange={(nodeId: string, expanded: boolean) => {
+                  setExpandedNodes(prev => ({
+                    ...prev,
+                    [nodeId]: expanded
+                  }));
+                }}
+                showExtensions={showExtensions}
+                accumulateExtensions={accumulateExtensions}
+                showMachines={showMachines}
+                isRoot={true}
+                onDelete={handleDeleteTree}
+              />
+            ))}
+          </div>
+        ) : (
+          <div ref={accumulatedViewRef}>
+            <AccumulatedView
+              onRecipeChange={handleTreeRecipeChange}
+              onExcessChange={handleExcessChange}
+              excessMap={excessMap}
+              machineCountMap={machineCountMap}
+              onMachineCountChange={handleMachineCountChange}
+              machineMultiplierMap={machineMultiplierMap}
+              onMachineMultiplierChange={handleMachineMultiplierChange}
+              showExtensions={showExtensions}
+              accumulateExtensions={accumulateExtensions}
+              showMachineSection={showMachines}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef } from "react";
 import { theme } from "../styles/theme";
 import StyledSelect from "./shared/StyledSelect";
 import ViewModeSwitch from "./ViewModeSwitch";
@@ -9,23 +9,26 @@ import { getRecipesForItem } from "../data/dbQueries";
 import StyledCheckbox from "./shared/StyledCheckbox";
 import { Recipe } from "../data/dexieDB";
 
-interface CommandBarProps {
-  viewMode: "accumulated" | "tree";
-  onViewModeChange: (mode: "accumulated" | "tree") => void;
+export interface CommandBarProps {
   items: Item[];
   selectedItem: string;
-  onItemChange: (itemId: string) => void;
+  onItemSelect: (item: string) => void;
   selectedRecipe: string;
-  onRecipeChange: (recipeId: string) => void;
+  onRecipeSelect: (recipe: string) => void;
   itemCount: number;
   onItemCountChange: (count: number) => void;
   onCalculate: () => void;
-  onAddItemSectionToggle: (isCollapsed: boolean) => void;
-  onExpandCollapseAll?: (expand: boolean) => void;
-  onShowExtensionsChange?: (show: boolean) => void;
-  onAccumulateExtensionsChange?: (accumulate: boolean) => void;
-  accumulateExtensions?: boolean;
-  onShowMachinesChange?: (show: boolean) => void;
+  viewMode: "accumulated" | "tree";
+  onViewModeChange: (mode: "accumulated" | "tree") => void;
+  onExpandCollapseAll: (expand: boolean) => void;
+  showExtensions: boolean;
+  onShowExtensionsChange: (show: boolean) => void;
+  accumulateExtensions: boolean;
+  onAccumulateExtensionsChange: (accumulate: boolean) => void;
+  showMachines: boolean;
+  onShowMachinesChange: (show: boolean) => void;
+  isAddItemCollapsed: boolean;
+  onAddItemCollapsedChange: (collapsed: boolean) => void;
 }
 
 const depthOptions = [
@@ -37,24 +40,25 @@ const depthOptions = [
   { id: "5", name: "5" },
 ];
 
-const CommandBar: React.FC<CommandBarProps> = ({
+const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   viewMode,
   onViewModeChange,
   items,
   selectedItem,
-  onItemChange,
+  onItemSelect,
   selectedRecipe,
-  onRecipeChange,
+  onRecipeSelect,
   itemCount,
   onItemCountChange,
   onCalculate,
-  onAddItemSectionToggle,
   onExpandCollapseAll,
   onShowExtensionsChange,
   onAccumulateExtensionsChange,
-  accumulateExtensions = false,
+  accumulateExtensions,
   onShowMachinesChange,
-}) => {
+  isAddItemCollapsed,
+  onAddItemCollapsedChange,
+}, ref) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   
@@ -119,10 +123,10 @@ const CommandBar: React.FC<CommandBarProps> = ({
             const matchingRecipe = recipes.find(r => r.name === selectedItemObj?.name);
             
             if (matchingRecipe) {
-              onRecipeChange(matchingRecipe.id);
+              onRecipeSelect(matchingRecipe.id);
             } else {
               // Fall back to first recipe if no matching name found
-              onRecipeChange(recipes[0].id);
+              onRecipeSelect(recipes[0].id);
             }
           }
         })
@@ -130,13 +134,13 @@ const CommandBar: React.FC<CommandBarProps> = ({
     } else {
       setFilteredRecipes([]);
     }
-  }, [selectedItem, onRecipeChange, items]);
+  }, [selectedItem, onRecipeSelect, items]);
   
   // Handle item section collapse
   const toggleItemSection = () => {
     const newState = !isItemSectionCollapsed;
     setIsItemSectionCollapsed(newState);
-    onAddItemSectionToggle(newState);
+    onAddItemCollapsedChange(newState);
   };
 
   // Styles
@@ -198,7 +202,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
   };
 
   return (
-    <div style={commandBarStyle}>
+    <div ref={ref} style={commandBarStyle}>
       {/* Row 1 - Main controls */}
       <div style={rowStyle}>
         {/* View Mode Section */}
@@ -325,7 +329,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
         {/* Item Selector */}
         <StyledSelect
           value={selectedItem}
-          onChange={onItemChange}
+          onChange={onItemSelect}
           options={items}
           placeholder="Select an Item"
           style={{ 
@@ -351,7 +355,7 @@ const CommandBar: React.FC<CommandBarProps> = ({
         {/* Recipe Selector */}
         <StyledSelect
           value={selectedRecipe}
-          onChange={onRecipeChange}
+          onChange={onRecipeSelect}
           options={filteredRecipes}
           placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
           style={{ 
@@ -452,6 +456,6 @@ const CommandBar: React.FC<CommandBarProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default CommandBar; 

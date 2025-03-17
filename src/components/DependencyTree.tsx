@@ -2,30 +2,40 @@ import React, { useRef } from "react";
 import { DependencyNode } from "../utils/calculateDependencyTree";
 import TreeNode from './TreeNode';
 
-interface DependencyTreeProps {
-  dependencyTree: DependencyNode;
-  onRecipeChange?: (nodeId: string, recipeId: string) => void;
-  onExcessChange?: (nodeId: string, excess: number) => void;
+export interface DependencyTreeProps {
+  tree: DependencyNode;
+  onRecipeChange: (nodeId: string, recipeId: string) => void;
+  onExcessChange: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
-  machineCountMap?: Record<string, number>;
-  onMachineCountChange?: (nodeId: string, count: number) => void;
-  machineMultiplierMap?: Record<string, number>;
-  onMachineMultiplierChange?: (nodeId: string, multiplier: number) => void;
-  expandedNodes?: Record<string, boolean>;
-  showMachineSection?: boolean;
+  machineCountMap: Record<string, number>;
+  onMachineCountChange: (nodeId: string, count: number) => void;
+  machineMultiplierMap: Record<string, number>;
+  onMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
+  expandedNodes: Record<string, boolean>;
+  onNodeExpandChange: (nodeId: string, expanded: boolean) => void;
+  showExtensions: boolean;
+  accumulateExtensions: boolean;
+  showMachines: boolean;
+  isRoot: boolean;
+  onDelete?: (treeId: string) => void;
 }
 
-const DependencyTree: React.FC<DependencyTreeProps> = ({ 
-  dependencyTree, 
+const DependencyTree: React.FC<DependencyTreeProps> = ({
+  tree,
   onRecipeChange,
   onExcessChange,
   excessMap,
-  machineCountMap = {},
+  machineCountMap,
   onMachineCountChange,
-  machineMultiplierMap = {},
+  machineMultiplierMap,
   onMachineMultiplierChange,
-  expandedNodes = {},
-  showMachineSection = true
+  expandedNodes,
+  onNodeExpandChange,
+  showExtensions,
+  accumulateExtensions,
+  showMachines,
+  isRoot,
+  onDelete,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +48,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
       // Remove fixed height and minHeight to let content determine height
     }}>
       <TreeNode
-        node={dependencyTree}
+        node={tree}
         depth={0}
         onRecipeChange={onRecipeChange}
         onExcessChange={onExcessChange}
@@ -48,7 +58,10 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         machineMultiplierMap={machineMultiplierMap}
         onMachineMultiplierChange={onMachineMultiplierChange}
         expandedNodes={expandedNodes}
-        showMachineSection={showMachineSection}
+        onNodeExpandChange={onNodeExpandChange}
+        showMachineSection={showMachines}
+        isRoot={isRoot}
+        onDelete={onDelete}
       />
     </div>
   );
