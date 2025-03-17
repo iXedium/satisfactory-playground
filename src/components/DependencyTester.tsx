@@ -294,37 +294,18 @@ const DependencyTester: React.FC = () => {
         overflow: 'auto',
         padding: '8px'
       }}>
-        {viewMode === "tree" ? (
-          <div ref={treeRef}>
-            {Object.entries(dependencies.dependencyTrees).map(([treeId, tree]) => (
-              <DependencyTree
-                key={treeId}
-                tree={tree}
-                onRecipeChange={handleTreeRecipeChange}
-                onExcessChange={handleExcessChange}
-                excessMap={excessMap}
-                machineCountMap={machineCountMap}
-                onMachineCountChange={handleMachineCountChange}
-                machineMultiplierMap={machineMultiplierMap}
-                onMachineMultiplierChange={handleMachineMultiplierChange}
-                expandedNodes={expandedNodes}
-                onNodeExpandChange={(nodeId: string, expanded: boolean) => {
-                  setExpandedNodes(prev => ({
-                    ...prev,
-                    [nodeId]: expanded
-                  }));
-                }}
-                showExtensions={showExtensions}
-                accumulateExtensions={accumulateExtensions}
-                showMachines={showMachines}
-                isRoot={true}
-                onDelete={() => handleDeleteTree(treeId)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div ref={accumulatedViewRef}>
-            <AccumulatedView
+        <div 
+          ref={treeRef}
+          style={{
+            display: viewMode === "tree" ? 'block' : 'none',
+            height: viewMode === "tree" ? 'auto' : 0,
+            overflow: 'visible'
+          }}
+        >
+          {Object.entries(dependencies.dependencyTrees).map(([treeId, tree]) => (
+            <DependencyTree
+              key={treeId}
+              tree={tree}
               onRecipeChange={handleTreeRecipeChange}
               onExcessChange={handleExcessChange}
               excessMap={excessMap}
@@ -332,12 +313,43 @@ const DependencyTester: React.FC = () => {
               onMachineCountChange={handleMachineCountChange}
               machineMultiplierMap={machineMultiplierMap}
               onMachineMultiplierChange={handleMachineMultiplierChange}
+              expandedNodes={expandedNodes}
+              onNodeExpandChange={(nodeId: string, expanded: boolean) => {
+                setExpandedNodes(prev => ({
+                  ...prev,
+                  [nodeId]: expanded
+                }));
+              }}
               showExtensions={showExtensions}
               accumulateExtensions={accumulateExtensions}
-              showMachineSection={showMachines}
+              showMachines={showMachines}
+              isRoot={true}
+              onDelete={() => handleDeleteTree(treeId)}
             />
-          </div>
-        )}
+          ))}
+        </div>
+        
+        <div 
+          ref={accumulatedViewRef}
+          style={{
+            display: viewMode === "accumulated" ? 'block' : 'none',
+            height: viewMode === "accumulated" ? 'auto' : 0,
+            overflow: 'visible'
+          }}
+        >
+          <AccumulatedView
+            onRecipeChange={handleTreeRecipeChange}
+            onExcessChange={handleExcessChange}
+            excessMap={excessMap}
+            machineCountMap={machineCountMap}
+            onMachineCountChange={handleMachineCountChange}
+            machineMultiplierMap={machineMultiplierMap}
+            onMachineMultiplierChange={handleMachineMultiplierChange}
+            showExtensions={showExtensions}
+            accumulateExtensions={accumulateExtensions}
+            showMachineSection={showMachines}
+          />
+        </div>
       </div>
     </div>
   );
