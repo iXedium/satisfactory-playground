@@ -3,8 +3,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
 import { calculateDependencyTree, DependencyNode } from "../utils/calculateDependencyTree";
-import { calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
-import { setDependencies, deleteTree } from "../features/dependencySlice";
+import { calculateAccumulatedFromTree, AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
+import { setDependencies, deleteTree, updateAccumulated } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { getComponents } from "../data/dbQueries";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
@@ -183,6 +183,7 @@ const DependencyTester: React.FC = () => {
   };
 
   const handleDeleteTree = (treeId: string) => {
+    console.log("Deleting tree with ID:", treeId);
     dispatch(deleteTree({ treeId }));
   };
   
@@ -231,6 +232,23 @@ const DependencyTester: React.FC = () => {
     
     return null;
   };
+
+  // Add an effect to recalculate accumulated dependencies when trees change
+  useEffect(() => {
+    if (Object.keys(dependencies.dependencyTrees).length === 0) return;
+    
+    // Calculate combined accumulated dependencies across all trees
+    const allAccumulated: Record<string, AccumulatedNode> = {};
+    
+    // Process each tree and combine results
+    Object.values(dependencies.dependencyTrees).forEach(tree => {
+      const treeAccumulated = calculateAccumulatedFromTree(tree);
+      Object.assign(allAccumulated, treeAccumulated);
+    });
+    
+    // Update Redux state with combined accumulated dependencies
+    dispatch(updateAccumulated(allAccumulated));
+  }, [dependencies.dependencyTrees, dispatch]);
 
   return (
     <div style={{
@@ -300,7 +318,7 @@ const DependencyTester: React.FC = () => {
                 accumulateExtensions={accumulateExtensions}
                 showMachines={showMachines}
                 isRoot={true}
-                onDelete={handleDeleteTree}
+                onDelete={() => handleDeleteTree(treeId)}
               />
             ))}
           </div>

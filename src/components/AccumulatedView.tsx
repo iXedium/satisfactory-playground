@@ -80,49 +80,47 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
       // First, group items by ID and recipe
       if (dependencies.dependencyTrees) {
         const processNode = (node: DependencyNode, depth: number = 0) => {
-          // Skip the root node
-          if (!node.isRoot) {
-            const key = `${node.id}-${node.selectedRecipeId || "default"}`;
+          // Process all nodes including the root
+          const key = `${node.id}-${node.selectedRecipeId || "default"}`;
+          
+          if (!items[key]) {
+            items[key] = {
+              itemId: node.id,
+              amount: 0,
+              recipes: [],
+              selectedRecipeId: node.selectedRecipeId || "",
+              isByproduct: node.isByproduct || false,
+              nodeIds: [],
+              depth: depth,
+              normalizedMachineCount: 0
+            };
             
-            if (!items[key]) {
-              items[key] = {
-                itemId: node.id,
-                amount: 0,
-                recipes: [],
-                selectedRecipeId: node.selectedRecipeId || "",
-                isByproduct: node.isByproduct || false,
-                nodeIds: [],
-                depth: depth,
-                normalizedMachineCount: 0
-              };
-              
-              // Add to list of items to fetch recipes for
-              if (!itemIds.includes(node.id)) {
-                itemIds.push(node.id);
-                recipePromises.push(getRecipesForItem(node.id));
-                namePromises.push(getItemById(node.id).then(item => item || null));
-              }
-              
-              // Initialize machine count tracking
-              machineCounts[key] = [];
-            } else {
-              // Keep the lowest depth
-              items[key].depth = Math.min(items[key].depth, depth);
+            // Add to list of items to fetch recipes for
+            if (!itemIds.includes(node.id)) {
+              itemIds.push(node.id);
+              recipePromises.push(getRecipesForItem(node.id));
+              namePromises.push(getItemById(node.id).then(item => item || null));
             }
             
-            // Add amount and node ID
-            items[key].amount += node.amount;
-            // Only add unique nodeIds
-            if (!items[key].nodeIds.includes(node.uniqueId)) {
-              items[key].nodeIds.push(node.uniqueId);
-              
-              // Track machine counts and multipliers for this node
-              machineCounts[key].push({
-                nodeId: node.uniqueId,
-                machineCount: machineCountMap[node.uniqueId] || 1,
-                multiplier: machineMultiplierMap[node.uniqueId] || 1
-              });
-            }
+            // Initialize machine count tracking
+            machineCounts[key] = [];
+          } else {
+            // Keep the lowest depth
+            items[key].depth = Math.min(items[key].depth, depth);
+          }
+          
+          // Add amount and node ID
+          items[key].amount += node.amount;
+          // Only add unique nodeIds
+          if (!items[key].nodeIds.includes(node.uniqueId)) {
+            items[key].nodeIds.push(node.uniqueId);
+            
+            // Track machine counts and multipliers for this node
+            machineCounts[key].push({
+              nodeId: node.uniqueId,
+              machineCount: machineCountMap[node.uniqueId] || 1,
+              multiplier: machineMultiplierMap[node.uniqueId] || 1
+            });
           }
           
           // Process children

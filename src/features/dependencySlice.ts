@@ -33,10 +33,22 @@ const dependencySlice = createSlice({
         treeId: string;
       }>
     ) => {
+      // Delete the tree with the specified ID
       delete state.dependencyTrees[action.payload.treeId];
+      
+      // Clear accumulated dependencies if no trees remain
+      if (Object.keys(state.dependencyTrees).length === 0) {
+        state.accumulatedDependencies = {};
+      }
+    },
+    updateAccumulated: (
+      state,
+      action: PayloadAction<Record<string, AccumulatedNode>>
+    ) => {
+      state.accumulatedDependencies = action.payload;
     },
   },
 });
 
-export const { setDependencies, deleteTree } = dependencySlice.actions;
+export const { setDependencies, deleteTree, updateAccumulated } = dependencySlice.actions;
 export default dependencySlice.reducer;

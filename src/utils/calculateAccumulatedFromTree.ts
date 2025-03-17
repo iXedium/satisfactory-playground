@@ -16,20 +16,18 @@ export const calculateAccumulatedFromTree = (
   const results: Record<string, AccumulatedNode> = {};
   
   const processNode = (node: DependencyNode, depth: number = 0) => {
-    // Skip root node as it's what we're trying to make
-    if (!node.isRoot) {
-      const uniqueId = node.uniqueId;
-      
-      results[uniqueId] = {
-        itemId: node.id,
-        amount: node.amount,
-        recipeId: node.selectedRecipeId || "",
-        isByproduct: node.isByproduct || false,
-        isExtension: false,
-        name: undefined,
-        depth: depth
-      };
-    }
+    // Process all nodes including root nodes
+    const uniqueId = node.uniqueId;
+    
+    results[uniqueId] = {
+      itemId: node.id,
+      amount: node.amount,
+      recipeId: node.selectedRecipeId || "",
+      isByproduct: node.isByproduct || false,
+      isExtension: false,
+      name: undefined,
+      depth: depth
+    };
     
     // Recursively process all children
     if (node.children) {

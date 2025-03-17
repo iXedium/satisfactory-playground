@@ -61,7 +61,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         onNodeExpandChange={onNodeExpandChange}
         showMachineSection={showMachines}
         isRoot={isRoot}
-        onDelete={onDelete}
+        onDelete={isRoot && onDelete ? onDelete : undefined}
       />
     </div>
   );
