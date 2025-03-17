@@ -25,8 +25,8 @@ export const calculateAccumulatedFromTree = (
         amount: node.amount,
         recipeId: node.selectedRecipeId || "",
         isByproduct: node.isByproduct || false,
-        isExtension: node.isExtension || false,
-        name: node.name,
+        isExtension: false,
+        name: undefined,
         depth: depth
       };
     }

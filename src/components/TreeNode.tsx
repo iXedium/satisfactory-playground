@@ -138,25 +138,30 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
         {isRoot && onDelete && (
           <button
-            onClick={handleDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(node.uniqueId);
+            }}
             style={{
               position: 'absolute',
-              right: '8px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              left: '32px',
+              top: '4px',
               background: 'rgba(255, 0, 0, 0.1)',
               border: '1px solid rgba(255, 0, 0, 0.3)',
               color: '#ff3333',
               cursor: 'pointer',
-              padding: '2px 8px',
+              padding: '0px 6px',
               borderRadius: theme.border.radius,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 3,
+              zIndex: 5,
               fontSize: '16px',
               fontWeight: 'bold',
               transition: 'all 0.2s ease',
+              lineHeight: '18px',
+              height: '20px',
+              width: '20px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';

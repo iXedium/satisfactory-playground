@@ -17,9 +17,13 @@ interface ConsumptionDetail {
 
 interface AccumulatedConsumption {
   itemId: string;
+  itemName?: string;
   totalAmount: number;
   nodeIds: string[];
-  itemName?: string;
+  consumers?: Array<{
+    nodeId: string;
+    amount: number;
+  }>;
 }
 
 interface ListNodeProps {
@@ -48,7 +52,7 @@ const ListNode: React.FC<ListNodeProps> = ({
   amount,
   isRoot = false,
   isByproduct = false,
-  recipes,
+  recipes: propsRecipes,
   selectedRecipeId,
   onRecipeChange,
   excess = 0,
@@ -67,7 +71,8 @@ const ListNode: React.FC<ListNodeProps> = ({
   const [item, setItem] = useState<Item | null>(null);
   const [consumers, setConsumers] = useState<ConsumptionDetail[]>([]);
   const [accumulatedConsumers, setAccumulatedConsumers] = useState<AccumulatedConsumption[]>([]);
-  const dependencyTree = useSelector((state: RootState) => state.dependencies.dependencyTree);
+  const recipes = useSelector((state: RootState) => state.recipeSelections.selections);
+  const dependencies = useSelector((state: RootState) => state.dependencies);
   const nodeRef = useRef<HTMLDivElement>(null);
   
   // Update expanded state when showExtensions changes
@@ -82,59 +87,70 @@ const ListNode: React.FC<ListNodeProps> = ({
 
   // Calculate consumption details
   useEffect(() => {
-    if (!dependencyTree) return;
+    if (!dependencies.dependencyTrees || Object.keys(dependencies.dependencyTrees).length === 0) return;
 
     const findConsumers = async (node: DependencyNode, consumers: ConsumptionDetail[] = []) => {
       if (node.children) {
         for (const child of node.children) {
-          // If this child uses our item as input
           if (child.id === itemId) {
-            const consumerItem = await getItemById(node.id);
+            const item = await getItemById(node.id);
+            
             consumers.push({
               itemId: node.id,
-              amount: Math.abs(child.amount),
+              amount: child.amount,
               nodeId: child.uniqueId,
-              itemName: consumerItem?.name
+              itemName: item?.name
             });
           }
           
-          // Continue searching in this branch
-          await findConsumers(child, consumers);
+          // Don't search in byproducts (since they don't consume anything)
+          if (!child.isByproduct) {
+            await findConsumers(child, consumers);
+          }
         }
       }
+      
       return consumers;
     };
 
-    findConsumers(dependencyTree).then(foundConsumers => {
-      setConsumers(foundConsumers);
+    // We need to search in all trees
+    const allPromises = [];
+    for (const treeId in dependencies.dependencyTrees) {
+      allPromises.push(findConsumers(dependencies.dependencyTrees[treeId]));
+    }
+
+    Promise.all(allPromises).then(consumersArrays => {
+      // Combine all consumer arrays
+      const allConsumers = consumersArrays.flat();
+      setConsumers(allConsumers);
       
-      // Calculate accumulated consumers
-      if (accumulateExtensions) {
-        const accumulated: Record<string, AccumulatedConsumption> = {};
+      // Group consumers by item ID for the condensed view
+      const accumulated: Record<string, AccumulatedConsumption> = {};
+      
+      // First pass: collect all consumers by item type
+      allConsumers.forEach(consumer => {
+        if (!accumulated[consumer.itemId]) {
+          accumulated[consumer.itemId] = {
+            itemId: consumer.itemId,
+            itemName: consumer.itemName || 'Unknown',
+            totalAmount: 0,
+            nodeIds: [],
+            consumers: []
+          };
+        }
         
-        foundConsumers.forEach(consumer => {
-          if (!accumulated[consumer.itemId]) {
-            accumulated[consumer.itemId] = {
-              itemId: consumer.itemId,
-              totalAmount: 0,
-              nodeIds: [],
-              itemName: consumer.itemName
-            };
-          }
-          
-          accumulated[consumer.itemId].totalAmount += consumer.amount;
-          accumulated[consumer.itemId].nodeIds.push(consumer.nodeId);
+        accumulated[consumer.itemId].totalAmount += consumer.amount;
+        accumulated[consumer.itemId].nodeIds.push(consumer.nodeId);
+        accumulated[consumer.itemId].consumers?.push({
+          nodeId: consumer.nodeId,
+          amount: consumer.amount
         });
-        
-        // Convert to array and sort by amount (descending)
-        const accumulatedArray = Object.values(accumulated).sort((a, b) => 
-          b.totalAmount - a.totalAmount
-        );
-        
-        setAccumulatedConsumers(accumulatedArray);
-      }
+      });
+      
+      // Convert to array
+      setAccumulatedConsumers(Object.values(accumulated));
     });
-  }, [dependencyTree, itemId, accumulateExtensions]);
+  }, [dependencies.dependencyTrees, itemId, accumulateExtensions]);
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -155,7 +171,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           amount={amount}
           isRoot={isRoot}
           isByproduct={isByproduct}
-          recipes={recipes}
+          recipes={propsRecipes}
           selectedRecipeId={selectedRecipeId}
           onRecipeChange={onRecipeChange}
           excess={excess}
@@ -165,7 +181,6 @@ const ListNode: React.FC<ListNodeProps> = ({
           onMachineCountChange={onMachineCountChange}
           machineMultiplier={machineMultiplier}
           onMachineMultiplierChange={onMachineMultiplierChange}
-          onIconClick={hasConsumers ? toggleExpanded : undefined}
           showMachines={showMachines}
         />
       </div>

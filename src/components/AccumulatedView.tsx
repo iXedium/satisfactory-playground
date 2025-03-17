@@ -78,7 +78,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
       const machineCounts: Record<string, NodeMachineInfo[]> = {};
       
       // First, group items by ID and recipe
-      if (dependencies.dependencyTree) {
+      if (dependencies.dependencyTrees) {
         const processNode = (node: DependencyNode, depth: number = 0) => {
           // Skip the root node
           if (!node.isRoot) {
@@ -133,37 +133,9 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
           }
         };
         
-        processNode(dependencies.dependencyTree);
-      }
-      
-      // Add the root item if it exists
-      if (dependencies.selectedItem && dependencies.dependencyTree) {
-        const rootKey = `${dependencies.selectedItem}-${dependencies.dependencyTree.selectedRecipeId || "default"}`;
-        
-        if (!items[rootKey]) {
-          items[rootKey] = {
-            itemId: dependencies.selectedItem,
-            amount: dependencies.itemCount,
-            recipes: [],
-            selectedRecipeId: dependencies.dependencyTree.selectedRecipeId || "",
-            isByproduct: false,
-            nodeIds: [dependencies.dependencyTree.uniqueId], // Use the actual root node's uniqueId
-            depth: 0,
-            normalizedMachineCount: 0
-          };
-          
-          // Add to list of items to fetch recipes for
-          if (!itemIds.includes(dependencies.selectedItem)) {
-            itemIds.push(dependencies.selectedItem);
-            recipePromises.push(getRecipesForItem(dependencies.selectedItem));
-            namePromises.push(getItemById(dependencies.selectedItem).then(item => item || null));
-          }
-          
-          machineCounts[rootKey] = [{
-            nodeId: dependencies.dependencyTree.uniqueId, // Use the actual root node's uniqueId
-            machineCount: 1,
-            multiplier: 1
-          }];
+        for (const treeId in dependencies.dependencyTrees) {
+          const tree = dependencies.dependencyTrees[treeId];
+          processNode(tree);
         }
       }
       
@@ -219,47 +191,70 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
     fetchRecipes();
   }, [dependencies, machineCountMap, machineMultiplierMap, excessMap, showExtensions, accumulateExtensions]);
 
+  const findNodeInAllTrees = (nodeId: string): DependencyNode | null => {
+    if (!dependencies.dependencyTrees) return null;
+    
+    for (const treeId in dependencies.dependencyTrees) {
+      const tree = dependencies.dependencyTrees[treeId];
+      const node = findNodeById(tree, nodeId);
+      if (node) return node;
+    }
+    
+    return null;
+  };
+  
+  const findParentInAllTrees = (nodeId: string): { tree: DependencyNode, node: DependencyNode } | null => {
+    if (!dependencies.dependencyTrees) return null;
+    
+    for (const treeId in dependencies.dependencyTrees) {
+      const tree = dependencies.dependencyTrees[treeId];
+      const parent = findParentNode(tree, nodeId);
+      if (parent) return { tree, node: parent };
+    }
+    
+    return null;
+  };
+
+  // Find a node by ID
+  const findNodeById = (tree: DependencyNode, id: string): DependencyNode | null => {
+    if (tree.uniqueId === id) return tree;
+    
+    if (tree.children) {
+      for (const child of tree.children) {
+        const found = findNodeById(child, id);
+        if (found) return found;
+      }
+    }
+    
+    return null;
+  };
+
+  const findParentNode = (tree: DependencyNode, targetId: string): DependencyNode | null => {
+    if (tree.children) {
+      for (const child of tree.children) {
+        if (child.uniqueId === targetId) {
+          return tree;
+        }
+        const found = findParentNode(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   // Find the consumer item in our list by its nodeId
   const scrollToNode = (nodeId: string) => {
-    if (!dependencies.dependencyTree) return;
+    if (!dependencies.dependencyTrees || Object.keys(dependencies.dependencyTrees).length === 0) return;
     
-    // Find the node in the tree to get its item ID
-    const findNodeById = (tree: DependencyNode, id: string): DependencyNode | null => {
-      if (tree.uniqueId === id) return tree;
-      
-      if (tree.children) {
-        for (const child of tree.children) {
-          const found = findNodeById(child, id);
-          if (found) return found;
-        }
-      }
-      
-      return null;
-    };
-    
-    // Find the clicked node in the tree
-    const clickedNode = findNodeById(dependencies.dependencyTree, nodeId);
-    
+    // Find the clicked node in any tree
+    const clickedNode = findNodeInAllTrees(nodeId);
     if (!clickedNode) return;
     
-    // Find the parent node that produces this item
-    const findParentNode = (tree: DependencyNode, targetId: string): DependencyNode | null => {
-      if (tree.children) {
-        for (const child of tree.children) {
-          if (child.uniqueId === targetId) {
-            return tree;
-          }
-          const found = findParentNode(child, targetId);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    // Get the parent node that produces this item
-    const parentNode = findParentNode(dependencies.dependencyTree, nodeId);
+    // Find the parent that produces this item
+    const parentResult = findParentInAllTrees(nodeId);
+    if (!parentResult) return;
     
-    if (!parentNode) return;
+    const parentNode = parentResult.node;
     
     // Find the group that contains the parent node
     const targetGroup = groupedItems.find(group => 
@@ -403,7 +398,14 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
             <ListNode
               itemId={item.itemId}
               amount={item.amount}
-              isRoot={nodeId === dependencies.dependencyTree?.uniqueId}
+              isRoot={item.nodeIds.some(id => {
+                for (const treeId in dependencies.dependencyTrees) {
+                  if (id === dependencies.dependencyTrees[treeId].uniqueId) {
+                    return true;
+                  }
+                }
+                return false;
+              })}
               isByproduct={item.isByproduct}
               recipes={recipesMap[item.itemId] || []}
               selectedRecipeId={item.selectedRecipeId}
