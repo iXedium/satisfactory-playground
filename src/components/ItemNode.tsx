@@ -58,6 +58,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 }) => {
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
+  const [preciseExcess, setPreciseExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] =
     useState(machineMultiplier);
@@ -65,6 +66,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [efficiency, setEfficiency] = useState(100);
   const [showEfficiencyTooltip, setShowEfficiencyTooltip] = useState(false);
   const [nominalRate, setNominalRate] = useState(0);
+  const [isExcessFocused, setIsExcessFocused] = useState(false);
 
   // Refs for input elements to handle selection
   const machineCountRef = useRef<HTMLInputElement>(null);
@@ -73,6 +75,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   useEffect(() => {
     setLocalExcess(excess);
+    setPreciseExcess(excess);
   }, [excess]);
 
   useEffect(() => {
@@ -97,6 +100,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     }
   }, [selectedRecipeId]);
 
+  // Format the excess value based on focus state
+  const formattedExcess = isExcessFocused 
+    ? preciseExcess 
+    : Number(preciseExcess.toFixed(3));
+
   // Calculate efficiency and nominal rate whenever relevant values change
   useEffect(() => {
     if (machine && selectedRecipeId && recipes) {
@@ -115,14 +123,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           localMachineCount * localMachineMultiplier * nominalRatePerMachine;
 
         // Calculate efficiency (actual needed / total capacity)
-        const neededAmount = amount + localExcess;
+        const neededAmount = amount + preciseExcess; // Use precise value for calculations
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
     }
   }, [
     amount,
-    localExcess,
+    preciseExcess, // Use precise value for calculations
     localMachineCount,
     localMachineMultiplier,
     machine,
@@ -146,6 +154,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const handleExcessChange = (value: string) => {
     const numValue = value === "" ? 0 : Number(value);
     setLocalExcess(numValue);
+    setPreciseExcess(numValue); // Update both values
     onExcessChange?.(numValue);
   };
 
@@ -163,6 +172,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const handleResetExcess = () => {
     setLocalExcess(0);
+    setPreciseExcess(0);
     onExcessChange?.(0);
   };
 
@@ -174,12 +184,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         const totalCapacity =
           localMachineCount * localMachineMultiplier * nominalRate;
 
-        // Calculate excess needed for 100% efficiency
+        // Calculate excess needed for 100% efficiency - keep full precision
         const excessNeeded = totalCapacity - amount;
-        const roundedExcess = Math.max(0, Math.round(excessNeeded * 100) / 100);
-
-        setLocalExcess(roundedExcess);
-        onExcessChange?.(roundedExcess);
+        // Store the precise value without rounding
+        const preciseValue = Math.max(0, excessNeeded);
+        
+        setPreciseExcess(preciseValue);
+        setLocalExcess(preciseValue);
+        onExcessChange?.(preciseValue);
       }
     }
   };
@@ -189,7 +201,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
         // Calculate optimal machine count for 100% efficiency
-        const neededAmount = amount + localExcess;
+        const neededAmount = amount + preciseExcess;
         const optimalMachines = Math.ceil(
           neededAmount / (nominalRate * localMachineMultiplier)
         );
@@ -250,7 +262,22 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   // Handle focus to select all content
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Select all text when focused
     e.target.select();
+  };
+
+  const handleExcessFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    handleFocus(e);
+    setIsExcessFocused(true);
+    
+    // If this is the Max button result, ensure we show precise value
+    if (excessRef.current) {
+      excessRef.current.value = preciseExcess.toString();
+    }
+  };
+
+  const handleExcessBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsExcessFocused(false);
   };
 
   if (!item) return null;
@@ -702,15 +729,16 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               <StyledInput
                 ref={excessRef}
                 type="number"
-                value={localExcess}
+                value={formattedExcess}
                 onChange={(e) => {
                   e.stopPropagation();
                   handleExcessChange(e.target.value);
                 }}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  handleKeyDown(e, localExcess, (val) => {
+                  handleKeyDown(e, formattedExcess, (val) => {
                     setLocalExcess(val);
+                    setPreciseExcess(val);
                     onExcessChange?.(val);
                   });
                 }}
@@ -719,9 +747,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   if (document.activeElement === excessRef.current) {
                     handleWheel(
                       e,
-                      localExcess,
+                      formattedExcess,
                       (val) => {
                         setLocalExcess(val);
+                        setPreciseExcess(val);
                         onExcessChange?.(val);
                       }
                     );
@@ -729,7 +758,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 onFocus={(e) => {
                   e.stopPropagation();
-                  handleFocus(e);
+                  handleExcessFocus(e);
+                }}
+                onBlur={(e) => {
+                  e.stopPropagation();
+                  handleExcessBlur(e);
                 }}
                 variant="compact"
                 style={{ 

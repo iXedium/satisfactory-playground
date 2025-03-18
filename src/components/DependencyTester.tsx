@@ -348,6 +348,7 @@ const DependencyTester: React.FC = () => {
             showExtensions={showExtensions}
             accumulateExtensions={accumulateExtensions}
             showMachineSection={showMachines}
+            onDelete={handleDeleteTree}
           />
         </div>
       </div>

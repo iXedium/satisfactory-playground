@@ -45,6 +45,7 @@ interface ListNodeProps {
   showExtensions?: boolean;
   accumulateExtensions?: boolean;
   showMachines?: boolean;
+  onDelete?: (nodeId: string) => void;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -66,6 +67,7 @@ const ListNode: React.FC<ListNodeProps> = ({
   showExtensions = true,
   accumulateExtensions = false,
   showMachines = true,
+  onDelete,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
@@ -163,7 +165,56 @@ const ListNode: React.FC<ListNodeProps> = ({
   const hasConsumers = displayConsumers.length > 0;
 
   return (
-    <div ref={nodeRef}>
+    <div ref={nodeRef} style={{ position: "relative" }}>
+      {/* Delete button for root nodes */}
+      {isRoot && onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // For root nodes, find the treeId from dependencyTrees
+            for (const treeId in dependencies.dependencyTrees) {
+              const tree = dependencies.dependencyTrees[treeId];
+              if (tree.id === itemId) {
+                onDelete(treeId);
+                break;
+              }
+            }
+          }}
+          style={{
+            position: "absolute",
+            left: "32px",
+            top: "4px",
+            background: "rgba(255, 0, 0, 0.1)",
+            border: "1px solid rgba(255, 0, 0, 0.3)",
+            color: "#ff3333",
+            cursor: "pointer",
+            padding: "0px 6px",
+            borderRadius: theme.border.radius,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 5,
+            fontSize: "16px",
+            fontWeight: "bold",
+            transition: "all 0.2s ease",
+            lineHeight: "18px",
+            height: "20px",
+            width: "20px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+            e.currentTarget.style.color = "#ff0000";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+            e.currentTarget.style.color = "#ff3333";
+          }}
+          title="Delete chain"
+        >
+          ×
+        </button>
+      )}
+
       {/* Main item node */}
       <div style={{ marginBottom: hasConsumers ? "4px" : "0" }}>
         <ItemNode
