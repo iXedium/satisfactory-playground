@@ -32,6 +32,7 @@ const DependencyTester: React.FC = () => {
   const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
+  const [nodeExtensionOverrides, setNodeExtensionOverrides] = useState<Record<string, boolean>>({});
   
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
@@ -78,6 +79,11 @@ const DependencyTester: React.FC = () => {
       const savedExpandedNodes = localStorage.getItem('savedExpandedNodes');
       if (savedExpandedNodes) {
         setExpandedNodes(JSON.parse(savedExpandedNodes));
+      }
+
+      const savedNodeExtensionOverrides = localStorage.getItem('savedNodeExtensionOverrides');
+      if (savedNodeExtensionOverrides) {
+        setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
       }
     } catch (error) {
       console.error("Error loading saved state:", error);
@@ -140,12 +146,16 @@ const DependencyTester: React.FC = () => {
     try {
       localStorage.setItem('savedViewMode', viewMode);
       localStorage.setItem('savedExpandedNodes', JSON.stringify(expandedNodes));
+      if (Object.keys(nodeExtensionOverrides).length > 0) {
+        localStorage.setItem('savedNodeExtensionOverrides', JSON.stringify(nodeExtensionOverrides));
+      }
     } catch (error) {
       console.error("Error saving UI preferences:", error);
       localStorage.removeItem('savedViewMode');
       localStorage.removeItem('savedExpandedNodes');
+      localStorage.removeItem('savedNodeExtensionOverrides');
     }
-  }, [viewMode, expandedNodes]);
+  }, [viewMode, expandedNodes, nodeExtensionOverrides]);
 
   useEffect(() => {
     // Initial load of items from the database
@@ -284,18 +294,30 @@ const DependencyTester: React.FC = () => {
             
             // Only update if there's a change in production
             if (prodDifference !== 0) {
-              // Calculate new tree with adjusted production
-              const adjustedTree = {
-                ...targetTree,
-                amount: targetTree.amount + prodDifference
-              };
+              // Update the amount in the target root node
+              const newAmount = targetTree.amount + prodDifference;
               
-              // Update the target tree with new production
-              dispatch(setDependencies({
-                treeId: targetTreeId,
-                tree: adjustedTree,
-                accumulated: calculateAccumulatedFromTree(adjustedTree)
-              }));
+              // Rather than just updating the root node directly, we need to recalculate
+              // the entire subtree to ensure child nodes are updated correctly
+              calculateDependencyTree(
+                targetTree.id,
+                newAmount,
+                targetTree.selectedRecipeId || "",
+                recipeSelections,
+                0,
+                [], // No specific affected branches - recalculate all
+                '',
+                excessMap
+              ).then(updatedTargetTree => {
+                if (updatedTargetTree) {
+                  // Update the tree with the fully recalculated version
+                  dispatch(setDependencies({
+                    treeId: targetTreeId,
+                    tree: updatedTargetTree,
+                    accumulated: calculateAccumulatedFromTree(updatedTargetTree)
+                  }));
+                }
+              });
             }
           }
         }
@@ -371,18 +393,30 @@ const DependencyTester: React.FC = () => {
             
             // Only update if there's a change in production
             if (prodDifference !== 0) {
-              // Calculate new tree with adjusted production
-              const adjustedTree = {
-                ...targetTree,
-                amount: targetTree.amount + prodDifference
-              };
+              // Update the amount in the target root node
+              const newAmount = targetTree.amount + prodDifference;
               
-              // Update the target tree with new production
-              dispatch(setDependencies({
-                treeId: targetTreeId,
-                tree: adjustedTree,
-                accumulated: calculateAccumulatedFromTree(adjustedTree)
-              }));
+              // Rather than just updating the root node directly, we need to recalculate
+              // the entire subtree to ensure child nodes are updated correctly
+              calculateDependencyTree(
+                targetTree.id,
+                newAmount,
+                targetTree.selectedRecipeId || "",
+                recipeSelections,
+                0,
+                [], // No specific affected branches - recalculate all
+                '',
+                excessMap
+              ).then(updatedTargetTree => {
+                if (updatedTargetTree) {
+                  // Update the tree with the fully recalculated version
+                  dispatch(setDependencies({
+                    treeId: targetTreeId,
+                    tree: updatedTargetTree,
+                    accumulated: calculateAccumulatedFromTree(updatedTargetTree)
+                  }));
+                }
+              });
             }
           }
         }
@@ -630,6 +664,18 @@ const DependencyTester: React.FC = () => {
     localStorage.removeItem('savedMachineMultiplierMap');
     localStorage.removeItem('savedViewMode');
     localStorage.removeItem('savedExpandedNodes');
+    localStorage.removeItem('savedNodeExtensionOverrides');
+  };
+
+  // Function to toggle extensions visibility for a specific node
+  const handleToggleNodeExtensions = (nodeId: string) => {
+    setNodeExtensionOverrides(prev => {
+      const currentValue = prev[nodeId] ?? showExtensions;
+      return {
+        ...prev,
+        [nodeId]: !currentValue
+      };
+    });
   };
 
   return (
@@ -729,6 +775,8 @@ const DependencyTester: React.FC = () => {
               onDeleteTree={handleDeleteTree}
               accumulatedDependencies={dependencies.accumulatedDependencies}
               onImportNode={handleImportNode}
+              nodeExtensionOverrides={nodeExtensionOverrides}
+              onToggleNodeExtensions={handleToggleNodeExtensions}
             />
           )}
         </div>

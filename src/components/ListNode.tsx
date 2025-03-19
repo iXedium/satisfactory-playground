@@ -49,6 +49,8 @@ interface ListNodeProps {
   onDelete?: (nodeId: string) => void;
   onImport?: (nodeId: string) => void;
   isImport?: boolean;
+  nodeExtensionOverrides?: Record<string, boolean>;
+  onToggleNodeExtensions?: (nodeId: string) => void;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -74,6 +76,8 @@ const ListNode: React.FC<ListNodeProps> = ({
   onDelete,
   onImport,
   isImport,
+  nodeExtensionOverrides,
+  onToggleNodeExtensions,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
@@ -85,8 +89,10 @@ const ListNode: React.FC<ListNodeProps> = ({
   
   // Update expanded state when showExtensions changes
   useEffect(() => {
-    setExpanded(showExtensions);
-  }, [showExtensions]);
+    // If this node has an override, use that instead of the global setting
+    const nodeOverride = nodeExtensionOverrides?.[itemId];
+    setExpanded(nodeOverride !== undefined ? nodeOverride : showExtensions);
+  }, [showExtensions, itemId, nodeExtensionOverrides]);
 
   // Fetch item data
   useEffect(() => {
@@ -180,7 +186,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           isRoot={isRoot}
           isByproduct={isByproduct}
           isImport={isImport}
-          recipes={propsRecipes}
+          recipes={propsRecipes || []}
           selectedRecipeId={selectedRecipeId}
           onRecipeChange={onRecipeChange}
           excess={excess}
@@ -192,11 +198,16 @@ const ListNode: React.FC<ListNodeProps> = ({
           onMachineMultiplierChange={onMachineMultiplierChange}
           showMachines={showMachines}
           showMachineMultiplier={showMachineMultiplier}
+          onIconClick={() => {
+            // If we have a toggle handler, use it
+            if (onToggleNodeExtensions) {
+              onToggleNodeExtensions(itemId);
+            }
+          }}
           onDelete={isRoot && onDelete ? () => {
-            // For root nodes, find the treeId from dependencyTrees
+            // Find tree ID for this root node
             for (const treeId in dependencies.dependencyTrees) {
-              const tree = dependencies.dependencyTrees[treeId];
-              if (tree.id === itemId) {
+              if (dependencies.dependencyTrees[treeId].uniqueId === itemId) {
                 onDelete(treeId);
                 break;
               }
