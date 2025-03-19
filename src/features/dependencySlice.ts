@@ -138,6 +138,15 @@ const dependencySlice = createSlice({
         const treeAccumulated = calculateAccumulatedFromTree(tree);
         Object.assign(allAccumulated, treeAccumulated);
       });
+
+      // Double-check to make sure no import nodes are included
+      for (const nodeId in allAccumulated) {
+        const node = findNode(sourceTree, nodeId);
+        if (node && node.isImport) {
+          delete allAccumulated[nodeId];
+        }
+      }
+      
       state.accumulatedDependencies = allAccumulated;
     },
   },

@@ -89,6 +89,11 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
       // First, group items by ID and recipe
       if (dependencies.dependencyTrees) {
         const processNode = (node: DependencyNode, depth: number = 0) => {
+          // Skip import nodes to avoid double-counting
+          if (node.isImport) {
+            return;
+          }
+          
           // Process all nodes including the root
           const key = `${node.id}-${node.selectedRecipeId || "default"}`;
           
@@ -305,6 +310,11 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
     Object.entries(dependencies.accumulatedDependencies).forEach(([nodeId, node]) => {
       // Skip extension nodes if not showing extensions or not accumulating them
       if (node.isExtension && (!showExtensions || !accumulateExtensions)) {
+        return;
+      }
+      
+      // Skip import nodes to avoid double-counting
+      if (node.isImport) {
         return;
       }
       

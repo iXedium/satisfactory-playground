@@ -17,7 +17,12 @@ export const calculateAccumulatedFromTree = (
   const results: Record<string, AccumulatedNode> = {};
   
   const processNode = (node: DependencyNode, depth: number = 0) => {
-    // Process all nodes including root nodes
+    // Skip import nodes - they're already accounted for in their target trees
+    if (node.isImport) {
+      return;
+    }
+    
+    // Process all non-import nodes including root nodes
     const uniqueId = node.uniqueId;
     
     results[uniqueId] = {
