@@ -864,7 +864,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   fontWeight: "bold",
                   fontSize: "14px"
                 }}>
-                  Byproduct
+                  Byproduct ({(-amount).toFixed(2)})
                 </span>
               )}
 
@@ -879,7 +879,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   fontSize: "16px",
                 }}
               >
-                <span>{Math.abs(amount).toFixed(2)}</span>
+                <span>{isByproduct ? (-amount).toFixed(2) : amount.toFixed(2)}</span>
               </div>
             </div>
 

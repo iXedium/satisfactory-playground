@@ -96,16 +96,17 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
             return;
           }
           
-          // Process all nodes including the root
-          const key = `${node.id}-${node.selectedRecipeId || "default"}`;
+          // Group only by item ID to merge byproducts with same item type
+          const key = `${node.id}`;
           
           if (!items[key]) {
             items[key] = {
               itemId: node.id,
               amount: 0,
               recipes: [],
-              selectedRecipeId: node.selectedRecipeId || "",
-              isByproduct: node.isByproduct || false,
+              // Use non-byproduct recipe if possible
+              selectedRecipeId: node.isByproduct ? "" : (node.selectedRecipeId || ""),
+              isByproduct: false, // Will be overridden if all nodes are byproducts
               nodeIds: [],
               depth: depth,
               normalizedMachineCount: 0,
@@ -124,20 +125,28 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
           } else {
             // Keep the lowest depth
             items[key].depth = Math.min(items[key].depth, depth);
+            
+            // Prefer non-byproduct recipes
+            if (!node.isByproduct && node.selectedRecipeId && !items[key].selectedRecipeId) {
+              items[key].selectedRecipeId = node.selectedRecipeId;
+            }
           }
           
           // Add amount and node ID
-          items[key].amount += node.amount;
+          items[key].amount += node.amount; // This will add negative amounts for byproducts
+          
           // Only add unique nodeIds
           if (!items[key].nodeIds.includes(node.uniqueId)) {
             items[key].nodeIds.push(node.uniqueId);
             
             // Track machine counts and multipliers for this node
-            machineCounts[key].push({
-              nodeId: node.uniqueId,
-              machineCount: machineCountMap[node.uniqueId] || 1,
-              multiplier: machineMultiplierMap[node.uniqueId] || 1
-            });
+            if (!node.isByproduct) { // Only count machines for non-byproducts
+              machineCounts[key].push({
+                nodeId: node.uniqueId,
+                machineCount: machineCountMap[node.uniqueId] || 1,
+                multiplier: machineMultiplierMap[node.uniqueId] || 1
+              });
+            }
           }
           
           // Process children
