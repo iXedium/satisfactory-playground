@@ -33,12 +33,57 @@ const dependencySlice = createSlice({
         treeId: string;
       }>
     ) => {
-      // Delete the tree with the specified ID
-      delete state.dependencyTrees[action.payload.treeId];
+      const treeIdToDelete = action.payload.treeId;
       
-      // Clear accumulated dependencies if no trees remain
+      // Find all import nodes in all trees that reference the tree being deleted
+      const findImportNodes = (tree: DependencyNode): DependencyNode[] => {
+        const results: DependencyNode[] = [];
+        
+        // Check if this node is importing from the deleted tree
+        if (tree.isImport && tree.importedFrom === treeIdToDelete) {
+          results.push(tree);
+        }
+        
+        // Check children recursively
+        if (tree.children) {
+          for (const child of tree.children) {
+            results.push(...findImportNodes(child));
+          }
+        }
+        
+        return results;
+      };
+      
+      // Find and restore all import nodes that reference the tree being deleted
+      Object.values(state.dependencyTrees).forEach(tree => {
+        const importNodes = findImportNodes(tree);
+        
+        // Restore each import node
+        importNodes.forEach(node => {
+          console.log("Restoring import node after source deletion:", node);
+          node.isImport = false;
+          if (node.originalChildren) {
+            node.children = node.originalChildren;
+            delete node.originalChildren;
+          }
+          delete node.importedFrom;
+        });
+      });
+      
+      // Delete the tree with the specified ID
+      delete state.dependencyTrees[treeIdToDelete];
+      
+      // Recalculate accumulated dependencies
       if (Object.keys(state.dependencyTrees).length === 0) {
         state.accumulatedDependencies = {};
+      } else {
+        // Update accumulated dependencies
+        const allAccumulated: Record<string, AccumulatedNode> = {};
+        Object.values(state.dependencyTrees).forEach(tree => {
+          const treeAccumulated = calculateAccumulatedFromTree(tree);
+          Object.assign(allAccumulated, treeAccumulated);
+        });
+        state.accumulatedDependencies = allAccumulated;
       }
     },
     updateAccumulated: (
