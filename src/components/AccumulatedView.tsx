@@ -401,7 +401,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
   };
 
   return (
-    <div ref={containerRef} style={{ padding: "8px" }}>
+    <div ref={containerRef} style={{ padding: "4px" }}>
       {groupedItems.map((item, index) => {
         // Use the actual nodeId from the dependency tree
         const nodeId = item.nodeIds[0];

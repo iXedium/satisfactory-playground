@@ -225,7 +225,7 @@ const ListNode: React.FC<ListNodeProps> = ({
       {/* Consumption details section */}
       {expanded && hasConsumers && (
         <div style={{ 
-          marginLeft: "24px",
+          marginLeft: "16px",
           backgroundColor: theme.colors.dark,
           borderRadius: theme.border.radius,
           border: `1px solid ${theme.colors.dropdown.border}`,
@@ -241,7 +241,7 @@ const ListNode: React.FC<ListNodeProps> = ({
                   display: "flex", 
                   justifyContent: "space-between", 
                   alignItems: "center",
-                  padding: "8px",
+                  padding: "6px 4px",
                   backgroundColor: idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
                   cursor: consumer.nodeIds.length === 1 ? "pointer" : "default",
                   transition: "background-color 0.2s"
@@ -292,7 +292,7 @@ const ListNode: React.FC<ListNodeProps> = ({
                   display: "flex", 
                   justifyContent: "space-between", 
                   alignItems: "center",
-                  padding: "8px",
+                  padding: "6px 4px",
                   backgroundColor: idx % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
                   cursor: "pointer",
                   transition: "background-color 0.2s"
