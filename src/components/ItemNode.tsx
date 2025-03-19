@@ -25,6 +25,8 @@ interface ItemNodeProps {
   machineMultiplier?: number;
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachines?: boolean;
+  onDelete?: () => void;
+  onImport?: () => void;
 }
 
 interface Machine {
@@ -55,6 +57,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   machineMultiplier = 1,
   onMachineMultiplierChange,
   showMachines = true,
+  onDelete,
+  onImport,
 }) => {
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
@@ -324,186 +328,272 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     <div
       style={{
         display: "flex",
-        gap: "4px",
-        backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+        alignItems: "center",
+        gap: "8px",
+        padding: "8px",
         borderRadius: theme.border.radius,
-        padding: "4px",
         ...style,
       }}
-      onClick={(e) => e.stopPropagation()}
     >
-      {/* Left section - Item info */}
+      {/* Button Section */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        padding: '4px 0',
+        marginRight: '4px',
+        width: '24px',
+        flex: '0 0 24px',
+        alignItems: 'center'
+      }}>
+        {/* Delete button for root nodes */}
+        {isRoot && onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={{
+              background: 'rgba(255, 0, 0, 0.1)',
+              border: '1px solid rgba(255, 0, 0, 0.3)',
+              color: '#ff3333',
+              cursor: 'pointer',
+              padding: '0px 6px',
+              borderRadius: theme.border.radius,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease',
+              lineHeight: '18px',
+              height: '20px',
+              width: '20px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+              e.currentTarget.style.color = '#ff0000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+              e.currentTarget.style.color = '#ff3333';
+            }}
+          >
+            ×
+          </button>
+        )}
+        
+        {/* Import button for child nodes */}
+        {!isRoot && onImport && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onImport();
+            }}
+            style={{
+              background: 'rgba(0, 150, 255, 0.1)',
+              border: '1px solid rgba(0, 150, 255, 0.3)',
+              color: '#0096ff',
+              cursor: 'pointer',
+              padding: '0px 6px',
+              borderRadius: theme.border.radius,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease',
+              lineHeight: '18px',
+              height: '20px',
+              width: '20px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.2)';
+              e.currentTarget.style.color = '#0077ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.1)';
+              e.currentTarget.style.color = '#0096ff';
+            }}
+          >
+            ↓
+          </button>
+        )}
+      </div>
+
+      {/* Item Section */}
       <div
         style={{
-          ...sectionStyle,
-          borderLeft: `4px solid ${getItemColor()}`,
-          flex: showMachines ? 2 : 3,
-          minWidth: "200px",
-          position: "relative",
-          zIndex: 1,
+          display: "flex",
+          gap: "4px",
+          backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+          borderRadius: theme.border.radius,
+          padding: "4px",
+          flex: 1,
+          minWidth: 0,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Item icon */}
-        <div
-          style={{
-            cursor: onIconClick ? "pointer" : "default",
-            marginRight: "8px",
-            alignSelf: "flex-start",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onIconClick) onIconClick();
-          }}
-        >
-          <Icon itemId={itemId} size={size} />
-        </div>
-
-        {/* Item info and recipe */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            justifyContent: "space-between",
-            height: "100%",
-            position: "relative",
-            zIndex: 1,
-            gap: "10px",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Item name and nominal rate */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontWeight: "bold",
-              color: theme.colors.text,
-              fontSize: "16px",
-            }}
-          >
-            <span>{item.name}</span>
-            {nominalRate > 0 && !isByproduct && (
-              <span style={{ fontSize: "14px", opacity: 0.8 }}>
-                {nominalRate.toFixed(2)}
-              </span>
-            )}
-        </div>
-
-          {/* Recipe selector - aligned to bottom */}
-          <div
-            style={{ marginTop: "auto", position: "relative", zIndex: 2 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && (
-              <StyledSelect
-                value={selectedRecipeId || ""}
-                onChange={onRecipeChange}
-                options={recipes}
-                variant="compact"
-                style={{ width: "100%" }}
-                renderOption={(option, isInDropdown) => (
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px',
-                      padding: '4px 8px',
-                      backgroundColor: isInDropdown && option.id === selectedRecipeId ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
-                      borderRadius: theme.border.radius,
-                    }}
-                  >
-                    <span style={{ fontWeight: 'bold' }}>{option.name}</span>
-                  </div>
-                )}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Middle section - Machine info */}
-      {machine && !isByproduct && showMachines && (
+        {/* Left section - Item info */}
         <div
           style={{
             ...sectionStyle,
-            borderLeft: `4px solid ${theme.colors.secondary}`,
-            flex: 1,
-            maxWidth: "265px",
+            borderLeft: `4px solid ${getItemColor()}`,
+            flex: showMachines ? 2 : 3,
+            minWidth: "200px",
             position: "relative",
             zIndex: 1,
+            overflow: "hidden",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Machine icon - same size as item icon */}
-          <div style={{ marginRight: "8px" }}>
-            <Icon itemId={machine.id} size={size} />
+          {/* Item icon */}
+          <div
+            style={{
+              cursor: onIconClick ? "pointer" : "default",
+              marginRight: "8px",
+              alignSelf: "flex-start",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onIconClick) onIconClick();
+            }}
+          >
+            <Icon itemId={itemId} size={size} />
           </div>
 
-          {/* Machine details in column layout */}
+          {/* Item info and recipe */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               flex: 1,
+              justifyContent: "space-between",
+              height: "100%",
+              position: "relative",
+              zIndex: 1,
               gap: "10px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Item name and nominal rate */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontWeight: "bold",
+                color: theme.colors.text,
+                fontSize: "16px",
+              }}
+            >
+              <span>{item.name}</span>
+              {nominalRate > 0 && !isByproduct && (
+                <span style={{ fontSize: "14px", opacity: 0.8 }}>
+                  {nominalRate.toFixed(2)}
+                </span>
+              )}
+            </div>
+
+            {/* Recipe selector - aligned to bottom */}
+            <div
+              style={{ marginTop: "auto", position: "relative", zIndex: 2 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && (
+                <StyledSelect
+                  value={selectedRecipeId || ""}
+                  onChange={onRecipeChange}
+                  options={recipes}
+                  variant="compact"
+                  style={{ width: "100%" }}
+                  renderOption={(option, isInDropdown) => (
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px',
+                        padding: '4px 8px',
+                        backgroundColor: isInDropdown && option.id === selectedRecipeId ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                        borderRadius: theme.border.radius,
+                      }}
+                    >
+                      <span style={{ fontWeight: 'bold' }}>{option.name}</span>
+                    </div>
+                  )}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Middle section - Machine info */}
+        {machine && !isByproduct && showMachines && (
+          <div
+            style={{
+              ...sectionStyle,
+              borderLeft: `4px solid ${theme.colors.secondary}`,
+              flex: 1,
+              maxWidth: "265px",
               position: "relative",
               zIndex: 1,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Machine name */}
-            <div
-              style={{
-                fontWeight: "bold",
-                color: theme.colors.text,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                fontSize: "16px",
-              }}
-            >
-              {machine.name}
+            {/* Machine icon - same size as item icon */}
+            <div style={{ marginRight: "8px" }}>
+              <Icon itemId={machine.id} size={size} />
             </div>
 
-            {/* Machine controls in row */}
+            {/* Machine details in column layout */}
             <div
               style={{
                 display: "flex",
-                gap: "0px",
-                alignItems: "center",
+                flexDirection: "column",
+                flex: 1,
+                gap: "10px",
                 position: "relative",
-                zIndex: 2,
+                zIndex: 1,
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Machine count */}
-              <StyledInput
-                ref={machineCountRef}
-                type="number"
-                value={localMachineCount}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleMachineCountChange(e.target.value);
+              {/* Machine name */}
+              <div
+                style={{
+                  fontWeight: "bold",
+                  color: theme.colors.text,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  fontSize: "16px",
                 }}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  handleKeyDown(
-                    e,
-                    localMachineCount,
-                    (val) => {
-                      setLocalMachineCount(val);
-                      onMachineCountChange?.(val);
-                    },
-                    1
-                  );
+              >
+                {machine.name}
+              </div>
+
+              {/* Machine controls in row */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0px",
+                  alignItems: "center",
+                  position: "relative",
+                  zIndex: 2,
                 }}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                  if (document.activeElement === machineCountRef.current) {
-                    handleWheel(
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Machine count */}
+                <StyledInput
+                  ref={machineCountRef}
+                  type="number"
+                  value={localMachineCount}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleMachineCountChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    handleKeyDown(
                       e,
                       localMachineCount,
                       (val) => {
@@ -512,65 +602,65 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                       },
                       1
                     );
-                  }
-                }}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  handleFocus(e);
-                }}
-                variant="compact"
-                style={{
-                  ...inputFieldStyle,
-                  position: "relative",
-                  zIndex: 2,
-                  maxWidth: "40px",
-                }}
-                min={1}
-                onClick={(e) => e.stopPropagation()}
-              />
+                  }}
+                  onWheel={(e) => {
+                    e.stopPropagation();
+                    if (document.activeElement === machineCountRef.current) {
+                      handleWheel(
+                        e,
+                        localMachineCount,
+                        (val) => {
+                          setLocalMachineCount(val);
+                          onMachineCountChange?.(val);
+                        },
+                        1
+                      );
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.stopPropagation();
+                    handleFocus(e);
+                  }}
+                  variant="compact"
+                  style={{
+                    ...inputFieldStyle,
+                    position: "relative",
+                    zIndex: 2,
+                    maxWidth: "40px",
+                  }}
+                  min={1}
+                  onClick={(e) => e.stopPropagation()}
+                />
 
-              {/* Max button */}
-              <button
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: theme.colors.secondary,
-                  position: "relative",
-                  zIndex: 2,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOptimizeMachines();
-                }}
-                title="Set machine count for 100% efficiency"
-              >
-                M
-              </button>
+                {/* Max button */}
+                <button
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: theme.colors.secondary,
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOptimizeMachines();
+                  }}
+                  title="Set machine count for 100% efficiency"
+                >
+                  M
+                </button>
 
-              {/* Multiplier */}
-              <StyledInput
-                ref={machineMultiplierRef}
-            type="number"
-                value={localMachineMultiplier}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleMachineMultiplierChange(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  handleKeyDown(
-                    e,
-                    localMachineMultiplier,
-                    (val) => {
-                      setLocalMachineMultiplier(val);
-                      onMachineMultiplierChange?.(val);
-                    },
-                    1
-                  );
-                }}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                  if (document.activeElement === machineMultiplierRef.current) {
-                    handleWheel(
+                {/* Multiplier */}
+                <StyledInput
+                  ref={machineMultiplierRef}
+                  type="number"
+                  value={localMachineMultiplier}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleMachineMultiplierChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    handleKeyDown(
                       e,
                       localMachineMultiplier,
                       (val) => {
@@ -579,219 +669,233 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                       },
                       1
                     );
-                  }
-                }}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  handleFocus(e);
-                }}
-                variant="compact"
-                style={{
-                  ...inputFieldStyle,
-                  position: "relative",
-                  zIndex: 2,
-                  maxWidth: "40px",
-                }}
-                min={1}
-                onClick={(e) => e.stopPropagation()}
-              />
+                  }}
+                  onWheel={(e) => {
+                    e.stopPropagation();
+                    if (document.activeElement === machineMultiplierRef.current) {
+                      handleWheel(
+                        e,
+                        localMachineMultiplier,
+                        (val) => {
+                          setLocalMachineMultiplier(val);
+                          onMachineMultiplierChange?.(val);
+                        },
+                        1
+                      );
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.stopPropagation();
+                    handleFocus(e);
+                  }}
+                  variant="compact"
+                  style={{
+                    ...inputFieldStyle,
+                    position: "relative",
+                    zIndex: 2,
+                    maxWidth: "40px",
+                  }}
+                  min={1}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Right section - Efficiency and rate */}
-      <div
-        style={{
-          ...sectionStyle,
-          borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
-          flex: 1,
-          minWidth: "160px",
-          maxWidth: "200px",
-          position: "relative",
-          zIndex: 1,
-          height: isByproduct ? "64px" : "auto", // Make byproduct section same height as others
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+        {/* Right section - Efficiency and rate */}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            gap: "10px",
+            ...sectionStyle,
+            borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
+            flex: 1,
+            minWidth: "160px",
+            maxWidth: "200px",
             position: "relative",
             zIndex: 1,
-            justifyContent: isByproduct ? "center" : "flex-start", // Center content for byproducts
+            height: isByproduct ? "64px" : "auto", // Make byproduct section same height as others
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* First row: Efficiency and Rate */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              flexDirection: "column",
               width: "100%",
+              gap: "10px",
+              position: "relative",
+              zIndex: 1,
+              justifyContent: isByproduct ? "center" : "flex-start", // Center content for byproducts
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Efficiency */}
-            {!isByproduct && (
+            {/* First row: Efficiency and Rate */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                width: "100%",
+              }}
+            >
+              {/* Efficiency */}
+              {!isByproduct && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: getEfficiencyColor(),
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      position: "relative",
+                      marginLeft: "0px",
+                      zIndex: 2,
+                      fontSize: "16px",
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyEfficiencyValue();
+                    }}
+                    title="Click to copy decimal value"
+                  >
+                    {efficiency.toFixed(2)}%
+                    {showEfficiencyTooltip && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "100%",
+                          right: "0",
+                          backgroundColor: theme.colors.dark,
+                          padding: "4px 8px",
+                          borderRadius: theme.border.radius,
+                          fontSize: "12px",
+                          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+                          zIndex: 10,
+                        }}
+                      >
+                        Copied!
+                      </div>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Rate */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  position: "relative",
-                  zIndex: 2,
+                  fontWeight: "bold",
+                  color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text,
+                  marginLeft: isByproduct ? "auto" : "4px",
+                  fontSize: "16px",
                 }}
               >
-                <span
-                  style={{
-                    color: getEfficiencyColor(),
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    position: "relative",
-                    marginLeft: "0px",
-                    zIndex: 2,
-                    fontSize: "16px",
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    copyEfficiencyValue();
-                  }}
-                  title="Click to copy decimal value"
-                >
-                  {efficiency.toFixed(2)}%
-                  {showEfficiencyTooltip && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "100%",
-                        right: "0",
-                        backgroundColor: theme.colors.dark,
-                        padding: "4px 8px",
-                        borderRadius: theme.border.radius,
-                        fontSize: "12px",
-                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                        zIndex: 10,
-                      }}
-                    >
-                      Copied!
-                    </div>
-                  )}
-                </span>
+                <span>{Math.abs(amount).toFixed(2)}</span>
               </div>
-            )}
-
-            {/* Rate */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                fontWeight: "bold",
-                color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text,
-                marginLeft: isByproduct ? "auto" : "4px",
-                fontSize: "16px",
-              }}
-            >
-              <span>{Math.abs(amount).toFixed(2)}</span>
             </div>
-          </div>
 
-          {/* Second row: Excess controls */}
-          {onExcessChange && !isByproduct && (
-            <div
-              style={{
-                display: "flex",
-                gap: "0px",
-                alignItems: "center",
-                width: "100%",
-                justifyContent: "space-between",
-                position: "relative",
-                zIndex: 2,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
+            {/* Second row: Excess controls */}
+            {onExcessChange && !isByproduct && (
+              <div
                 style={{
-                  ...buttonStyle,
-                  position: "relative",
-                  zIndex: 2,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleResetExcess();
-                }}
-                title="Reset excess to zero"
-              >
-                R
-              </button>
-
-              <StyledInput
-                ref={excessRef}
-                type="number"
-                value={formattedExcess}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleExcessChange(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  handleKeyDown(e, formattedExcess, (val) => {
-                    setLocalExcess(val);
-                    setPreciseExcess(val);
-                    onExcessChange?.(val);
-                  });
-                }}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                  if (document.activeElement === excessRef.current) {
-                    handleWheel(
-                      e,
-                      formattedExcess,
-                      (val) => {
-                        setLocalExcess(val);
-                        setPreciseExcess(val);
-                        onExcessChange?.(val);
-                      }
-                    );
-                  }
-                }}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  handleExcessFocus(e);
-                }}
-                onBlur={(e) => {
-                  e.stopPropagation();
-                  handleExcessBlur(e);
-                }}
-                variant="compact"
-                style={{ 
-                  ...inputFieldStyle,
-                  minWidth: "50px",
-                  maxWidth: "120px",
+                  display: "flex",
+                  gap: "0px",
+                  alignItems: "center",
+                  width: "100%",
+                  justifyContent: "space-between",
                   position: "relative",
                   zIndex: 2,
                 }}
                 onClick={(e) => e.stopPropagation()}
-              />
-
-              <button
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: theme.colors.secondary,
-                  position: "relative",
-                  zIndex: 2,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMaxExcess();
-                }}
-                title="Set excess for 100% efficiency"
               >
-                M
-              </button>
-            </div>
-          )}
+                <button
+                  style={{
+                    ...buttonStyle,
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetExcess();
+                  }}
+                  title="Reset excess to zero"
+                >
+                  R
+                </button>
+
+                <StyledInput
+                  ref={excessRef}
+                  type="number"
+                  value={formattedExcess}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleExcessChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    handleKeyDown(e, formattedExcess, (val) => {
+                      setLocalExcess(val);
+                      setPreciseExcess(val);
+                      onExcessChange?.(val);
+                    });
+                  }}
+                  onWheel={(e) => {
+                    e.stopPropagation();
+                    if (document.activeElement === excessRef.current) {
+                      handleWheel(
+                        e,
+                        formattedExcess,
+                        (val) => {
+                          setLocalExcess(val);
+                          setPreciseExcess(val);
+                          onExcessChange?.(val);
+                        }
+                      );
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.stopPropagation();
+                    handleExcessFocus(e);
+                  }}
+                  onBlur={(e) => {
+                    e.stopPropagation();
+                    handleExcessBlur(e);
+                  }}
+                  variant="compact"
+                  style={{ 
+                    ...inputFieldStyle,
+                    minWidth: "50px",
+                    maxWidth: "120px",
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                <button
+                  style={{
+                    ...buttonStyle,
+                    backgroundColor: theme.colors.secondary,
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMaxExcess();
+                  }}
+                  title="Set excess for 100% efficiency"
+                >
+                  M
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

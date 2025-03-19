@@ -18,6 +18,7 @@ interface TreeNodeProps {
   showMachineSection?: boolean;
   isRoot?: boolean;
   onDelete?: (treeId: string) => void;
+  onImport?: (nodeId: string) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -34,7 +35,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onNodeExpandChange,
   showMachineSection = true,
   isRoot = false,
-  onDelete
+  onDelete,
+  onImport
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
@@ -133,48 +135,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
             onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
             showMachines={showMachineSection}
+            onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
+            onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
           />
         </div>
-
-        {isRoot && onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(node.uniqueId);
-            }}
-            style={{
-              position: 'absolute',
-              left: '32px',
-              top: '4px',
-              background: 'rgba(255, 0, 0, 0.1)',
-              border: '1px solid rgba(255, 0, 0, 0.3)',
-              color: '#ff3333',
-              cursor: 'pointer',
-              padding: '0px 6px',
-              borderRadius: theme.border.radius,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 5,
-              fontSize: '16px',
-              fontWeight: 'bold',
-              transition: 'all 0.2s ease',
-              lineHeight: '18px',
-              height: '20px',
-              width: '20px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-              e.currentTarget.style.color = '#ff0000';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-              e.currentTarget.style.color = '#ff3333';
-            }}
-          >
-            ×
-          </button>
-        )}
       </div>
 
       {isExpanded && hasChildren && (
@@ -196,6 +160,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               showMachineSection={showMachineSection}
               isRoot={false}
               onDelete={onDelete}
+              onImport={onImport}
             />
           ))}
         </div>

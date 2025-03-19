@@ -250,6 +250,11 @@ const DependencyTester: React.FC = () => {
     dispatch(updateAccumulated(allAccumulated));
   }, [dependencies.dependencyTrees, dispatch]);
 
+  const handleImportNode = (nodeId: string) => {
+    console.log("Importing node with ID:", nodeId);
+    // We'll implement the actual import logic in the next step
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -325,6 +330,7 @@ const DependencyTester: React.FC = () => {
               showMachines={showMachines}
               isRoot={true}
               onDelete={() => handleDeleteTree(treeId)}
+              onImportNode={handleImportNode}
             />
           ))}
         </div>
@@ -349,6 +355,9 @@ const DependencyTester: React.FC = () => {
             accumulateExtensions={accumulateExtensions}
             showMachineSection={showMachines}
             onDelete={handleDeleteTree}
+            accumulatedDependencies={dependencies.accumulatedDependencies}
+            onDeleteTree={handleDeleteTree}
+            onImportNode={handleImportNode}
           />
         </div>
       </div>

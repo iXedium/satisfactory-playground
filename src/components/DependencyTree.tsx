@@ -18,6 +18,7 @@ export interface DependencyTreeProps {
   showMachines: boolean;
   isRoot: boolean;
   onDelete?: (treeId: string) => void;
+  onImportNode?: (nodeId: string) => void;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
@@ -36,6 +37,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   showMachines,
   isRoot,
   onDelete,
+  onImportNode
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +64,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         showMachineSection={showMachines}
         isRoot={isRoot}
         onDelete={isRoot && onDelete ? onDelete : undefined}
+        onImport={onImportNode}
       />
     </div>
   );

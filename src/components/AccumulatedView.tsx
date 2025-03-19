@@ -20,6 +20,9 @@ interface AccumulatedViewProps {
   accumulateExtensions?: boolean;
   showMachineSection?: boolean;
   onDelete?: (treeId: string) => void;
+  accumulatedDependencies: Record<string, AccumulatedNode>;
+  onDeleteTree?: (treeId: string) => void;
+  onImportNode?: (nodeId: string) => void;
 }
 
 interface GroupedItem {
@@ -52,6 +55,9 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
   accumulateExtensions = false,
   showMachineSection = true,
   onDelete,
+  accumulatedDependencies,
+  onDeleteTree,
+  onImportNode
 }) => {
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
@@ -422,6 +428,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               accumulateExtensions={accumulateExtensions}
               showMachines={showMachineSection}
               onDelete={onDelete}
+              onImport={onImportNode}
             />
           </div>
         );
