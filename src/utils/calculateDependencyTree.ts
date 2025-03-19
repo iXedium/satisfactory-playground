@@ -26,11 +26,12 @@ export const calculateDependencyTree = async (
   itemId: string,
   amount: number,
   rootRecipeId: string | null,
-  recipeMap: Record<string, string> = {},  // Add recipe map parameter
+  recipeMap: Record<string, string> = {},
   depth: number = 0,
   affectedBranches: NodePath[] = [],
-  parentId: string = '',  // Add parentId parameter
-  excessMap: Record<string, number> = {}  // Add excessMap parameter
+  parentId: string = '',
+  excessMap: Record<string, number> = {},
+  importMap: Record<string, { targetTreeId: string, amount: number }> = {} // Track imported nodes
 ): Promise<DependencyNode> => {
   const start = performance.now();
   // console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
@@ -39,7 +40,6 @@ export const calculateDependencyTree = async (
   const nodeId = parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`;
 
   // Only check if current node or its children are affected
-  // Remove parent check since changes don't affect upstream
   const isAffected = affectedBranches.some(b => 
     b.nodeId === nodeId || // Direct match
     b.nodeId.startsWith(`${nodeId}-`) // Child nodes only
@@ -55,6 +55,20 @@ export const calculateDependencyTree = async (
   // Clear cache for affected node
   if (isAffected) {
     await clearNodeFromCache(nodeId);
+  }
+
+  // Check if this node should be an import
+  if (importMap[nodeId]) {
+    // For import nodes, create a minimal node with just the required info
+    return {
+      id: itemId,
+      amount,
+      uniqueId: nodeId,
+      isImport: true,
+      importedFrom: importMap[nodeId].targetTreeId,
+      children: [],
+      excess: excessMap[nodeId] || 0
+    };
   }
 
   // Get available recipes for this item
@@ -78,14 +92,14 @@ export const calculateDependencyTree = async (
       uniqueId: nodeId,
       availableRecipes,
       children: [],
-      excess: excessMap[nodeId] || 0  // Add excess from map
+      excess: excessMap[nodeId] || 0
     };
   }
 
   const outputAmount = recipe.out[itemId] ?? 1;
-  const cyclesNeeded = (amount + (excessMap[nodeId] || 0)) / outputAmount;  // Add excess to required amount
+  const cyclesNeeded = (amount + (excessMap[nodeId] || 0)) / outputAmount;
 
-  // Pass recipeMap to child calculations
+  // Pass recipeMap and importMap to child calculations
   const children = await Promise.all(
     Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
       calculateDependencyTree(
@@ -95,23 +109,24 @@ export const calculateDependencyTree = async (
         recipeMap,
         depth + 1,
         affectedBranches,
-        nodeId,  // Pass current nodeId as parent
-        excessMap  // Pass excessMap to child calculations
+        nodeId,
+        excessMap,
+        importMap
       )
     )
   );
 
-  // ✅ Add byproducts but do NOT process them
+  // Add byproducts but do NOT process them
   const byproducts = Object.entries(recipe.out)
-    .filter(([outputItem]) => outputItem !== itemId) // ✅ Ensure only byproducts
+    .filter(([outputItem]) => outputItem !== itemId)
     .map(([outputItem, outputAmount]) => ({
       id: outputItem,
-      amount: -(outputAmount * cyclesNeeded), // ✅ Negative production rate
-      uniqueId: `${nodeId}-${outputItem}-${depth}`,  // Include parent path
+      amount: -(outputAmount * cyclesNeeded),
+      uniqueId: `${nodeId}-${outputItem}-${depth}`,
       isByproduct: true,
       children: [],
-      excess: 0  // Add default excess
-    } as DependencyNode));  // Cast to DependencyNode
+      excess: 0
+    } as DependencyNode));
 
   const result: DependencyNode = {
     id: itemId,
@@ -120,8 +135,8 @@ export const calculateDependencyTree = async (
     isRoot: depth === 0,
     selectedRecipeId: recipe.id,
     availableRecipes,
-    children: [...children, ...byproducts], // ✅ Include byproducts without processing them
-    excess: excessMap[nodeId] || 0  // Add excess from map
+    children: [...children, ...byproducts],
+    excess: excessMap[nodeId] || 0
   };
 
   // Store result in cache

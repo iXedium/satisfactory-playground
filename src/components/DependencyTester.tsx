@@ -28,8 +28,8 @@ const DependencyTester: React.FC = () => {
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
   const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
-  const [showExtensions, setShowExtensions] = useState(true);
-  const [accumulateExtensions, setAccumulateExtensions] = useState(false);
+  const [showExtensions, setShowExtensions] = useState(false);
+  const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
   
@@ -122,16 +122,74 @@ const DependencyTester: React.FC = () => {
     
     dispatch(setRecipeSelection({ nodeId, recipeId }));
 
+    // Build a map of imported nodes to maintain relationships
+    const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
+    
+    // Track import nodes recursively
+    const buildImportMap = (node: DependencyNode) => {
+      if (node.isImport && node.importedFrom) {
+        importMap[node.uniqueId] = {
+          targetTreeId: node.importedFrom,
+          amount: node.amount
+        };
+      }
+      
+      if (node.children) {
+        node.children.forEach((child: DependencyNode) => {
+          buildImportMap(child);
+        });
+      }
+    };
+    
+    // Scan the entire tree for imported nodes
+    buildImportMap(dependencies.dependencyTrees[treeId]);
+
     const tree = await calculateDependencyTree(
       dependencies.dependencyTrees[treeId].id, 
       dependencies.dependencyTrees[treeId].amount, 
       recipeId, 
       updatedRecipeSelections,
       0,
-      affectedBranches
+      affectedBranches,
+      '',
+      excessMap,
+      importMap
     );
 
     if (tree) {
+      // Update the production rates in imported chains based on new values
+      Object.entries(importMap).forEach(([nodeUniqueId, { targetTreeId }]) => {
+        // Find the node in the newly calculated tree
+        const updatedNode = findNodeById(tree, nodeUniqueId);
+        
+        // Find the target root node
+        const targetTree = dependencies.dependencyTrees[targetTreeId];
+        
+        if (updatedNode && targetTree) {
+          // Calculate the difference in production
+          const originalNode = findNodeById(dependencies.dependencyTrees[treeId], nodeUniqueId);
+          if (originalNode) {
+            const prodDifference = updatedNode.amount - originalNode.amount;
+            
+            // Only update if there's a change in production
+            if (prodDifference !== 0) {
+              // Calculate new tree with adjusted production
+              const adjustedTree = {
+                ...targetTree,
+                amount: targetTree.amount + prodDifference
+              };
+              
+              // Update the target tree with new production
+              dispatch(setDependencies({
+                treeId: targetTreeId,
+                tree: adjustedTree,
+                accumulated: calculateAccumulatedFromTree(adjustedTree)
+              }));
+            }
+          }
+        }
+      });
+      
       const accumulated = calculateAccumulatedFromTree(tree);
       dispatch(setDependencies({ treeId, tree, accumulated }));
     }
@@ -149,7 +207,30 @@ const DependencyTester: React.FC = () => {
     if (!treeId) return;
 
     const affectedBranches = findAffectedBranches(dependencies.dependencyTrees[treeId], nodeId);
+    
+    // Build a map of imported nodes to maintain relationships
+    const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
+    
+    // Track import nodes recursively
+    const buildImportMap = (node: DependencyNode) => {
+      if (node.isImport && node.importedFrom) {
+        importMap[node.uniqueId] = {
+          targetTreeId: node.importedFrom,
+          amount: node.amount
+        };
+      }
+      
+      if (node.children) {
+        node.children.forEach((child: DependencyNode) => {
+          buildImportMap(child);
+        });
+      }
+    };
+    
+    // Scan the entire tree for imported nodes
+    buildImportMap(dependencies.dependencyTrees[treeId]);
 
+    // Recalculate the tree with import relationships maintained
     const tree = await calculateDependencyTree(
       dependencies.dependencyTrees[treeId].id,
       dependencies.dependencyTrees[treeId].amount,
@@ -158,10 +239,44 @@ const DependencyTester: React.FC = () => {
       0,
       affectedBranches,
       '',
-      newExcessMap
+      newExcessMap,
+      importMap
     );
 
     if (tree) {
+      // Update the production rates in imported chains based on new values
+      Object.entries(importMap).forEach(([nodeUniqueId, { targetTreeId }]) => {
+        // Find the node in the newly calculated tree
+        const updatedNode = findNodeById(tree, nodeUniqueId);
+        
+        // Find the target root node
+        const targetTree = dependencies.dependencyTrees[targetTreeId];
+        
+        if (updatedNode && targetTree) {
+          // Calculate the difference in production
+          const originalNode = findNodeById(dependencies.dependencyTrees[treeId], nodeUniqueId);
+          if (originalNode) {
+            const prodDifference = updatedNode.amount - originalNode.amount;
+            
+            // Only update if there's a change in production
+            if (prodDifference !== 0) {
+              // Calculate new tree with adjusted production
+              const adjustedTree = {
+                ...targetTree,
+                amount: targetTree.amount + prodDifference
+              };
+              
+              // Update the target tree with new production
+              dispatch(setDependencies({
+                treeId: targetTreeId,
+                tree: adjustedTree,
+                accumulated: calculateAccumulatedFromTree(adjustedTree)
+              }));
+            }
+          }
+        }
+      });
+      
       const accumulated = calculateAccumulatedFromTree(tree);
       dispatch(setDependencies({ treeId, tree, accumulated }));
     }
@@ -232,6 +347,21 @@ const DependencyTester: React.FC = () => {
     return null;
   };
 
+  // Helper function to find a node in a tree
+  const findNodeInTree = (tree: DependencyNode, targetId: string): DependencyNode | null => {
+    if (tree.uniqueId === targetId) {
+      return tree;
+    }
+
+    if (tree.children) {
+      for (const child of tree.children) {
+        const found = findNodeInTree(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  
   // Helper function to find a parent node in all trees
   const findParentInAllTrees = (nodeId: string): { tree: DependencyNode, node: DependencyNode } | null => {
     if (!dependencies.dependencyTrees) return null;
@@ -247,21 +377,6 @@ const DependencyTester: React.FC = () => {
       if (found) return { tree, node: found };
     }
     
-    return null;
-  };
-
-  // Helper function to find a node in a tree
-  const findNodeInTree = (tree: DependencyNode, targetId: string): DependencyNode | null => {
-    if (tree.uniqueId === targetId) {
-      return tree;
-    }
-
-    if (tree.children) {
-      for (const child of tree.children) {
-        const found = findNodeInTree(child, targetId);
-        if (found) return found;
-      }
-    }
     return null;
   };
 
