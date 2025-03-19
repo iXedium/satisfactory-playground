@@ -293,6 +293,9 @@ const DependencyTester: React.FC = () => {
 
     const { tree: sourceTree, node: sourceNode } = sourceTreeInfo;
     console.log("Found source node:", sourceNode);
+    
+    // Find the source node's excess
+    const sourceExcess = excessMap[sourceNode.uniqueId] || 0;
 
     // Find the source tree ID
     let sourceTreeId = "";
@@ -328,16 +331,16 @@ const DependencyTester: React.FC = () => {
       console.log("Creating new tree for", sourceNode.id);
       targetTreeId = `${sourceNode.id}-${Date.now()}`;
       
-      // Create a new root node for this item with zero initial amount
+      // Create a new root node for this item with the source node's amount + excess
       const newRoot: DependencyNode = {
         id: sourceNode.id,
         uniqueId: targetTreeId,
-        amount: 0, // Start with zero production
+        amount: sourceNode.amount, // Use the source node's production amount
         isRoot: true,
         isImport: false,
         selectedRecipeId: sourceNode.selectedRecipeId,
         availableRecipes: sourceNode.availableRecipes,
-        excess: 0,
+        excess: sourceExcess, // Use the source node's excess
         children: []
       };
       
@@ -353,6 +356,12 @@ const DependencyTester: React.FC = () => {
         treeId: targetTreeId,
         tree: newRoot,
         accumulated: calculateAccumulatedFromTree(newRoot)
+      }));
+      
+      // Also update the excess map for the new node
+      setExcessMap(prev => ({
+        ...prev,
+        [targetTreeId]: sourceExcess
       }));
     }
 
