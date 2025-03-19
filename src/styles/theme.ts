@@ -7,8 +7,12 @@ export const theme = {
     darker: "#1a1e24",
     hover: "rgba(255, 122, 0, 0.1)",
     text: "#ffffff",
+    textLight: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
     iconBg: '#2d3744',
+    surface: "#2d3744",
+    border: "#4a5664",
+    danger: "#e63946", // Bright red for dangerous actions
     
     // Node colors - Industrial theme
     nodeRoot: '#ff7a00', // Primary orange for root
@@ -42,6 +46,7 @@ export const theme = {
     radius: "6px",
     style: "1px solid #4a5664",
   },
+  borderRadius: "6px",
   spacing: {
     gap: "12px",
     padding: "12px",

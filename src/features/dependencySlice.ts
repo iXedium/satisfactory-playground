@@ -194,8 +194,18 @@ const dependencySlice = createSlice({
       
       state.accumulatedDependencies = allAccumulated;
     },
+    loadSavedState: (state, action: PayloadAction<DependencyState>) => {
+      // Replace the entire state with the saved state
+      return action.payload;
+    }
   },
 });
 
-export const { setDependencies, deleteTree, updateAccumulated, importNode } = dependencySlice.actions;
+export const { 
+  setDependencies, 
+  deleteTree, 
+  updateAccumulated, 
+  importNode, 
+  loadSavedState 
+} = dependencySlice.actions;
 export default dependencySlice.reducer;

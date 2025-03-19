@@ -12,14 +12,21 @@ const recipeSelectionsSlice = createSlice({
   name: 'recipeSelections',
   initialState,
   reducers: {
-    setRecipeSelection(state, action: PayloadAction<{ nodeId: string; recipeId: string }>) {
+    setRecipeSelection: (state, action: PayloadAction<{ nodeId: string; recipeId: string }>) => {
       state.selections[action.payload.nodeId] = action.payload.recipeId;
     },
-    clearRecipeSelections(state) {
+    clearRecipeSelections: (state) => {
       state.selections = {};
+    },
+    loadRecipeSelections: (state, action: PayloadAction<Record<string, string>>) => {
+      state.selections = action.payload;
     }
   }
 });
 
-export const { setRecipeSelection, clearRecipeSelections } = recipeSelectionsSlice.actions;
+export const { 
+  setRecipeSelection, 
+  clearRecipeSelections,
+  loadRecipeSelections 
+} = recipeSelectionsSlice.actions;
 export default recipeSelectionsSlice.reducer;

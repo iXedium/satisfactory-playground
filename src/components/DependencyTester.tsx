@@ -4,10 +4,10 @@ import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
 import { calculateDependencyTree, DependencyNode } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedFromTree, AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
-import { setDependencies, deleteTree, updateAccumulated, importNode } from "../features/dependencySlice";
+import { setDependencies, deleteTree, updateAccumulated, importNode, loadSavedState } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { getComponents } from "../data/dbQueries";
-import { setRecipeSelection } from "../features/recipeSelectionsSlice";
+import { setRecipeSelection, loadRecipeSelections } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
 import AccumulatedView from "./AccumulatedView";
 import CommandBar from "./CommandBar";
@@ -35,6 +35,117 @@ const DependencyTester: React.FC = () => {
   
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      // Load saved dependencies
+      const savedDependencies = localStorage.getItem('savedDependencies');
+      if (savedDependencies) {
+        const parsed = JSON.parse(savedDependencies);
+        dispatch(loadSavedState(parsed));
+      }
+      
+      // Load saved recipe selections
+      const savedRecipeSelections = localStorage.getItem('savedRecipeSelections');
+      if (savedRecipeSelections) {
+        const parsed = JSON.parse(savedRecipeSelections);
+        dispatch(loadRecipeSelections(parsed));
+      }
+      
+      // Load saved excess map
+      const savedExcessMap = localStorage.getItem('savedExcessMap');
+      if (savedExcessMap) {
+        setExcessMap(JSON.parse(savedExcessMap));
+      }
+      
+      // Load saved machine maps
+      const savedMachineCountMap = localStorage.getItem('savedMachineCountMap');
+      if (savedMachineCountMap) {
+        setMachineCountMap(JSON.parse(savedMachineCountMap));
+      }
+      
+      const savedMachineMultiplierMap = localStorage.getItem('savedMachineMultiplierMap');
+      if (savedMachineMultiplierMap) {
+        setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
+      }
+      
+      // Load UI preferences
+      const savedViewMode = localStorage.getItem('savedViewMode');
+      if (savedViewMode) {
+        setViewMode(savedViewMode as ViewMode);
+      }
+      
+      const savedExpandedNodes = localStorage.getItem('savedExpandedNodes');
+      if (savedExpandedNodes) {
+        setExpandedNodes(JSON.parse(savedExpandedNodes));
+      }
+    } catch (error) {
+      console.error("Error loading saved state:", error);
+    }
+  }, [dispatch]);
+  
+  useEffect(() => {
+    // Only save if we have dependencies to save
+    if (Object.keys(dependencies.dependencyTrees).length > 0) {
+      try {
+        const serialized = JSON.stringify(dependencies);
+        localStorage.setItem('savedDependencies', serialized);
+      } catch (error) {
+        console.error("Error saving dependencies:", error);
+        // If there's an error (likely due to size), clear the saved data
+        localStorage.removeItem('savedDependencies');
+      }
+    }
+  }, [dependencies]);
+  
+  useEffect(() => {
+    if (Object.keys(recipeSelections).length > 0) {
+      try {
+        localStorage.setItem('savedRecipeSelections', JSON.stringify(recipeSelections));
+      } catch (error) {
+        console.error("Error saving recipe selections:", error);
+        localStorage.removeItem('savedRecipeSelections');
+      }
+    }
+  }, [recipeSelections]);
+  
+  useEffect(() => {
+    if (Object.keys(excessMap).length > 0) {
+      try {
+        localStorage.setItem('savedExcessMap', JSON.stringify(excessMap));
+      } catch (error) {
+        console.error("Error saving excess map:", error);
+        localStorage.removeItem('savedExcessMap');
+      }
+    }
+  }, [excessMap]);
+  
+  useEffect(() => {
+    try {
+      if (Object.keys(machineCountMap).length > 0) {
+        localStorage.setItem('savedMachineCountMap', JSON.stringify(machineCountMap));
+      }
+      
+      if (Object.keys(machineMultiplierMap).length > 0) {
+        localStorage.setItem('savedMachineMultiplierMap', JSON.stringify(machineMultiplierMap));
+      }
+    } catch (error) {
+      console.error("Error saving machine maps:", error);
+      localStorage.removeItem('savedMachineCountMap');
+      localStorage.removeItem('savedMachineMultiplierMap');
+    }
+  }, [machineCountMap, machineMultiplierMap]);
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('savedViewMode', viewMode);
+      localStorage.setItem('savedExpandedNodes', JSON.stringify(expandedNodes));
+    } catch (error) {
+      console.error("Error saving UI preferences:", error);
+      localStorage.removeItem('savedViewMode');
+      localStorage.removeItem('savedExpandedNodes');
+    }
+  }, [viewMode, expandedNodes]);
 
   useEffect(() => {
     // Initial load of items from the database
@@ -510,6 +621,17 @@ const DependencyTester: React.FC = () => {
     return clone;
   }
 
+  // Function to clear all saved data
+  const clearSavedData = () => {
+    localStorage.removeItem('savedDependencies');
+    localStorage.removeItem('savedRecipeSelections');
+    localStorage.removeItem('savedExcessMap');
+    localStorage.removeItem('savedMachineCountMap');
+    localStorage.removeItem('savedMachineMultiplierMap');
+    localStorage.removeItem('savedViewMode');
+    localStorage.removeItem('savedExpandedNodes');
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -546,6 +668,7 @@ const DependencyTester: React.FC = () => {
           onShowMachineMultiplierChange={setShowMachineMultiplier}
           isAddItemCollapsed={isAddItemCollapsed}
           onAddItemCollapsedChange={setIsAddItemCollapsed}
+          onClearSavedData={clearSavedData}
         />
       </div>
       

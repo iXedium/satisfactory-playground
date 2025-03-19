@@ -31,6 +31,7 @@ export interface CommandBarProps {
   onShowMachineMultiplierChange: (show: boolean) => void;
   isAddItemCollapsed: boolean;
   onAddItemCollapsedChange: (collapsed: boolean) => void;
+  onClearSavedData?: () => void;
 }
 
 const depthOptions = [
@@ -64,6 +65,7 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   isAddItemCollapsed,
   onAddItemCollapsedChange,
   showExtensions,
+  onClearSavedData
 }, ref) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
@@ -185,16 +187,12 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
 
   const buttonStyle: React.CSSProperties = {
     padding: "6px 12px",
-    backgroundColor: theme.colors.buttonDefault,
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius,
     color: theme.colors.text,
-    border: "none",
-    borderRadius: theme.border.radius,
     cursor: "pointer",
-    fontSize: "14px",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    transition: "background-color 0.2s",
+    width: "auto",
   };
 
   const searchStyle: React.CSSProperties = {
@@ -205,6 +203,24 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
     padding: "6px 10px",
     fontSize: "14px",
     width: "200px",
+  };
+
+  const controlGroupStyle: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    alignItems: "center",
+    marginBottom: "8px",
+  };
+
+  const activeButtonStyle: React.CSSProperties = {
+    ...buttonStyle,
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.textLight,
+  };
+
+  const toggleStyle: React.CSSProperties = {
+    // ... existing code ...
   };
 
   return (
@@ -431,6 +447,52 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
         <span style={{ color: theme.colors.text, fontSize: '12px' }}>
           {isItemSectionCollapsed ? '▼ Show Add Item' : '▲ Hide Add Item'}
         </span>
+      </div>
+
+      <div style={controlGroupStyle}>
+        <button
+          style={viewMode === "tree" ? activeButtonStyle : buttonStyle}
+          onClick={() => onViewModeChange("tree")}
+        >
+          Tree View
+        </button>
+        <button
+          style={viewMode === "accumulated" ? activeButtonStyle : buttonStyle}
+          onClick={() => onViewModeChange("accumulated")}
+        >
+          Accumulated View
+        </button>
+      </div>
+
+      <div style={controlGroupStyle}>
+        <button 
+          style={buttonStyle}
+          onClick={() => onExpandCollapseAll(true)}
+        >
+          Expand All
+        </button>
+        <button 
+          style={buttonStyle}
+          onClick={() => onExpandCollapseAll(false)}
+        >
+          Collapse All
+        </button>
+        {onClearSavedData && (
+          <button
+            style={{
+              ...buttonStyle,
+              backgroundColor: theme.colors.danger,
+              color: theme.colors.textLight
+            }}
+            onClick={() => {
+              if (window.confirm('Are you sure you want to clear all saved data? This action cannot be undone.')) {
+                onClearSavedData();
+              }
+            }}
+          >
+            Clear Saved Data
+          </button>
+        )}
       </div>
     </div>
   );
