@@ -35,6 +35,7 @@ interface GroupedItem {
   name?: string; // Item name
   depth: number; // Track the depth of the item in the tree
   normalizedMachineCount: number; // Machine count normalized to multiplier = 1
+  isImport: boolean;
 }
 
 interface NodeMachineInfo {
@@ -100,7 +101,8 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               isByproduct: node.isByproduct || false,
               nodeIds: [],
               depth: depth,
-              normalizedMachineCount: 0
+              normalizedMachineCount: 0,
+              isImport: false
             };
             
             // Add to list of items to fetch recipes for
@@ -320,6 +322,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
           name: node.name,
           depth: node.depth || 0,
           normalizedMachineCount: 0,
+          isImport: false
         };
       }
       
@@ -413,6 +416,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
                 return false;
               })}
               isByproduct={item.isByproduct}
+              isImport={item.isImport}
               recipes={recipesMap[item.itemId] || []}
               selectedRecipeId={item.selectedRecipeId}
               onRecipeChange={(recipeId) => onRecipeChange(nodeId, recipeId)}
@@ -428,7 +432,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               accumulateExtensions={accumulateExtensions}
               showMachines={showMachineSection}
               onDelete={onDelete}
-              onImport={onImportNode}
+              onImport={onImportNode ? () => onImportNode(nodeId) : undefined}
             />
           </div>
         );

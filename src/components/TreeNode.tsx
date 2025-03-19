@@ -120,6 +120,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             amount={node.amount}
             isRoot={node.isRoot}
             isByproduct={node.isByproduct}
+            isImport={node.isImport}
             recipes={node.availableRecipes}
             selectedRecipeId={node.selectedRecipeId}
             onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}

@@ -47,6 +47,7 @@ interface ListNodeProps {
   showMachines?: boolean;
   onDelete?: (nodeId: string) => void;
   onImport?: (nodeId: string) => void;
+  isImport?: boolean;
 }
 
 const ListNode: React.FC<ListNodeProps> = ({
@@ -70,6 +71,7 @@ const ListNode: React.FC<ListNodeProps> = ({
   showMachines = true,
   onDelete,
   onImport,
+  isImport,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
@@ -175,6 +177,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           amount={amount}
           isRoot={isRoot}
           isByproduct={isByproduct}
+          isImport={isImport}
           recipes={propsRecipes}
           selectedRecipeId={selectedRecipeId}
           onRecipeChange={onRecipeChange}
@@ -196,7 +199,7 @@ const ListNode: React.FC<ListNodeProps> = ({
               }
             }
           } : undefined}
-          onImport={!isRoot && onImport ? () => onImport(itemId) : undefined}
+          onImport={!isRoot && onImport ? onImport : undefined}
         />
       </div>
 

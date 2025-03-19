@@ -11,6 +11,7 @@ interface ItemNodeProps {
   amount: number;
   isRoot?: boolean;
   isByproduct?: boolean;
+  isImport?: boolean;
   recipes?: Recipe[];
   selectedRecipeId?: string;
   onRecipeChange?: (recipeId: string) => void;
@@ -26,7 +27,7 @@ interface ItemNodeProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachines?: boolean;
   onDelete?: () => void;
-  onImport?: () => void;
+  onImport?: (nodeId: string) => void;
 }
 
 interface Machine {
@@ -43,7 +44,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   amount,
   isRoot = false,
   isByproduct = false,
-  recipes,
+  isImport = false,
+  recipes = [],
   selectedRecipeId,
   onRecipeChange,
   size = "large",
@@ -61,7 +63,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onImport,
 }) => {
   const [item, setItem] = useState<Item | null>(null);
-  const [localExcess, setLocalExcess] = useState(excess);
+  const [, setLocalExcess] = useState(excess);
   const [preciseExcess, setPreciseExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] =
@@ -146,6 +148,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const getItemColor = () => {
     if (isRoot) return theme.colors.nodeRoot;
     if (isByproduct) return theme.colors.nodeByproduct;
+    if (isImport) return theme.colors.nodeImport;
     return theme.colors.nodeDefault;
   };
 
@@ -280,7 +283,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     }
   };
 
-  const handleExcessBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleExcessBlur = () => {
     setIsExcessFocused(false);
   };
 
@@ -378,22 +381,27 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               e.currentTarget.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
               e.currentTarget.style.color = '#ff3333';
             }}
+            title="Delete chain"
           >
             ×
           </button>
         )}
         
-        {/* Import button for child nodes */}
+        {/* Import/Revert import button for child nodes */}
         {!isRoot && onImport && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onImport();
+              onImport(itemId);
             }}
             style={{
-              background: 'rgba(0, 150, 255, 0.1)',
-              border: '1px solid rgba(0, 150, 255, 0.3)',
-              color: '#0096ff',
+              background: isImport 
+                ? 'rgba(255, 50, 50, 0.1)' 
+                : 'rgba(0, 150, 255, 0.1)',
+              border: isImport 
+                ? '1px solid rgba(255, 50, 50, 0.3)' 
+                : '1px solid rgba(0, 150, 255, 0.3)',
+              color: isImport ? '#ff3333' : '#0096ff',
               cursor: 'pointer',
               padding: '0px 6px',
               borderRadius: theme.border.radius,
@@ -408,15 +416,26 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               width: '20px',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.2)';
-              e.currentTarget.style.color = '#0077ff';
+              if (isImport) {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 50, 50, 0.2)';
+                e.currentTarget.style.color = '#ff0000';
+              } else {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.2)';
+                e.currentTarget.style.color = '#0077ff';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.1)';
-              e.currentTarget.style.color = '#0096ff';
+              if (isImport) {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 50, 50, 0.1)';
+                e.currentTarget.style.color = '#ff3333';
+              } else {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 150, 255, 0.1)';
+                e.currentTarget.style.color = '#0096ff';
+              }
             }}
+            title={isImport ? "Revert import" : "Import from other chain"}
           >
-            ↓
+            {isImport ? "↑" : "↓"}
           </button>
         )}
       </div>
@@ -488,7 +507,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               }}
             >
               <span>{item.name}</span>
-              {nominalRate > 0 && !isByproduct && (
+              {nominalRate > 0 && !isByproduct && !isImport && (
                 <span style={{ fontSize: "14px", opacity: 0.8 }}>
                   {nominalRate.toFixed(2)}
                 </span>
@@ -500,7 +519,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               style={{ marginTop: "auto", position: "relative", zIndex: 2 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && (
+              {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && !isImport && (
                 <StyledSelect
                   value={selectedRecipeId || ""}
                   onChange={onRecipeChange}
@@ -509,15 +528,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   style={{ width: "100%" }}
                   renderOption={(option, isInDropdown) => (
                     <div 
-                      style={{ 
+                    style={{
                         display: 'flex', 
                         alignItems: 'center', 
                         gap: '8px',
                         padding: '4px 8px',
                         backgroundColor: isInDropdown && option.id === selectedRecipeId ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
                         borderRadius: theme.border.radius,
-                      }}
-                    >
+                    }}
+                  >
                       <span style={{ fontWeight: 'bold' }}>{option.name}</span>
                     </div>
                   )}
@@ -528,7 +547,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         </div>
 
         {/* Middle section - Machine info */}
-        {machine && !isByproduct && showMachines && (
+        {machine && !isByproduct && !isImport && showMachines && (
           <div
             style={{
               ...sectionStyle,
@@ -688,6 +707,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     e.stopPropagation();
                     handleFocus(e);
                   }}
+                  onBlur={(e) => {
+                    e.stopPropagation();
+                    handleExcessBlur();
+                  }}
                   variant="compact"
                   style={{
                     ...inputFieldStyle,
@@ -707,13 +730,13 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         <div
           style={{
             ...sectionStyle,
-            borderLeft: `4px solid ${!isByproduct ? getEfficiencyColor() : theme.colors.nodeByproduct}`,
+            borderLeft: `4px solid ${!isByproduct && !isImport ? getEfficiencyColor() : isByproduct ? theme.colors.nodeByproduct : theme.colors.nodeImport}`,
             flex: 1,
             minWidth: "160px",
             maxWidth: "200px",
             position: "relative",
             zIndex: 1,
-            height: isByproduct ? "64px" : "auto", // Make byproduct section same height as others
+            height: (isByproduct || isImport) ? "64px" : "auto",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -725,7 +748,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               gap: "10px",
               position: "relative",
               zIndex: 1,
-              justifyContent: isByproduct ? "center" : "flex-start", // Center content for byproducts
+              justifyContent: (isByproduct || isImport) ? "center" : "flex-start",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -738,7 +761,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               }}
             >
               {/* Efficiency */}
-              {!isByproduct && (
+              {!isByproduct && !isImport && (
                 <div
                   style={{
                     display: "flex",
@@ -785,14 +808,34 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 </div>
               )}
 
+              {isImport && (
+                <span style={{ 
+                  color: theme.colors.nodeImport,
+                  fontWeight: "bold",
+                  fontSize: "14px"
+                }}>
+                  Imported
+                </span>
+              )}
+
+              {isByproduct && (
+                <span style={{ 
+                  color: theme.colors.nodeByproduct,
+                  fontWeight: "bold",
+                  fontSize: "14px"
+                }}>
+                  Byproduct
+                </span>
+              )}
+
               {/* Rate */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   fontWeight: "bold",
-                  color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text,
-                  marginLeft: isByproduct ? "auto" : "4px",
+                  color: isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
+                  marginLeft: (isByproduct || isImport) ? "auto" : "4px",
                   fontSize: "16px",
                 }}
               >
@@ -801,7 +844,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             </div>
 
             {/* Second row: Excess controls */}
-            {onExcessChange && !isByproduct && (
+            {onExcessChange && !isByproduct && !isImport && (
               <div
                 style={{
                   display: "flex",
@@ -865,7 +908,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   }}
                   onBlur={(e) => {
                     e.stopPropagation();
-                    handleExcessBlur(e);
+                    handleExcessBlur();
                   }}
                   variant="compact"
                   style={{ 

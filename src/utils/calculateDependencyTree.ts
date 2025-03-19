@@ -8,10 +8,13 @@ export interface DependencyNode {
   uniqueId: string;
   isRoot?: boolean;
   isByproduct?: boolean;
+  isImport?: boolean;
   selectedRecipeId?: string;
   availableRecipes?: Recipe[];
   children?: DependencyNode[];
-  excess: number;  // Add excess field
+  excess: number;
+  originalChildren?: DependencyNode[];
+  importedFrom?: string;
 }
 
 const logPerf = (label: string, start: number) => {

@@ -5,6 +5,7 @@ export interface AccumulatedNode {
   amount: number;
   recipeId: string;
   isByproduct: boolean;
+  isImport?: boolean;
   isExtension?: boolean;
   name?: string;
   depth?: number;
@@ -24,6 +25,7 @@ export const calculateAccumulatedFromTree = (
       amount: node.amount,
       recipeId: node.selectedRecipeId || "",
       isByproduct: node.isByproduct || false,
+      isImport: node.isImport || false,
       isExtension: false,
       name: undefined,
       depth: depth

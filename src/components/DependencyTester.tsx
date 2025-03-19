@@ -4,7 +4,7 @@ import { RootState, AppDispatch } from "../store";
 import { Item } from "../data/dexieDB";
 import { calculateDependencyTree, DependencyNode } from "../utils/calculateDependencyTree";
 import { calculateAccumulatedFromTree, AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
-import { setDependencies, deleteTree, updateAccumulated } from "../features/dependencySlice";
+import { setDependencies, deleteTree, updateAccumulated, importNode } from "../features/dependencySlice";
 import DependencyTree from "./DependencyTree";
 import { getComponents } from "../data/dbQueries";
 import { setRecipeSelection } from "../features/recipeSelectionsSlice";
@@ -233,6 +233,39 @@ const DependencyTester: React.FC = () => {
     return null;
   };
 
+  // Helper function to find a parent node in all trees
+  const findParentInAllTrees = (nodeId: string): { tree: DependencyNode, node: DependencyNode } | null => {
+    if (!dependencies.dependencyTrees) return null;
+    
+    for (const treeId in dependencies.dependencyTrees) {
+      const tree = dependencies.dependencyTrees[treeId];
+      // First check if this is the node we're looking for
+      if (tree.uniqueId === nodeId) {
+        return { tree, node: tree };
+      }
+      // Then check children recursively
+      const found = findNodeInTree(tree, nodeId);
+      if (found) return { tree, node: found };
+    }
+    
+    return null;
+  };
+
+  // Helper function to find a node in a tree
+  const findNodeInTree = (tree: DependencyNode, targetId: string): DependencyNode | null => {
+    if (tree.uniqueId === targetId) {
+      return tree;
+    }
+
+    if (tree.children) {
+      for (const child of tree.children) {
+        const found = findNodeInTree(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   // Add an effect to recalculate accumulated dependencies when trees change
   useEffect(() => {
     if (Object.keys(dependencies.dependencyTrees).length === 0) return;
@@ -251,9 +284,108 @@ const DependencyTester: React.FC = () => {
   }, [dependencies.dependencyTrees, dispatch]);
 
   const handleImportNode = (nodeId: string) => {
-    console.log("Importing node with ID:", nodeId);
-    // We'll implement the actual import logic in the next step
+    console.log("Importing node:", nodeId);
+    // Find the source node and its parent in the source tree
+    const sourceTreeInfo = findParentInAllTrees(nodeId);
+    if (!sourceTreeInfo) {
+      console.error("Could not find source node or its parent");
+      return;
+    }
+
+    const { tree: sourceTree, node: sourceNode } = sourceTreeInfo;
+    console.log("Found source node:", sourceNode);
+
+    // Find the source tree ID
+    let sourceTreeId = "";
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      if (tree === sourceTree) {
+        sourceTreeId = treeId;
+        break;
+      }
+    }
+
+    if (sourceTreeId === "") {
+      console.error("Could not find source tree ID");
+      return;
+    }
+
+    // Find a target tree that produces the same item and is not an import
+    let targetTreeId = "";
+    let isNewTree = false;
+    
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      if (treeId !== sourceTreeId && tree.id === sourceNode.id && !tree.isImport) {
+        targetTreeId = treeId;
+        break;
+      }
+    }
+
+    console.log("Source tree ID:", sourceTreeId);
+    console.log("Target tree ID:", targetTreeId || "null");
+
+    // If no existing tree found, create a new one
+    if (targetTreeId === "") {
+      isNewTree = true;
+      console.log("Creating new tree for", sourceNode.id);
+      targetTreeId = `${sourceNode.id}-${Date.now()}`;
+      
+      // Create a new root node for this item with the exact amount from the source node
+      const newRoot: DependencyNode = {
+        id: sourceNode.id,
+        uniqueId: targetTreeId,
+        amount: sourceNode.amount,
+        isRoot: true,
+        isImport: false,
+        selectedRecipeId: sourceNode.selectedRecipeId,
+        availableRecipes: sourceNode.availableRecipes,
+        excess: 0,
+        children: []
+      };
+      
+      // Deep clone the source node's children structure
+      if (sourceNode.children && sourceNode.children.length > 0) {
+        sourceNode.children.forEach(child => {
+          newRoot.children!.push(cloneNodeStructure(child, targetTreeId));
+        });
+      }
+      
+      // Add the tree directly to Redux state
+      dispatch(setDependencies({
+        treeId: targetTreeId,
+        tree: newRoot,
+        accumulated: calculateAccumulatedFromTree(newRoot)
+      }));
+    }
+
+    // Now dispatch the import action with the isNewTree flag
+    dispatch(importNode({
+      sourceTreeId: sourceTreeId,
+      sourceNodeId: nodeId,
+      targetTreeId: targetTreeId,
+      isNewTree: isNewTree // Pass flag to avoid double-counting
+    }));
   };
+
+  // Helper function to clone a node structure for the new tree
+  function cloneNodeStructure(node: DependencyNode, parentId: string): DependencyNode {
+    const newId = `${parentId}-${node.id}-${Date.now()}`;
+    const clone: DependencyNode = {
+      ...node,
+      uniqueId: newId,
+      isRoot: false,
+      isImport: false,
+      children: []
+    };
+    
+    // Clone children recursively
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        clone.children!.push(cloneNodeStructure(child, newId));
+      });
+    }
+    
+    return clone;
+  }
 
   return (
     <div style={{
