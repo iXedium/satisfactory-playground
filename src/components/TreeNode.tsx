@@ -16,6 +16,7 @@ interface TreeNodeProps {
   expandedNodes?: Record<string, boolean>;
   onNodeExpandChange?: (nodeId: string, expanded: boolean) => void;
   showMachineSection?: boolean;
+  showMachineMultiplier?: boolean;
   isRoot?: boolean;
   onDelete?: (treeId: string) => void;
   onImport?: (nodeId: string) => void;
@@ -34,6 +35,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   expandedNodes = {},
   onNodeExpandChange,
   showMachineSection = true,
+  showMachineMultiplier = false,
   isRoot = false,
   onDelete,
   onImport
@@ -136,6 +138,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
             onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
             showMachines={showMachineSection}
+            showMachineMultiplier={showMachineMultiplier}
             onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
             onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
           />
@@ -159,6 +162,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               expandedNodes={expandedNodes}
               onNodeExpandChange={onNodeExpandChange}
               showMachineSection={showMachineSection}
+              showMachineMultiplier={showMachineMultiplier}
               isRoot={false}
               onDelete={onDelete}
               onImport={onImport}

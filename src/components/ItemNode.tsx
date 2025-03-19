@@ -26,6 +26,7 @@ interface ItemNodeProps {
   machineMultiplier?: number;
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachines?: boolean;
+  showMachineMultiplier?: boolean;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
 }
@@ -59,6 +60,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   machineMultiplier = 1,
   onMachineMultiplierChange,
   showMachines = true,
+  showMachineMultiplier = false,
   onDelete,
   onImport,
 }) => {
@@ -130,6 +132,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         setNominalRate(nominalRatePerMachine);
 
         // Calculate total production capacity with all machines
+        // Always use localMachineMultiplier value even when the control is hidden
         const totalMachineCapacity =
           localMachineCount * localMachineMultiplier * nominalRatePerMachine;
 
@@ -144,7 +147,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     amount,
     preciseExcess, // Use precise value for calculations
     localMachineCount,
-    localMachineMultiplier,
+    localMachineMultiplier, // This is still tracked even if hidden
     machine,
     selectedRecipeId,
     recipes,
@@ -688,7 +691,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   M
                 </button>
 
-                {/* Multiplier */}
+                {/* Multiplier - conditionally rendered based on global setting */}
+                {showMachineMultiplier && (
                 <StyledInput
                   ref={machineMultiplierRef}
                   type="number"
@@ -741,6 +745,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   min={1}
                   onClick={(e) => e.stopPropagation()}
                 />
+                )}
               </div>
             </div>
           </div>

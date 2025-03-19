@@ -32,10 +32,10 @@ const DependencyTester: React.FC = () => {
   const [showExtensions, setShowExtensions] = useState(true);
   const [accumulateExtensions, setAccumulateExtensions] = useState(false);
   const [showMachines, setShowMachines] = useState(true);
+  const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
   
   const commandBarRef = useRef<HTMLDivElement>(null);
-  const treeRef = useRef<HTMLDivElement>(null);
-  const accumulatedViewRef = useRef<HTMLDivElement>(null);
+  const treeViewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Initial load of items from the database
@@ -94,10 +94,10 @@ const DependencyTester: React.FC = () => {
       
       // Wait for state update and then recalculate heights
       setTimeout(() => {
-        if (treeRef.current) {
-          treeRef.current.style.opacity = '0.99';
+        if (treeViewRef.current) {
+          treeViewRef.current.style.opacity = '0.99';
           setTimeout(() => {
-            if (treeRef.current) treeRef.current.style.opacity = '1';
+            if (treeViewRef.current) treeViewRef.current.style.opacity = '1';
           }, 10);
         }
       }, 100);
@@ -211,10 +211,10 @@ const DependencyTester: React.FC = () => {
     setExpandedNodes(newExpandedNodes);
     
     // Force a re-render of the tree
-    if (treeRef.current) {
-      treeRef.current.style.opacity = '0.99';
+    if (treeViewRef.current) {
+      treeViewRef.current.style.opacity = '0.99';
       setTimeout(() => {
-        if (treeRef.current) treeRef.current.style.opacity = '1';
+        if (treeViewRef.current) treeViewRef.current.style.opacity = '1';
       }, 10);
     }
   };
@@ -421,6 +421,8 @@ const DependencyTester: React.FC = () => {
           onAccumulateExtensionsChange={setAccumulateExtensions}
           showMachines={showMachines}
           onShowMachinesChange={setShowMachines}
+          showMachineMultiplier={showMachineMultiplier}
+          onShowMachineMultiplierChange={setShowMachineMultiplier}
           isAddItemCollapsed={isAddItemCollapsed}
           onAddItemCollapsedChange={setIsAddItemCollapsed}
         />
@@ -432,17 +434,43 @@ const DependencyTester: React.FC = () => {
         padding: '8px'
       }}>
         <div 
-          ref={treeRef}
+          ref={treeViewRef}
           style={{
-            display: viewMode === "tree" ? 'block' : 'none',
-            height: viewMode === "tree" ? 'auto' : 0,
             overflow: 'visible'
           }}
         >
-          {Object.entries(dependencies.dependencyTrees).map(([treeId, tree]) => (
-            <DependencyTree
-              key={treeId}
-              tree={tree}
+          {viewMode === "tree" ? (
+            <div>
+              {Object.entries(dependencies.dependencyTrees).map(([treeId, tree]) => (
+                <DependencyTree
+                  key={treeId}
+                  tree={tree}
+                  onRecipeChange={handleTreeRecipeChange}
+                  onExcessChange={handleExcessChange}
+                  excessMap={excessMap}
+                  machineCountMap={machineCountMap}
+                  onMachineCountChange={handleMachineCountChange}
+                  machineMultiplierMap={machineMultiplierMap}
+                  onMachineMultiplierChange={handleMachineMultiplierChange}
+                  expandedNodes={expandedNodes}
+                  onNodeExpandChange={(nodeId: string, expanded: boolean) => {
+                    setExpandedNodes(prev => ({
+                      ...prev,
+                      [nodeId]: expanded
+                    }));
+                  }}
+                  showExtensions={showExtensions}
+                  accumulateExtensions={accumulateExtensions}
+                  showMachines={showMachines}
+                  showMachineMultiplier={showMachineMultiplier}
+                  isRoot={true}
+                  onDelete={() => handleDeleteTree(treeId)}
+                  onImportNode={handleImportNode}
+                />
+              ))}
+            </div>
+          ) : (
+            <AccumulatedView
               onRecipeChange={handleTreeRecipeChange}
               onExcessChange={handleExcessChange}
               excessMap={excessMap}
@@ -450,47 +478,15 @@ const DependencyTester: React.FC = () => {
               onMachineCountChange={handleMachineCountChange}
               machineMultiplierMap={machineMultiplierMap}
               onMachineMultiplierChange={handleMachineMultiplierChange}
-              expandedNodes={expandedNodes}
-              onNodeExpandChange={(nodeId: string, expanded: boolean) => {
-                setExpandedNodes(prev => ({
-                  ...prev,
-                  [nodeId]: expanded
-                }));
-              }}
               showExtensions={showExtensions}
               accumulateExtensions={accumulateExtensions}
-              showMachines={showMachines}
-              isRoot={true}
-              onDelete={() => handleDeleteTree(treeId)}
+              showMachineSection={showMachines}
+              showMachineMultiplier={showMachineMultiplier}
+              onDeleteTree={handleDeleteTree}
+              accumulatedDependencies={dependencies.accumulatedDependencies}
               onImportNode={handleImportNode}
             />
-          ))}
-        </div>
-        
-        <div 
-          ref={accumulatedViewRef}
-          style={{
-            display: viewMode === "accumulated" ? 'block' : 'none',
-            height: viewMode === "accumulated" ? 'auto' : 0,
-            overflow: 'visible'
-          }}
-        >
-          <AccumulatedView
-            onRecipeChange={handleTreeRecipeChange}
-            onExcessChange={handleExcessChange}
-            excessMap={excessMap}
-            machineCountMap={machineCountMap}
-            onMachineCountChange={handleMachineCountChange}
-            machineMultiplierMap={machineMultiplierMap}
-            onMachineMultiplierChange={handleMachineMultiplierChange}
-            showExtensions={showExtensions}
-            accumulateExtensions={accumulateExtensions}
-            showMachineSection={showMachines}
-            onDelete={handleDeleteTree}
-            accumulatedDependencies={dependencies.accumulatedDependencies}
-            onDeleteTree={handleDeleteTree}
-            onImportNode={handleImportNode}
-          />
+          )}
         </div>
       </div>
     </div>

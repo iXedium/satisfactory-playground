@@ -45,6 +45,7 @@ interface ListNodeProps {
   showExtensions?: boolean;
   accumulateExtensions?: boolean;
   showMachines?: boolean;
+  showMachineMultiplier?: boolean;
   onDelete?: (nodeId: string) => void;
   onImport?: (nodeId: string) => void;
   isImport?: boolean;
@@ -69,6 +70,7 @@ const ListNode: React.FC<ListNodeProps> = ({
   showExtensions = true,
   accumulateExtensions = false,
   showMachines = true,
+  showMachineMultiplier = false,
   onDelete,
   onImport,
   isImport,
@@ -189,6 +191,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           machineMultiplier={machineMultiplier}
           onMachineMultiplierChange={onMachineMultiplierChange}
           showMachines={showMachines}
+          showMachineMultiplier={showMachineMultiplier}
           onDelete={isRoot && onDelete ? () => {
             // For root nodes, find the treeId from dependencyTrees
             for (const treeId in dependencies.dependencyTrees) {

@@ -19,6 +19,7 @@ interface AccumulatedViewProps {
   showExtensions?: boolean;
   accumulateExtensions?: boolean;
   showMachineSection?: boolean;
+  showMachineMultiplier?: boolean;
   onDelete?: (treeId: string) => void;
   accumulatedDependencies: Record<string, AccumulatedNode>;
   onDeleteTree?: (treeId: string) => void;
@@ -55,6 +56,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
   showExtensions = true,
   accumulateExtensions = false,
   showMachineSection = true,
+  showMachineMultiplier = false,
   onDelete,
   accumulatedDependencies,
   onDeleteTree,
@@ -441,6 +443,7 @@ const AccumulatedView: React.FC<AccumulatedViewProps> = ({
               showExtensions={showExtensions}
               accumulateExtensions={accumulateExtensions}
               showMachines={showMachineSection}
+              showMachineMultiplier={showMachineMultiplier}
               onDelete={onDelete}
               onImport={onImportNode ? () => onImportNode(nodeId) : undefined}
             />

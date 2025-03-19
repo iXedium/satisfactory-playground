@@ -19,6 +19,7 @@ export interface DependencyTreeProps {
   isRoot: boolean;
   onDelete?: (treeId: string) => void;
   onImportNode?: (nodeId: string) => void;
+  showMachineMultiplier?: boolean;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
@@ -37,7 +38,8 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   showMachines,
   isRoot,
   onDelete,
-  onImportNode
+  onImportNode,
+  showMachineMultiplier = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +67,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         isRoot={isRoot}
         onDelete={isRoot && onDelete ? onDelete : undefined}
         onImport={onImportNode}
+        showMachineMultiplier={showMachineMultiplier}
       />
     </div>
   );

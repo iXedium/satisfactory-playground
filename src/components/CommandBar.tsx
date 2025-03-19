@@ -27,6 +27,8 @@ export interface CommandBarProps {
   onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
+  showMachineMultiplier: boolean;
+  onShowMachineMultiplierChange: (show: boolean) => void;
   isAddItemCollapsed: boolean;
   onAddItemCollapsedChange: (collapsed: boolean) => void;
 }
@@ -56,16 +58,18 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   onAccumulateExtensionsChange,
   accumulateExtensions,
   onShowMachinesChange,
+  showMachines,
+  showMachineMultiplier,
+  onShowMachineMultiplierChange,
   isAddItemCollapsed,
   onAddItemCollapsedChange,
+  showExtensions,
 }, ref) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   
   // State for checkboxes
-  const [showMachines, setShowMachines] = useState(true);
   const [compactView, setCompactView] = useState(false);
-  const [showExtensions, setShowExtensions] = useState(true);
   const [expandAll, setExpandAll] = useState(true);
   
   // Placeholder functions for future implementation
@@ -75,10 +79,8 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   
   // Checkbox handlers
   const toggleShowMachines = () => {
-    const newValue = !showMachines;
-    setShowMachines(newValue);
     if (onShowMachinesChange) {
-      onShowMachinesChange(newValue);
+      onShowMachinesChange(!showMachines);
     }
   };
   
@@ -89,10 +91,8 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   };
   
   const toggleShowExtensions = () => {
-    const newValue = !showExtensions;
-    setShowExtensions(newValue);
     if (onShowExtensionsChange) {
-      onShowExtensionsChange(newValue);
+      onShowExtensionsChange(!showExtensions);
     }
   };
   
@@ -107,6 +107,12 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   const handleAccumulateExtensionsChange = () => {
     if (onAccumulateExtensionsChange) {
       onAccumulateExtensionsChange(!accumulateExtensions);
+    }
+  };
+
+  const toggleShowMachineMultiplier = () => {
+    if (onShowMachineMultiplierChange) {
+      onShowMachineMultiplierChange(!showMachineMultiplier);
     }
   };
 
@@ -271,6 +277,12 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
             checked={showMachines} 
             onChange={toggleShowMachines}
             label="Show Machines"
+          />
+          
+          <StyledCheckbox 
+            checked={showMachineMultiplier} 
+            onChange={toggleShowMachineMultiplier}
+            label="Show Multiplier"
           />
           
           <StyledCheckbox 
