@@ -109,7 +109,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   // Format the excess value based on focus state
   const formattedExcess = isExcessFocused 
     ? preciseExcess 
-    : Number(preciseExcess.toFixed(3));
+    : Number(preciseExcess.toFixed(2));
+
+  // For display in the input control
+  const displayExcess = isExcessFocused
+    ? preciseExcess.toString()
+    : formattedExcess.toFixed(2);
 
   // Calculate efficiency and nominal rate whenever relevant values change
   useEffect(() => {
@@ -129,7 +134,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           localMachineCount * localMachineMultiplier * nominalRatePerMachine;
 
         // Calculate efficiency (actual needed / total capacity)
-        const neededAmount = amount + preciseExcess; // Use precise value for calculations
+        // Use precise excess value for accurate calculations
+        const neededAmount = amount + preciseExcess;
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
@@ -161,8 +167,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const handleExcessChange = (value: string) => {
     const numValue = value === "" ? 0 : Number(value);
     setLocalExcess(numValue);
-    setPreciseExcess(numValue); // Update both values
-    onExcessChange?.(numValue);
+    setPreciseExcess(numValue); // Store full precision value
+    onExcessChange?.(numValue); // Pass full precision to parent
   };
 
   const handleMachineCountChange = (value: string) => {
@@ -240,11 +246,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     if (e.key === "ArrowUp") {
       e.preventDefault();
       const newValue = Math.max(min, currentValue + step);
-      setter(newValue);
+      setter(newValue); // Store full precision
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       const newValue = Math.max(min, currentValue - step);
-      setter(newValue);
+      setter(newValue); // Store full precision
     }
   };
 
@@ -264,7 +270,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     // Wheel delta is negative when scrolling down, positive when scrolling up
     const delta = e.deltaY < 0 ? 1 : -1;
     const newValue = Math.max(min, currentValue + (delta * step));
-    setter(newValue);
+    setter(newValue); // Store full precision
   };
 
   // Handle focus to select all content
@@ -277,14 +283,28 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     handleFocus(e);
     setIsExcessFocused(true);
     
-    // If this is the Max button result, ensure we show precise value
-    if (excessRef.current) {
-      excessRef.current.value = preciseExcess.toString();
-    }
+    // When focused, the input will show full precision via displayExcess
   };
 
   const handleExcessBlur = () => {
     setIsExcessFocused(false);
+    // When blurred, format to 2 decimal places for display only
+  };
+
+  const handleMachineCountFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    handleFocus(e);
+    // When focused, show the full value
+    if (machineCountRef.current) {
+      machineCountRef.current.value = localMachineCount.toString();
+    }
+  };
+
+  const handleMachineMultiplierFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    handleFocus(e);
+    // When focused, show the full value
+    if (machineMultiplierRef.current) {
+      machineMultiplierRef.current.value = localMachineMultiplier.toString();
+    }
   };
 
   if (!item) return null;
@@ -638,7 +658,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   }}
                   onFocus={(e) => {
                     e.stopPropagation();
-                    handleFocus(e);
+                    handleMachineCountFocus(e);
                   }}
                   variant="compact"
                   style={{
@@ -705,7 +725,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   }}
                   onFocus={(e) => {
                     e.stopPropagation();
-                    handleFocus(e);
+                    handleMachineMultiplierFocus(e);
                   }}
                   onBlur={(e) => {
                     e.stopPropagation();
@@ -875,10 +895,18 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 <StyledInput
                   ref={excessRef}
                   type="number"
-                  value={formattedExcess}
+                  value={displayExcess}
                   onChange={(e) => {
                     e.stopPropagation();
-                    handleExcessChange(e.target.value);
+                    // Parse and store the full precision value
+                    const inputValue = e.target.value;
+                    // Handle empty input or invalid numbers
+                    if (inputValue === "" || isNaN(parseFloat(inputValue))) {
+                      handleExcessChange("0");
+                    } else {
+                      // Store the full precision number
+                      handleExcessChange(inputValue);
+                    }
                   }}
                   onKeyDown={(e) => {
                     e.stopPropagation();
