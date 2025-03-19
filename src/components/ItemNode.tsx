@@ -776,7 +776,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             maxWidth: "200px",
             position: "relative",
             zIndex: 1,
-            height: (isByproduct || isImport) ? "64px" : "auto",
+            height: "auto",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -864,7 +864,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   fontWeight: "bold",
                   fontSize: "14px"
                 }}>
-                  Byproduct ({(-amount).toFixed(2)})
+                  Byproduct
                 </span>
               )}
 
@@ -879,7 +879,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   fontSize: "16px",
                 }}
               >
-                <span>{isByproduct ? (-amount).toFixed(2) : amount.toFixed(2)}</span>
+                <span>{amount.toFixed(2)}</span>
               </div>
             </div>
 
