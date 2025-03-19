@@ -168,10 +168,20 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleExcessChange = (value: string) => {
-    const numValue = value === "" ? 0 : Number(value);
-    setLocalExcess(numValue);
-    setPreciseExcess(numValue); // Store full precision value
-    onExcessChange?.(numValue); // Pass full precision to parent
+    // Parse and store the full precision value
+    const inputValue = value;
+    // Handle empty input or invalid numbers
+    if (inputValue === "" || isNaN(parseFloat(inputValue))) {
+      setLocalExcess(0);
+      setPreciseExcess(0);
+      onExcessChange?.(0);
+    } else {
+      // Store the full precision number
+      const numValue = parseFloat(inputValue);
+      setLocalExcess(numValue);
+      setPreciseExcess(numValue);
+      onExcessChange?.(numValue);
+    }
   };
 
   const handleMachineCountChange = (value: string) => {
@@ -278,15 +288,20 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   // Handle focus to select all content
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Select all text when focused
-    e.target.select();
+    // Need to use setTimeout to work around issues with number inputs in some browsers
+    setTimeout(() => {
+      e.target.select();
+    }, 0);
   };
 
   const handleExcessFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     handleFocus(e);
     setIsExcessFocused(true);
     
-    // When focused, the input will show full precision via displayExcess
+    // When focused, directly set the full precision value in the DOM
+    if (excessRef.current) {
+      excessRef.current.value = preciseExcess.toString();
+    }
   };
 
   const handleExcessBlur = () => {
@@ -903,35 +918,33 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                   value={displayExcess}
                   onChange={(e) => {
                     e.stopPropagation();
-                    // Parse and store the full precision value
-                    const inputValue = e.target.value;
-                    // Handle empty input or invalid numbers
-                    if (inputValue === "" || isNaN(parseFloat(inputValue))) {
-                      handleExcessChange("0");
-                    } else {
-                      // Store the full precision number
-                      handleExcessChange(inputValue);
-                    }
+                    handleExcessChange(e.target.value);
                   }}
                   onKeyDown={(e) => {
                     e.stopPropagation();
-                    handleKeyDown(e, formattedExcess, (val) => {
-                      setLocalExcess(val);
-                      setPreciseExcess(val);
-                      onExcessChange?.(val);
-                    });
+                    handleKeyDown(
+                      e,
+                      preciseExcess,
+                      (val) => {
+                        setPreciseExcess(val);
+                        setLocalExcess(val);
+                        onExcessChange?.(val);
+                      },
+                      0.01 // Use a smaller step for excess
+                    );
                   }}
                   onWheel={(e) => {
                     e.stopPropagation();
                     if (document.activeElement === excessRef.current) {
                       handleWheel(
                         e,
-                        formattedExcess,
+                        preciseExcess,
                         (val) => {
-                          setLocalExcess(val);
                           setPreciseExcess(val);
+                          setLocalExcess(val);
                           onExcessChange?.(val);
-                        }
+                        },
+                        0.1 // Larger step for wheel
                       );
                     }
                   }}
@@ -944,14 +957,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                     handleExcessBlur();
                   }}
                   variant="compact"
-                  style={{ 
+                  style={{
                     ...inputFieldStyle,
-                    minWidth: "50px",
-                    maxWidth: "120px",
                     position: "relative",
                     zIndex: 2,
+                    maxWidth: "60px",
                   }}
+                  min={0}
                   onClick={(e) => e.stopPropagation()}
+                  title={isRoot ? "Add desired production amount" : "Additional items to generate beyond what is needed by consumers"}
                 />
 
                 <button

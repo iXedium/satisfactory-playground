@@ -23,7 +23,6 @@ const DependencyTester: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState("");
-  const [itemCount, setItemCount] = useState(1);
   const [excessMap, setExcessMap] = useState<Record<string, number>>({});
   const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
   const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
@@ -59,10 +58,10 @@ const DependencyTester: React.FC = () => {
     try {
       const treeId = generateTreeId(selectedItem);
       
-      // Calculate the dependency tree
+      // Calculate the dependency tree with amount set to 0
       const tree = await calculateDependencyTree(
         selectedItem,
-        itemCount,
+        0, // Set initial amount to 0 instead of itemCount
         selectedRecipe,
         recipeSelections,
         0,
@@ -329,11 +328,11 @@ const DependencyTester: React.FC = () => {
       console.log("Creating new tree for", sourceNode.id);
       targetTreeId = `${sourceNode.id}-${Date.now()}`;
       
-      // Create a new root node for this item with the exact amount from the source node
+      // Create a new root node for this item with zero initial amount
       const newRoot: DependencyNode = {
         id: sourceNode.id,
         uniqueId: targetTreeId,
-        amount: sourceNode.amount,
+        amount: 0, // Start with zero production
         isRoot: true,
         isImport: false,
         selectedRecipeId: sourceNode.selectedRecipeId,
@@ -409,8 +408,6 @@ const DependencyTester: React.FC = () => {
           onItemSelect={setSelectedItem}
           selectedRecipe={selectedRecipe}
           onRecipeSelect={setSelectedRecipe}
-          itemCount={itemCount}
-          onItemCountChange={setItemCount}
           onCalculate={handleCalculate}
           viewMode={viewMode}
           onViewModeChange={setViewMode}

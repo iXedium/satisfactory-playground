@@ -15,8 +15,8 @@ export interface CommandBarProps {
   onItemSelect: (item: string) => void;
   selectedRecipe: string;
   onRecipeSelect: (recipe: string) => void;
-  itemCount: number;
-  onItemCountChange: (count: number) => void;
+  itemCount?: number;
+  onItemCountChange?: (count: number) => void;
   onCalculate: () => void;
   viewMode: "accumulated" | "tree";
   onViewModeChange: (mode: "accumulated" | "tree") => void;
@@ -393,54 +393,20 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
           )}
         />
         
-        {/* Item Count */}
-        <StyledInput
-          type="number"
-          min="1"
-          value={itemCount}
-          onChange={(e) => onItemCountChange(Number(e.target.value))}
-          placeholder="Count"
-          style={{ 
-            width: '120px',
-            minWidth: '80px',
-            flex: '0 1 auto'
-          }}
-        />
-        
         {/* Add Button */}
-        <button
+        <button 
           onClick={onCalculate}
-          disabled={!selectedItem || !selectedRecipe}
           style={{
-            height: '44px',
-            padding: '0 24px',
-            fontSize: '14px',
-            fontWeight: 500,
-            borderRadius: theme.border.radius,
-            background: (!selectedItem || !selectedRecipe) ? theme.colors.darker : theme.colors.buttonDefault,
-            color: (!selectedItem || !selectedRecipe) ? theme.colors.textSecondary : theme.colors.text,
-            border: 'none',
-            cursor: (!selectedItem || !selectedRecipe) ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease-in-out',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-            whiteSpace: 'nowrap',
-            marginRight: '16px'
+            ...buttonStyle,
+            backgroundColor: theme.colors.primary,
+            color: '#fff',
+            opacity: (selectedItem && selectedRecipe) ? 1 : 0.7,
           }}
-          onMouseEnter={(e) => {
-            if (selectedItem && selectedRecipe) {
-              e.currentTarget.style.backgroundColor = theme.colors.buttonHover;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (selectedItem && selectedRecipe) {
-              e.currentTarget.style.backgroundColor = theme.colors.buttonDefault;
-            }
-          }}
+          disabled={!selectedItem || !selectedRecipe}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
+          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.primary)}
         >
-          Add
+          Add Item
         </button>
       </div>
 
