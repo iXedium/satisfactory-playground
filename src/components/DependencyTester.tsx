@@ -13,6 +13,7 @@ import AccumulatedView from "./AccumulatedView";
 import CommandBar from "./CommandBar";
 import { theme } from "../styles/theme";
 
+
 type ViewMode = "accumulated" | "tree";
 
 const DependencyTester: React.FC = () => {
@@ -574,10 +575,12 @@ const DependencyTester: React.FC = () => {
     // Find a target tree that produces the same item and is not an import
     let targetTreeId = "";
     let isNewTree = false;
+    let existingTree = null;
     
     for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
       if (treeId !== sourceTreeId && tree.id === sourceNode.id && !tree.isImport) {
         targetTreeId = treeId;
+        existingTree = tree;
         break;
       }
     }
@@ -623,6 +626,70 @@ const DependencyTester: React.FC = () => {
         ...prev,
         [targetTreeId]: sourceExcess
       }));
+    } else if (existingTree) {
+      // For existing trees, we need to recalculate the children based on the new total amount
+      console.log("Adding to existing tree:", existingTree);
+      
+      // Calculate the new total amount for the target tree
+      const newAmount = existingTree.amount + sourceNode.amount;
+      
+      // Create updated tree with the new amount
+      const recipeMap: Record<string, string> = {};
+      
+      // Preserve recipe selections from the existing tree
+      const collectRecipeSelections = (node: DependencyNode, prefix: string = '') => {
+        const nodeId = prefix ? `${prefix}-${node.id}` : node.id;
+        if (node.selectedRecipeId) {
+          recipeMap[nodeId] = node.selectedRecipeId;
+        }
+        
+        node.children?.forEach(child => {
+          collectRecipeSelections(child, nodeId);
+        });
+      };
+      
+      collectRecipeSelections(existingTree);
+      
+      // Build import map for existing imports
+      const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
+      const buildImportMap = (node: DependencyNode) => {
+        if (node.isImport && node.importedFrom) {
+          importMap[node.uniqueId] = { 
+            targetTreeId: node.importedFrom, 
+            amount: node.amount 
+          };
+        }
+        
+        node.children?.forEach((child: DependencyNode) => {
+          buildImportMap(child);
+        });
+      };
+      
+      // Collect all existing imports in the tree
+      buildImportMap(existingTree);
+      
+      // Now recalculate the tree with the updated amount
+      calculateDependencyTree(
+        existingTree.id,
+        newAmount,
+        existingTree.selectedRecipeId || null,
+        recipeMap,
+        0,
+        [],
+        '',
+        excessMap,
+        importMap
+      ).then(updatedTree => {
+        // Preserve the unique ID of the existing tree
+        updatedTree.uniqueId = targetTreeId;
+        
+        // Update the tree in Redux
+        dispatch(setDependencies({
+          treeId: targetTreeId,
+          tree: updatedTree,
+          accumulated: calculateAccumulatedFromTree(updatedTree)
+        }));
+      });
     }
 
     // Now dispatch the import action with the isNewTree flag
