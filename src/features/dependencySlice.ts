@@ -99,15 +99,22 @@ const dependencySlice = createSlice({
         sourceNodeId: string;
         targetTreeId: string;
         isNewTree?: boolean; // Flag to indicate if this is a newly created tree
+        isUnimport?: boolean; // Flag to indicate this is an un-import operation
       }>
     ) => {
       console.log("Import action:", action.payload);
-      const { sourceTreeId, sourceNodeId, targetTreeId, isNewTree } = action.payload;
+      const { sourceTreeId, sourceNodeId, targetTreeId, isNewTree, isUnimport } = action.payload;
       const sourceTree = state.dependencyTrees[sourceTreeId];
       const targetTree = state.dependencyTrees[targetTreeId];
 
-      if (!sourceTree || !targetTree) {
-        console.error("Source or target tree not found");
+      if (!sourceTree) {
+        console.error("Source tree not found");
+        return;
+      }
+
+      // For unimporting, we might not have the target tree anymore if it was deleted
+      if (!targetTree && !isUnimport) {
+        console.error("Target tree not found");
         return;
       }
 
@@ -134,8 +141,8 @@ const dependencySlice = createSlice({
 
       console.log("Found source node:", sourceNode);
 
-      // If source node is already an import node, toggle it back
-      if (sourceNode.isImport) {
+      // If source node is already an import node or we're explicitly un-importing
+      if (sourceNode.isImport || isUnimport) {
         console.log("Toggling import off");
         // Restore the node's previous state
         sourceNode.isImport = false;
@@ -148,6 +155,8 @@ const dependencySlice = createSlice({
         if (sourceNode.importedFrom) {
           const targetRoot = state.dependencyTrees[sourceNode.importedFrom];
           if (targetRoot) {
+            // Subtract the amount when un-importing
+            console.log(`Subtracting ${sourceNode.amount} from target tree amount ${targetRoot.amount}`);
             targetRoot.amount -= sourceNode.amount;
             if (targetRoot.amount <= 0) {
               delete state.dependencyTrees[sourceNode.importedFrom];
@@ -164,16 +173,19 @@ const dependencySlice = createSlice({
         // Clear children for import node
         sourceNode.children = [];
 
-        // If this is a newly created tree, we've already set the correct amount
-        // so don't modify the target tree's amount
-        if (isNewTree) {
-          console.log("Using newly created tree - amount already set");
-          sourceNode.importedFrom = targetTreeId;
-        } else {
-          // For existing trees, find the root and add the amount
-          console.log("Adding to existing root:", targetTree);
-          targetTree.amount += sourceNode.amount;
-          sourceNode.importedFrom = targetTreeId;
+        // Only proceed with target tree operations if we have a valid target
+        if (targetTree) {
+          // If this is a newly created tree, we've already set the correct amount
+          // so don't modify the target tree's amount
+          if (isNewTree) {
+            console.log("Using newly created tree - amount already set");
+            sourceNode.importedFrom = targetTreeId;
+          } else {
+            // For existing trees, find the root and add the amount
+            console.log("Adding to existing root:", targetTree);
+            targetTree.amount += sourceNode.amount;
+            sourceNode.importedFrom = targetTreeId;
+          }
         }
       }
 

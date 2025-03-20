@@ -555,150 +555,250 @@ const DependencyTester: React.FC = () => {
     const { tree: sourceTree, node: sourceNode } = sourceTreeInfo;
     console.log("Found source node:", sourceNode);
     
-    // Find the source node's excess
-    const sourceExcess = excessMap[sourceNode.uniqueId] || 0;
-
-    // Find the source tree ID
-    let sourceTreeId = "";
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      if (tree === sourceTree) {
-        sourceTreeId = treeId;
-        break;
-      }
-    }
-
-    if (sourceTreeId === "") {
-      console.error("Could not find source tree ID");
-      return;
-    }
-
-    // Find a target tree that produces the same item and is not an import
-    let targetTreeId = "";
-    let isNewTree = false;
-    let existingTree = null;
+    // Check if this is an un-import operation
+    const isUnimport = sourceNode.isImport;
     
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      if (treeId !== sourceTreeId && tree.id === sourceNode.id && !tree.isImport) {
-        targetTreeId = treeId;
-        existingTree = tree;
-        break;
-      }
-    }
+    // Only proceed with finding target tree if we're importing (not un-importing)
+    if (!isUnimport) {
+      // Find the source node's excess
+      const sourceExcess = excessMap[sourceNode.uniqueId] || 0;
 
-    console.log("Source tree ID:", sourceTreeId);
-    console.log("Target tree ID:", targetTreeId || "null");
-
-    // If no existing tree found, create a new one
-    if (targetTreeId === "") {
-      isNewTree = true;
-      console.log("Creating new tree for", sourceNode.id);
-      targetTreeId = `${sourceNode.id}-${Date.now()}`;
-      
-      // Create a new root node for this item with the source node's amount + excess
-      const newRoot: DependencyNode = {
-        id: sourceNode.id,
-        uniqueId: targetTreeId,
-        amount: sourceNode.amount, // Use the source node's production amount
-        isRoot: true,
-        isImport: false,
-        selectedRecipeId: sourceNode.selectedRecipeId,
-        availableRecipes: sourceNode.availableRecipes,
-        excess: sourceExcess, // Use the source node's excess
-        children: []
-      };
-      
-      // Deep clone the source node's children structure
-      if (sourceNode.children && sourceNode.children.length > 0) {
-        sourceNode.children.forEach(child => {
-          newRoot.children!.push(cloneNodeStructure(child, targetTreeId));
-        });
+      // Find the source tree ID
+      let sourceTreeId = "";
+      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        if (tree === sourceTree) {
+          sourceTreeId = treeId;
+          break;
+        }
       }
+
+      if (sourceTreeId === "") {
+        console.error("Could not find source tree ID");
+        return;
+      }
+
+      // Find a target tree that produces the same item and is not an import
+      let targetTreeId = "";
+      let isNewTree = false;
+      let existingTree = null;
       
-      // Add the tree directly to Redux state
-      dispatch(setDependencies({
-        treeId: targetTreeId,
-        tree: newRoot,
-        accumulated: calculateAccumulatedFromTree(newRoot)
-      }));
-      
-      // Also update the excess map for the new node
-      setExcessMap(prev => ({
-        ...prev,
-        [targetTreeId]: sourceExcess
-      }));
-    } else if (existingTree) {
-      // For existing trees, we need to recalculate the children based on the new total amount
-      console.log("Adding to existing tree:", existingTree);
-      
-      // Calculate the new total amount for the target tree
-      const newAmount = existingTree.amount + sourceNode.amount;
-      
-      // Create updated tree with the new amount
-      const recipeMap: Record<string, string> = {};
-      
-      // Preserve recipe selections from the existing tree
-      const collectRecipeSelections = (node: DependencyNode, prefix: string = '') => {
-        const nodeId = prefix ? `${prefix}-${node.id}` : node.id;
-        if (node.selectedRecipeId) {
-          recipeMap[nodeId] = node.selectedRecipeId;
+      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        if (treeId !== sourceTreeId && tree.id === sourceNode.id && !tree.isImport) {
+          targetTreeId = treeId;
+          existingTree = tree;
+          break;
+        }
+      }
+
+      console.log("Source tree ID:", sourceTreeId);
+      console.log("Target tree ID:", targetTreeId || "null");
+
+      // If no existing tree found, create a new one
+      if (targetTreeId === "") {
+        isNewTree = true;
+        console.log("Creating new tree for", sourceNode.id);
+        targetTreeId = `${sourceNode.id}-${Date.now()}`;
+        
+        // Create a new root node for this item with the source node's amount + excess
+        const newRoot: DependencyNode = {
+          id: sourceNode.id,
+          uniqueId: targetTreeId,
+          amount: sourceNode.amount, // Use the source node's production amount
+          isRoot: true,
+          isImport: false,
+          selectedRecipeId: sourceNode.selectedRecipeId,
+          availableRecipes: sourceNode.availableRecipes,
+          excess: sourceExcess, // Use the source node's excess
+          children: []
+        };
+        
+        // Deep clone the source node's children structure
+        if (sourceNode.children && sourceNode.children.length > 0) {
+          sourceNode.children.forEach(child => {
+            newRoot.children!.push(cloneNodeStructure(child, targetTreeId));
+          });
         }
         
-        node.children?.forEach(child => {
-          collectRecipeSelections(child, nodeId);
-        });
-      };
-      
-      collectRecipeSelections(existingTree);
-      
-      // Build import map for existing imports
-      const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
-      const buildImportMap = (node: DependencyNode) => {
-        if (node.isImport && node.importedFrom) {
-          importMap[node.uniqueId] = { 
-            targetTreeId: node.importedFrom, 
-            amount: node.amount 
-          };
-        }
-        
-        node.children?.forEach((child: DependencyNode) => {
-          buildImportMap(child);
-        });
-      };
-      
-      // Collect all existing imports in the tree
-      buildImportMap(existingTree);
-      
-      // Now recalculate the tree with the updated amount
-      calculateDependencyTree(
-        existingTree.id,
-        newAmount,
-        existingTree.selectedRecipeId || null,
-        recipeMap,
-        0,
-        [],
-        '',
-        excessMap,
-        importMap
-      ).then(updatedTree => {
-        // Preserve the unique ID of the existing tree
-        updatedTree.uniqueId = targetTreeId;
-        
-        // Update the tree in Redux
+        // Add the tree directly to Redux state
         dispatch(setDependencies({
           treeId: targetTreeId,
-          tree: updatedTree,
-          accumulated: calculateAccumulatedFromTree(updatedTree)
+          tree: newRoot,
+          accumulated: calculateAccumulatedFromTree(newRoot)
         }));
-      });
-    }
+        
+        // Also update the excess map for the new node
+        setExcessMap(prev => ({
+          ...prev,
+          [targetTreeId]: sourceExcess
+        }));
+      } else if (existingTree) {
+        // For existing trees, we need to recalculate the children based on the new total amount
+        console.log("Adding to existing tree:", existingTree);
+        
+        // Calculate the new total amount for the target tree
+        const newAmount = existingTree.amount + sourceNode.amount;
+        
+        // Create updated tree with the new amount
+        const recipeMap: Record<string, string> = {};
+        
+        // Preserve recipe selections from the existing tree
+        const collectRecipeSelections = (node: DependencyNode, prefix: string = '') => {
+          const nodeId = prefix ? `${prefix}-${node.id}` : node.id;
+          if (node.selectedRecipeId) {
+            recipeMap[nodeId] = node.selectedRecipeId;
+          }
+          
+          node.children?.forEach(child => {
+            collectRecipeSelections(child, nodeId);
+          });
+        };
+        
+        collectRecipeSelections(existingTree);
+        
+        // Build import map for existing imports
+        const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
+        const buildImportMap = (node: DependencyNode) => {
+          if (node.isImport && node.importedFrom) {
+            importMap[node.uniqueId] = { 
+              targetTreeId: node.importedFrom, 
+              amount: node.amount 
+            };
+          }
+          
+          node.children?.forEach((child: DependencyNode) => {
+            buildImportMap(child);
+          });
+        };
+        
+        // Collect all existing imports in the tree
+        buildImportMap(existingTree);
+        
+        // Now recalculate the tree with the updated amount
+        calculateDependencyTree(
+          existingTree.id,
+          newAmount,
+          existingTree.selectedRecipeId || null,
+          recipeMap,
+          0,
+          [],
+          '',
+          excessMap,
+          importMap
+        ).then(updatedTree => {
+          // Preserve the unique ID of the existing tree
+          updatedTree.uniqueId = targetTreeId;
+          
+          // Update the tree in Redux
+          dispatch(setDependencies({
+            treeId: targetTreeId,
+            tree: updatedTree,
+            accumulated: calculateAccumulatedFromTree(updatedTree)
+          }));
+        });
+      }
 
-    // Now dispatch the import action with the isNewTree flag
-    dispatch(importNode({
-      sourceTreeId: sourceTreeId,
-      sourceNodeId: nodeId,
-      targetTreeId: targetTreeId,
-      isNewTree: isNewTree // Pass flag to avoid double-counting
-    }));
+      // Now dispatch the import action with the isNewTree flag
+      dispatch(importNode({
+        sourceTreeId: sourceTreeId,
+        sourceNodeId: nodeId,
+        targetTreeId: targetTreeId,
+        isNewTree: isNewTree // Pass flag to avoid double-counting
+      }));
+    } else {
+      // For un-importing, just find the source tree ID
+      let sourceTreeId = "";
+      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        if (tree === sourceTree) {
+          sourceTreeId = treeId;
+          break;
+        }
+      }
+
+      if (sourceTreeId === "") {
+        console.error("Could not find source tree ID");
+        return;
+      }
+
+      // When un-importing, we need the targetTreeId to be the importedFrom value
+      const targetTreeId = sourceNode.importedFrom || "";
+      
+      // When un-importing, also schedule a recalculation of the target tree
+      if (targetTreeId && sourceNode.importedFrom) {
+        const targetTree = dependencies.dependencyTrees[targetTreeId];
+        if (targetTree) {
+          // Calculate what the new amount should be after removing this import
+          const newAmount = targetTree.amount - sourceNode.amount;
+          
+          // Only recalculate if the tree will still exist
+          if (newAmount > 0) {
+            const recipeMap: Record<string, string> = {};
+            
+            // Preserve recipe selections from the existing tree
+            const collectRecipeSelections = (node: DependencyNode, prefix: string = '') => {
+              const nodeId = prefix ? `${prefix}-${node.id}` : node.id;
+              if (node.selectedRecipeId) {
+                recipeMap[nodeId] = node.selectedRecipeId;
+              }
+              
+              node.children?.forEach(child => {
+                collectRecipeSelections(child, nodeId);
+              });
+            };
+            
+            collectRecipeSelections(targetTree);
+            
+            // Build import map for existing imports (excluding the one being un-imported)
+            const importMap: Record<string, { targetTreeId: string, amount: number }> = {};
+            const buildImportMap = (node: DependencyNode) => {
+              if (node.isImport && node.importedFrom && node.uniqueId !== sourceNode.uniqueId) {
+                importMap[node.uniqueId] = { 
+                  targetTreeId: node.importedFrom, 
+                  amount: node.amount 
+                };
+              }
+              
+              node.children?.forEach((child: DependencyNode) => {
+                buildImportMap(child);
+              });
+            };
+            
+            // Collect all existing imports in the tree
+            buildImportMap(targetTree);
+            
+            // Now recalculate the tree with the reduced amount
+            calculateDependencyTree(
+              targetTree.id,
+              newAmount,
+              targetTree.selectedRecipeId || null,
+              recipeMap,
+              0,
+              [],
+              '',
+              excessMap,
+              importMap
+            ).then(updatedTree => {
+              // Preserve the unique ID of the existing tree
+              updatedTree.uniqueId = targetTreeId;
+              
+              // Update the tree in Redux
+              dispatch(setDependencies({
+                treeId: targetTreeId,
+                tree: updatedTree,
+                accumulated: calculateAccumulatedFromTree(updatedTree)
+              }));
+            });
+          }
+        }
+      }
+
+      // Dispatch the un-import action
+      dispatch(importNode({
+        sourceTreeId: sourceTreeId,
+        sourceNodeId: nodeId,
+        targetTreeId: targetTreeId,
+        isUnimport: true // Signal this is an un-import operation
+      }));
+    }
   };
 
   // Helper function to clone a node structure for the new tree
