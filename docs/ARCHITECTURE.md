@@ -116,4 +116,30 @@ src/
 2. Implement alternative visualization modes
 3. Add integration with game mods for custom items and recipes
 4. Create a mobile-friendly version
-5. Add localization support 
+5. Add localization support
+
+## UI Components
+
+### Common Components
+
+The application uses a set of reusable common components that provide consistent UI patterns across the application.
+
+- **Button**: A flexible button component with various styles, sizes, and states.
+- **Input**: A reusable input component for text entry with validation support.
+- **Select**: A dropdown selection component for choosing from a list of options.
+- **Card**: A container component for grouping related content with customizable headers and footers.
+- **Modal**: A dialog component that appears above the page content for focused interactions.
+- **Tooltip**: A component for displaying additional information when hovering over elements.
+- **Dropdown**: A flexible dropdown menu component for selecting from a list of options with icons.
+- **TabGroup**: A component for organizing content into tabs with different style variants.
+
+These components are located in the `src/components/common` directory and are designed to be:
+
+- **Reusable**: Components can be used in multiple places with consistent behavior
+- **Customizable**: Props allow customizing appearance and behavior
+- **Accessible**: Components follow accessibility best practices
+- **Type-safe**: Full TypeScript support with comprehensive interfaces
+
+### Feature Components
+
+// ... existing code ... 
