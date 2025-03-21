@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
