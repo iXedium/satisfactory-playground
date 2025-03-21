@@ -401,3 +401,118 @@ function MyComponent() {
   );
 }
 ```
+
+## Component Integration
+
+The application uses a layered integration approach to connect disparate components and features into a cohesive system.
+
+### Integration Architecture
+
+```
+┌────────────────────────────────────────────────────────┐
+│                  AppStateProvider                      │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│   ┌─────────────┐    ┌─────────────┐    ┌──────────┐   │
+│   │ Redux Store │    │ Persistence │    │ Settings │   │
+│   └─────────────┘    └─────────────┘    └──────────┘   │
+│                                                        │
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│               Integration Layer (Hooks)                │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│    ┌────────────────┐  ┌─────────────────────────┐     │
+│    │ useUI          │  │ useComponentIntegration │     │
+│    └────────────────┘  └─────────────────────────┘     │
+│                                                        │
+│    ┌────────────────┐  ┌─────────────────────────┐     │
+│    │ useSettings    │  │ usePersistentState      │     │
+│    └────────────────┘  └─────────────────────────┘     │
+│                                                        │
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│                Feature Components                      │
+├────────────┬─────────────┬────────────┬───────────────┤
+│            │             │            │               │
+│ Dashboard  │ Calculator  │ TreeView   │ Settings      │
+│            │             │            │               │
+└────────────┴─────────────┴────────────┴───────────────┘
+```
+
+### Integration Components
+
+#### 1. AppStateProvider
+
+The `AppStateProvider` serves as the central integration point for the application, providing:
+
+- Redux state access via React-Redux's Provider
+- Theme management with system preference detection
+- Settings access through a unified context
+- Persistence service for state management
+
+It wraps the entire application and establishes the foundation for all cross-component communication.
+
+#### 2. Integration Hooks
+
+The application uses several integration hooks to bridge functionality between components:
+
+- **useComponentIntegration**: Connects different features like opening settings from calculator, tracking recent items, etc.
+- **useUI**: Provides consistent UI state management across components
+- **useSettings**: Gives access to application settings from any component
+- **usePersistentState**: Enables persistent state with localStorage backing
+
+#### 3. Cross-Component Features
+
+Several features work across component boundaries:
+
+- **Theme System**: Consistent theming applied through CSS variables and context
+- **Recent Items Tracking**: Tracking and displaying recently used items across features
+- **Settings Access**: Common settings that affect multiple components
+- **Dashboard**: A central hub for accessing all features
+
+### Integration Patterns
+
+The application employs several patterns for component integration:
+
+#### Provider Pattern
+
+React context providers deliver shared state and utilities to components:
+
+```tsx
+// Provider usage
+<AppStateProvider>
+  <App />
+</AppStateProvider>
+```
+
+#### Central Hooks
+
+Hooks encapsulate cross-component logic and provide clean interfaces:
+
+```tsx
+// Hook usage
+const { selectRecipeAndShowCalculator, openSettingsToTab } = useComponentIntegration();
+```
+
+#### Shared Services
+
+Common services are accessible across components via hooks:
+
+```tsx
+// Service access
+const { persistence } = useAppState();
+persistence.save('key', data);
+```
+
+### Benefits
+
+This integration architecture provides several benefits:
+
+1. **Decoupling**: Components remain decoupled while still able to communicate effectively
+2. **Testability**: Integration points can be easily mocked for testing
+3. **Consistency**: Unified patterns for cross-component communication
+4. **Extensibility**: New features can leverage existing integration points
+5. **State Isolation**: Components can focus on their internal state, with integration handled separately
