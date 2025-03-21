@@ -60,7 +60,6 @@ const dependencySlice = createSlice({
         
         // Restore each import node
         importNodes.forEach(node => {
-          console.log("Restoring import node after source deletion:", node);
           node.isImport = false;
           if (node.originalChildren) {
             node.children = node.originalChildren;
@@ -102,7 +101,6 @@ const dependencySlice = createSlice({
         isUnimport?: boolean; // Flag to indicate this is an un-import operation
       }>
     ) => {
-      console.log("Import action:", action.payload);
       const { sourceTreeId, sourceNodeId, targetTreeId, isNewTree, isUnimport } = action.payload;
       const sourceTree = state.dependencyTrees[sourceTreeId];
       const targetTree = state.dependencyTrees[targetTreeId];
@@ -139,11 +137,8 @@ const dependencySlice = createSlice({
         return;
       }
 
-      console.log("Found source node:", sourceNode);
-
       // If source node is already an import node or we're explicitly un-importing
       if (sourceNode.isImport || isUnimport) {
-        console.log("Toggling import off");
         // Restore the node's previous state
         sourceNode.isImport = false;
         if (sourceNode.originalChildren) {
@@ -156,16 +151,21 @@ const dependencySlice = createSlice({
           const targetRoot = state.dependencyTrees[sourceNode.importedFrom];
           if (targetRoot) {
             // Subtract the amount when un-importing
-            console.log(`Subtracting ${sourceNode.amount} from target tree amount ${targetRoot.amount}`);
             targetRoot.amount -= sourceNode.amount;
-            if (targetRoot.amount <= 0) {
+            
+            // Only delete the tree if it has no production (amount <= 0) AND no excess
+            // If it has excess, we want to keep it even if the amount is zero
+            if (targetRoot.amount <= 0 && (!targetRoot.excess || targetRoot.excess <= 0)) {
               delete state.dependencyTrees[sourceNode.importedFrom];
+            } else if (targetRoot.amount <= 0) {
+              // If there's excess but no production, keep the tree but set amount to 0
+              // This ensures we don't end up with negative production values
+              targetRoot.amount = 0;
             }
           }
           delete sourceNode.importedFrom;
         }
       } else {
-        console.log("Converting to import node");
         // Convert to import node
         sourceNode.isImport = true;
         // Save original children
@@ -178,11 +178,9 @@ const dependencySlice = createSlice({
           // If this is a newly created tree, we've already set the correct amount
           // so don't modify the target tree's amount
           if (isNewTree) {
-            console.log("Using newly created tree - amount already set");
             sourceNode.importedFrom = targetTreeId;
           } else {
             // For existing trees, find the root and add the amount
-            console.log("Adding to existing root:", targetTree);
             // Store the original excess value to preserve it
             const originalExcess = targetTree.excess || 0;
             // Add amount for the import
