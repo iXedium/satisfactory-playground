@@ -9,6 +9,7 @@ import { getRecipesForItem } from "../data/dbQueries";
 import StyledCheckbox from "./shared/StyledCheckbox";
 import { Recipe } from "../data/dexieDB";
 import { SettingsModal } from "./settings";
+import { ImportExportModal } from "./import-export";
 
 export interface CommandBarProps {
   items: Item[];
@@ -66,6 +67,7 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   
   // State for checkboxes
   const [compactView, setCompactView] = useState(false);
@@ -114,6 +116,16 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
   // Close settings modal
   const closeSettingsModal = () => {
     setIsSettingsModalOpen(false);
+  };
+  
+  // Open import/export modal
+  const openImportExportModal = () => {
+    setIsImportExportModalOpen(true);
+  };
+  
+  // Close import/export modal
+  const closeImportExportModal = () => {
+    setIsImportExportModalOpen(false);
   };
   
   // Load recipes when selected item changes
@@ -302,6 +314,15 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
             onChange={handleSearch}
           />
 
+          {/* Import/Export Button */}
+          <button 
+            style={iconButtonStyle}
+            onClick={openImportExportModal}
+            title="Import/Export Data"
+          >
+            <span>📤</span>
+          </button>
+
           {/* Settings Button */}
           <button 
             style={iconButtonStyle}
@@ -425,6 +446,12 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
         onClose={closeSettingsModal}
         onSave={closeSettingsModal}
         onReset={onClearSavedData}
+      />
+
+      {/* Import/Export Modal */}
+      <ImportExportModal
+        isOpen={isImportExportModalOpen}
+        onClose={closeImportExportModal}
       />
     </div>
   );

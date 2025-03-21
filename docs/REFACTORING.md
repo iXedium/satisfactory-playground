@@ -284,35 +284,31 @@ We'll continue breaking down other large components:
 
 ## Progress Tracking
 
-### Phase 1: Planning and Analysis (100%)
-- [x] Identify components to refactor (100%)
-- [x] Define component boundaries (100%)
-- [x] Create refactoring roadmap (100%)
+### Phase 1: Core Components (100%)
+- ✅ ItemNode Refactoring (100%)
+- ✅ TreeView Refactoring (100%)
+- ✅ EdgeArrows Refactoring (100%)
+- ✅ Icon Refactoring (100%)
 
-### Phase 2: Set Up Infrastructure (100%)
-- [x] Create directory structure (100%)
-- [x] Set up testing framework (100%)
-- [x] Create common utilities (100%)
+### Phase 2: View Components (100%)
+- ✅ PowerView Refactoring (100%)
+- ✅ AccumulatedView Refactoring (100%)
+- ✅ RecipeSelector Refactoring (100%)
+- ✅ CommandBar Refactoring (100%)
 
-### Phase 3: Common Components (100%)
-- [x] Button (100%)
-- [x] Input (100%)
-- [x] Select (100%)
-- [x] Card (100%)
-- [x] Modal (100%)
-- [x] Tooltip (100%)
-- [x] Icons (100%)
+### Phase 3: Utility Components (100%)
+- ✅ UI Component Library Creation (100%)
+- ✅ Styling Refactoring (100%)
+- ✅ Common Components (100%)
+- ✅ Hooks Refactoring (100%)
 
 ### Phase 4: Feature Components (75%)
-- [x] ItemNode Refactoring (100%)
-- [x] TreeView Refactoring (100%)
-- [x] RecipeSelector Refactoring (100%)
-- [x] AccumulatedView Refactoring (100%)
-- [x] PowerView Refactoring (100%)
-- [x] Calculator Refactoring (100%)
-- [x] Settings Interface Refactoring (100%)
-- [ ] Import/Export Refactoring (0%)
-- [ ] Global State Management Refactoring (0%)
+- ✅ Calculator Refactoring (100%)
+- ✅ Settings Interface Refactoring (100%)
+- ✅ Import/Export Refactoring (100%)
+- ⬜ Global State Management Refactoring (0%)
+
+### Overall Progress: ~94%
 
 ## RecipeSelector Refactoring
 
@@ -457,4 +453,46 @@ The Settings Interface has been refactored into a modular system of components:
 * **Persistence**: Automatic saving of settings to localStorage
 * **Extensibility**: New settings can be easily added to appropriate categories
 
-The Settings refactoring has transformed a simple dropdown menu into a comprehensive settings system that can be accessed via a modal dialog, providing users with greater control over application behavior and appearance. 
+The Settings refactoring has transformed a simple dropdown menu into a comprehensive settings system that can be accessed via a modal dialog, providing users with greater control over application behavior and appearance.
+
+## Import/Export Refactoring
+
+### Component Structure
+
+The Import/Export functionality has been completely refactored to provide a more modular and maintainable solution:
+
+- **Services Layer**:
+  - `services/importExport/index.ts`: Core service functions for importing and exporting data
+
+- **State Management**:
+  - `features/importExportSlice.ts`: Redux slice with actions and reducers for managing import/export state
+  - `hooks/useImportExport.ts`: Custom hook providing easy access to import/export functionality
+
+- **UI Components**:
+  - `components/import-export/ImportExportSection.tsx`: Reusable component for import/export controls
+  - `components/import-export/ImportExportModal.tsx`: Modal dialog for import/export operations
+  - `components/import-export/index.ts`: Entry point for import/export components
+
+### Implementation Details
+
+The refactored import/export system offers several key improvements:
+
+1. **Modularity**: Separated concerns with dedicated services, state management, and UI components
+2. **Error Handling**: Comprehensive error handling with user-friendly error messages
+3. **User Experience**: Improved UX with loading states, timestamps for last import/export, and clear instructions
+4. **Integration**: Seamlessly integrated with both the CommandBar and Advanced Settings
+
+### Benefits
+
+The new import/export functionality provides:
+
+- **Better User Experience**: Clear visual indicators of operations and statuses
+- **Improved Maintainability**: Modular design makes future changes easier
+- **Better Error Handling**: Robust error reporting and recovery
+- **Data Preservation**: Simple backup and restore functionality for user data
+
+### Migration Notes
+
+- The old placeholder buttons in AdvancedSettings have been replaced with the new ImportExportSection component
+- A new button has been added to the CommandBar for quick access to the import/export functionality
+- The Redux store has been updated to include the importExport slice 

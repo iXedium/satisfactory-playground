@@ -197,6 +197,56 @@ This document outlines the plan for safely migrating from the current monolithic
 - Each settings tab should display the appropriate settings
 - Changes to settings should be immediately reflected in the UI
 
+## Import/Export Migration
+
+### Current Integration Points
+
+The import/export functionality exists only as placeholder buttons in the Advanced Settings panel with no actual implementation. Users currently have no way to save or load their application data except through browser localStorage, which is not portable across devices.
+
+### Migration Status
+
+- ✅ Created core services for exporting and importing data
+- ✅ Implemented Redux slice for state management
+- ✅ Created custom hook for simplified access to functionality
+- ✅ Developed UI components for import/export operations
+- ✅ Integrated with CommandBar and AdvancedSettings
+- ⬜ Connect additional data slices to the import functionality
+- ⬜ Add comprehensive validation for imported data
+- ⬜ Add support for different file versions
+
+### Migration Steps
+
+1. ✅ **Setup Core Infrastructure**:
+   - Create the import/export service layer
+   - Develop the Redux slice for state management
+   - Implement the `useImportExport` hook
+
+2. ✅ **Develop UI Components**:
+   - Create the ImportExportSection component
+   - Implement the ImportExportModal component
+
+3. ✅ **Integration**:
+   - Replace placeholder buttons in AdvancedSettings
+   - Add access button to CommandBar
+   - Register reducer in Redux store
+
+4. ⬜ **Data Integration**:
+   - Connect additional Redux slices to import/export logic
+   - Implement data migration for different versions
+
+5. ⬜ **Testing & Validation**:
+   - Add comprehensive validation
+   - Test edge cases and error handling
+
+### Verification
+
+- ImportExportSection should render correctly in AdvancedSettings
+- ImportExportModal should be accessible from CommandBar
+- Export should generate a valid JSON file with the current application state
+- Import should correctly restore application state from a file
+- Error handling should provide clear user feedback
+- Operation status and history should be visible to the user
+
 ## Progress Tracking
 
 | Component | Wrapper Created | Imports Updated | Tested | Original Removed | Status |

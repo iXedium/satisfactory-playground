@@ -10,6 +10,7 @@ import { theme } from "../../styles/theme";
 import useSettings from "../../hooks/useSettings";
 import { resetSettings } from "../../features/settingsSlice";
 import { useDispatch } from "react-redux";
+import { ImportExportSection } from "../import-export";
 
 export interface AdvancedSettingsProps {
   /**
@@ -125,50 +126,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({ onReset }) => {
         </ul>
       </div>
       
-      {/* Export/Import section */}
-      <div style={sectionStyle}>
-        <h3 style={{ 
-          fontSize: "16px",
-          fontWeight: "bold",
-          marginBottom: "16px",
-          color: theme.colors.textPrimary
-        }}>
-          Export/Import Data
-        </h3>
-        
-        <p style={{ 
-          marginBottom: "16px",
-          color: theme.colors.textSecondary,
-          fontSize: "14px"
-        }}>
-          Export your data to a file for backup or import data from a file.
-        </p>
-        
-        <div style={{ 
-          display: "flex",
-          gap: "12px"
-        }}>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              // This will be implemented as part of the Import/Export refactoring
-              alert("Export functionality will be implemented in the Import/Export refactoring phase.");
-            }}
-          >
-            Export Data
-          </Button>
-          
-          <Button
-            variant="secondary"
-            onClick={() => {
-              // This will be implemented as part of the Import/Export refactoring
-              alert("Import functionality will be implemented in the Import/Export refactoring phase.");
-            }}
-          >
-            Import Data
-          </Button>
-        </div>
-      </div>
+      {/* Import/Export section */}
+      <ImportExportSection />
       
       {/* Danger Zone */}
       <div style={dangerZoneStyle}>

@@ -253,3 +253,42 @@ The Settings interface provides a comprehensive system for managing application 
 - **SettingsModal.tsx**: Modal wrapper for displaying settings in a dialog.
 
 This component is designed with a modular structure to enhance maintainability and allow for easy extension with new settings categories. The settings are stored in Redux via a dedicated `settingsSlice` and persist across sessions using localStorage.
+
+## Import/Export System
+
+The Import/Export system enables users to save and load application data, facilitating backup, sharing, and migration of their work.
+
+### Structure
+
+- **Services**:
+  - `services/importExport/index.ts`: Contains the core logic for data export and import operations
+  
+- **State Management**:
+  - `features/importExportSlice.ts`: Redux slice for managing import/export state
+  - `hooks/useImportExport.ts`: Hook that provides a clean interface to import/export functionality
+  
+- **Components**:
+  - `ImportExportSection.tsx`: Main component for the import/export controls
+  - `ImportExportModal.tsx`: Modal dialog for accessing import/export functionality
+  
+### Data Flow
+
+1. **Export Flow**:
+   - User triggers export through UI
+   - Redux thunk `startExport` is dispatched
+   - Current application state is collected from Redux store
+   - Data is formatted, serialized to JSON, and downloaded as a file
+   - UI displays confirmation and updates last export date
+
+2. **Import Flow**:
+   - User selects a file through the UI
+   - File is read and parsed from JSON
+   - Data validation ensures format compatibility
+   - Redux actions are dispatched to update application state
+   - UI displays confirmation and updates last import date
+
+### Integration Points
+
+- **CommandBar**: Quick access button for the import/export modal
+- **AdvancedSettings**: Embedded import/export section in the settings panel
+- **Redux Store**: Integration with the global state management system
