@@ -97,7 +97,10 @@ export const calculateDependencyTree = async (
   }
 
   const outputAmount = recipe.out[itemId] ?? 1;
-  const cyclesNeeded = (amount + (excessMap[nodeId] || 0)) / outputAmount;
+  // Preserve excess value from excessMap for this node
+  const nodeExcess = excessMap[nodeId] || 0;
+  // Use excess in calculation but don't modify the original excess value
+  const cyclesNeeded = (amount + nodeExcess) / outputAmount;
 
   // Pass recipeMap and importMap to child calculations
   const children = await Promise.all(
@@ -136,7 +139,7 @@ export const calculateDependencyTree = async (
     selectedRecipeId: recipe.id,
     availableRecipes,
     children: [...children, ...byproducts],
-    excess: excessMap[nodeId] || 0
+    excess: nodeExcess // Use the preserved excess value
   };
 
   // Store result in cache

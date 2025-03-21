@@ -638,6 +638,10 @@ const DependencyTester: React.FC = () => {
         // Calculate the new total amount for the target tree
         const newAmount = existingTree.amount + sourceNode.amount;
         
+        // Preserve the existing excess for the target tree
+        const targetExcess = excessMap[existingTree.uniqueId] || 0;
+        console.log(`Preserving target excess for ${existingTree.id}: ${targetExcess}`);
+        
         // Create updated tree with the new amount
         const recipeMap: Record<string, string> = {};
         
@@ -673,6 +677,13 @@ const DependencyTester: React.FC = () => {
         // Collect all existing imports in the tree
         buildImportMap(existingTree);
         
+        // Make a copy of the excess map and ensure the target's excess is preserved
+        const updatedExcessMap = { ...excessMap };
+        // Explicitly set the target excess in the map to ensure it's preserved during calculation
+        updatedExcessMap[existingTree.uniqueId] = targetExcess;
+        
+        console.log("updatedExcessMap before calculation:", updatedExcessMap);
+        
         // Now recalculate the tree with the updated amount
         calculateDependencyTree(
           existingTree.id,
@@ -682,11 +693,21 @@ const DependencyTester: React.FC = () => {
           0,
           [],
           '',
-          excessMap,
+          updatedExcessMap, // Use the map with explicitly set excess value
           importMap
         ).then(updatedTree => {
           // Preserve the unique ID of the existing tree
           updatedTree.uniqueId = targetTreeId;
+          
+          // Make sure the excess is explicitly preserved in the tree node
+          console.log(`Setting excess on updated tree to: ${targetExcess}`);
+          updatedTree.excess = targetExcess;
+          
+          // Also update the excess map with the preserved value
+          setExcessMap(prev => ({
+            ...prev,
+            [targetTreeId]: targetExcess
+          }));
           
           // Update the tree in Redux
           dispatch(setDependencies({

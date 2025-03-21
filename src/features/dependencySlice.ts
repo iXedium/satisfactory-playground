@@ -183,7 +183,12 @@ const dependencySlice = createSlice({
           } else {
             // For existing trees, find the root and add the amount
             console.log("Adding to existing root:", targetTree);
+            // Store the original excess value to preserve it
+            const originalExcess = targetTree.excess || 0;
+            // Add amount for the import
             targetTree.amount += sourceNode.amount;
+            // Preserve the original excess value
+            targetTree.excess = originalExcess;
             sourceNode.importedFrom = targetTreeId;
           }
         }
