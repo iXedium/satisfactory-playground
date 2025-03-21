@@ -9,17 +9,17 @@ import StyledInput from "./shared/StyledInput";
 interface ItemNodeProps {
   itemId: string;
   amount: number;
+  availableRecipes?: { id: string; name: string }[];
+  recipes?: { id: string; name: string }[];
+  selectedRecipeId?: string | null;
+  onRecipeChange?: (recipeId: string) => void;
+  style?: React.CSSProperties;
   isRoot?: boolean;
   isByproduct?: boolean;
   isImport?: boolean;
-  recipes?: Recipe[];
-  selectedRecipeId?: string;
-  onRecipeChange?: (recipeId: string) => void;
-  size?: IconSize;
+  index?: number;
   excess?: number;
   onExcessChange?: (excess: number) => void;
-  style?: React.CSSProperties;
-  index?: number;
   onIconClick?: () => void;
   machineCount?: number;
   onMachineCountChange?: (count: number) => void;
@@ -29,6 +29,8 @@ interface ItemNodeProps {
   showMachineMultiplier?: boolean;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
+  onUnimport?: () => void;
+  size?: IconSize;
 }
 
 interface Machine {
@@ -43,17 +45,17 @@ interface Machine {
 const ItemNode: React.FC<ItemNodeProps> = ({
   itemId,
   amount,
-  isRoot = false,
-  isByproduct = false,
-  isImport = false,
+  availableRecipes = [],
   recipes = [],
   selectedRecipeId,
   onRecipeChange,
-  size = "large",
+  style,
+  isRoot = false,
+  isByproduct = false,
+  isImport = false,
+  index = 0,
   excess = 0,
   onExcessChange,
-  style,
-  index = 0,
   onIconClick,
   machineCount = 1,
   onMachineCountChange,
@@ -63,6 +65,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   showMachineMultiplier = false,
   onDelete,
   onImport,
+  onUnimport,
+  size = "large"
 }) => {
   const [item, setItem] = useState<Item | null>(null);
   const [, setLocalExcess] = useState(excess);
@@ -426,11 +430,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         )}
         
         {/* Import/Revert import button for child nodes */}
-        {!isRoot && onImport && (
+        {!isRoot && (onImport || onUnimport) && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onImport(itemId);
+              if (isImport && onUnimport) {
+                onUnimport();
+              } else if (onImport) {
+                onImport(itemId);
+              }
             }}
             style={{
               background: isImport 

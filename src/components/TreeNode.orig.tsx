@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
@@ -72,32 +71,20 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
   const handleUnimport = () => {
     if (node.isImport && onUnimport) {
-      // For unimport, we need to correctly identify which tree this node belongs to
-      // The uniqueId doesn't directly contain the full tree ID with timestamp
-      // So instead we'll pass the node's uniqueId and let the DependencyTester component
-      // find the correct tree based on the available trees in the state
+      // For unimport, we need to pass the node's uniqueId and the current tree's ID
       
-      // First, get the node's actual id which might be in the uniqueId
-      const nodeIdPortion = node.id.toString();
+      // The issue is that we're extracting only part of the tree ID
+      // For example, from "iron-plate-1742573847978-iron-ingot-1", 
+      // we need to get "iron-plate-1742573847978" as the full tree ID
       
-      // The uniqueId usually has format like "containerItem-[timestamp]-nodeId-[index]"
-      // Extract the container item portion by removing the nodeId and any trailing parts
-      const containerPortion = node.uniqueId.split(nodeIdPortion)[0].replace(/-$/, '');
-      
-      if (containerPortion) {
-        console.log(`Looking up tree with item prefix: ${containerPortion}`);
-        // Pass the uniqueId and the container portion - DependencyTester will find the actual tree
-        onUnimport(node.uniqueId, containerPortion);
+      // Look for the timestamp pattern which is part of the tree ID
+      const matches = node.uniqueId.match(/^(.*-\d+)-/);
+      if (matches && matches[1]) {
+        const treeId = matches[1];
+        console.log(`Extracted tree ID from uniqueId: ${treeId}`);
+        onUnimport(node.uniqueId, treeId);
       } else {
-        // Fallback to original approach
-        const parts = node.uniqueId.split('-');
-        if (parts.length >= 2) {
-          const itemPrefix = `${parts[0]}-${parts[1]}`;
-          console.log(`Fallback: Looking up tree with item prefix: ${itemPrefix}`);
-          onUnimport(node.uniqueId, itemPrefix);
-        } else {
-          console.error("Cannot parse node uniqueId structure:", node.uniqueId);
-        }
+        console.error("Could not determine tree ID from uniqueId:", node.uniqueId);
       }
     }
   };

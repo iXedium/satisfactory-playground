@@ -15,6 +15,7 @@ export interface DependencyNode {
   excess: number;
   originalChildren?: DependencyNode[];
   importedFrom?: string;
+  originalAmount?: number;
 }
 
 const logPerf = (label: string, start: number) => {
