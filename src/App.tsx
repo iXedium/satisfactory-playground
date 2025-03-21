@@ -3,6 +3,11 @@ import { AppStateProvider } from './providers/AppStateProvider';
 import { useUI } from './hooks/useUI';
 import DependencyTester from './components/DependencyTester';
 import { Dashboard } from './components/dashboard';
+import { 
+  ErrorBoundary, 
+  AccessibilityProvider, 
+  SkipToContent 
+} from './components/common';
 import './App.css';
 
 // Component for displaying content based on active tab
@@ -26,11 +31,18 @@ const TabContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AppStateProvider>
-      <div className="app">
-        <TabContent />
-      </div>
-    </AppStateProvider>
+    <ErrorBoundary>
+      <AccessibilityProvider>
+        <AppStateProvider>
+          <div className="app">
+            <SkipToContent mainContentId="main-content" />
+            <main id="main-content">
+              <TabContent />
+            </main>
+          </div>
+        </AppStateProvider>
+      </AccessibilityProvider>
+    </ErrorBoundary>
   );
 };
 

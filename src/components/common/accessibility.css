@@ -1,0 +1,154 @@
+/* High contrast mode */
+.high-contrast-mode {
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-tertiary: #000000;
+  --text-inverted: #ffffff;
+  --text-error: #d32f2f;
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #f0f0f0;
+  --bg-tertiary: #e0e0e0;
+  --bg-hover: #d0d0d0;
+  
+  --border-color: #000000;
+  --border-focus: #000000;
+  
+  --primary-color: #0000aa;
+  --primary-color-dark: #000088;
+  --primary-color-light: #3333dd;
+  
+  --card-bg: #ffffff;
+  
+  /* Increase contrast for all elements */
+  * {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: none !important;
+  }
+  
+  /* Buttons and interactive elements */
+  button, 
+  .button, 
+  [role="button"],
+  a,
+  select,
+  input,
+  textarea {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-tertiary) !important;
+    border: 2px solid var(--border-color) !important;
+    outline: 2px solid transparent;
+    transition: outline-color 0.2s;
+  }
+  
+  /* Focus states for all interactive elements */
+  button:focus, 
+  .button:focus,
+  [role="button"]:focus,
+  a:focus,
+  select:focus,
+  input:focus,
+  textarea:focus {
+    outline: 2px solid var(--primary-color) !important;
+    outline-offset: 2px;
+  }
+  
+  /* Increase text size */
+  body {
+    font-size: 16px !important;
+  }
+  
+  /* Increase spacing */
+  p, h1, h2, h3, h4, h5, h6, li {
+    line-height: 1.5 !important;
+    margin-bottom: 0.75em !important;
+  }
+}
+
+/* Dark high contrast mode */
+.dark-theme.high-contrast-mode {
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #ffffff;
+  --text-inverted: #000000;
+  --text-error: #ff6e6e;
+  
+  --bg-primary: #000000;
+  --bg-secondary: #222222;
+  --bg-tertiary: #333333;
+  --bg-hover: #444444;
+  
+  --border-color: #ffffff;
+  --border-focus: #ffffff;
+  
+  --primary-color: #55aaff;
+  --primary-color-dark: #3388dd;
+  --primary-color-light: #77ccff;
+  
+  --card-bg: #000000;
+}
+
+/* Focus mode - hide non-essential elements */
+.focus-mode .dashboard-header,
+.focus-mode .dashboard-section:not(:focus-within) {
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.focus-mode .dashboard-section:hover,
+.focus-mode .dashboard-section:focus-within,
+.focus-mode .dashboard-header:hover {
+  opacity: 1;
+}
+
+/* Focus mode - highlight active sections */
+.focus-mode *:focus {
+  outline: 3px solid var(--primary-color) !important;
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+/* Remove animations in reduced motion mode */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .loading-spinner-circle {
+    animation: none !important;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link for keyboard navigation */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary-color);
+  color: white;
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.2s ease;
+}
+
+.skip-to-content:focus {
+  top: 0;
+} 
