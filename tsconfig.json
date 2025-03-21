@@ -20,7 +20,7 @@
       "@utils/*": ["utils/*"]
     },
     "noEmit": true,
-    "allowJs": false
+    "allowJs": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

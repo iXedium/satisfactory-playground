@@ -102,6 +102,8 @@ const dependencySlice = createSlice({
       }>
     ) => {
       const { sourceTreeId, sourceNodeId, targetTreeId, isNewTree, isUnimport } = action.payload;
+      console.log("============ IMPORT NODE REDUCER START ============");
+      console.log("Import action:", action.payload);
       const sourceTree = state.dependencyTrees[sourceTreeId];
       const targetTree = state.dependencyTrees[targetTreeId];
 
@@ -132,6 +134,7 @@ const dependencySlice = createSlice({
       };
 
       const sourceNode = findNode(sourceTree, sourceNodeId);
+      console.log("Found source node:", sourceNode);
       if (!sourceNode) {
         console.error("Source node not found");
         return;
@@ -139,6 +142,19 @@ const dependencySlice = createSlice({
 
       // If source node is already an import node or we're explicitly un-importing
       if (sourceNode.isImport || isUnimport) {
+        console.log("Converting import node back to normal node");
+        
+        // For unimporting, find the source tree root and subtract amount
+        if (isUnimport) {
+          // Find the root of the source tree
+          const sourceTree = state.dependencyTrees[sourceTreeId];
+          if (sourceTree) {
+            console.log(`Updating source tree ${sourceTreeId} amount from ${sourceTree.amount} to ${Math.max(0, sourceTree.amount - sourceNode.amount)}`);
+            // Subtract the amount when unimporting
+            sourceTree.amount = Math.max(0, sourceTree.amount - sourceNode.amount);
+          }
+        }
+        
         // Restore the node's previous state
         sourceNode.isImport = false;
         if (sourceNode.originalChildren) {
@@ -146,26 +162,27 @@ const dependencySlice = createSlice({
           delete sourceNode.originalChildren;
         }
 
-        // Find and update the target tree's root node
+        // Find and update the target tree's root node if it still exists
         if (sourceNode.importedFrom) {
           const targetRoot = state.dependencyTrees[sourceNode.importedFrom];
           if (targetRoot) {
-            // Subtract the amount when un-importing
-            targetRoot.amount -= sourceNode.amount;
+            // Calculate the new amount - subtracting the source node's amount
+            const newAmount = Math.max(0, targetRoot.amount - sourceNode.amount);
+            console.log(`Updating target tree ${sourceNode.importedFrom} amount from ${targetRoot.amount} to ${newAmount}`);
+            
+            // Update the target tree's amount when un-importing
+            targetRoot.amount = newAmount;
             
             // Only delete the tree if it has no production (amount <= 0) AND no excess
             // If it has excess, we want to keep it even if the amount is zero
             if (targetRoot.amount <= 0 && (!targetRoot.excess || targetRoot.excess <= 0)) {
               delete state.dependencyTrees[sourceNode.importedFrom];
-            } else if (targetRoot.amount <= 0) {
-              // If there's excess but no production, keep the tree but set amount to 0
-              // This ensures we don't end up with negative production values
-              targetRoot.amount = 0;
             }
           }
           delete sourceNode.importedFrom;
         }
       } else {
+        console.log("Converting to import node");
         // Convert to import node
         sourceNode.isImport = true;
         // Save original children
@@ -173,41 +190,84 @@ const dependencySlice = createSlice({
         // Clear children for import node
         sourceNode.children = [];
 
+        // Find the source tree and update its amount
+        const sourceTree = state.dependencyTrees[sourceTreeId];
+        if (sourceTree) {
+          console.log(`Updating source tree ${sourceTreeId} amount from ${sourceTree.amount} to ${sourceTree.amount + sourceNode.amount}`);
+          // Add to the source tree's amount
+          sourceTree.amount += sourceNode.amount;
+        }
+
         // Only proceed with target tree operations if we have a valid target
         if (targetTree) {
+          // Store the reference to the target tree
+          sourceNode.importedFrom = targetTreeId;
+          
           // If this is a newly created tree, we've already set the correct amount
           // so don't modify the target tree's amount
-          if (isNewTree) {
-            sourceNode.importedFrom = targetTreeId;
-          } else {
-            // For existing trees, find the root and add the amount
-            // Store the original excess value to preserve it
+          if (!isNewTree) {
+            // For existing trees, add the source node amount to the target tree
             const originalExcess = targetTree.excess || 0;
+            const newAmount = targetTree.amount + sourceNode.amount;
+            console.log(`Updating target tree ${targetTreeId} amount from ${targetTree.amount} to ${newAmount}`);
+            
             // Add amount for the import
-            targetTree.amount += sourceNode.amount;
+            targetTree.amount = newAmount;
             // Preserve the original excess value
             targetTree.excess = originalExcess;
-            sourceNode.importedFrom = targetTreeId;
           }
+
+          console.log("Final state of node after import:", sourceNode);
+          console.log("Final state of target tree:", targetTree);
         }
       }
 
-      // Update accumulated dependencies
+      // Update accumulated dependencies - combining all trees except import nodes
       const allAccumulated: Record<string, AccumulatedNode> = {};
-      Object.values(state.dependencyTrees).forEach(tree => {
-        const treeAccumulated = calculateAccumulatedFromTree(tree);
-        Object.assign(allAccumulated, treeAccumulated);
-      });
-
-      // Double-check to make sure no import nodes are included
-      for (const nodeId in allAccumulated) {
-        const node = findNode(sourceTree, nodeId);
-        if (node && node.isImport) {
-          delete allAccumulated[nodeId];
-        }
-      }
       
+      // Helper function to collect non-import nodes from a tree
+      const collectNonImportNodes = (treeId: string, tree: DependencyNode, accumulated: Record<string, AccumulatedNode>) => {
+        // Don't process a tree that no longer exists
+        if (!state.dependencyTrees[treeId]) return;
+        
+        const processNode = (node: DependencyNode, parentPath: string = '', depth: number = 0) => {
+          // Skip import nodes completely - they shouldn't be in accumulated view
+          if (node.isImport) return;
+          
+          // Add this node to accumulated
+          const nodePath = parentPath ? `${parentPath} > ${node.id}` : node.id;
+          accumulated[node.uniqueId] = {
+            itemId: node.id,
+            amount: node.amount,
+            recipeId: node.selectedRecipeId || "",
+            isByproduct: node.isByproduct || false,
+            isImport: false,
+            isExtension: false,
+            depth: depth
+          };
+          
+          // Process children recursively
+          if (node.children) {
+            node.children.forEach(child => {
+              if (!child.isImport) {
+                processNode(child, nodePath, depth + 1);
+              }
+            });
+          }
+        };
+        
+        // Process the tree
+        processNode(tree);
+      };
+      
+      // Process each tree to build accumulated dependencies
+      Object.entries(state.dependencyTrees).forEach(([treeId, tree]) => {
+        collectNonImportNodes(treeId, tree, allAccumulated);
+      });
+      
+      // Replace the accumulated dependencies with the new set
       state.accumulatedDependencies = allAccumulated;
+      console.log("============ IMPORT NODE REDUCER END ============");
     },
     loadSavedState: (state, action: PayloadAction<DependencyState>) => {
       // Replace the entire state with the saved state

@@ -816,142 +816,107 @@ const DependencyTester: React.FC = () => {
       isNewTree: isNewTree
     }));
     
-    // Use a longer delay to ensure state updates correctly
+    // Implement direct approach to cascade updates after import
+    console.log("===== DIRECT UPDATE APPROACH =====");
     setTimeout(() => {
-      // Get the current state of all trees
-      const currentState = store.getState().dependencies.dependencyTrees;
+      console.log("Implementing direct approach to cascade updates");
       
-      // Helper function to build an import map for ALL trees
-      const buildCompleteImportMap = () => {
-        const completeImportMap: Record<string, { targetTreeId: string, amount: number }> = {};
+      // Get the current state after import
+      const currentState = store.getState().dependencies.dependencyTrees;
+      const targetTree = currentState[targetTreeId];
+      
+      if (!targetTree) {
+        console.error("Target tree not found after import");
+        return;
+      }
+      
+      console.log("Target tree after import:", targetTree);
+      
+      // Helper function to find all trees with import nodes
+      const findAllTreesWithImports = () => {
+        const treesWithImports: Record<string, DependencyNode[]> = {};
         
-        // Scan all trees for import relationships
-        Object.values(currentState).forEach(tree => {
-          const scanForImports = (node: DependencyNode) => {
+        Object.entries(currentState).forEach(([treeId, tree]) => {
+          const imports: DependencyNode[] = [];
+          
+          const findImports = (node: DependencyNode) => {
             if (node.isImport && node.importedFrom) {
-              completeImportMap[node.uniqueId] = {
-                targetTreeId: node.importedFrom,
-                amount: node.amount
-              };
+              imports.push(node);
             }
             
             if (node.children) {
-              node.children.forEach(child => {
-                scanForImports(child);
-              });
+              node.children.forEach(child => findImports(child));
             }
           };
           
-          scanForImports(tree);
+          findImports(tree);
+          
+          if (imports.length > 0) {
+            treesWithImports[treeId] = imports;
+          }
         });
         
-        return completeImportMap;
+        return treesWithImports;
       };
+      
+      // Find all trees with import nodes
+      const treesWithImports = findAllTreesWithImports();
+      console.log(`Found ${Object.keys(treesWithImports).length} trees with imports`);
       
       // Calculate which source trees need updating and by how much
-      const calculateSourceUpdates = () => {
-        const sourceTreesToUpdate: Record<string, number> = {};
-        
-        // Map each source tree to the total amount needed from it
-        Object.values(currentState).forEach(tree => {
-          const collectImports = (node: DependencyNode) => {
-            if (node.isImport && node.importedFrom) {
-              // Add to the total for this source
-              sourceTreesToUpdate[node.importedFrom] = 
-                (sourceTreesToUpdate[node.importedFrom] || 0) + node.amount;
-            }
-            
-            if (node.children) {
-              node.children.forEach(collectImports);
-            }
-          };
-          
-          collectImports(tree);
+      const sourceTreesToUpdate: Record<string, number> = {};
+      
+      Object.entries(treesWithImports).forEach(([treeId, imports]) => {
+        imports.forEach(importNode => {
+          if (importNode.importedFrom) {
+            // Add to the total for this source
+            sourceTreesToUpdate[importNode.importedFrom] = 
+              (sourceTreesToUpdate[importNode.importedFrom] || 0) + importNode.amount;
+          }
         });
-        
-        return sourceTreesToUpdate;
-      };
+      });
       
-      // Build a complete map of all import relationships in the system
-      const completeImportMap = buildCompleteImportMap();
-      
-      // Get all source trees that need updating based on the imports
-      const sourceTreesToUpdate = calculateSourceUpdates();
+      console.log("Source trees that need updating:", sourceTreesToUpdate);
       
       // Update each source tree with the correct total amount
-      // Using Promise.all to ensure all updates complete
-      const updatePromises = Object.entries(sourceTreesToUpdate).map(([sourceId, totalAmount]) => {
+      Object.entries(sourceTreesToUpdate).forEach(([sourceId, totalAmount]) => {
         const sourceTree = currentState[sourceId];
         
-        if (!sourceTree || sourceTree.amount === totalAmount) {
-          return Promise.resolve();
+        if (!sourceTree) {
+          console.error(`Source tree ${sourceId} not found`);
+          return;
         }
         
-        // Recalculate the tree with the new total amount - but preserve ALL import relationships
-        return calculateDependencyTree(
-          sourceTree.id,
-          totalAmount,
-          sourceTree.selectedRecipeId || null,
-          recipeSelections,
-          0,
-          [],
-          '',
-          excessMap,
-          completeImportMap // Use the COMPLETE import map to preserve all relationships
-        ).then(updatedTree => {
-          // Preserve unique ID and excess
-          updatedTree.uniqueId = sourceId;
-          updatedTree.excess = sourceTree.excess || 0;
-          
-          // Update in Redux
-          dispatch(setDependencies({
-            treeId: sourceId,
-            tree: updatedTree,
-            accumulated: calculateAccumulatedFromTree(updatedTree)
-          }));
-        });
-      });
-      
-      // After all source trees are updated, trigger another round of updates to ensure consistency
-      Promise.all(updatePromises).then(() => {
-        // Do a second round of updates with the newly updated state
-        setTimeout(() => {
-          const updatedState = store.getState().dependencies.dependencyTrees;
-          const updatedSourcesMap = calculateSourceUpdates();
-          
-          // Update any trees that still need adjustment
-          Object.entries(updatedSourcesMap).forEach(([sourceId, totalAmount]) => {
-            const sourceTree = updatedState[sourceId];
+        console.log(`Updating source tree ${sourceId} from ${sourceTree.amount} to ${totalAmount}`);
+        
+        if (sourceTree.amount !== totalAmount) {
+          // Recalculate with the new total amount
+          calculateDependencyTree(
+            sourceTree.id,
+            totalAmount,
+            sourceTree.selectedRecipeId || null,
+            recipeSelections,
+            0,
+            [],
+            '',
+            excessMap
+          ).then(updatedSourceTree => {
+            // Preserve unique ID and excess
+            updatedSourceTree.uniqueId = sourceId;
+            updatedSourceTree.excess = sourceTree.excess || 0;
             
-            if (!sourceTree || sourceTree.amount === totalAmount) {
-              return;
-            }
+            // Update in Redux
+            dispatch(setDependencies({
+              treeId: sourceId,
+              tree: updatedSourceTree,
+              accumulated: calculateAccumulatedFromTree(updatedSourceTree)
+            }));
             
-            // Recalculate with the complete import map
-            calculateDependencyTree(
-              sourceTree.id,
-              totalAmount,
-              sourceTree.selectedRecipeId || null,
-              recipeSelections,
-              0,
-              [],
-              '',
-              excessMap,
-              completeImportMap
-            ).then(updatedTree => {
-              updatedTree.uniqueId = sourceId;
-              updatedTree.excess = sourceTree.excess || 0;
-              
-              dispatch(setDependencies({
-                treeId: sourceId,
-                tree: updatedTree,
-                accumulated: calculateAccumulatedFromTree(updatedTree)
-              }));
-            });
+            console.log(`Updated source tree ${sourceId}`);
           });
-        }, 100);
+        }
       });
-    }, 100);
+    }, 100); // A delay to ensure the import action has completed
   };
   
   // Handle unimporting a node (remove import connection)
