@@ -168,6 +168,35 @@ This document outlines the plan for safely migrating from the current monolithic
 - Filtering and sorting work
 - Recipe and machine information is accurate
 
+## Settings Interface Migration
+
+### Current Integration Points
+- Currently implemented as a dropdown menu in the `CommandBar` component
+- Simple settings are managed directly in component state
+- Some settings are stored in localStorage directly from the component
+
+### Migration Status
+- ✅ `Settings` component and all subcomponents implemented
+- ✅ `SettingsModal` component for modal dialog implementation
+- ✅ Redux `settingsSlice` for centralized state management
+- ✅ `useSettings` hook for easier access to settings
+- ✅ `CommandBar` updated to use the new `SettingsModal`
+
+### Migration Steps
+1. ✅ Create `settingsSlice` for Redux state management
+2. ✅ Update `useSettings` hook to work with the Redux store
+3. ✅ Create modular settings components with proper organization
+4. ✅ Replace settings menu in `CommandBar` with `SettingsModal`
+5. 🔲 Connect all application components to use settings from Redux store
+6. 🔲 Remove any direct localStorage interaction for settings in other components
+
+### Verification
+- Settings should be properly saved to localStorage and persist between sessions
+- All existing settings functionality should work from the new interface
+- The modal should display correctly and be accessible from the command bar
+- Each settings tab should display the appropriate settings
+- Changes to settings should be immediately reflected in the UI
+
 ## Progress Tracking
 
 | Component | Wrapper Created | Imports Updated | Tested | Original Removed | Status |

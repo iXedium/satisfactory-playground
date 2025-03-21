@@ -238,3 +238,18 @@ The Calculator component provides a dedicated interface for performing productio
 - `PowerRequirements.tsx`: Displays power consumption statistics
 
 The Calculator component leverages the `useCalculator` hook for state management and calculations. This modular design ensures each component has a single responsibility, making the calculator system maintainable and extensible.
+
+### Settings Interface
+
+The Settings interface provides a comprehensive system for managing application preferences and configurations:
+
+- **index.ts**: Exports all settings components for easier imports.
+- **Settings.tsx**: Main component serving as composition root for all settings functionality.
+- **SettingsHeader.tsx**: Header component with title and action buttons.
+- **GeneralSettings.tsx**: Manages general application settings like theme and production rate.
+- **DisplaySettings.tsx**: Controls display options for items, trees, machines, etc.
+- **RecipeSettings.tsx**: Manages default recipes for items with multiple production methods.
+- **AdvancedSettings.tsx**: Provides advanced options like resetting settings and data management.
+- **SettingsModal.tsx**: Modal wrapper for displaying settings in a dialog.
+
+This component is designed with a modular structure to enhance maintainability and allow for easy extension with new settings categories. The settings are stored in Redux via a dedicated `settingsSlice` and persist across sessions using localStorage.

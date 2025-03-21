@@ -12,10 +12,14 @@ import {
   updateTheme,
   updateProductionRate,
   updateDefaultRecipes,
-  toggleSetting
+  toggleSetting,
+  updateSettings
 } from '../features/settingsSlice';
 
 type ThemeType = 'light' | 'dark' | 'system';
+type BooleanSettingKey = 'showByproducts' | 'showExcess' | 'roundUpMachines' | 
+                          'showMachines' | 'showMachineMultiplier' | 
+                          'showExtensions' | 'accumulateExtensions' | 'compactView';
 
 interface UseSettingsResult {
   // Theme settings
@@ -34,7 +38,15 @@ interface UseSettingsResult {
   showByproducts: boolean;
   showExcess: boolean;
   roundUpMachines: boolean;
-  toggleBooleanSetting: (key: 'showByproducts' | 'showExcess' | 'roundUpMachines') => void;
+  showMachines: boolean;
+  showMachineMultiplier: boolean;
+  showExtensions: boolean;
+  accumulateExtensions: boolean;
+  compactView: boolean;
+  toggleBooleanSetting: (key: BooleanSettingKey) => void;
+  
+  // Bulk settings update
+  updateMultipleSettings: (settings: Partial<Record<string, unknown>>) => void;
   
   // Is the settings feature enabled
   isFeatureEnabled: (featureName: string) => boolean;
@@ -53,6 +65,11 @@ export function useSettings(): UseSettingsResult {
   const showByproducts = useSelector((state: RootState) => state.settings.showByproducts);
   const showExcess = useSelector((state: RootState) => state.settings.showExcess);
   const roundUpMachines = useSelector((state: RootState) => state.settings.roundUpMachines);
+  const showMachines = useSelector((state: RootState) => state.settings.showMachines);
+  const showMachineMultiplier = useSelector((state: RootState) => state.settings.showMachineMultiplier);
+  const showExtensions = useSelector((state: RootState) => state.settings.showExtensions);
+  const accumulateExtensions = useSelector((state: RootState) => state.settings.accumulateExtensions);
+  const compactView = useSelector((state: RootState) => state.settings.compactView);
   const enabledFeatures = useSelector((state: RootState) => state.settings.enabledFeatures);
   
   /**
@@ -79,8 +96,15 @@ export function useSettings(): UseSettingsResult {
   /**
    * Toggle a boolean setting
    */
-  const toggleBooleanSetting = useCallback((key: 'showByproducts' | 'showExcess' | 'roundUpMachines'): void => {
+  const toggleBooleanSetting = useCallback((key: BooleanSettingKey): void => {
     dispatch(toggleSetting(key));
+  }, [dispatch]);
+  
+  /**
+   * Update multiple settings at once
+   */
+  const updateMultipleSettings = useCallback((settings: Partial<Record<string, unknown>>): void => {
+    dispatch(updateSettings(settings));
   }, [dispatch]);
   
   /**
@@ -100,7 +124,13 @@ export function useSettings(): UseSettingsResult {
     showByproducts,
     showExcess,
     roundUpMachines,
+    showMachines,
+    showMachineMultiplier,
+    showExtensions,
+    accumulateExtensions,
+    compactView,
     toggleBooleanSetting,
+    updateMultipleSettings,
     isFeatureEnabled
   };
 }

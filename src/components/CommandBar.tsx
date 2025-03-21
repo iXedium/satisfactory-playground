@@ -8,6 +8,7 @@ import { Item } from "../data/dexieDB";
 import { getRecipesForItem } from "../data/dbQueries";
 import StyledCheckbox from "./shared/StyledCheckbox";
 import { Recipe } from "../data/dexieDB";
+import { SettingsModal } from "./settings";
 
 export interface CommandBarProps {
   items: Item[];
@@ -64,8 +65,7 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
 }, ref) => {
   const [isItemSectionCollapsed, setIsItemSectionCollapsed] = useState(false);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   // State for checkboxes
   const [compactView, setCompactView] = useState(false);
@@ -106,44 +106,15 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
     }
   };
 
-  // Toggle settings menu
-  const toggleSettingsMenu = () => {
-    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+  // Open settings modal
+  const openSettingsModal = () => {
+    setIsSettingsModalOpen(true);
   };
   
-  // Track settings button position for the dropdown
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
-  
-  // Update menu position when it's opened
-  useEffect(() => {
-    if (isSettingsMenuOpen && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
-    }
-  }, [isSettingsMenuOpen]);
-  
-  // Close settings menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isSettingsMenuOpen && 
-          settingsButtonRef.current && 
-          !settingsButtonRef.current.contains(event.target as Node) &&
-          event.target instanceof Node &&
-          document.getElementById('settings-menu') &&
-          !document.getElementById('settings-menu')?.contains(event.target as Node)) {
-        setIsSettingsMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSettingsMenuOpen]);
+  // Close settings modal
+  const closeSettingsModal = () => {
+    setIsSettingsModalOpen(false);
+  };
   
   // Load recipes when selected item changes
   useEffect(() => {
@@ -251,14 +222,15 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
     width: "180px",
   };
 
-  const settingsMenuStyle: React.CSSProperties = {
+  const settingsModalStyle: React.CSSProperties = {
     position: "fixed",
-    top: `${menuPosition.top}px`,
-    left: `${menuPosition.left - 180 + menuPosition.width}px`, // Align right edge with button
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
     backgroundColor: theme.colors.dark,
     border: `1px solid ${theme.colors.dropdown.border}`,
     borderRadius: theme.borderRadius,
-    padding: "12px",
+    padding: "20px",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
     zIndex: 9999,
     minWidth: "200px",
@@ -330,89 +302,14 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
             onChange={handleSearch}
           />
 
-          {/* Settings Menu Toggle */}
-          <div style={settingsButtonContainerStyle}>
-            <button 
-              ref={settingsButtonRef}
-              style={iconButtonStyle}
-              onClick={toggleSettingsMenu}
-              title="Settings"
-            >
-              <span>⚙️</span>
-            </button>
-          </div>
-          
-          {/* Settings Dropdown Menu - Rendered in Portal */}
-          {isSettingsMenuOpen && ReactDOM.createPortal(
-            <div 
-              id="settings-menu" 
-              style={settingsMenuStyle}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h4 style={{ margin: "0 0 8px 0", color: theme.colors.text, fontSize: "14px" }}>Display Options</h4>
-              <div style={checkboxContainerStyle}>
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showExtensions} 
-                    onChange={toggleShowExtensions}
-                    label=""
-                  />
-                  <span>Show Extensions</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={accumulateExtensions} 
-                    onChange={toggleAccumulateExtensions}
-                    label=""
-                  />
-                  <span>Accumulate Extensions</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showMachines} 
-                    onChange={toggleShowMachines}
-                    label=""
-                  />
-                  <span>Show Machines</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showMachineMultiplier} 
-                    onChange={toggleShowMachineMultiplier}
-                    label=""
-                  />
-                  <span>Show Multiplier</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={compactView} 
-                    onChange={toggleCompactView}
-                    label=""
-                  />
-                  <span>Compact View</span>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
-          
-          {onClearSavedData && (
-            <button
-              style={iconButtonStyle}
-              onClick={() => {
-                if (window.confirm('Are you sure you want to clear all saved data? This action cannot be undone.')) {
-                  onClearSavedData();
-                }
-              }}
-              title="Clear Saved Data"
-            >
-              <span>🗑️</span>
-            </button>
-          )}
+          {/* Settings Button */}
+          <button 
+            style={iconButtonStyle}
+            onClick={openSettingsModal}
+            title="Settings"
+          >
+            <span>⚙️</span>
+          </button>
         </div>
       </div>
 
@@ -521,6 +418,14 @@ const CommandBar = forwardRef<HTMLDivElement, CommandBarProps>(({
           {isItemSectionCollapsed ? '▼' : '▲'}
         </span>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={closeSettingsModal}
+        onSave={closeSettingsModal}
+        onReset={onClearSavedData}
+      />
     </div>
   );
 });
