@@ -103,13 +103,45 @@ const ExampleComponent = () => {
 };
 ```
 
+## Phase 4: Component Breakdown
+
+In Phase 4, we're breaking down large components into smaller, focused components. We've started with the `ItemNode` component, which was previously a 996-line monolith.
+
+### ItemNode Refactoring
+
+The `ItemNode` component has been broken down into the following smaller components:
+
+1. **ItemNode (index.tsx)**: Acts as a composition root, assembling the various parts of the item node.
+2. **ItemHeader**: Displays the item's icon, name, amount, and action buttons in the header section.
+3. **RecipeSection**: Handles recipe selection with a dropdown and displays recipe details.
+4. **MachineSection**: Manages machine calculations, efficiency display, and controls for machine count and multiplier.
+5. **ExcessSection**: Provides controls for excess production with reset and max buttons.
+6. **ItemFooter**: Shows action buttons in the footer section based on node type.
+
+Each component:
+- Has a clear, single responsibility
+- Manages its own state and interactions
+- Is properly typed with TypeScript
+- Uses our common component library (Button, Input, Select, etc.)
+- Is memoized with React.memo to prevent unnecessary re-renders
+
+### Benefits of the Refactoring
+
+1. **Improved readability**: Each component has a focused purpose
+2. **Better maintainability**: Changes to one feature won't affect others
+3. **Enhanced testability**: Smaller components are easier to test in isolation
+4. **Reduced complexity**: Simplified control flow and state management
+5. **Better performance**: Memoization prevents unnecessary re-renders
+6. **Reusable building blocks**: Components can be reused in other contexts
+
 ## Next Steps
 
-The next phase will focus on:
+We'll continue breaking down other large components:
 
-1. Breaking down large components (ItemNode, RecipeSelector, etc.) into smaller components
-2. Implementing the new design system using our component library
-3. Improving performance through selective rendering and memoization
+1. TreeView component
+2. RecipeSelector component  
+3. AccumulatedView component
+4. PowerView component
 
 ## Progress Tracking
 
@@ -130,4 +162,11 @@ The next phase will focus on:
 - [ ] Accumulated View Components (0%)
 - [ ] Power View Components (0%)
 - [ ] Settings Components (0%)
-- [ ] Layout Components (0%) 
+- [ ] Layout Components (0%)
+
+### Phase 4
+- [ ] ItemNode Refactoring (0%)
+- [ ] TreeView Refactoring (0%)
+- [ ] RecipeSelector Refactoring (0%)
+- [ ] AccumulatedView Refactoring (0%)
+- [ ] PowerView Refactoring (0%) 

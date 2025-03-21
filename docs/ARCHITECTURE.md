@@ -142,4 +142,30 @@ These components are located in the `src/components/common` directory and are de
 
 ### Feature Components
 
+#### Component Breakdown Approach
+
+For large, complex components, we follow a component breakdown approach to improve maintainability and reusability:
+
+1. **Composition Root Pattern**: Parent components act as composition roots that assemble smaller, focused child components.
+2. **Single Responsibility**: Each component has a single, well-defined responsibility.
+3. **Container/Presentational Split**: We separate data handling from presentation concerns.
+4. **Custom Hooks for Logic**: Business logic and data fetching are extracted into custom hooks.
+5. **Memoization**: Components use React.memo to prevent unnecessary re-renders.
+
+Example: ItemNode Component
+
+The ItemNode component, which displays item information in the dependency tree, is broken down into:
+
+```
+src/components/nodes/ItemNode/
+├── index.tsx         # Composition root
+├── ItemHeader.tsx    # Header with icon, name, and amount
+├── RecipeSection.tsx # Recipe selection dropdown
+├── MachineSection.tsx # Machine count and efficiency
+├── ExcessSection.tsx # Excess production controls
+└── ItemFooter.tsx    # Action buttons in footer
+```
+
+This modular approach makes the code more maintainable, testable, and scalable while reducing the complexity of individual files.
+
 // ... existing code ... 
