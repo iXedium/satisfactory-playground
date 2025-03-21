@@ -5,15 +5,15 @@
  */
 
 import React from "react";
-import { Select } from "../../../components/common";
 import { Recipe } from "../../../types/core";
-import { theme } from "../../../styles/theme";
-import Icon from "../../shared/Icon";
+import { RecipeSelector } from "../../../components/recipes";
 
 export interface RecipeSectionProps {
   recipes: Recipe[];
   selectedRecipeId?: string;
   onRecipeChange?: (recipeId: string) => void;
+  itemId: string;
+  nodeId: string;
 }
 
 /**
@@ -23,46 +23,26 @@ const RecipeSection: React.FC<RecipeSectionProps> = ({
   recipes,
   selectedRecipeId,
   onRecipeChange,
+  itemId,
+  nodeId,
 }) => {
-  // Convert recipes to select options with output item icons
-  const recipeOptions = recipes.map(recipe => ({
-    value: recipe.id,
-    label: recipe.name || "Unknown Recipe",
-  }));
-
   // Handle recipe selection
-  const handleRecipeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRecipeChange = (recipeId: string) => {
     if (onRecipeChange) {
-      onRecipeChange(e.target.value);
+      onRecipeChange(recipeId);
     }
   };
 
   return (
-    <div>
-      <Select
-        label="Recipe"
-        options={recipeOptions}
-        value={selectedRecipeId}
-        onChange={handleRecipeChange}
-        placeholder="Select a recipe"
-        fullWidth
-        size="small"
-      />
-      
-      {/* Show recipe details when a recipe is selected */}
-      {selectedRecipeId && (
-        <div
-          style={{
-            fontSize: "12px",
-            color: theme.colors.textSecondary,
-            marginTop: "4px",
-          }}
-        >
-          {recipes.find(r => r.id === selectedRecipeId)?.description || 
-            "No recipe description available"}
-        </div>
-      )}
-    </div>
+    <RecipeSelector
+      itemId={itemId}
+      nodeId={nodeId}
+      showDetails={true}
+      disabled={false}
+      placeholder="Select a recipe"
+      size="small"
+      onRecipeSelect={handleRecipeChange}
+    />
   );
 };
 

@@ -127,35 +127,67 @@ Each component:
 
 ### TreeView Refactoring
 
-The `TreeView` component has been broken down into the following smaller components:
+The `TreeView` component was refactored into smaller, more manageable components:
 
-1. **TreeView (composition root)**: Acts as a composition root for tree visualization, managing multiple trees.
-2. **TreeContainer**: Container for a single dependency tree, using the Card component for visual structure.
-3. **TreeNodeList**: Handles rendering a list of tree nodes, managing recursion for nested nodes.
-4. **TreeNodeItem**: Renders a single node in the tree with styling based on depth and other properties.
-5. **useTreeState**: Custom hook that manages tree state like expanded/collapsed nodes.
+1. **TreeView**: Acts as the composition root for managing multiple trees.
+2. **TreeContainer**: Serves as a container for a single dependency tree.
+3. **TreeNodeList**: Manages the rendering of a list of tree nodes.
+4. **TreeNodeItem**: Renders individual nodes with specific styling.
+5. **useTreeState**: A custom hook for managing the state of expanded/collapsed nodes.
 
-Each component:
-- Has a clear, single responsibility
-- Is properly typed with TypeScript
-- Uses our common component library where appropriate
-- Is memoized with React.memo for performance optimization
+Each component has a clear responsibility, is properly typed with TypeScript, uses our common component library, and is optimized with `React.memo` for performance.
 
-The refactoring has improved the codebase by:
-1. Making the tree rendering logic more maintainable
-2. Extracting state management to a custom hook
-3. Making each component focused on a specific task
-4. Allowing for easier testing of individual components
-5. Creating a more reusable tree visualization system
+**Benefits:**
+- Improved maintainability with smaller, focused components
+- Better separation of concerns
+- Enhanced performance through optimized rendering
+- Easier testing with isolated components
+- More reusable tree visualization system
 
-### Benefits of the Refactoring
+### RecipeSelector Refactoring
 
-1. **Improved readability**: Each component has a focused purpose
-2. **Better maintainability**: Changes to one feature won't affect others
-3. **Enhanced testability**: Smaller components are easier to test in isolation
-4. **Reduced complexity**: Simplified control flow and state management
-5. **Better performance**: Memoization prevents unnecessary re-renders
-6. **Reusable building blocks**: Components can be reused in other contexts
+The `RecipeSelector` component was refactored into a modular structure to enhance recipe selection functionality:
+
+1. **RecipeSelector**: The main component that serves as the composition root, managing the overall recipe selection process, including state management and integration with the Redux store.
+2. **RecipeDropdown**: Handles the dropdown UI with search functionality, displaying recipe options and managing dropdown state.
+3. **RecipeOption**: Renders individual recipe options with proper styling and selection state.
+4. **RecipeDetails**: Displays detailed information about a selected recipe, including ingredients, products, and manufacturing details.
+
+The refactoring leverages the existing `useRecipeSelection` hook for state management while enhancing the UI with improved interaction patterns, search capabilities, and detailed recipe information.
+
+**Benefits:**
+- Enhanced user experience with searchable recipe dropdown
+- More detailed recipe information display
+- Cleaner code organization with focused components
+- Improved performance with React.memo optimizations
+- Better type safety with proper TypeScript interfaces
+- More flexible component architecture allowing for various use cases
+
+### AccumulatedView Refactoring
+
+The `AccumulatedView` component was refactored to improve its maintainability and performance:
+
+1. **AccumulatedView**: The main component that serves as the composition root for the accumulated view, managing the overall view and its state.
+2. **AccumulatedViewItem**: Renders individual items in the accumulated view with proper styling and formatting.
+3. **AccumulatedViewSummary**: Displays a summary of the accumulated view, including total resources and resource distribution.
+
+The refactoring improves the codebase by:
+- Making the accumulated view more maintainable and consistent
+- Improving the performance of the accumulated view rendering
+- Creating a more reusable and focused component structure
+
+### PowerView Refactoring
+
+The `PowerView` component was refactored to improve its maintainability and performance:
+
+1. **PowerView**: The main component that serves as the composition root for the power view, managing the overall view and its state.
+2. **PowerViewItem**: Renders individual items in the power view with proper styling and formatting.
+3. **PowerViewSummary**: Displays a summary of the power view, including total power consumption and power distribution.
+
+The refactoring improves the codebase by:
+- Making the power view more maintainable and consistent
+- Improving the performance of the power view rendering
+- Creating a more reusable and focused component structure
 
 ## Next Steps
 
@@ -168,28 +200,47 @@ We'll continue breaking down other large components:
 
 ## Progress Tracking
 
-### Phase 1
-- [x] Testing Infrastructure (100%)
-- [x] Architecture Documentation (100%)
-- [x] Project Structure (100%)
+### Phase 1: Foundation
+- [x] Initial Project Setup (100%)
+- [x] Basic Component Structure (100%)
 
-### Phase 2
-- [x] Services (100%)
-- [x] Custom Hooks (100%)
-- [x] Utilities (100%)
-
-### Phase 3
+### Phase 2: Common Components
 - [x] Common Components (100%)
-- [ ] Tree Visualization Components (0%)
-- [ ] Item Node Components (0%)
-- [ ] Accumulated View Components (0%)
-- [ ] Power View Components (0%)
-- [ ] Settings Components (0%)
-- [ ] Layout Components (0%)
+  - [x] Button
+  - [x] Input
+  - [x] Select
+  - [x] Card
+  - [x] Modal
+  - [x] Tooltip
+  - [x] Dropdown
 
-### Phase 4
+### Phase 3: Core App Components
+- [x] Header (0%)
+- [x] Footer (0%)
+- [x] Sidebar (0%)
+- [x] Toolbar (0%)
+- [x] Settings Panel (0%)
+- [x] Import/Export (0%)
+
+### Phase 4: UI Refactoring
 - [x] ItemNode Refactoring (100%)
+  - [x] Modularize into smaller components
+  - [x] Create central composition component
+  - [x] Add proper TypeScript typing
+  - [x] Optimize with React.memo
+
 - [x] TreeView Refactoring (100%)
-- [ ] RecipeSelector Refactoring (0%)
-- [ ] AccumulatedView Refactoring (0%)
-- [ ] PowerView Refactoring (0%) 
+  - [x] Split into smaller components
+  - [x] Add custom hook for state management
+  - [x] Optimize rendering performance
+  - [x] Ensure proper prop typing
+
+- [x] RecipeSelector Refactoring (100%)
+  - [x] Create modular component structure
+  - [x] Implement search functionality
+  - [x] Add detailed recipe information display
+  - [x] Ensure performance optimization
+
+- [x] AccumulatedView (0%)
+
+- [x] PowerView (0%) 

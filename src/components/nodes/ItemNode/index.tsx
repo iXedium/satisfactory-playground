@@ -11,9 +11,21 @@ import RecipeSection from "./RecipeSection";
 import MachineSection from "./MachineSection";
 import ExcessSection from "./ExcessSection";
 import ItemFooter from "./ItemFooter";
-import { Recipe } from "../../../types/core";
+import { Recipe, Item } from "../../../types/core";
 import useItemData from "../../../hooks/useItemData";
 import { theme } from "../../../styles/theme";
+
+// This interface defines the props for the useItemData hook
+interface UseItemDataProps {
+  itemId: string;
+}
+
+// This interface defines the result of the useItemData hook
+interface UseItemDataResult {
+  item: Item | null;
+  loading: boolean;
+  error: string | null;
+}
 
 export interface ItemNodeProps {
   itemId: string;
@@ -37,6 +49,7 @@ export interface ItemNodeProps {
   showMachineMultiplier?: boolean;
   onDelete?: () => void;
   onImport?: () => void;
+  nodeId: string;
 }
 
 /**
@@ -65,6 +78,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   showMachineMultiplier = false,
   onDelete,
   onImport,
+  nodeId,
 }) => {
   // Use custom hook to fetch item data
   const { item, isLoading } = useItemData(itemId);
@@ -120,6 +134,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             recipes={recipes}
             selectedRecipeId={selectedRecipeId}
             onRecipeChange={onRecipeChange}
+            itemId={itemId}
+            nodeId={nodeId}
           />
         )}
 

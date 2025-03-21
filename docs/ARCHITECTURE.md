@@ -181,4 +181,43 @@ src/components/tree/
 
 This modular approach makes the code more maintainable, testable, and scalable while reducing the complexity of individual files.
 
+### RecipeSelector Component
+The `RecipeSelector` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all recipe components
+- `RecipeSelector.tsx`: Main component for recipe selection
+- `RecipeDropdown.tsx`: Dropdown with search functionality
+- `RecipeOption.tsx`: Individual recipe option in dropdown
+- `RecipeDetails.tsx`: Detailed recipe information display
+
+## Component Structure
+
+### ItemNode Component
+The `ItemNode` component has been refactored into a modular structure:
+
+- `index.tsx`: Composition root
+- `ItemHeader.tsx`: Header with icon, name, and amount
+- `RecipeSection.tsx`: Recipe selection dropdown
+- `MachineSection.tsx`: Machine count and efficiency
+- `ExcessSection.tsx`: Excess production controls
+- `ItemFooter.tsx`: Action buttons in footer
+
+### TreeView Component
+The `TreeView` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all tree components
+- `TreeView.tsx`: Composition root
+- `TreeContainer.tsx`: Container for a single tree
+- `TreeNodeList.tsx`: Handles list of tree nodes
+- `TreeNodeItem.tsx`: Renders a single tree node
+
+### RecipeSelector Component
+The `RecipeSelector` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all recipe components
+- `RecipeSelector.tsx`: Main component for recipe selection
+- `RecipeDropdown.tsx`: Dropdown with search functionality
+- `RecipeOption.tsx`: Individual recipe option in dropdown
+- `RecipeDetails.tsx`: Detailed recipe information display
+
 // ... existing code ... 
