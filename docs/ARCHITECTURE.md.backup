@@ -152,6 +152,54 @@ For large, complex components, we follow a component breakdown approach to impro
 4. **Custom Hooks for Logic**: Business logic and data fetching are extracted into custom hooks.
 5. **Memoization**: Components use React.memo to prevent unnecessary re-renders.
 
+Example: ItemNode Component
+
+The ItemNode component, which displays item information in the dependency tree, is broken down into:
+
+```
+src/components/nodes/ItemNode/
+├── index.tsx         # Composition root
+├── ItemHeader.tsx    # Header with icon, name, and amount
+├── RecipeSection.tsx # Recipe selection dropdown
+├── MachineSection.tsx # Machine count and efficiency
+├── ExcessSection.tsx # Excess production controls
+└── ItemFooter.tsx    # Action buttons in footer
+```
+
+Example: TreeView Component
+
+The TreeView component, which visualizes the dependency trees, is broken down into:
+
+```
+src/components/tree/
+├── index.ts          # Exports all tree components
+├── TreeView.tsx      # Composition root
+├── TreeContainer.tsx # Container for a single tree
+├── TreeNodeList.tsx  # Handles list of tree nodes
+└── TreeNodeItem.tsx  # Renders a single tree node
+```
+
+This modular approach makes the code more maintainable, testable, and scalable while reducing the complexity of individual files.
+
+### RecipeSelector Component
+The `RecipeSelector` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all recipe components
+- `RecipeSelector.tsx`: Main component for recipe selection
+- `RecipeDropdown.tsx`: Dropdown with search functionality
+- `RecipeOption.tsx`: Individual recipe option in dropdown
+- `RecipeDetails.tsx`: Detailed recipe information display
+
+### PowerView Component
+The `PowerView` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all power view components
+- `PowerView.tsx`: Main composition component that manages state and coordinates other components
+- `PowerViewHeader.tsx`: Provides search and sorting controls
+- `PowerViewFilters.tsx`: Displays filter options for different machine types and view modes
+- `PowerViewSummary.tsx`: Shows power statistics summary including consumption, production, and balance
+- `PowerViewItem.tsx`: Renders individual machine power information with detailed and compact view modes
+
 ## Component Structure
 
 ### ItemNode Component
@@ -177,10 +225,10 @@ The `TreeView` component has been refactored into a modular structure:
 The `RecipeSelector` component has been refactored into a modular structure:
 
 - `index.ts`: Exports all recipe components
-- `RecipeSelector.tsx`: Main component for recipe selection that integrates with the useRecipeSelection hook
-- `RecipeDropdown.tsx`: Dropdown with search functionality for selecting recipes
-- `RecipeOption.tsx`: Individual recipe option in dropdown with visual indicators
-- `RecipeDetails.tsx`: Detailed recipe information display with ingredients and products
+- `RecipeSelector.tsx`: Main component for recipe selection
+- `RecipeDropdown.tsx`: Dropdown with search functionality
+- `RecipeOption.tsx`: Individual recipe option in dropdown
+- `RecipeDetails.tsx`: Detailed recipe information display
 
 ### PowerView Component
 The `PowerView` component has been refactored into a modular structure:
@@ -192,12 +240,44 @@ The `PowerView` component has been refactored into a modular structure:
 - `PowerViewSummary.tsx`: Shows power statistics summary including consumption, production, and balance
 - `PowerViewItem.tsx`: Renders individual machine power information with detailed and compact view modes
 
-### AccumulatedView Component
-The `AccumulatedView` component has been refactored into a modular structure:
+## Component Structure
 
-- `index.ts`: Exports all accumulated view components
-- `AccumulatedView.tsx`: Main component that processes dependency trees and manages component state
-- `AccumulatedViewHeader.tsx`: Provides search and sorting controls for accumulated items
-- `AccumulatedViewFilters.tsx`: Displays filter options for different item types
-- `AccumulatedViewSummary.tsx`: Shows summary statistics of resources across all trees
-- `AccumulatedViewItem.tsx`: Renders individual items with recipe and machine details 
+### ItemNode Component
+The `ItemNode` component has been refactored into a modular structure:
+
+- `index.tsx`: Composition root
+- `ItemHeader.tsx`: Header with icon, name, and amount
+- `RecipeSection.tsx`: Recipe selection dropdown
+- `MachineSection.tsx`: Machine count and efficiency
+- `ExcessSection.tsx`: Excess production controls
+- `ItemFooter.tsx`: Action buttons in footer
+
+### TreeView Component
+The `TreeView` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all tree components
+- `TreeView.tsx`: Composition root
+- `TreeContainer.tsx`: Container for a single tree
+- `TreeNodeList.tsx`: Handles list of tree nodes
+- `TreeNodeItem.tsx`: Renders a single tree node
+
+### RecipeSelector Component
+The `RecipeSelector` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all recipe components
+- `RecipeSelector.tsx`: Main component for recipe selection
+- `RecipeDropdown.tsx`: Dropdown with search functionality
+- `RecipeOption.tsx`: Individual recipe option in dropdown
+- `RecipeDetails.tsx`: Detailed recipe information display
+
+### PowerView Component
+The `PowerView` component has been refactored into a modular structure:
+
+- `index.ts`: Exports all power view components
+- `PowerView.tsx`: Main composition component that manages state and coordinates other components
+- `PowerViewHeader.tsx`: Provides search and sorting controls
+- `PowerViewFilters.tsx`: Displays filter options for different machine types and view modes
+- `PowerViewSummary.tsx`: Shows power statistics summary including consumption, production, and balance
+- `PowerViewItem.tsx`: Renders individual machine power information with detailed and compact view modes
+
+// ... existing code ... 
