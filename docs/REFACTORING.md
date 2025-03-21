@@ -125,6 +125,29 @@ Each component:
 - Uses our common component library (Button, Input, Select, etc.)
 - Is memoized with React.memo to prevent unnecessary re-renders
 
+### TreeView Refactoring
+
+The `TreeView` component has been broken down into the following smaller components:
+
+1. **TreeView (composition root)**: Acts as a composition root for tree visualization, managing multiple trees.
+2. **TreeContainer**: Container for a single dependency tree, using the Card component for visual structure.
+3. **TreeNodeList**: Handles rendering a list of tree nodes, managing recursion for nested nodes.
+4. **TreeNodeItem**: Renders a single node in the tree with styling based on depth and other properties.
+5. **useTreeState**: Custom hook that manages tree state like expanded/collapsed nodes.
+
+Each component:
+- Has a clear, single responsibility
+- Is properly typed with TypeScript
+- Uses our common component library where appropriate
+- Is memoized with React.memo for performance optimization
+
+The refactoring has improved the codebase by:
+1. Making the tree rendering logic more maintainable
+2. Extracting state management to a custom hook
+3. Making each component focused on a specific task
+4. Allowing for easier testing of individual components
+5. Creating a more reusable tree visualization system
+
 ### Benefits of the Refactoring
 
 1. **Improved readability**: Each component has a focused purpose
@@ -156,7 +179,7 @@ We'll continue breaking down other large components:
 - [x] Utilities (100%)
 
 ### Phase 3
-- [ ] Common Components (0%)
+- [x] Common Components (100%)
 - [ ] Tree Visualization Components (0%)
 - [ ] Item Node Components (0%)
 - [ ] Accumulated View Components (0%)
@@ -165,8 +188,8 @@ We'll continue breaking down other large components:
 - [ ] Layout Components (0%)
 
 ### Phase 4
-- [ ] ItemNode Refactoring (0%)
-- [ ] TreeView Refactoring (0%)
+- [x] ItemNode Refactoring (100%)
+- [x] TreeView Refactoring (100%)
 - [ ] RecipeSelector Refactoring (0%)
 - [ ] AccumulatedView Refactoring (0%)
 - [ ] PowerView Refactoring (0%) 

@@ -166,6 +166,19 @@ src/components/nodes/ItemNode/
 └── ItemFooter.tsx    # Action buttons in footer
 ```
 
+Example: TreeView Component
+
+The TreeView component, which visualizes the dependency trees, is broken down into:
+
+```
+src/components/tree/
+├── index.ts          # Exports all tree components
+├── TreeView.tsx      # Composition root
+├── TreeContainer.tsx # Container for a single tree
+├── TreeNodeList.tsx  # Handles list of tree nodes
+└── TreeNodeItem.tsx  # Renders a single tree node
+```
+
 This modular approach makes the code more maintainable, testable, and scalable while reducing the complexity of individual files.
 
 // ... existing code ... 
