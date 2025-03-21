@@ -225,6 +225,54 @@ The refactoring improves the codebase by:
 - Improving the performance of the power view rendering
 - Creating a more reusable and focused component structure
 
+## Calculator Refactoring
+
+### Component Breakdown
+
+The Calculator component has been implemented as a modular system focused on resource and machine calculations:
+
+1. **Calculator**: Acts as the composition root, managing state and coordinating the subcomponents.
+2. **CalculatorHeader**: Provides the calculator title and action buttons (save, load, clear).
+3. **RecipeSelection**: Allows users to select items and recipes using the common Select component.
+4. **ProductionInput**: Provides input for specifying desired production rate with quick value buttons.
+5. **RequirementsOutput**: Displays calculated resource requirements grouped by type.
+6. **MachineRequirements**: Shows required machines, counts, efficiency, and power consumption.
+7. **PowerRequirements**: Displays total power consumption and a breakdown by machine type.
+
+### Implementation Details
+
+* **Calculation Logic**: 
+  - Extracted all calculation logic to a dedicated `useCalculator` hook
+  - Properly memoized expensive calculations for better performance
+  - Implemented real-time updates as user inputs change
+
+* **Data Flow**:
+  - User selects an item → Available recipes load
+  - User selects a recipe → Machine data loads
+  - User inputs production rate → Requirements calculate
+
+* **User Experience**:
+  - Clear visual hierarchy with focused inputs
+  - Real-time feedback as values change
+  - Helpful tips and placeholder text
+  - Quick value buttons for common production rates
+  - Loading states and error handling
+
+* **Performance Optimizations**:
+  - All components use React.memo to prevent unnecessary renders
+  - useMemo and useCallback for expensive calculations and callbacks
+  - Proper dependency arrays to avoid recalculation
+
+### Benefits
+
+* **Improved User Experience**: Users can quickly calculate requirements without creating full dependency trees
+* **Enhanced Maintainability**: Each component has a clear, single responsibility
+* **Better Testability**: Components and hooks can be tested in isolation
+* **Code Reusability**: The calculator pattern can be reused in other contexts
+* **Separation of Concerns**: UI components are separated from calculation logic
+
+The Calculator refactoring demonstrates the application of all the architectural principles established in this project, resulting in a clean, maintainable, and user-friendly interface for production calculations.
+
 ## Next Steps
 
 We'll continue breaking down other large components:
@@ -236,33 +284,35 @@ We'll continue breaking down other large components:
 
 ## Progress Tracking
 
-### Phase 1: Setup and Planning (100%)
-- [x] Project setup (100%)
-- [x] Component library research (100%)
-- [x] TypeScript conversion planning (100%)
-- [x] Architecture design (100%)
+### Phase 1: Planning and Analysis (100%)
+- [x] Identify components to refactor (100%)
+- [x] Define component boundaries (100%)
+- [x] Create refactoring roadmap (100%)
 
-### Phase 2: Core Infrastructure (100%)
-- [x] TypeScript configuration (100%)
-- [x] Theming system (100%)
-- [x] State management (100%)
-- [x] Routing (100%)
+### Phase 2: Set Up Infrastructure (100%)
+- [x] Create directory structure (100%)
+- [x] Set up testing framework (100%)
+- [x] Create common utilities (100%)
 
 ### Phase 3: Common Components (100%)
 - [x] Button (100%)
 - [x] Input (100%)
-- [x] Card (100%)
 - [x] Select (100%)
+- [x] Card (100%)
 - [x] Modal (100%)
+- [x] Tooltip (100%)
 - [x] Icons (100%)
-- [x] Typography (100%)
 
-### Phase 4: Feature Components (100%)
+### Phase 4: Feature Components (62.5%)
 - [x] ItemNode Refactoring (100%)
 - [x] TreeView Refactoring (100%)
-- [x] PowerView Refactoring (100%)
 - [x] RecipeSelector Refactoring (100%)
 - [x] AccumulatedView Refactoring (100%)
+- [x] PowerView Refactoring (100%)
+- [x] Calculator Refactoring (100%)
+- [ ] Settings Interface Refactoring (0%)
+- [ ] Import/Export Refactoring (0%)
+- [ ] Global State Management Refactoring (0%)
 
 ## RecipeSelector Refactoring
 

@@ -174,30 +174,67 @@ The `TreeView` component has been refactored into a modular structure:
 - `TreeNodeItem.tsx`: Renders a single tree node
 
 ### RecipeSelector Component
-The `RecipeSelector` component has been refactored into a modular structure:
 
-- `index.ts`: Exports all recipe components
-- `RecipeSelector.tsx`: Main component for recipe selection that integrates with the useRecipeSelection hook
-- `RecipeDropdown.tsx`: Dropdown with search functionality for selecting recipes
-- `RecipeOption.tsx`: Individual recipe option in dropdown with visual indicators
-- `RecipeDetails.tsx`: Detailed recipe information display with ingredients and products
+The RecipeSelector component is designed as a modular system for selecting recipes for items. It follows the same pattern of breaking down complex functionality into smaller, focused components.
+
+#### Structure:
+
+- `index.ts`: Exports all recipe selection components for easier imports
+- `RecipeSelector.tsx`: Main component that manages recipe selection state
+- `RecipeDropdown.tsx`: The dropdown component for selecting recipes
+- `RecipeOption.tsx`: Individual recipe option item for the dropdown
+- `RecipeDetails.tsx`: Component for displaying recipe details
+
+This modular design provides several benefits:
+- Each component has a single responsibility
+- Components can be tested independently
+- The implementation is more maintainable
+- Styles and behavior can be modified more easily
+- Clear separation of concerns between selection UI and recipe details
 
 ### PowerView Component
-The `PowerView` component has been refactored into a modular structure:
+
+The PowerView component is designed to display power statistics for machines in the production network. It's built as a modular system with clean separation of concerns.
+
+#### Structure:
 
 - `index.ts`: Exports all power view components
-- `PowerView.tsx`: Main composition component that manages state and coordinates other components
-- `PowerViewHeader.tsx`: Provides search and sorting controls
-- `PowerViewFilters.tsx`: Displays filter options for different machine types and view modes
-- `PowerViewSummary.tsx`: Shows power statistics summary including consumption, production, and balance
-- `PowerViewItem.tsx`: Renders individual machine power information with detailed and compact view modes
+- `PowerView.tsx`: Main component that manages the display of power statistics
+- `PowerViewHeader.tsx`: Contains search and sorting controls
+- `PowerViewFilters.tsx`: Provides filtering options for the power view
+- `PowerViewItem.tsx`: Renders individual machine items with power information
+- `PowerViewSummary.tsx`: Displays aggregate statistics about power consumption
+
+This modular approach provides better maintainability, easier testing, and clearer separation of concerns between different aspects of the power view functionality.
 
 ### AccumulatedView Component
-The `AccumulatedView` component has been refactored into a modular structure:
+
+The AccumulatedView component is designed to show an aggregated view of all items in the production network. It follows the modular component architecture pattern.
+
+#### Structure:
 
 - `index.ts`: Exports all accumulated view components
-- `AccumulatedView.tsx`: Main component that processes dependency trees and manages component state
-- `AccumulatedViewHeader.tsx`: Provides search and sorting controls for accumulated items
+- `AccumulatedView.tsx`: Main component that processes dependency trees and manages state
+- `AccumulatedViewHeader.tsx`: Provides search and sorting controls for items
 - `AccumulatedViewFilters.tsx`: Displays filter options for different item types
 - `AccumulatedViewSummary.tsx`: Shows summary statistics of resources across all trees
-- `AccumulatedViewItem.tsx`: Renders individual items with recipe and machine details 
+- `AccumulatedViewItem.tsx`: Renders individual items with recipe and machine details
+
+This modular design makes the component more maintainable and testable, with each subcomponent having a single responsibility within the accumulated view system.
+
+### Calculator Component
+
+The Calculator component provides a dedicated interface for performing production calculations without creating full dependency trees. It allows users to quickly calculate resource requirements, machine counts, and power consumption for specific recipes.
+
+#### Structure:
+
+- `index.ts`: Exports all calculator components for easier imports
+- `Calculator.tsx`: Main component that manages calculator state and coordinates subcomponents
+- `CalculatorHeader.tsx`: Contains the header with title and action buttons
+- `RecipeSelection.tsx`: Allows users to select an item and recipe for calculations
+- `ProductionInput.tsx`: Input controls for specifying desired production rate
+- `RequirementsOutput.tsx`: Displays calculated resource requirements
+- `MachineRequirements.tsx`: Shows required machines and their efficiency
+- `PowerRequirements.tsx`: Displays power consumption statistics
+
+The Calculator component leverages the `useCalculator` hook for state management and calculations. This modular design ensures each component has a single responsibility, making the calculator system maintainable and extensible.

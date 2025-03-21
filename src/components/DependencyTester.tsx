@@ -9,7 +9,7 @@ import DependencyTree from "./DependencyTree";
 import { getComponents } from "../data/dbQueries";
 import { setRecipeSelection, loadRecipeSelections } from "../features/recipeSelectionsSlice";
 import { findAffectedBranches } from "../utils/treeDiffing";
-import AccumulatedView from "./AccumulatedView";
+import AccumulatedViewWrapper from "./accumulated/AccumulatedViewWrapper";
 import CommandBar from "./CommandBar";
 import { theme } from "../styles/theme";
 
@@ -760,7 +760,7 @@ const DependencyTester: React.FC = () => {
               ))}
             </div>
           ) : (
-            <AccumulatedView
+            <AccumulatedViewWrapper
               onRecipeChange={handleTreeRecipeChange}
               onExcessChange={handleExcessChange}
               excessMap={excessMap}
