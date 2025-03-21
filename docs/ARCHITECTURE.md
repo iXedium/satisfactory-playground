@@ -292,3 +292,112 @@ The Import/Export system enables users to save and load application data, facili
 - **CommandBar**: Quick access button for the import/export modal
 - **AdvancedSettings**: Embedded import/export section in the settings panel
 - **Redux Store**: Integration with the global state management system
+
+## State Management
+
+The application uses a centralized state management approach combining Redux and React's state management hooks with a custom persistence layer. This architecture provides a consistent, type-safe way to manage state across components.
+
+### Core Principles
+
+1. **Single Source of Truth**: Global state lives in Redux, with clearly defined slices for different domains.
+2. **Type Safety**: All state interactions are fully typed, providing IDE autocompletion and compile-time error detection.
+3. **Persistence**: State is automatically persisted to localStorage with versioning and migration support.
+4. **Encapsulation**: State access is encapsulated in custom hooks that provide business logic and access patterns.
+
+### Architecture Components
+
+#### State Store
+
+- **Redux Store Configuration** (`src/store/configureStore.ts`): Central configuration for Redux with persistence.
+- **Root State and Dispatch Types** (`src/store/index.ts`): Type definitions for the global state.
+
+#### State Slices
+
+- **UI Slice** (`src/features/uiSlice.ts`): Manages global UI state such as active tabs, modals, and theme.
+- **Settings Slice** (`src/features/settingsSlice.ts`): User preferences and application settings.
+- **Dependencies Slice** (`src/features/dependencySlice.ts`): Core dependency tree and calculation state.
+- **Data Slice** (`src/features/dataSlice.ts`): Application data models and definitions.
+- **Import/Export Slice** (`src/features/importExportSlice.ts`): State for data import and export functions.
+
+#### Persistence Layer
+
+- **Persistence Service** (`src/services/persistence/index.ts`): Service for storing and retrieving state with versioning.
+
+#### Access Patterns
+
+- **Store Hooks** (`src/hooks/useStore.ts`): Typed hooks for accessing the Redux store.
+- **Persistent State Hooks** (`src/hooks/usePersistentState.ts`): Hooks for state with automatic persistence.
+- **Domain-Specific Hooks**: 
+  - `useUI.ts`: UI-specific state and actions
+  - `useSettings.ts`: Application settings
+  - `useCalculator.ts`: Calculator state and operations
+  - `useTreeOperations.ts`: Tree manipulation operations
+
+### Data Flow
+
+```
+┌────────────────┐     ┌───────────────┐     ┌─────────────────┐
+│                │     │               │     │                 │
+│  Components    │────▶│  Custom Hooks │────▶│   Redux Store   │
+│                │◀────│               │◀────│                 │
+└────────────────┘     └───────────────┘     └─────────────────┘
+                                                     │
+                                                     ▼
+                                             ┌─────────────────┐
+                                             │                 │
+                                             │ Persistence     │
+                                             │ Service         │
+                                             │                 │
+                                             └─────────────────┘
+                                                     │
+                                                     ▼
+                                             ┌─────────────────┐
+                                             │                 │
+                                             │  localStorage   │
+                                             │                 │
+                                             └─────────────────┘
+```
+
+### Best Practices
+
+1. **Use Custom Hooks**: Always access state through domain-specific hooks rather than direct store access.
+2. **Keep Components Pure**: Components should be presentational where possible, with state logic in hooks.
+3. **Minimize State Updates**: Batch state updates and avoid unnecessary renders.
+4. **Follow Type Patterns**: Maintain type consistency across state interfaces.
+5. **Handle Migrations**: Use the persistence service's migration capabilities for breaking changes.
+
+### Example Usage
+
+```tsx
+// Component using the state management system
+import { useUI } from '../hooks/useUI';
+import { useSettings } from '../hooks/useSettings';
+
+function MyComponent() {
+  // Access UI state and actions
+  const { 
+    theme, 
+    showModal, 
+    isModalOpen 
+  } = useUI();
+  
+  // Access settings
+  const { 
+    showMachines, 
+    toggleBooleanSetting 
+  } = useSettings();
+  
+  // Component logic using state management
+  return (
+    <div className={theme === 'dark' ? 'dark-theme' : 'light-theme'}>
+      {showMachines && <MachineList />}
+      <button onClick={() => toggleBooleanSetting('showMachines')}>
+        Toggle Machines
+      </button>
+      <button onClick={() => showModal('settings')}>
+        Open Settings
+      </button>
+    </div>
+  );
+}
+```
