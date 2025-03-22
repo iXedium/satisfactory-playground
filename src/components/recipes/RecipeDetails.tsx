@@ -78,6 +78,7 @@ const RecipeDetails: React.FC<RecipeDetailsProps> = ({
             className="recipe-details__ingredients" 
             style={{ 
               flex: compact ? '1' : 'auto',
+              marginRight: compact ? '10px' : '20px',
             }}
           >
             <h4 style={{ margin: '0 0 5px 0', fontSize: compact ? '12px' : '14px' }}>
@@ -88,9 +89,9 @@ const RecipeDetails: React.FC<RecipeDetailsProps> = ({
               padding: '0 0 0 20px',
               listStyle: 'disc',
             }}>
-              {recipe.ingredients.map(ing => (
-                <li key={ing.itemId} style={{ marginBottom: '3px' }}>
-                  <span>{ing.itemName || ing.itemId}</span>
+              {recipe.ingredients?.map(ing => (
+                <li key={ing.id} style={{ marginBottom: '3px' }}>
+                  <span>{ing.itemName || ing.id}</span>
                   {ing.amount && (
                     <span style={{ color: '#666', marginLeft: '5px' }}>
                       ({ing.amount}/min)
@@ -118,9 +119,9 @@ const RecipeDetails: React.FC<RecipeDetailsProps> = ({
               padding: '0 0 0 20px',
               listStyle: 'disc',
             }}>
-              {recipe.products.map(prod => (
-                <li key={prod.itemId} style={{ marginBottom: '3px' }}>
-                  <span>{prod.itemName || prod.itemId}</span>
+              {recipe.products?.map(prod => (
+                <li key={prod.id} style={{ marginBottom: '3px' }}>
+                  <span>{prod.itemName || prod.id}</span>
                   {prod.amount && (
                     <span style={{ color: '#666', marginLeft: '5px' }}>
                       ({prod.amount}/min)

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Button } from '../ui/button';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { useImportExport } from '../../hooks/useImportExport';
-import { CloudArrowUpIcon, CloudArrowDownIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { CloudArrowUpIcon, CloudArrowDownIcon, ExclamationTriangleIcon } from '../icons';
 
 /**
  * Import/Export Section Component

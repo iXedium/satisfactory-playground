@@ -114,7 +114,7 @@ const RecipeSelector: React.FC<RecipeSelectorProps> = ({
       {/* Recipe dropdown */}
       <RecipeDropdown
         recipes={filteredRecipes}
-        selectedRecipeId={selectedRecipeId}
+        selectedRecipeId={selectedRecipeId || undefined}
         onSelect={handleSelect}
         onSearchChange={handleSearchChange}
         searchTerm={searchTerm}

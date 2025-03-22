@@ -2,41 +2,33 @@ import React from 'react';
 
 export type CardVariant = 'default' | 'outlined' | 'elevated';
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  /**
-   * Card variant
-   */
+export interface CardProps {
+  /** Card variant */
   variant?: CardVariant;
-  
-  /**
-   * Card title
-   */
-  title?: React.ReactNode;
-  
-  /**
-   * Card subtitle
-   */
-  subtitle?: React.ReactNode;
-  
-  /**
-   * Card actions (buttons, etc.)
-   */
-  actions?: React.ReactNode;
-  
-  /**
-   * Remove padding
-   */
+  /** Whether to disable padding */
   noPadding?: boolean;
-  
-  /**
-   * Render header separately
-   */
+  /** Card title */
+  title?: React.ReactNode;
+  /** Card subtitle */
+  subtitle?: React.ReactNode;
+  /** Card actions */
+  actions?: React.ReactNode;
+  /** Custom header render */
   renderHeader?: () => React.ReactNode;
-  
-  /**
-   * Render footer separately
-   */
+  /** Custom footer render */
   renderFooter?: () => React.ReactNode;
+  /** Card content */
+  children: React.ReactNode;
+  /** Additional class name */
+  className?: string;
+  /** Style object */
+  style?: React.CSSProperties;
+  /** onClick handler */
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** onMouseEnter handler */
+  onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** onMouseLeave handler */
+  onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 /**
@@ -44,10 +36,10 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
  */
 export const Card: React.FC<CardProps> = ({
   variant = 'default',
+  noPadding = false,
   title,
   subtitle,
   actions,
-  noPadding = false,
   renderHeader,
   renderFooter,
   children,

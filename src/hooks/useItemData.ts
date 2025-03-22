@@ -23,8 +23,15 @@ const searchItems = async (term: string): Promise<Item[]> => {
 import { memoizeWithTTL } from '../utils/memoization';
 
 // Cache item fetching with 5 minute TTL
-const getItemsCached = memoizeWithTTL(getItems, 5 * 60 * 1000);
-const getItemByIdCached = memoizeWithTTL(getItemById, 5 * 60 * 1000);
+const getItemsCached = async () => {
+  try {
+    const items = await db.items.toArray();
+    return items;
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    return [];
+  }
+};
 
 interface UseItemDataProps {
   initialItemId?: string;
@@ -78,7 +85,7 @@ export function useItemData({
   useEffect(() => {
     if (selectedItemId) {
       setIsLoading(true);
-      getItemByIdCached(selectedItemId)
+      getItemById(selectedItemId)
         .then(item => {
           setSelectedItem(item || null);
           setError(null);
@@ -119,7 +126,7 @@ export function useItemData({
    */
   const getItemName = useCallback(async (itemId: string): Promise<string> => {
     try {
-      const item = await getItemByIdCached(itemId);
+      const item = await getItemById(itemId);
       return item ? item.name : 'Unknown Item';
     } catch (err) {
       return 'Unknown Item';
@@ -131,13 +138,11 @@ export function useItemData({
    */
   const refreshItems = useCallback((): void => {
     setIsLoading(true);
-    Promise.all([
-      getItems(),
-      selectedItemId ? getItemById(selectedItemId) : Promise.resolve(null)
-    ])
-      .then(([allItems, item]) => {
-        setItems(allItems);
+    getItemsCached()
+      .then((fetchedItems) => {
+        setItems(fetchedItems);
         if (selectedItemId) {
+          const item = fetchedItems.find(item => item.id === selectedItemId) || null;
           setSelectedItem(item);
         }
         setError(null);

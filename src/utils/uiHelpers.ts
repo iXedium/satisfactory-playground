@@ -92,21 +92,20 @@ export function sortNodesByProperty<T extends { [key: string]: any }>(
  * @param searchTerm The search term
  * @returns Filtered array of nodes that match the search term
  */
-export function filterNodesBySearchTerm(
-  nodes: AccumulatedNode[],
-  searchTerm: string
-): AccumulatedNode[] {
-  if (!searchTerm.trim()) {
-    return nodes;
-  }
+export function filterNodesBySearch(nodes: AccumulatedNode[], searchTerm: string): AccumulatedNode[] {
+  if (!searchTerm) return nodes;
   
-  const lowerSearchTerm = searchTerm.toLowerCase().trim();
+  const lowerSearchTerm = searchTerm.toLowerCase();
   
-  return nodes.filter((node) => {
+  return nodes.filter(node => {
+    // Check if node matches search term
     return (
-      node.item.name.toLowerCase().includes(lowerSearchTerm) ||
-      node.item.description?.toLowerCase().includes(lowerSearchTerm) ||
-      node.primaryNodeId.toLowerCase().includes(lowerSearchTerm)
+      // Match by item name
+      node.item?.name?.toLowerCase().includes(lowerSearchTerm) ||
+      // Match by item description
+      node.item?.description?.toLowerCase().includes(lowerSearchTerm) ||
+      // Match by primary node ID
+      node.primaryNodeId?.toLowerCase().includes(lowerSearchTerm)
     );
   });
 }
@@ -169,4 +168,21 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Get the path from a node to the root (inclusive)
+ */
+export function getTreePath(node: DependencyNode | null): DependencyNode[] {
+  if (!node) return [];
+  
+  const path: DependencyNode[] = [node];
+  let current: DependencyNode | null = node;
+  
+  while (current && current.parent) {
+    path.unshift(current.parent);
+    current = current.parent;
+  }
+  
+  return path;
 } 

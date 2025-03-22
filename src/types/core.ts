@@ -86,7 +86,7 @@ export interface NormalizedTreeState {
 export interface Recipe {
   /** The recipe ID */
   id: string;
-  /** Recipe name */
+  /** The recipe name */
   name?: string;
   /** Recipe description */
   description?: string;
@@ -95,9 +95,19 @@ export interface Recipe {
   /** Output items and amounts */
   out: Record<string, number>;
   /** Input items (alternative format) */
-  ingredients?: Array<{id: string; amount: number}>;
+  ingredients?: Array<{
+    id: string; 
+    amount: number;
+    itemId?: string;
+    itemName?: string;
+  }>;
   /** Output items (alternative format) */
-  products?: Array<{id: string; amount: number}>;
+  products?: Array<{
+    id: string; 
+    amount: number;
+    itemId?: string;
+    itemName?: string;
+  }>;
   /** Recipe efficiency (0-1) */
   efficiency?: number;
   /** Recipe processing time in seconds */
@@ -311,6 +321,7 @@ export interface RecipeSelectionsState {
  */
 export interface UIState {
   activeTab: string;
+  activeTabIndex: number;
   expandedSections: Record<string, boolean>;
   modals: {
     settings: boolean;
@@ -318,9 +329,11 @@ export interface UIState {
     importExport: boolean;
   };
   sidebarOpen: boolean;
+  isSidebarOpen: boolean;
   expandedNodes: Record<string, boolean>;
   nodeExtensionOverrides: Record<string, boolean>;
   viewMode: ViewMode;
+  selectedView: string;
   nodeExtensions: NodeExtensionSettings;
   machineDisplay: MachineDisplaySettings;
 }

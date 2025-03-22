@@ -127,7 +127,7 @@ const TreeContainer: React.FC<TreeContainerProps> = ({
     
     // Use the name of the root item as the tree title
     const amount = tree.amount ? `${tree.amount.toFixed(2)}/min` : '';
-    return `${tree.name || tree.id} ${amount}`;
+    return `${tree.id} ${amount}`;
   };
   
   return (
