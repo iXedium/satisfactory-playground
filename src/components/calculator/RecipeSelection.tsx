@@ -4,9 +4,9 @@
  * Allows the user to select an item and recipe for calculations.
  */
 
-import React, { useState, useEffect } from "react";
-import { Select, Card } from "../../components/common";
-import { getComponents } from "../../data/dbQueries";
+import React, { useState, useEffect, ChangeEvent } from "react";
+import { Select, Card, SelectOption } from "../../components/common";
+import { db } from "../../data/dexieDB";
 import { Recipe, Item } from "../../types/core";
 import { theme } from "../../styles/theme";
 
@@ -42,6 +42,18 @@ export interface RecipeSelectionProps {
   onRecipeSelect: (recipeId: string) => void;
 }
 
+// Extended SelectOption with icon
+interface ItemSelectOption extends SelectOption {
+  icon?: string;
+  name: string;
+}
+
+// Extended SelectOption with description
+interface RecipeSelectOption extends SelectOption {
+  description?: string;
+  name: string;
+}
+
 /**
  * RecipeSelection component for selecting items and recipes
  */
@@ -57,26 +69,38 @@ const RecipeSelection: React.FC<RecipeSelectionProps> = ({
   
   // Load all items on component mount
   useEffect(() => {
-    getComponents().then(loadedItems => {
-      if (loadedItems) {
-        setItems(loadedItems);
-      }
-    });
+    const loadItems = async () => {
+      const loadedItems = await db.items.where("category").equals("components").toArray();
+      setItems(loadedItems);
+    };
+    
+    loadItems();
   }, []);
   
   // Format items for the Select component
-  const itemOptions = items.map(item => ({
-    id: item.id,
-    name: item.name,
+  const itemOptions: ItemSelectOption[] = items.map(item => ({
+    value: item.id,
+    label: item.name,
     icon: item.icon,
+    name: item.name,
   }));
   
   // Format recipes for the Select component
-  const recipeOptions = availableRecipes.map(recipe => ({
-    id: recipe.id,
+  const recipeOptions: RecipeSelectOption[] = availableRecipes.map(recipe => ({
+    value: recipe.id,
+    label: recipe.name || 'Unnamed Recipe',
     name: recipe.name || 'Unnamed Recipe',
     description: recipe.description,
   }));
+
+  // Handle select changes
+  const handleItemChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    onItemSelect(e.target.value);
+  };
+
+  const handleRecipeChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    onRecipeSelect(e.target.value);
+  };
   
   return (
     <div style={{ 
@@ -94,30 +118,33 @@ const RecipeSelection: React.FC<RecipeSelectionProps> = ({
           <Select
             label="Item"
             value={selectedItemId}
-            onChange={onItemSelect}
+            onChange={handleItemChange}
             options={itemOptions}
             placeholder="Select an item"
-            isLoading={isLoading}
+            disabled={isLoading}
             fullWidth
-            renderOption={(option) => (
-              <div style={{ 
-                display: "flex", 
-                alignItems: "center",
-                gap: "8px" 
-              }}>
-                {option.icon && (
-                  <img 
-                    src={option.icon} 
-                    alt={option.name} 
-                    style={{ 
-                      width: "20px", 
-                      height: "20px" 
-                    }} 
-                  />
-                )}
-                <span>{option.name}</span>
-              </div>
-            )}
+            renderOption={(option: SelectOption) => {
+              const itemOption = option as ItemSelectOption;
+              return (
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  gap: "8px" 
+                }}>
+                  {itemOption.icon && (
+                    <img 
+                      src={itemOption.icon} 
+                      alt={itemOption.name} 
+                      style={{ 
+                        width: "20px", 
+                        height: "20px" 
+                      }} 
+                    />
+                  )}
+                  <span>{itemOption.name}</span>
+                </div>
+              );
+            }}
           />
         </div>
         
@@ -126,25 +153,27 @@ const RecipeSelection: React.FC<RecipeSelectionProps> = ({
           <Select
             label="Recipe"
             value={selectedRecipeId}
-            onChange={onRecipeSelect}
+            onChange={handleRecipeChange}
             options={recipeOptions}
             placeholder="Select a recipe"
-            isLoading={isLoading}
-            disabled={!selectedItemId || availableRecipes.length === 0}
+            disabled={!selectedItemId || availableRecipes.length === 0 || isLoading}
             fullWidth
-            renderOption={(option) => (
-              <div>
-                <div style={{ fontWeight: "bold" }}>{option.name}</div>
-                {option.description && (
-                  <div style={{ 
-                    fontSize: "12px",
-                    color: theme.colors.textSecondary 
-                  }}>
-                    {option.description}
-                  </div>
-                )}
-              </div>
-            )}
+            renderOption={(option: SelectOption) => {
+              const recipeOption = option as RecipeSelectOption;
+              return (
+                <div>
+                  <div style={{ fontWeight: "bold" }}>{recipeOption.name}</div>
+                  {recipeOption.description && (
+                    <div style={{ 
+                      fontSize: "12px",
+                      color: theme.colors.textSecondary 
+                    }}>
+                      {recipeOption.description}
+                    </div>
+                  )}
+                </div>
+              );
+            }}
           />
         </div>
       </div>

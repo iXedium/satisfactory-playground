@@ -145,9 +145,11 @@ export interface Item {
   /** The item name */
   name: string;
   /** The stack size */
-  stack: number;
+  stack?: number;
   /** The item type */
-  type: string;
+  type?: string;
+  /** The item category */
+  category?: string;
   /** The item icon URL */
   icon?: string;
   /** The item class */

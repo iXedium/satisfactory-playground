@@ -12,6 +12,7 @@ import MachineSection from "./MachineSection";
 import ExcessSection from "./ExcessSection";
 import ItemFooter from "./ItemFooter";
 import { Recipe, Item } from "../../../types/core";
+import { db } from "../../../data/dexieDB";
 import useItemData from "../../../hooks/useItemData";
 import { theme } from "../../../styles/theme";
 
@@ -22,8 +23,8 @@ interface UseItemDataProps {
 
 // This interface defines the result of the useItemData hook
 interface UseItemDataResult {
-  item: Item | null;
-  loading: boolean;
+  selectedItem: Item | null;
+  isLoading: boolean;
   error: string | null;
 }
 
@@ -81,7 +82,25 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   nodeId,
 }) => {
   // Use custom hook to fetch item data
-  const { item, isLoading } = useItemData(itemId);
+  const [itemData, setItemData] = useState<Item | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        setLoading(true);
+        const item = await db.items.get(itemId);
+        setItemData(item || null);
+      } catch (error) {
+        console.error("Error loading item:", error);
+        setItemData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchItem();
+  }, [itemId]);
   
   // Node type color
   const getItemColor = () => {
@@ -93,7 +112,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const backgroundColor = getItemColor();
 
-  if (isLoading) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
@@ -110,7 +129,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     >
       {/* Item header with icon, name, and amount */}
       <ItemHeader
-        item={item}
+        item={itemData}
         amount={amount}
         isRoot={isRoot}
         isByproduct={isByproduct}

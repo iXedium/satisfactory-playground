@@ -6,7 +6,20 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Item } from '../types/core';
-import { getItems, getItemById, searchItems } from '../data/dbQueries';
+import { db } from '../data/dexieDB';
+
+// Cache item fetching with 5 minute TTL
+const getItems = async (): Promise<Item[]> => await db.items.toArray();
+const getItemById = async (id: string): Promise<Item | undefined> => await db.items.get(id);
+const searchItems = async (term: string): Promise<Item[]> => {
+  const lowerTerm = term.toLowerCase();
+  const items = await db.items.toArray();
+  return items.filter(item => 
+    item.name.toLowerCase().includes(lowerTerm) || 
+    item.id.toLowerCase().includes(lowerTerm)
+  );
+};
+
 import { memoizeWithTTL } from '../utils/memoization';
 
 // Cache item fetching with 5 minute TTL
@@ -24,9 +37,9 @@ interface UseItemDataResult {
   isLoading: boolean;
   error: string | null;
   selectItem: (itemId: string) => void;
-  searchItemsByTerm: (searchTerm: string) => Item[];
+  searchItemsByTerm: (searchTerm: string) => Promise<Item[]>;
   refreshItems: () => void;
-  getItemName: (itemId: string) => string;
+  getItemName: (itemId: string) => Promise<string>;
 }
 
 /**
@@ -46,16 +59,18 @@ export function useItemData({
   useEffect(() => {
     if (preloadAll) {
       setIsLoading(true);
-      try {
-        const allItems = getItemsCached();
-        setItems(allItems);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error loading items');
-        setItems([]);
-      } finally {
-        setIsLoading(false);
-      }
+      getItemsCached()
+        .then(allItems => {
+          setItems(allItems);
+          setError(null);
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : 'Error loading items');
+          setItems([]);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
   }, [preloadAll]);
   
@@ -63,16 +78,18 @@ export function useItemData({
   useEffect(() => {
     if (selectedItemId) {
       setIsLoading(true);
-      try {
-        const item = getItemByIdCached(selectedItemId);
-        setSelectedItem(item || null);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error loading selected item');
-        setSelectedItem(null);
-      } finally {
-        setIsLoading(false);
-      }
+      getItemByIdCached(selectedItemId)
+        .then(item => {
+          setSelectedItem(item || null);
+          setError(null);
+        })
+        .catch(err => {
+          setError(err instanceof Error ? err.message : 'Error loading selected item');
+          setSelectedItem(null);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else {
       setSelectedItem(null);
     }
@@ -88,9 +105,9 @@ export function useItemData({
   /**
    * Search items by a search term
    */
-  const searchItemsByTerm = useCallback((searchTerm: string): Item[] => {
+  const searchItemsByTerm = useCallback(async (searchTerm: string): Promise<Item[]> => {
     try {
-      return searchItems(searchTerm);
+      return await searchItems(searchTerm);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error searching items');
       return [];
@@ -100,9 +117,9 @@ export function useItemData({
   /**
    * Get an item name by ID (returns "Unknown Item" if not found)
    */
-  const getItemName = useCallback((itemId: string): string => {
+  const getItemName = useCallback(async (itemId: string): Promise<string> => {
     try {
-      const item = getItemByIdCached(itemId);
+      const item = await getItemByIdCached(itemId);
       return item ? item.name : 'Unknown Item';
     } catch (err) {
       return 'Unknown Item';
@@ -114,21 +131,23 @@ export function useItemData({
    */
   const refreshItems = useCallback((): void => {
     setIsLoading(true);
-    try {
-      const allItems = getItems(); // Use non-cached version to force refresh
-      setItems(allItems);
-      
-      if (selectedItemId) {
-        const item = getItemById(selectedItemId); // Use non-cached version
-        setSelectedItem(item || null);
-      }
-      
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error refreshing items');
-    } finally {
-      setIsLoading(false);
-    }
+    Promise.all([
+      getItems(),
+      selectedItemId ? getItemById(selectedItemId) : Promise.resolve(null)
+    ])
+      .then(([allItems, item]) => {
+        setItems(allItems);
+        if (selectedItemId) {
+          setSelectedItem(item);
+        }
+        setError(null);
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Error refreshing items');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [selectedItemId]);
   
   // Create a map of items by ID for easier lookup

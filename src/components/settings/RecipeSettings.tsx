@@ -5,13 +5,23 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Select, Button, Input } from "../../components/common";
+import { Select, Button, Input, SelectOption } from "../../components/common";
 import { theme } from "../../styles/theme";
 import useSettings from "../../hooks/useSettings";
-import { getComponents, getRecipesForItem } from "../../data/dbQueries";
+import { db } from "../../data/dexieDB";
 import { Item, Recipe } from "../../types/core";
 
 export interface RecipeSettingsProps {}
+
+// Extended SelectOption with icon
+interface ItemSelectOption extends SelectOption {
+  icon?: string;
+}
+
+// Extended SelectOption with description
+interface RecipeSelectOption extends SelectOption {
+  description?: string;
+}
 
 /**
  * Component for default recipe settings
@@ -31,25 +41,36 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
   
   // Load items on component mount
   useEffect(() => {
-    getComponents().then(loadedItems => {
-      if (loadedItems) {
-        setItems(loadedItems);
-      }
-    });
+    const loadItems = async () => {
+      const loadedItems = await db.items.where("category").equals("components").toArray();
+      setItems(loadedItems);
+    };
+    
+    loadItems();
   }, []);
   
   // Load recipes when item is selected
   useEffect(() => {
-    if (!selectedItem) {
-      setAvailableRecipes([]);
-      return;
-    }
-    
-    getRecipesForItem(selectedItem).then(recipes => {
-      if (recipes) {
-        setAvailableRecipes(recipes);
+    const loadRecipes = async () => {
+      if (!selectedItem) {
+        setAvailableRecipes([]);
+        return;
       }
-    });
+      
+      try {
+        // Find recipes where the item is in the "out" field
+        const recipes = await db.recipes.filter(recipe => {
+          return recipe.out && Object.keys(recipe.out).includes(selectedItem);
+        }).toArray();
+        
+        setAvailableRecipes(recipes);
+      } catch (error) {
+        console.error(`Error finding recipes for ${selectedItem}:`, error);
+        setAvailableRecipes([]);
+      }
+    };
+    
+    loadRecipes();
   }, [selectedItem]);
   
   // Handle item selection
@@ -77,14 +98,14 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
     : items;
   
   // Format items for the select component
-  const itemOptions = filteredItems.map(item => ({
+  const itemOptions: ItemSelectOption[] = filteredItems.map(item => ({
     value: item.id,
     label: item.name,
     icon: item.icon
   }));
   
   // Format recipes for the select component
-  const recipeOptions = availableRecipes.map(recipe => ({
+  const recipeOptions: RecipeSelectOption[] = availableRecipes.map(recipe => ({
     value: recipe.id,
     label: recipe.name || 'Unnamed Recipe',
     description: recipe.description
@@ -144,25 +165,28 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
               options={itemOptions}
               placeholder="Select an item"
               fullWidth
-              renderOption={(option) => (
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  gap: "8px" 
-                }}>
-                  {option.icon && (
-                    <img 
-                      src={option.icon} 
-                      alt={option.label} 
-                      style={{ 
-                        width: "20px", 
-                        height: "20px" 
-                      }} 
-                    />
-                  )}
-                  <span>{option.label}</span>
-                </div>
-              )}
+              renderOption={(option: SelectOption) => {
+                const itemOption = option as ItemSelectOption;
+                return (
+                  <div style={{ 
+                    display: "flex", 
+                    alignItems: "center",
+                    gap: "8px" 
+                  }}>
+                    {itemOption.icon && (
+                      <img 
+                        src={itemOption.icon} 
+                        alt={option.label} 
+                        style={{ 
+                          width: "20px", 
+                          height: "20px" 
+                        }} 
+                      />
+                    )}
+                    <span>{option.label}</span>
+                  </div>
+                );
+              }}
             />
           </div>
           
@@ -176,19 +200,22 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
               placeholder="Select a default recipe"
               disabled={!selectedItem || availableRecipes.length === 0}
               fullWidth
-              renderOption={(option) => (
-                <div>
-                  <div style={{ fontWeight: "bold" }}>{option.label}</div>
-                  {option.description && (
-                    <div style={{ 
-                      fontSize: "12px",
-                      color: theme.colors.textSecondary 
-                    }}>
-                      {option.description}
-                    </div>
-                  )}
-                </div>
-              )}
+              renderOption={(option: SelectOption) => {
+                const recipeOption = option as RecipeSelectOption;
+                return (
+                  <div>
+                    <div style={{ fontWeight: "bold" }}>{option.label}</div>
+                    {recipeOption.description && (
+                      <div style={{ 
+                        fontSize: "12px",
+                        color: theme.colors.textSecondary 
+                      }}>
+                        {recipeOption.description}
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
             />
           </div>
         </div>
@@ -250,8 +277,8 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                           src={item.icon} 
                           alt={item.name} 
                           style={{ 
-                            width: "16px", 
-                            height: "16px" 
+                            width: "20px", 
+                            height: "20px" 
                           }} 
                         />
                       )}
@@ -262,20 +289,27 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                       alignItems: "center",
                       gap: "8px" 
                     }}>
-                      <span style={{ 
-                        color: theme.colors.textSecondary,
-                        fontSize: "13px"
-                      }}>
+                      <span style={{ color: theme.colors.textSecondary }}>
                         {recipe.name}
                       </span>
                       <Button
-                        variant="text"
                         size="small"
+                        variant="outlined"
                         onClick={() => {
                           setSelectedItem(itemId);
                         }}
                       >
                         Change
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => {
+                          updateDefaultRecipeSetting(itemId, "");
+                        }}
+                      >
+                        Remove
                       </Button>
                     </div>
                   </div>
@@ -289,4 +323,4 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
   );
 };
 
-export default React.memo(RecipeSettings); 
+export default RecipeSettings; 
