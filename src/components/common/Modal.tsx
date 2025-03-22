@@ -30,7 +30,7 @@ export interface ModalProps {
   /**
    * Size of the modal
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'large';
   
   /**
    * Close on Escape key press
@@ -92,6 +92,7 @@ export const Modal: React.FC<ModalProps> = ({
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     full: 'max-w-full mx-4',
+    large: 'max-w-2xl',
   };
   
   // Don't render anything if modal is not open

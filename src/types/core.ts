@@ -10,6 +10,8 @@
 export interface DependencyNode {
   /** The item ID */
   id: string;
+  /** The node name */
+  name?: string;
   /** The amount of the item to produce */
   amount: number;
   /** A unique identifier for this specific node */
@@ -22,10 +24,14 @@ export interface DependencyNode {
   isImport?: boolean;
   /** The ID of the selected recipe */
   selectedRecipeId?: string;
+  /** The recipe ID used to produce this item */
+  recipeId?: string;
   /** Available recipes for this item */
   availableRecipes?: Recipe[];
   /** Child nodes (inputs) */
   children: DependencyNode[];
+  /** Parent node */
+  parent?: DependencyNode;
   /** The amount of excess production for this node */
   excess: number;
   /** Original children before any modifications */
@@ -40,10 +46,14 @@ export interface DependencyNode {
 export interface AccumulatedNode {
   /** The item ID */
   itemId: string;
+  /** The item data */
+  item?: Item;
   /** The total amount from all nodes */
   amount: number;
   /** IDs of all contributing nodes */
   nodeIds: string[];
+  /** Primary node ID */
+  primaryNodeId?: string;
   /** Whether this node is a byproduct */
   isByproduct: boolean;
   /** The ID of the selected recipe */
@@ -76,12 +86,24 @@ export interface NormalizedTreeState {
 export interface Recipe {
   /** The recipe ID */
   id: string;
+  /** Recipe name */
+  name?: string;
+  /** Recipe description */
+  description?: string;
   /** Input items and amounts */
   in: Record<string, number>;
   /** Output items and amounts */
   out: Record<string, number>;
+  /** Input items (alternative format) */
+  ingredients?: Array<{id: string; amount: number}>;
+  /** Output items (alternative format) */
+  products?: Array<{id: string; amount: number}>;
+  /** Recipe efficiency (0-1) */
+  efficiency?: number;
   /** Recipe processing time in seconds */
   time: number;
+  /** Alternative name for processing time */
+  manufacturingDuration?: number;
   /** The machine type that can process this recipe */
   machine?: string;
 }
@@ -100,8 +122,18 @@ export interface Machine {
   type: string;
   /** Power usage in MW */
   usage: number;
+  /** Clock speed (0-1) */
+  clockSpeed?: number;
+  /** Overclock percentage (0-2.5) */
+  overclock?: number;
+  /** Power production in MW (for generators) */
+  powerProduction?: number;
+  /** Power consumption in MW */
+  powerConsumption?: number;
   /** Number of module slots */
   modules?: number;
+  /** Energy usage per item */
+  power?: number;
 }
 
 /**
@@ -116,6 +148,8 @@ export interface Item {
   stack: number;
   /** The item type */
   type: string;
+  /** The item icon URL */
+  icon?: string;
   /** The item class */
   class?: string;
   /** Whether the item sinks (for AWESOME sink) */
@@ -190,10 +224,48 @@ export interface MachineDisplaySettings {
  * This will be updated to match the new structure once implemented
  */
 export interface RootState {
-  dependencies: DependencyState;
-  recipeSelections: RecipeSelectionsState;
   ui: UIState;
-  // Future slices will be added here
+  data: DataStructure;
+  settings: SettingsState;
+  dependencies: DependencyState;
+  importExport: ImportExportState;
+}
+
+/**
+ * Data structure containing all application data
+ */
+export interface DataStructure {
+  dependencies: Record<string, DependencyNode>;
+  recipeSelections: Record<string, string>;
+  excessMap: Record<string, number>;
+  machineCountMap: Record<string, number>;
+  machineMultiplierMap: Record<string, number>;
+}
+
+/**
+ * Settings state shape
+ */
+export interface SettingsState {
+  theme: 'light' | 'dark' | 'system';
+  productionRate: number;
+  defaultRecipes: Record<string, string>;
+  visualOptions: {
+    showMachines: boolean;
+    showEfficiency: boolean;
+    compactMode: boolean;
+    darkMode: boolean;
+  };
+}
+
+/**
+ * Import/Export state shape
+ */
+export interface ImportExportState {
+  importing: boolean;
+  exporting: boolean;
+  error: string | null;
+  lastExport: string | null;
+  lastImport: string | null;
 }
 
 /**
@@ -218,8 +290,28 @@ export interface RecipeSelectionsState {
  * UI state shape
  */
 export interface UIState {
+  activeTab: string;
+  expandedSections: Record<string, boolean>;
+  modals: {
+    settings: boolean;
+    calculator: boolean;
+    importExport: boolean;
+  };
+  sidebarOpen: boolean;
   expandedNodes: Record<string, boolean>;
+  nodeExtensionOverrides: Record<string, boolean>;
   viewMode: ViewMode;
   nodeExtensions: NodeExtensionSettings;
   machineDisplay: MachineDisplaySettings;
+}
+
+/**
+ * Represents an import relationship between trees
+ */
+export interface ImportRelationship {
+  sourceTreeId: string;
+  targetTreeId: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  amount: number;
 } 

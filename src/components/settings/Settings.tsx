@@ -91,7 +91,7 @@ const Settings: React.FC<SettingsProps> = ({
         }}>
           <TabGroup 
             tabs={tabs}
-            activeTabId={activeTab}
+            activeTab={activeTab}
             onChange={handleTabChange}
             variant="boxed"
           />

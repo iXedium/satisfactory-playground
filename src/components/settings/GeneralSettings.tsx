@@ -25,14 +25,14 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = () => {
   
   // Theme options
   const themeOptions = [
-    { id: "light", name: "Light" },
-    { id: "dark", name: "Dark" },
-    { id: "system", name: "System Default" }
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+    { value: "system", label: "System Default" }
   ];
   
   // Handle theme change
-  const handleThemeChange = (themeId: string) => {
-    updateThemeSetting(themeId as 'light' | 'dark' | 'system');
+  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateThemeSetting(e.target.value as 'light' | 'dark' | 'system');
   };
   
   // Handle production rate change

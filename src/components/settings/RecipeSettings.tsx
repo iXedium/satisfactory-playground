@@ -53,14 +53,14 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
   }, [selectedItem]);
   
   // Handle item selection
-  const handleItemSelect = (itemId: string) => {
-    setSelectedItem(itemId);
+  const handleItemSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedItem(e.target.value);
   };
   
   // Handle recipe selection
-  const handleRecipeSelect = (recipeId: string) => {
+  const handleRecipeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (selectedItem) {
-      updateDefaultRecipeSetting(selectedItem, recipeId);
+      updateDefaultRecipeSetting(selectedItem, e.target.value);
     }
   };
   
@@ -78,15 +78,15 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
   
   // Format items for the select component
   const itemOptions = filteredItems.map(item => ({
-    id: item.id,
-    name: item.name,
+    value: item.id,
+    label: item.name,
     icon: item.icon
   }));
   
   // Format recipes for the select component
   const recipeOptions = availableRecipes.map(recipe => ({
-    id: recipe.id,
-    name: recipe.name || 'Unnamed Recipe',
+    value: recipe.id,
+    label: recipe.name || 'Unnamed Recipe',
     description: recipe.description
   }));
   
@@ -153,14 +153,14 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                   {option.icon && (
                     <img 
                       src={option.icon} 
-                      alt={option.name} 
+                      alt={option.label} 
                       style={{ 
                         width: "20px", 
                         height: "20px" 
                       }} 
                     />
                   )}
-                  <span>{option.name}</span>
+                  <span>{option.label}</span>
                 </div>
               )}
             />
@@ -178,7 +178,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
               fullWidth
               renderOption={(option) => (
                 <div>
-                  <div style={{ fontWeight: "bold" }}>{option.name}</div>
+                  <div style={{ fontWeight: "bold" }}>{option.label}</div>
                   {option.description && (
                     <div style={{ 
                       fontSize: "12px",
@@ -238,8 +238,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                     alignItems: "center",
                     padding: "8px 12px",
                     borderBottom: `1px solid ${theme.colors.border}`,
-                    backgroundColor: theme.colors.backgroundAlt,
-                    ":last-child": { borderBottom: "none" }
+                    backgroundColor: theme.colors.backgroundAlt
                   }}>
                     <div style={{ 
                       display: "flex", 

@@ -3,16 +3,29 @@ export const theme = {
     primary: "#ff7a00",
     secondary: "#00b8ff",
     background: "#1a1e24",
+    backgroundAlt: "#232831",
     dark: "#2d3744",
     darker: "#1a1e24",
     hover: "rgba(255, 122, 0, 0.1)",
     text: "#ffffff",
+    textPrimary: "#ffffff",
     textLight: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
     iconBg: '#2d3744',
     surface: "#2d3744",
     border: "#4a5664",
     danger: "#e63946", // Bright red for dangerous actions
+    error: "#e63946",
+    success: "#5aaa5a", // Added success color
+    warning: "#aa9a5a", // Added warning color
+    dangerText: "#e63946", // Added text danger color
+    
+    // Machine colors
+    mk1: "#5aaa5a", // Tier 1 machines
+    mk2: "#aa9a5a", // Tier 2 machines
+    mk3: "#e63946", // Tier 3 machines
+    extractor: "#00b8ff", // Extractors
+    generator: "#ff7a00", // Generators
     
     // Node colors - Industrial theme
     nodeRoot: '#ff7a00', // Primary orange for root

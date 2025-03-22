@@ -6,7 +6,7 @@
 
 import React from "react";
 import { DependencyNode } from "../../utils/calculateDependencyTree";
-import { ItemNode } from "../nodes/ItemNode";
+import ItemNode from "../nodes/ItemNode";
 import { theme } from "../../styles/theme";
 
 export interface TreeNodeItemProps {
@@ -159,6 +159,7 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
         zIndex: 2
       }}>
         <ItemNode
+          nodeId={node.uniqueId}
           itemId={node.id}
           amount={node.amount}
           isRoot={node.isRoot}

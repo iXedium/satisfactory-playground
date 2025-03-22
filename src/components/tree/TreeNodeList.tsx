@@ -102,7 +102,7 @@ const TreeNodeList: React.FC<TreeNodeListProps> = ({
   // Recursive function to render a node and its children
   const renderNode = (node: DependencyNode, nodeDepth: number) => {
     const isExpanded = expandedNodes[node.uniqueId] !== false; // Default to true if not set
-    const hasChildren = node.children && node.children.length > 0;
+    const hasChildren = !!(node.children && node.children.length > 0);
     
     return (
       <React.Fragment key={node.uniqueId}>

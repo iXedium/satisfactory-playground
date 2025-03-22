@@ -49,6 +49,11 @@ export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectE
    * Label for the select
    */
   label?: string;
+  
+  /**
+   * Function to render custom option content
+   */
+  renderOption?: (option: SelectOption) => React.ReactNode;
 }
 
 /**
@@ -65,6 +70,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   label,
   className = '',
   disabled,
+  renderOption,
   ...props
 }, ref) => {
   // Base styles
@@ -124,7 +130,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
               value={option.value}
               disabled={option.disabled}
             >
-              {option.label}
+              {renderOption ? renderOption(option) : option.label}
             </option>
           ))}
         </select>

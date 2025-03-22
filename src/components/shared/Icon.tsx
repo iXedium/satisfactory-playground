@@ -67,7 +67,7 @@ const Icon: React.FC<IconProps> = ({
         width: `${sizeInPixels}px`,
         height: `${sizeInPixels}px`,
         borderRadius: theme.border.radius,
-        background: theme.colors.iconBackground,
+        background: theme.colors.iconBg,
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
