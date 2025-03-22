@@ -29,7 +29,7 @@ export interface DependencyNode {
   /** Available recipes for this item */
   availableRecipes?: Recipe[];
   /** Child nodes (inputs) */
-  children: DependencyNode[];
+  children: DependencyNode[] | undefined;
   /** Parent node */
   parent?: DependencyNode;
   /** The amount of excess production for this node */
@@ -134,6 +134,8 @@ export interface Machine {
   modules?: number;
   /** Energy usage per item */
   power?: number;
+  /** Machine efficiency (0-1) */
+  efficiency?: number;
 }
 
 /**
@@ -158,6 +160,8 @@ export interface Item {
   sink?: boolean;
   /** Sink value */
   sinkValue?: number;
+  /** Item description */
+  description?: string;
 }
 
 // Service Types
@@ -188,6 +192,8 @@ export interface MachineCalculationResult {
   machineType: string;
   /** Power consumption in MW */
   powerConsumption: number;
+  /** Machine name */
+  name?: string;
 }
 
 // UI Types

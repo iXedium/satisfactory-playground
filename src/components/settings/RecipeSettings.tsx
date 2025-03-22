@@ -294,7 +294,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                       </span>
                       <Button
                         size="small"
-                        variant="outlined"
+                        variant="outline"
                         onClick={() => {
                           setSelectedItem(itemId);
                         }}
@@ -303,7 +303,7 @@ const RecipeSettings: React.FC<RecipeSettingsProps> = () => {
                       </Button>
                       <Button
                         size="small"
-                        variant="outlined"
+                        variant="outline"
                         color="error"
                         onClick={() => {
                           updateDefaultRecipeSetting(itemId, "");
