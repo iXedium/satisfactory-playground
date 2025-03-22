@@ -7,7 +7,7 @@
 import React from "react";
 import { Recipe, Item } from "../../types/core";
 import { Card } from "../common";
-import { ItemNode } from "../nodes/ItemNode";
+import { ItemNode } from "../nodes";
 import { theme } from "../../styles/theme";
 
 export interface AccumulatedViewItemProps {

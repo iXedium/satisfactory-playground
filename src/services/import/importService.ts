@@ -7,6 +7,8 @@
 
 import { DependencyNode } from '../../types/core';
 import { cloneTree, findNodeById } from '../calculation/dependencyTreeService';
+import { v4 as uuidv4 } from 'uuid';
+import { getNodeChildren, forEachNodeChild, mapNodeChildren } from '../../utils/nodeHelpers';
 
 /**
  * Import map entry defining a relationship between trees
@@ -26,25 +28,15 @@ export interface ImportRelationship {
 export type ImportMap = Record<string, ImportRelationship>;
 
 /**
- * Check if importing a node would create a circular dependency
- * 
- * @param trees - Record of dependency trees indexed by tree ID
- * @param targetTreeId - ID of the tree to import into
- * @param sourceTreeId - ID of the tree to import from
- * @returns True if importing would create a circular dependency
+ * Check if creating an import would create a circular dependency
  */
 export function wouldCreateCircularDependency(
   trees: Record<string, DependencyNode>,
   targetTreeId: string,
   sourceTreeId: string
 ): boolean {
-  // If we're trying to import from the same tree, it's circular
-  if (targetTreeId === sourceTreeId) {
-    return true;
-  }
-
-  // Check if the source tree itself imports from the target tree
   const sourceTree = trees[sourceTreeId];
+  
   if (!sourceTree) {
     return false;
   }
@@ -56,7 +48,7 @@ export function wouldCreateCircularDependency(
     }
 
     // Check all children
-    for (const child of node.children) {
+    for (const child of getNodeChildren(node)) {
       if (hasImportFromTarget(child)) {
         return true;
       }
@@ -129,7 +121,7 @@ export function createImportNode(
     // Process children recursively
     return {
       ...node,
-      children: node.children.map(replaceWithImport)
+      children: mapNodeChildren(node, replaceWithImport)
     };
   };
 
@@ -176,7 +168,7 @@ export function removeImportNode(
     // Process children recursively
     return {
       ...node,
-      children: node.children.map(removeImport)
+      children: mapNodeChildren(node, removeImport)
     };
   };
 
@@ -262,4 +254,53 @@ export function getDependentTrees(
   });
 
   return Array.from(dependentTrees);
+}
+
+/**
+ * Finds all import nodes in a tree
+ */
+export function findAllImportNodes(node: DependencyNode): DependencyNode[] {
+  const result: DependencyNode[] = [];
+  
+  const findImportNodes = (node: DependencyNode) => {
+    if (node.isImport) {
+      result.push(node);
+    }
+    
+    forEachNodeChild(node, findImportNodes);
+  };
+  
+  findImportNodes(node);
+  return result;
+}
+
+/**
+ * Replaces a node in the tree with an import
+ */
+export function replaceNodeWithImport(
+  node: DependencyNode,
+  nodePath: string[],
+  importedNode: DependencyNode,
+  index: number = 0
+): DependencyNode {
+  if (index >= nodePath.length) {
+    return importedNode;
+  }
+  
+  const nodeId = nodePath[index];
+  
+  if (node.uniqueId === nodeId) {
+    if (index === nodePath.length - 1) {
+      return importedNode;
+    }
+    
+    return {
+      ...node,
+      children: mapNodeChildren(node, child => 
+        replaceNodeWithImport(child, nodePath, importedNode, index + 1)
+      )
+    };
+  }
+  
+  return node;
 } 

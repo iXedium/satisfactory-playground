@@ -20,4 +20,7 @@ export { default as RecipeSettings } from './RecipeSettings';
 export type { RecipeSettingsProps } from './RecipeSettings';
 
 export { default as AdvancedSettings } from './AdvancedSettings';
-export type { AdvancedSettingsProps } from './AdvancedSettings'; 
+export type { AdvancedSettingsProps } from './AdvancedSettings';
+
+// Export SettingsModal component
+export { default as SettingsModal } from './SettingsModal'; 

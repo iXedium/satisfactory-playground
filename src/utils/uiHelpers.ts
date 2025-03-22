@@ -5,6 +5,7 @@
  */
 
 import { DependencyNode, AccumulatedNode } from '../types/core';
+import { hasChildren, getNodeChildren } from "./nodeHelpers";
 
 /**
  * Generate a CSS color based on an ID string (consistent colors for same ID)
@@ -34,7 +35,7 @@ export function shouldShowChildren(
   node: DependencyNode,
   expandedNodes: Record<string, boolean>
 ): boolean {
-  return node.children.length > 0 && (expandedNodes[node.uniqueId] ?? true);
+  return hasChildren(node) && (expandedNodes[node.uniqueId] ?? true);
 }
 
 /**
@@ -125,7 +126,7 @@ export function isCircularReference(node: DependencyNode): boolean {
     
     visited.add(current.uniqueId);
     
-    for (const child of current.children) {
+    for (const child of getNodeChildren(current)) {
       if (checkNode(child)) {
         return true;
       }

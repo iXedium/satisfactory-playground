@@ -228,8 +228,7 @@ export interface MachineDisplaySettings {
 // Redux State Types
 
 /**
- * Root state type for the Redux store
- * This will be updated to match the new structure once implemented
+ * Root state type for Redux
  */
 export interface RootState {
   ui: UIState;
@@ -237,16 +236,29 @@ export interface RootState {
   settings: SettingsState;
   dependencies: DependencyState;
   importExport: ImportExportState;
+  // Add missing slices
+  recipeSelections: {
+    selections: Record<string, string>;  // nodeId -> recipeId
+  };
+  machines: {
+    machineCount: Record<string, number>;
+    machineMultiplier: Record<string, number>;
+  };
 }
 
 /**
  * Data structure containing all application data
  */
 export interface DataStructure {
+  /** Dependency trees for all calculations */
   dependencies: Record<string, DependencyNode>;
+  /** Recipe selections for each node */
   recipeSelections: Record<string, string>;
+  /** Excess production for each node */
   excessMap: Record<string, number>;
+  /** Machine count for each node */
   machineCountMap: Record<string, number>;
+  /** Machine multiplier for each node */
   machineMultiplierMap: Record<string, number>;
 }
 

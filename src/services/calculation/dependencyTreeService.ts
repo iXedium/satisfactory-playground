@@ -8,6 +8,7 @@
 import { DependencyNode, Recipe, TreeCalculationOptions } from '../../types/core';
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../data/dbQueries';
 import { getNodeFromCache, cacheNode, clearNodeFromCache } from '../cache/cacheService';
+import { getNodeChildren, mapNodeChildren } from "../../utils/nodeHelpers";
 
 /**
  * Calculate a dependency tree for a given item and amount
@@ -62,21 +63,34 @@ export function findNodeById(tree: DependencyNode, nodeId: string): DependencyNo
 }
 
 /**
- * Clone a dependency tree
+ * Gets all nodes in a tree including the root node
+ */
+export function getAllNodesInTree(tree: DependencyNode): DependencyNode[] {
+  const nodes: DependencyNode[] = [tree];
+  
+  for (const child of getNodeChildren(tree)) {
+    nodes.push(...getAllNodesInTree(child));
+  }
+  
+  return nodes;
+}
+
+/**
+ * Clones a tree
  */
 export function cloneTree(tree: DependencyNode): DependencyNode {
   return {
     ...tree,
-    children: tree.children.map(child => cloneTree(child)),
+    children: mapNodeChildren(tree, child => cloneTree(child)),
   };
 }
 
 /**
- * Update a node in the tree by its unique ID
+ * Updates a node in a tree
  */
 export function updateNode(
-  tree: DependencyNode, 
-  nodeId: string, 
+  tree: DependencyNode,
+  nodeId: string,
   updates: Partial<DependencyNode>
 ): DependencyNode {
   if (tree.uniqueId === nodeId) {
@@ -85,7 +99,7 @@ export function updateNode(
   
   return {
     ...tree,
-    children: tree.children.map(child => updateNode(child, nodeId, updates)),
+    children: mapNodeChildren(tree, child => updateNode(child, nodeId, updates)),
   };
 }
 

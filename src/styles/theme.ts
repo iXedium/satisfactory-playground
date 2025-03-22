@@ -11,6 +11,7 @@ export const theme = {
     textPrimary: "#ffffff",
     textLight: "#ffffff",
     textSecondary: "rgba(255, 255, 255, 0.7)",
+    textInverted: "#1a1e24",
     iconBg: '#2d3744',
     surface: "#2d3744",
     border: "#4a5664",
@@ -19,6 +20,24 @@ export const theme = {
     success: "#5aaa5a", // Added success color
     warning: "#aa9a5a", // Added warning color
     dangerText: "#e63946", // Added text danger color
+    
+    // Card backgrounds
+    cardBackground: "#232831",
+    
+    // Button backgrounds
+    importButton: "#00b8ff",
+    deleteButton: "#e63946",
+    
+    // Badge backgrounds
+    importBadge: "#0096ff", 
+    
+    // Tooltip
+    tooltip: "#4a5664",
+    
+    // Node type indicators
+    nodeRaw: "#aa9a5a",
+    machine: "#5aaa5a",
+    extension: "#00b8ff",
     
     // Machine colors
     mk1: "#5aaa5a", // Tier 1 machines
@@ -75,6 +94,12 @@ export const theme = {
     knob: "#ffffff",
     label: "#ffffff",
   },
+  // Box shadows
+  boxShadow: {
+    small: "0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)",
+    medium: "0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23)",
+    large: "0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23)",
+  }
 };
 
 export const injectThemeVariables = () => {

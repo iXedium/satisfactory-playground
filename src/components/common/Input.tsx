@@ -25,6 +25,11 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   startIcon?: React.ReactNode;
   
   /**
+   * Alternative name for leading icon (for backward compatibility)
+   */
+  leftIcon?: string;
+  
+  /**
    * Trailing icon
    */
   endIcon?: React.ReactNode;
@@ -53,6 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   size = 'medium',
   fullWidth = false,
   startIcon,
+  leftIcon,
   endIcon,
   error,
   helperText,
@@ -87,8 +93,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   // Error styles
   const errorStyles = error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : '';
   
+  // Handle either startIcon or leftIcon (for backward compatibility)
+  const effectiveStartIcon = startIcon || (leftIcon ? <span>{leftIcon}</span> : null);
+  
   // Icon styles
-  const hasStartIcon = startIcon ? 'pl-10' : '';
+  const hasStartIcon = effectiveStartIcon ? 'pl-10' : '';
   const hasEndIcon = endIcon ? 'pr-10' : '';
   
   // Combined styles
@@ -103,9 +112,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       )}
       
       <div className="relative">
-        {startIcon && (
+        {effectiveStartIcon && (
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {startIcon}
+            {effectiveStartIcon}
           </div>
         )}
         

@@ -38,7 +38,7 @@ export type { CardProps, CardVariant } from './Card';
 
 // Modal component
 export { default as Modal } from './Modal';
-export type { ModalProps, ModalSize } from './Modal';
+export type { ModalProps } from './Modal';
 
 // Tooltip component
 export { default as Tooltip } from './Tooltip';
