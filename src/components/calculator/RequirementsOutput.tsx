@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { getItemById } from "../../data/dbQueries";
+import { getItemById, getIconForItem } from "../../data/dbQueries";
 import { theme } from "../../styles/theme";
 
 export interface RequirementsOutputProps {
@@ -51,9 +51,11 @@ const RequirementsOutput: React.FC<RequirementsOutputProps> = ({
           try {
             const item = await getItemById(itemId);
             if (item) {
+              // Try to get the icon from the item or use a default empty string
+              const icon = await getIconForItem(itemId);
               details[itemId] = {
                 name: item.name || 'Unknown Item',
-                icon: item.icon || '',
+                icon: icon?.url || ''
               };
             }
           } catch (error) {

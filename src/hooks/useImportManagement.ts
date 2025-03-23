@@ -67,13 +67,18 @@ export function useImportManagement({
     sourceTreeId: string, 
     sourceNodeId: string,
     targetTreeId: string,
+    targetNodeId: string,
     amount: number
   ): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      if (wouldCreateCircularDependency(trees, sourceTreeId, targetTreeId)) {
+      if (wouldCreateCircularDependency(
+        trees as unknown as Record<string, import("../types/core").DependencyNode>,
+        sourceTreeId,
+        targetTreeId
+      )) {
         throw new Error('Cannot create import: would create a circular dependency');
       }
       
@@ -84,20 +89,23 @@ export function useImportManagement({
         throw new Error('Source or target tree not found');
       }
       
-      const updatedTargetTree = createImportNode(
+      const updatedTrees = createImportNode(
+        trees,
+        targetTreeId,
+        targetNodeId,
         sourceTreeId,
         sourceNodeId,
-        targetTree,
         amount
       );
       
-      if (!updatedTargetTree) {
+      if (!updatedTrees) {
         throw new Error('Failed to create import node');
       }
       
+      // Update the target tree in the store
       dispatch(updateTree({
         treeId: targetTreeId,
-        tree: updatedTargetTree
+        tree: updatedTrees[targetTreeId]
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error creating import');

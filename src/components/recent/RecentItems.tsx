@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useComponentIntegration } from '../../hooks/useComponentIntegration';
 import { useDataState } from '../../hooks/useStore';
+import { Item } from '../../types/core';
 
 interface RecentItemsProps {
   onSelect?: (itemId: string) => void;
@@ -30,7 +31,8 @@ export const RecentItems: React.FC<RecentItemsProps> = ({
     return recentItems
       .slice(0, maxItems)
       .map(itemId => {
-        const item = data.items?.[itemId];
+        const items = data.items as Record<string, Item> || {};
+        const item = items[itemId];
         return {
           id: itemId,
           name: item?.name || 'Unknown Item',

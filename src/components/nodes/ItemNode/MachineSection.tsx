@@ -76,7 +76,7 @@ const MachineSection: React.FC<MachineSectionProps> = ({
   const handleOptimizeMachines = () => {
     if (calculateOptimalCount) {
       const optimalCount = calculateOptimalCount();
-      if (onMachineCountChange) {
+      if (onMachineCountChange && typeof optimalCount === 'number') {
         onMachineCountChange(optimalCount);
       }
     }

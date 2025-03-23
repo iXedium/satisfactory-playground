@@ -62,8 +62,12 @@ export function useAccumulatedView({
    */
   const calculateAccumulatedView = useCallback(() => {
     try {
+      // Type conversion since the interfaces are the same but have different sources
+      const dependencyTrees: Record<string, import("../types/core").DependencyNode> = 
+        trees as unknown as Record<string, import("../types/core").DependencyNode>;
+
       // Calculate accumulated nodes from all trees
-      const calculatedNodes = calculateAccumulatedFromTrees(trees);
+      const calculatedNodes = calculateAccumulatedFromTrees(dependencyTrees);
       
       // Merge with machine data
       const nodesWithMachines = mergeAccumulatedWithMachines(

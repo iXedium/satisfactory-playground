@@ -168,13 +168,8 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
           recipes={node.availableRecipes}
           selectedRecipeId={node.selectedRecipeId}
           onRecipeChange={onRecipeChange}
-          style={{ 
-            backgroundColor: 'transparent'
-          }}
           excess={excessValue}
           onExcessChange={onExcessChange}
-          onIconClick={hasChildren ? onToggle : undefined}
-          index={depth}
           machineCount={machineCount}
           onMachineCountChange={onMachineCountChange}
           machineMultiplier={machineMultiplier}

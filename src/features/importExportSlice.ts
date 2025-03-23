@@ -2,6 +2,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppThunk } from '../store';
 import { exportData, importData, readFile } from '../services/importExport';
 import { updateSettings } from './settingsSlice';
+import { AnyAction } from 'redux';
+import { ThunkDispatch } from 'redux-thunk';
+import { RootState } from '../store';
 
 // Define the state shape for import/export operations
 interface ImportExportState {
@@ -83,7 +86,10 @@ export const {
 } = importExportSlice.actions;
 
 // Thunk for exporting data
-export const startExport = (): AppThunk => async (dispatch, getState) => {
+export const startExport = (): AppThunk => async (
+  dispatch: ThunkDispatch<RootState, unknown, AnyAction>,
+  getState: () => RootState
+) => {
   try {
     dispatch(setExporting(true));
     
@@ -101,7 +107,9 @@ export const startExport = (): AppThunk => async (dispatch, getState) => {
 };
 
 // Thunk for importing data
-export const startImport = (file: File): AppThunk => async (dispatch) => {
+export const startImport = (file: File): AppThunk => async (
+  dispatch: ThunkDispatch<RootState, unknown, AnyAction>
+) => {
   try {
     dispatch(setImporting(true));
     

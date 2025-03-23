@@ -12,6 +12,7 @@ import { calculateAccumulatedFromTrees } from '../services/calculation/accumulat
 import { calculatePowerConsumption } from '../services/calculation/machineCalculationService';
 import { getMachineForRecipe } from '../data/dbQueries';
 import { formatPower } from '../utils/formatting';
+import { getAllNodesInTree } from '../utils/nodeHelpers';
 
 interface PowerData {
   totalPower: number;
@@ -89,34 +90,40 @@ export function usePowerCalculation(): UsePowerCalculationResult {
       const nodesPower: Record<string, number> = {};
       let totalPower = 0;
       
-      // Process each node
-      for (const node of Object.values(trees).flatMap(getAllNodesInTree)) {
-        if (!node.recipeId) continue;
+      // Process each node in each tree
+      Object.values(trees).forEach(tree => {
+        // Use the safe getAllNodesInTree function from nodeHelpers
+        const nodesInTree = getAllNodesInTree(tree);
         
-        // Get the machine for this recipe
-        const machine = getMachineForRecipe(node.recipeId);
-        if (!machine) continue;
-        
-        // Get machine count and multiplier
-        const count = machineCountMap[node.uniqueId] || 0;
-        const multiplier = machineMultiplierMap[node.uniqueId] || 1;
-        
-        // Calculate power consumption
-        const power = calculatePowerConsumption(machine, count, multiplier);
-        
-        // Store power for this node
-        nodesPower[node.uniqueId] = power;
-        
-        // Add to total power
-        totalPower += power;
-        
-        // Add to machines by type
-        if (!machinesByType[machine.name]) {
-          machinesByType[machine.name] = { count: 0, power: 0 };
-        }
-        machinesByType[machine.name].count += count;
-        machinesByType[machine.name].power += power;
-      }
+        // Process each node
+        nodesInTree.forEach(node => {
+          if (!node.recipeId) return;
+          
+          // Get the machine for this recipe
+          const machine = getMachineForRecipe(node.recipeId);
+          if (!machine) return;
+          
+          // Get machine count and multiplier
+          const count = machineCountMap[node.uniqueId] || 0;
+          const multiplier = machineMultiplierMap[node.uniqueId] || 1;
+          
+          // Calculate power consumption
+          const power = calculatePowerConsumption(machine, count, multiplier);
+          
+          // Store power for this node
+          nodesPower[node.uniqueId] = power;
+          
+          // Add to total power
+          totalPower += power;
+          
+          // Add to machines by type
+          if (!machinesByType[machine.name]) {
+            machinesByType[machine.name] = { count: 0, power: 0 };
+          }
+          machinesByType[machine.name].count += count;
+          machinesByType[machine.name].power += power;
+        });
+      });
       
       // Update power data state
       setPowerData({
@@ -131,19 +138,6 @@ export function usePowerCalculation(): UsePowerCalculationResult {
       setError(err instanceof Error ? err.message : 'Error calculating power consumption');
     }
   }, [trees, machineCountMap, machineMultiplierMap]);
-  
-  /**
-   * Traverse a tree and get all nodes
-   */
-  function getAllNodesInTree(tree: DependencyNode): DependencyNode[] {
-    const nodes: DependencyNode[] = [tree];
-    
-    for (const child of tree.children) {
-      nodes.push(...getAllNodesInTree(child));
-    }
-    
-    return nodes;
-  }
   
   /**
    * Force refresh of power data

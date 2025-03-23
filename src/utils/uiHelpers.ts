@@ -185,4 +185,29 @@ export function getTreePath(node: DependencyNode | null): DependencyNode[] {
   }
   
   return path;
+}
+
+/**
+ * Check if a node is a leaf node (no children)
+ */
+export function isLeafNode(node: DependencyNode): boolean {
+  return !node.children || node.children.length === 0;
+}
+
+/**
+ * Get the full path of a node in the tree (ascending)
+ */
+export function getNodePath(node: DependencyNode | null | undefined): string[] {
+  if (!node) return [];
+  
+  const path: string[] = [];
+  let current: DependencyNode | null | undefined = node;
+  
+  // Traverse up the tree collecting node IDs
+  while (current) {
+    path.unshift(current.uniqueId);
+    current = current.parent;
+  }
+  
+  return path;
 } 

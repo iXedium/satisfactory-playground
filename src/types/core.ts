@@ -158,20 +158,14 @@ export interface Item {
   name: string;
   /** The stack size */
   stack?: number;
-  /** The item type */
-  type?: string;
   /** The item category */
   category?: string;
-  /** The item icon URL */
-  icon?: string;
-  /** The item class */
-  class?: string;
-  /** Whether the item sinks (for AWESOME sink) */
-  sink?: boolean;
-  /** Sink value */
-  sinkValue?: number;
-  /** Item description */
+  /** The item type */
+  type?: string;
+  /** The item description */
   description?: string;
+  /** The item icon */
+  icon?: string;
 }
 
 // Service Types
