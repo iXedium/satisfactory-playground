@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import Icon, { IconSize } from "./Icon";
 import { Recipe, Item } from "../data/dexieDB";
 import { theme } from "../styles/theme";
 import { getItemById, getMachineForRecipe } from "../data/dbQueries";
 import StyledSelect from "./shared/StyledSelect";
-import StyledInput from "./shared/StyledInput";
+import EfficiencyIndicator from "./shared/EfficiencyIndicator";
+import RateDisplay from "./shared/RateDisplay";
+import ExcessControls from "./shared/ExcessControls";
+import MachineControls from "./shared/MachineControls";
 
 interface ItemNodeProps {
   itemId: string;
@@ -65,34 +68,17 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onImport,
 }) => {
   const [item, setItem] = useState<Item | null>(null);
-  const [, setLocalExcess] = useState(excess);
-  const [preciseExcess, setPreciseExcess] = useState(excess);
+  const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] =
     useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [efficiency, setEfficiency] = useState(100);
-  const [showEfficiencyTooltip, setShowEfficiencyTooltip] = useState(false);
   const [nominalRate, setNominalRate] = useState(0);
-  const [isExcessFocused, setIsExcessFocused] = useState(false);
-
-  // Refs for input elements to handle selection
-  const machineCountRef = useRef<HTMLInputElement>(null);
-  const machineMultiplierRef = useRef<HTMLInputElement>(null);
-  const excessRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalExcess(excess);
-    setPreciseExcess(excess);
   }, [excess]);
-
-  useEffect(() => {
-    setLocalMachineCount(machineCount);
-  }, [machineCount]);
-
-  useEffect(() => {
-    setLocalMachineMultiplier(machineMultiplier);
-  }, [machineMultiplier]);
 
   useEffect(() => {
     getItemById(itemId).then((item) => setItem(item || null));
@@ -107,16 +93,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       });
     }
   }, [selectedRecipeId]);
-
-  // Format the excess value based on focus state
-  const formattedExcess = isExcessFocused 
-    ? preciseExcess 
-    : Number(preciseExcess.toFixed(2));
-
-  // For display in the input control
-  const displayExcess = isExcessFocused
-    ? preciseExcess.toString()
-    : formattedExcess.toFixed(2);
 
   // Calculate efficiency and nominal rate whenever relevant values change
   useEffect(() => {
@@ -138,16 +114,16 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
         // Calculate efficiency (actual needed / total capacity)
         // Use precise excess value for accurate calculations
-        const neededAmount = amount + preciseExcess;
+        const neededAmount = amount + localExcess;
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
     }
   }, [
     amount,
-    preciseExcess, // Use precise value for calculations
+    localExcess,
     localMachineCount,
-    localMachineMultiplier, // This is still tracked even if hidden
+    localMachineMultiplier,
     machine,
     selectedRecipeId,
     recipes,
@@ -167,38 +143,13 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     return theme.colors.efficiency.perfect;
   };
 
-  const handleExcessChange = (value: string) => {
-    // Parse and store the full precision value
-    const inputValue = value;
-    // Handle empty input or invalid numbers
-    if (inputValue === "" || isNaN(parseFloat(inputValue))) {
-      setLocalExcess(0);
-      setPreciseExcess(0);
-      onExcessChange?.(0);
-    } else {
-      // Store the full precision number
-      const numValue = parseFloat(inputValue);
-      setLocalExcess(numValue);
-      setPreciseExcess(numValue);
-      onExcessChange?.(numValue);
-    }
-  };
-
-  const handleMachineCountChange = (value: string) => {
-    const numValue = Math.max(1, value === "" ? 1 : Math.floor(Number(value)));
-    setLocalMachineCount(numValue);
-    onMachineCountChange?.(numValue);
-  };
-
-  const handleMachineMultiplierChange = (value: string) => {
-    const numValue = Math.max(1, value === "" ? 1 : Math.floor(Number(value)));
-    setLocalMachineMultiplier(numValue);
-    onMachineMultiplierChange?.(numValue);
+  const handleExcessChange = (value: number) => {
+    setLocalExcess(value);
+    onExcessChange?.(value);
   };
 
   const handleResetExcess = () => {
     setLocalExcess(0);
-    setPreciseExcess(0);
     onExcessChange?.(0);
   };
 
@@ -215,7 +166,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         // Store the precise value without rounding
         const preciseValue = Math.max(0, excessNeeded);
         
-        setPreciseExcess(preciseValue);
         setLocalExcess(preciseValue);
         onExcessChange?.(preciseValue);
       }
@@ -227,7 +177,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
         // Calculate optimal machine count for 100% efficiency
-        const neededAmount = amount + preciseExcess;
+        const neededAmount = amount + localExcess;
         const optimalMachines = Math.ceil(
           neededAmount / (nominalRate * localMachineMultiplier)
         );
@@ -236,122 +186,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         onMachineCountChange?.(optimalMachines);
       }
     }
-  };
-
-  const copyEfficiencyValue = () => {
-    const decimalValue = efficiency / 100;
-    navigator.clipboard.writeText(decimalValue.toString());
-    setShowEfficiencyTooltip(true);
-    setTimeout(() => setShowEfficiencyTooltip(false), 2000);
-  };
-
-  // Handle keyboard events for numeric inputs
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    currentValue: number,
-    setter: (value: number) => void,
-    min: number = 0
-  ) => {
-    let step = 1;
-    if (e.ctrlKey) step = 10;
-    if (e.shiftKey) step = 100;
-
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const newValue = Math.max(min, currentValue + step);
-      setter(newValue); // Store full precision
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const newValue = Math.max(min, currentValue - step);
-      setter(newValue); // Store full precision
-    }
-  };
-
-  // Handle mouse wheel events for numeric inputs
-  const handleWheel = (
-    e: React.WheelEvent<HTMLInputElement>,
-    currentValue: number,
-    setter: (value: number) => void,
-    min: number = 0
-  ) => {
-    e.preventDefault(); // Prevent page scrolling
-    
-    let step = 1;
-    if (e.ctrlKey) step = 10;
-    if (e.shiftKey) step = 100;
-    
-    // Wheel delta is negative when scrolling down, positive when scrolling up
-    const delta = e.deltaY < 0 ? 1 : -1;
-    const newValue = Math.max(min, currentValue + (delta * step));
-    setter(newValue); // Store full precision
-  };
-
-  // Handle focus to select all content
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Need to use setTimeout to work around issues with number inputs in some browsers
-    setTimeout(() => {
-      e.target.select();
-    }, 0);
-  };
-
-  const handleExcessFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    handleFocus(e);
-    setIsExcessFocused(true);
-    
-    // When focused, directly set the full precision value in the DOM
-    if (excessRef.current) {
-      excessRef.current.value = preciseExcess.toString();
-    }
-  };
-
-  const handleExcessBlur = () => {
-    setIsExcessFocused(false);
-    // When blurred, format to 2 decimal places for display only
-  };
-
-  const handleMachineCountFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    handleFocus(e);
-    // When focused, show the full value
-    if (machineCountRef.current) {
-      machineCountRef.current.value = localMachineCount.toString();
-    }
-  };
-
-  const handleMachineMultiplierFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    handleFocus(e);
-    // When focused, show the full value
-    if (machineMultiplierRef.current) {
-      machineMultiplierRef.current.value = localMachineMultiplier.toString();
-    }
-  };
-
-  if (!item) return null;
-
-  // Button styles
-  const buttonStyle: React.CSSProperties = {
-    padding: "4px 8px",
-    fontSize: "12px",
-    backgroundColor: theme.colors.buttonDefault,
-    color: theme.colors.text,
-    border: "none",
-    borderRadius: theme.border.radius,
-    cursor: "pointer",
-    fontWeight: "bold",
-    height: "32px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: "30px",
-  };
-
-  // Input field styles
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: "4px 8px",
-    height: "28px",
   };
 
   // Section container styles
@@ -364,6 +198,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     alignItems: "center",
     height: "100%",
   };
+
+  if (!item) return null;
 
   return (
     <div
@@ -639,128 +475,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Machine count */}
-                <StyledInput
-                  ref={machineCountRef}
-                  type="number"
-                  value={localMachineCount}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleMachineCountChange(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    handleKeyDown(
-                      e,
-                      localMachineCount,
-                      (val) => {
-                        setLocalMachineCount(val);
-                        onMachineCountChange?.(val);
-                      },
-                      1
-                    );
-                  }}
-                  onWheel={(e) => {
-                    e.stopPropagation();
-                    if (document.activeElement === machineCountRef.current) {
-                      handleWheel(
-                        e,
-                        localMachineCount,
-                        (val) => {
-                          setLocalMachineCount(val);
-                          onMachineCountChange?.(val);
-                        },
-                        1
-                      );
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.stopPropagation();
-                    handleMachineCountFocus(e);
-                  }}
-                  variant="compact"
-                  style={{
-                    ...inputFieldStyle,
-                    position: "relative",
-                    zIndex: 2,
-                    maxWidth: "40px",
-                  }}
-                  min={1}
-                  onClick={(e) => e.stopPropagation()}
+                <MachineControls
+                  machineCount={localMachineCount}
+                  onMachineCountChange={onMachineCountChange || (() => {})}
+                  machineMultiplier={localMachineMultiplier}
+                  onMachineMultiplierChange={onMachineMultiplierChange}
+                  showMachineMultiplier={showMachineMultiplier}
+                  onOptimizeMachines={handleOptimizeMachines}
                 />
-
-                {/* Max button */}
-                <button
-                  style={{
-                    ...buttonStyle,
-                    backgroundColor: theme.colors.secondary,
-                    position: "relative",
-                    zIndex: 2,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOptimizeMachines();
-                  }}
-                  title="Set machine count for 100% efficiency"
-                >
-                  M
-                </button>
-
-                {/* Multiplier - conditionally rendered based on global setting */}
-                {showMachineMultiplier && (
-                <StyledInput
-                  ref={machineMultiplierRef}
-                  type="number"
-                  value={localMachineMultiplier}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleMachineMultiplierChange(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    handleKeyDown(
-                      e,
-                      localMachineMultiplier,
-                      (val) => {
-                        setLocalMachineMultiplier(val);
-                        onMachineMultiplierChange?.(val);
-                      },
-                      1
-                    );
-                  }}
-                  onWheel={(e) => {
-                    e.stopPropagation();
-                    if (document.activeElement === machineMultiplierRef.current) {
-                      handleWheel(
-                        e,
-                        localMachineMultiplier,
-                        (val) => {
-                          setLocalMachineMultiplier(val);
-                          onMachineMultiplierChange?.(val);
-                        },
-                        1
-                      );
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.stopPropagation();
-                    handleMachineMultiplierFocus(e);
-                  }}
-                  onBlur={(e) => {
-                    e.stopPropagation();
-                    handleExcessBlur();
-                  }}
-                  variant="compact"
-                  style={{
-                    ...inputFieldStyle,
-                    position: "relative",
-                    zIndex: 2,
-                    maxWidth: "40px",
-                  }}
-                  min={1}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                )}
               </div>
             </div>
           </div>
@@ -801,189 +523,28 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               }}
             >
               {/* Efficiency */}
-              {!isByproduct && !isImport && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    position: "relative",
-                    zIndex: 2,
-                  }}
-                >
-                  <span
-                    style={{
-                      color: getEfficiencyColor(),
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      position: "relative",
-                      marginLeft: "0px",
-                      zIndex: 2,
-                      fontSize: "16px",
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyEfficiencyValue();
-                    }}
-                    title="Click to copy decimal value"
-                  >
-                    {efficiency.toFixed(2)}%
-                    {showEfficiencyTooltip && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: "100%",
-                          right: "0",
-                          backgroundColor: theme.colors.dark,
-                          padding: "4px 8px",
-                          borderRadius: theme.border.radius,
-                          fontSize: "12px",
-                          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                          zIndex: 10,
-                        }}
-                      >
-                        Copied!
-                      </div>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {isImport && (
-                <span style={{ 
-                  color: theme.colors.nodeImport,
-                  fontWeight: "bold",
-                  fontSize: "14px"
-                }}>
-                  Imported
-                </span>
-              )}
-
-              {isByproduct && (
-                <span style={{ 
-                  color: theme.colors.nodeByproduct,
-                  fontWeight: "bold",
-                  fontSize: "14px"
-                }}>
-                  Byproduct
-                </span>
-              )}
+              <EfficiencyIndicator 
+                efficiency={efficiency} 
+                isByproduct={isByproduct} 
+                isImport={isImport} 
+              />
 
               {/* Rate */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  fontWeight: "bold",
-                  color: isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
-                  marginLeft: (isByproduct || isImport) ? "auto" : "4px",
-                  fontSize: "16px",
-                }}
-              >
-                <span>{amount.toFixed(2)}</span>
-              </div>
+              <RateDisplay 
+                amount={amount}
+                isByproduct={isByproduct}
+                isImport={isImport}
+              />
             </div>
 
             {/* Second row: Excess controls */}
             {onExcessChange && !isByproduct && !isImport && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: "0px",
-                  alignItems: "center",
-                  width: "100%",
-                  justifyContent: "space-between",
-                  position: "relative",
-                  zIndex: 2,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  style={{
-                    ...buttonStyle,
-                    position: "relative",
-                    zIndex: 2,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleResetExcess();
-                  }}
-                  title="Reset excess to zero"
-                >
-                  R
-                </button>
-
-                <StyledInput
-                  ref={excessRef}
-                  type="number"
-                  value={displayExcess}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleExcessChange(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    handleKeyDown(
-                      e,
-                      preciseExcess,
-                      (val) => {
-                        setPreciseExcess(val);
-                        setLocalExcess(val);
-                        onExcessChange?.(val);
-                      },
-                      0.01 // Use a smaller step for excess
-                    );
-                  }}
-                  onWheel={(e) => {
-                    e.stopPropagation();
-                    if (document.activeElement === excessRef.current) {
-                      handleWheel(
-                        e,
-                        preciseExcess,
-                        (val) => {
-                          setPreciseExcess(val);
-                          setLocalExcess(val);
-                          onExcessChange?.(val);
-                        },
-                        0.1 // Larger step for wheel
-                      );
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.stopPropagation();
-                    handleExcessFocus(e);
-                  }}
-                  onBlur={(e) => {
-                    e.stopPropagation();
-                    handleExcessBlur();
-                  }}
-                  variant="compact"
-                  style={{
-                    ...inputFieldStyle,
-                    position: "relative",
-                    zIndex: 2,
-                    maxWidth: "60px",
-                  }}
-                  min={0}
-                  onClick={(e) => e.stopPropagation()}
-                  title={isRoot ? "Add desired production amount" : "Additional items to generate beyond what is needed by consumers"}
-                />
-
-                <button
-                  style={{
-                    ...buttonStyle,
-                    backgroundColor: theme.colors.secondary,
-                    position: "relative",
-                    zIndex: 2,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMaxExcess();
-                  }}
-                  title="Set excess for 100% efficiency"
-                >
-                  M
-                </button>
-              </div>
+              <ExcessControls
+                excess={localExcess}
+                onExcessChange={handleExcessChange}
+                onMaxExcess={handleMaxExcess}
+                onResetExcess={handleResetExcess}
+              />
             )}
           </div>
         </div>
