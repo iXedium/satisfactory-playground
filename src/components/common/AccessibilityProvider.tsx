@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, ReactNode, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, ReactNode, createContext, useContext, useRef } from 'react';
 import './accessibility.css';
 
 interface KeyboardShortcut {
@@ -46,6 +46,26 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({ ch
   // State for focus and high contrast modes
   const [focusMode, setFocusMode] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
+  
+  // Use a ref to hold the help action function that can access the latest shortcuts
+  const getShortcutsHelpMessage = useRef(() => {
+    return 'Keyboard shortcuts:\n' + 
+      shortcuts.map(s => {
+        const mods = s.modifiers?.join('+') || '';
+        return `${mods ? mods + '+' : ''}${s.key}: ${s.description}`;
+      }).join('\n');
+  });
+
+  // Update the ref function when shortcuts change
+  useEffect(() => {
+    getShortcutsHelpMessage.current = () => {
+      return 'Keyboard shortcuts:\n' + 
+        shortcuts.map(s => {
+          const mods = s.modifiers?.join('+') || '';
+          return `${mods ? mods + '+' : ''}${s.key}: ${s.description}`;
+        }).join('\n');
+    };
+  }, [shortcuts]);
   
   // Register a keyboard shortcut
   const registerShortcut = useCallback((shortcut: KeyboardShortcut) => {
@@ -132,13 +152,8 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({ ch
       key: '?',
       description: 'Show keyboard shortcuts help',
       action: () => {
-        // Placeholder for help dialog
-        alert('Keyboard shortcuts:\n' + 
-          shortcuts.map(s => {
-            const mods = s.modifiers?.join('+') || '';
-            return `${mods ? mods + '+' : ''}${s.key}: ${s.description}`;
-          }).join('\n')
-        );
+        // Use the ref function to get the updated message
+        alert(getShortcutsHelpMessage.current());
       }
     });
     
@@ -164,7 +179,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({ ch
       unregisterShortcut('h', ['alt', 'shift']);
       unregisterShortcut('f', ['alt', 'shift']);
     };
-  }, [registerShortcut, unregisterShortcut, shortcuts]);
+  }, [registerShortcut, unregisterShortcut]);
   
   const contextValue = {
     registerShortcut,

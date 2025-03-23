@@ -47,6 +47,7 @@ We've been working on refactoring and enhancing the codebase, with a focus on ty
 14. Fixed the RequirementsOutput.tsx icon access issue
 15. Fixed the MachineSection.tsx optimalCount issue
 16. Created UI component exports for Modal and other UI components
+17. Fixed infinite update loop in AccessibilityProvider component by properly handling dependencies in useEffect hooks
 
 ## Remaining Tasks
 
@@ -154,3 +155,34 @@ This project is a complex React/TypeScript application for calculating and visua
 The application uses a component-based architecture with hooks for business logic, services for calculations, and Redux for state management. The main views are the tree view and accumulated view, which provide different ways to visualize production chains.
 
 Going forward, the focus should be on fixing the remaining TypeScript errors, ensuring consistent interface usage, and testing the application to ensure functionality works as expected. 
+
+## React Patterns and Best Practices
+
+### Avoiding Infinite Update Loops
+
+We encountered and fixed an infinite update loop in the `AccessibilityProvider` component. This is a common issue in React applications that can occur when:
+
+1. A component calls setState inside useEffect
+2. The useEffect doesn't have a dependency array, or
+3. One of the dependencies in the array changes on every render
+
+To fix this issue, we:
+
+1. Used a useRef to store a function that can access the latest state without causing re-renders
+2. Carefully managed our useEffect dependency arrays to avoid circular dependencies
+3. Separated the state update logic from the effect that depends on that state
+
+When working with this codebase, keep these patterns in mind:
+
+- Be cautious with dependency arrays in useEffect - ensure they contain only the dependencies that should trigger the effect
+- Use functional updates (setState(prev => newState)) when new state depends on previous state
+- Consider using useRef for values that should not trigger re-renders when they change
+- For complex state interactions, consider using useReducer instead of multiple useState calls
+
+### Other React Best Practices
+
+- Prefer functional components with hooks over class components
+- Keep components small and focused on a single responsibility
+- Use React.memo for expensive components that render often
+- Use the nodeHelpers utility functions when working with tree structures
+- Follow the existing pattern of separating business logic into custom hooks 
