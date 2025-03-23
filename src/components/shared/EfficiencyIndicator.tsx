@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { theme } from '../../styles/theme';
+import { sizes } from '../../styles/constants';
 
 interface EfficiencyIndicatorProps {
   efficiency: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  containerStyle?: React.CSSProperties;
+  textStyle?: React.CSSProperties;
 }
 
 const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
   efficiency,
   isByproduct = false,
   isImport = false,
+  containerStyle,
+  textStyle,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -32,7 +37,8 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
       <span style={{ 
         color: theme.colors.nodeImport,
         fontWeight: "bold",
-        fontSize: "14px"
+        fontSize: sizes.fontSize.standard,
+        ...textStyle
       }}>
         Imported
       </span>
@@ -44,7 +50,8 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
       <span style={{ 
         color: theme.colors.nodeByproduct,
         fontWeight: "bold",
-        fontSize: "14px"
+        fontSize: sizes.fontSize.standard,
+        ...textStyle
       }}>
         Byproduct
       </span>
@@ -57,7 +64,8 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
         display: "flex",
         alignItems: "center",
         position: "relative",
-        zIndex: 2,
+        zIndex: sizes.zIndex.controls,
+        ...containerStyle
       }}
     >
       <span
@@ -67,8 +75,9 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
           fontWeight: "bold",
           position: "relative",
           marginLeft: "0px",
-          zIndex: 2,
-          fontSize: "16px",
+          zIndex: sizes.zIndex.controls,
+          fontSize: sizes.fontSize.large,
+          ...textStyle
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -84,11 +93,11 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
               bottom: "100%",
               right: "0",
               backgroundColor: theme.colors.dark,
-              padding: "4px 8px",
+              padding: `${sizes.spacing.small} ${sizes.spacing.medium}`,
               borderRadius: theme.border.radius,
-              fontSize: "12px",
+              fontSize: sizes.fontSize.small,
               boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-              zIndex: 10,
+              zIndex: sizes.zIndex.tooltip,
             }}
           >
             Copied!

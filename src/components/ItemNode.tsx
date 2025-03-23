@@ -70,8 +70,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
-  const [localMachineMultiplier, setLocalMachineMultiplier] =
-    useState(machineMultiplier);
+  const [localMachineMultiplier] = useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [efficiency, setEfficiency] = useState(100);
   const [nominalRate, setNominalRate] = useState(0);

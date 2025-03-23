@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { theme } from '../../styles/theme';
+import { sizes } from '../../styles/constants';
 import StyledInput from './StyledInput';
 
 interface ExcessControlsProps {
@@ -7,6 +8,9 @@ interface ExcessControlsProps {
   onExcessChange: (value: number) => void;
   onMaxExcess: () => void;
   onResetExcess: () => void;
+  containerStyle?: React.CSSProperties;
+  inputStyle?: React.CSSProperties;
+  buttonStyle?: React.CSSProperties;
 }
 
 const ExcessControls: React.FC<ExcessControlsProps> = ({
@@ -14,6 +18,9 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   onExcessChange,
   onMaxExcess,
   onResetExcess,
+  containerStyle,
+  inputStyle,
+  buttonStyle: customButtonStyle,
 }) => {
   const [preciseExcess, setPreciseExcess] = useState(excess);
   const [isExcessFocused, setIsExcessFocused] = useState(false);
@@ -107,19 +114,20 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
 
   // Button styles
   const buttonStyle: React.CSSProperties = {
-    padding: "4px 8px",
-    fontSize: "12px",
+    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
+    fontSize: sizes.fontSize.small,
     backgroundColor: theme.colors.buttonDefault,
     color: theme.colors.text,
     border: "none",
     borderRadius: theme.border.radius,
     cursor: "pointer",
     fontWeight: "bold",
-    height: "32px",
+    height: sizes.button.standardHeight,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: "30px",
+    minWidth: sizes.button.standardWidth,
+    ...customButtonStyle
   };
 
   // Input field styles
@@ -128,20 +136,22 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
     color: theme.colors.text,
     border: `1px solid ${theme.colors.dropdown.border}`,
     borderRadius: theme.border.radius,
-    padding: "4px 8px",
-    height: "28px",
+    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
+    height: sizes.inputField.standardHeight,
+    ...inputStyle
   };
 
   return (
     <div
       style={{
         display: "flex",
-        gap: "0px",
+        gap: sizes.spacing.xsmall,
         alignItems: "center",
         width: "100%",
         justifyContent: "space-between",
         position: "relative",
-        zIndex: 2,
+        zIndex: sizes.zIndex.controls,
+        ...containerStyle
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -149,7 +159,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
         style={{
           ...buttonStyle,
           position: "relative",
-          zIndex: 2,
+          zIndex: sizes.zIndex.controls,
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -206,9 +216,9 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
         style={{
           ...inputFieldStyle,
           position: "relative",
-          zIndex: 2,
+          zIndex: sizes.zIndex.controls,
           flex: 1,
-          maxWidth: "100px",
+          maxWidth: sizes.inputField.excessWidth,
         }}
         min={0}
         onClick={(e) => e.stopPropagation()}
@@ -217,8 +227,9 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
       <button
         style={{
           ...buttonStyle,
+          backgroundColor: theme.colors.secondary,
           position: "relative",
-          zIndex: 2,
+          zIndex: sizes.zIndex.controls,
         }}
         onClick={(e) => {
           e.stopPropagation();

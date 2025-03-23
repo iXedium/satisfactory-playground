@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { theme } from '../../styles/theme';
+import { sizes } from '../../styles/constants';
 import StyledInput from './StyledInput';
 
 interface MachineControlsProps {
@@ -9,6 +10,9 @@ interface MachineControlsProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachineMultiplier?: boolean;
   onOptimizeMachines: () => void;
+  containerStyle?: React.CSSProperties;
+  inputStyle?: React.CSSProperties;
+  buttonStyle?: React.CSSProperties;
 }
 
 const MachineControls: React.FC<MachineControlsProps> = ({
@@ -18,6 +22,9 @@ const MachineControls: React.FC<MachineControlsProps> = ({
   onMachineMultiplierChange,
   showMachineMultiplier = false,
   onOptimizeMachines,
+  containerStyle,
+  inputStyle,
+  buttonStyle: customButtonStyle,
 }) => {
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
@@ -93,19 +100,20 @@ const MachineControls: React.FC<MachineControlsProps> = ({
 
   // Button styles
   const buttonStyle: React.CSSProperties = {
-    padding: "4px 8px",
-    fontSize: "12px",
+    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
+    fontSize: sizes.fontSize.small,
     backgroundColor: theme.colors.buttonDefault,
     color: theme.colors.text,
     border: "none",
     borderRadius: theme.border.radius,
     cursor: "pointer",
     fontWeight: "bold",
-    height: "32px",
+    height: sizes.button.standardHeight,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: "30px",
+    minWidth: sizes.button.standardWidth,
+    ...customButtonStyle
   };
 
   // Input field styles
@@ -114,8 +122,9 @@ const MachineControls: React.FC<MachineControlsProps> = ({
     color: theme.colors.text,
     border: `1px solid ${theme.colors.dropdown.border}`,
     borderRadius: theme.border.radius,
-    padding: "4px 8px",
-    height: "28px",
+    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
+    height: sizes.inputField.standardHeight,
+    ...inputStyle
   };
 
   return (
@@ -123,8 +132,9 @@ const MachineControls: React.FC<MachineControlsProps> = ({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '2px',
-        width: '100%'
+        gap: sizes.spacing.xsmall,
+        width: '100%',
+        ...containerStyle
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -171,9 +181,8 @@ const MachineControls: React.FC<MachineControlsProps> = ({
         style={{
           ...inputFieldStyle,
           position: "relative",
-          zIndex: 2,
-          flex: "0 0 40px",
-          maxWidth: "40px",
+          zIndex: sizes.zIndex.controls,
+          maxWidth: sizes.inputField.machineCountWidth,
         }}
         min={1}
         onClick={(e) => e.stopPropagation()}
@@ -185,7 +194,7 @@ const MachineControls: React.FC<MachineControlsProps> = ({
           ...buttonStyle,
           backgroundColor: theme.colors.secondary,
           position: "relative",
-          zIndex: 2,
+          zIndex: sizes.zIndex.controls,
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -240,9 +249,8 @@ const MachineControls: React.FC<MachineControlsProps> = ({
           style={{
             ...inputFieldStyle,
             position: "relative",
-            zIndex: 2,
-            flex: "0 0 40px",
-            maxWidth: "40px",
+            zIndex: sizes.zIndex.controls,
+            maxWidth: sizes.inputField.machineMultiplierWidth,
           }}
           min={1}
           onClick={(e) => e.stopPropagation()}
