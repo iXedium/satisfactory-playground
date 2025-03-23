@@ -110,7 +110,7 @@ export function cloneNodeTree(node: DependencyNode): DependencyNode {
   const clone = { ...node };
   
   if (hasChildren(node)) {
-    clone.children = node.children.map(child => {
+    clone.children = node.children!.map(child => {
       const childClone = cloneNodeTree(child);
       childClone.parent = clone;
       return childClone;

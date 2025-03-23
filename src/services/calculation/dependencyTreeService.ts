@@ -52,10 +52,12 @@ export function findNodeById(tree: DependencyNode, nodeId: string): DependencyNo
     return tree;
   }
   
-  for (const child of tree.children) {
-    const found = findNodeById(child, nodeId);
-    if (found) {
-      return found;
+  if (tree.children) {
+    for (const child of tree.children) {
+      const found = findNodeById(child, nodeId);
+      if (found) {
+        return found;
+      }
     }
   }
   

@@ -10,7 +10,7 @@ import './dashboard.css';
  */
 const Dashboard: React.FC = () => {
   const { activeTab } = useUI();
-  const { openSettingsToTab, openImportExport } = useComponentIntegration();
+  const { openSettings, openImportExport } = useComponentIntegration();
   
   // Only show dashboard on the home tab
   if (activeTab !== 'home') {
@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
           <div className="dashboard-cards">
             <div 
               className="dashboard-card"
-              onClick={() => openSettingsToTab('general')}
+              onClick={() => openSettings()}
             >
               <div className="dashboard-card-icon">⚙️</div>
               <div className="dashboard-card-content">
@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
             
             <div 
               className="dashboard-card"
-              onClick={() => openImportExport('export')}
+              onClick={() => openImportExport()}
             >
               <div className="dashboard-card-icon">💾</div>
               <div className="dashboard-card-content">
@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
             
             <div 
               className="dashboard-card"
-              onClick={() => openImportExport('import')}
+              onClick={() => openImportExport()}
             >
               <div className="dashboard-card-icon">📂</div>
               <div className="dashboard-card-content">
@@ -104,6 +104,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="dashboard-section">
+          <h2 className="dashboard-section-title">Recent Items</h2>
           <RecentItems maxItems={10} className="dashboard-recent-items" />
         </div>
       </div>

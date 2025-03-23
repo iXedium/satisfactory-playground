@@ -149,7 +149,7 @@ export function getPathToNode(node: DependencyNode): DependencyNode[] {
   
   while (current) {
     path.unshift(current);
-    current = current.parent;
+    current = current.parent || null;
   }
   
   return path;

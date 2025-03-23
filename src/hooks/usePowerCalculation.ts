@@ -26,7 +26,7 @@ interface UsePowerCalculationResult {
   isLoading: boolean;
   error: string | null;
   getPowerForNode: (nodeId: string) => number;
-  getMachinePowerForNode: (node: DependencyNode) => number;
+  getMachinePowerForNode: (node: DependencyNode) => Promise<number>;
   refreshPowerData: () => void;
 }
 
@@ -50,12 +50,12 @@ export function usePowerCalculation(): UsePowerCalculationResult {
   /**
    * Calculate power consumption for a node
    */
-  const getMachinePowerForNode = useCallback((node: DependencyNode): number => {
+  const getMachinePowerForNode = useCallback(async (node: DependencyNode): Promise<number> => {
     if (!node.recipeId) return 0;
     
     try {
       // Get the machine for this recipe
-      const machine = getMachineForRecipe(node.recipeId);
+      const machine = await getMachineForRecipe(node.recipeId);
       if (!machine) return 0;
       
       // Get machine count and multiplier
@@ -63,7 +63,7 @@ export function usePowerCalculation(): UsePowerCalculationResult {
       const multiplier = machineMultiplierMap[node.uniqueId] || 1;
       
       // Calculate power consumption
-      return calculatePowerConsumption(machine, count, multiplier);
+      return calculatePowerConsumption(machine, multiplier) * count;
     } catch (err) {
       console.error('Error calculating power for node:', err);
       return 0;
@@ -80,7 +80,7 @@ export function usePowerCalculation(): UsePowerCalculationResult {
   /**
    * Calculate power data from all trees
    */
-  const calculatePowerData = useCallback(() => {
+  const calculatePowerData = useCallback(async () => {
     try {
       // Get all nodes from all trees
       const accumulatedNodes: AccumulatedNode[] = calculateAccumulatedFromTrees(trees);
@@ -91,24 +91,24 @@ export function usePowerCalculation(): UsePowerCalculationResult {
       let totalPower = 0;
       
       // Process each node in each tree
-      Object.values(trees).forEach(tree => {
+      for (const tree of Object.values(trees)) {
         // Use the safe getAllNodesInTree function from nodeHelpers
         const nodesInTree = getAllNodesInTree(tree);
         
         // Process each node
-        nodesInTree.forEach(node => {
-          if (!node.recipeId) return;
+        for (const node of nodesInTree) {
+          if (!node.recipeId) continue;
           
           // Get the machine for this recipe
-          const machine = getMachineForRecipe(node.recipeId);
-          if (!machine) return;
+          const machine = await getMachineForRecipe(node.recipeId);
+          if (!machine) continue;
           
           // Get machine count and multiplier
           const count = machineCountMap[node.uniqueId] || 0;
           const multiplier = machineMultiplierMap[node.uniqueId] || 1;
           
           // Calculate power consumption
-          const power = calculatePowerConsumption(machine, count, multiplier);
+          const power = calculatePowerConsumption(machine, multiplier) * count;
           
           // Store power for this node
           nodesPower[node.uniqueId] = power;
@@ -122,8 +122,8 @@ export function usePowerCalculation(): UsePowerCalculationResult {
           }
           machinesByType[machine.name].count += count;
           machinesByType[machine.name].power += power;
-        });
-      });
+        }
+      }
       
       // Update power data state
       setPowerData({
@@ -144,15 +144,17 @@ export function usePowerCalculation(): UsePowerCalculationResult {
    */
   const refreshPowerData = useCallback(() => {
     setIsLoading(true);
-    calculatePowerData();
-    setIsLoading(false);
+    calculatePowerData().finally(() => {
+      setIsLoading(false);
+    });
   }, [calculatePowerData]);
   
   // Calculate power data when dependencies change
   useEffect(() => {
     setIsLoading(true);
-    calculatePowerData();
-    setIsLoading(false);
+    calculatePowerData().finally(() => {
+      setIsLoading(false);
+    });
   }, [calculatePowerData]);
   
   return {

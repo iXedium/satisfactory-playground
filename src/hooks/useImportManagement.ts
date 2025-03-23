@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
 import { DependencyNode, ImportRelationship } from '../types/core';
 import { 
   createImportNode, 
@@ -15,7 +15,7 @@ import {
   wouldCreateCircularDependency,
   getDependentTrees 
 } from '../services/import/importService';
-import { updateTree } from '../features/dependencySlice';
+import { importNode } from '../features/dependencySlice';
 
 interface UseImportManagementProps {
   sourceTreeId?: string;
@@ -25,7 +25,7 @@ interface UseImportManagementResult {
   importMap: Record<string, ImportRelationship[]>;
   isLoading: boolean;
   error: string | null;
-  createImport: (sourceTreeId: string, sourceNodeId: string, targetTreeId: string, amount: number) => Promise<void>;
+  createImport: (sourceTreeId: string, sourceNodeId: string, targetTreeId: string, targetNodeId: string, amount: number) => Promise<void>;
   removeImport: (targetTreeId: string, targetNodeId: string) => Promise<void>;
   getImportsForTree: (treeId: string) => ImportRelationship[];
   getDependentTreeIds: (sourceTreeId: string) => string[];
@@ -38,7 +38,7 @@ interface UseImportManagementResult {
 export function useImportManagement({
   sourceTreeId
 }: UseImportManagementProps = {}): UseImportManagementResult {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const trees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
   
   const [importMap, setImportMap] = useState<Record<string, ImportRelationship[]>>({});
@@ -50,8 +50,21 @@ export function useImportManagement({
    */
   useEffect(() => {
     try {
-      const newImportMap = buildImportMap(trees);
-      setImportMap(newImportMap);
+      const rawImportMap = buildImportMap(trees);
+      
+      // Convert raw import map to grouped format
+      const groupedImportMap: Record<string, ImportRelationship[]> = {};
+      
+      // Group relationships by target tree ID
+      Object.values(rawImportMap).forEach(relationship => {
+        const { targetTreeId } = relationship;
+        if (!groupedImportMap[targetTreeId]) {
+          groupedImportMap[targetTreeId] = [];
+        }
+        groupedImportMap[targetTreeId].push(relationship);
+      });
+      
+      setImportMap(groupedImportMap);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error building import map');
@@ -89,23 +102,12 @@ export function useImportManagement({
         throw new Error('Source or target tree not found');
       }
       
-      const updatedTrees = createImportNode(
-        trees,
-        targetTreeId,
-        targetNodeId,
+      // Use the importNode action directly
+      dispatch(importNode({
         sourceTreeId,
         sourceNodeId,
-        amount
-      );
-      
-      if (!updatedTrees) {
-        throw new Error('Failed to create import node');
-      }
-      
-      // Update the target tree in the store
-      dispatch(updateTree({
-        treeId: targetTreeId,
-        tree: updatedTrees[targetTreeId]
+        targetTreeId,
+        isNewTree: false
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error creating import');
@@ -132,11 +134,31 @@ export function useImportManagement({
         throw new Error('Target tree not found');
       }
       
-      const updatedTargetTree = removeImportNode(targetTree, targetNodeId);
+      // For removing, we can simply toggle the import off by calling the same action
+      // Find the import node and get its source information
+      const findNode = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
+        if (tree.uniqueId === nodeId) {
+          return tree;
+        }
+
+        if (tree.children) {
+          for (const child of tree.children) {
+            const found = findNode(child, nodeId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
       
-      dispatch(updateTree({
-        treeId: targetTreeId,
-        tree: updatedTargetTree
+      const node = findNode(targetTree, targetNodeId);
+      if (!node || !node.isImport || !node.importedFrom) {
+        throw new Error('Import node not found or is not an import');
+      }
+      
+      dispatch(importNode({
+        sourceTreeId: targetTreeId,
+        sourceNodeId: targetNodeId,
+        targetTreeId: node.importedFrom
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error removing import');

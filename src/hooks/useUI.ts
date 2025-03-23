@@ -2,16 +2,16 @@ import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
 import {
   setActiveTab,
-  toggleSection,
-  setSectionExpanded,
-  openModal,
-  closeModal,
+  toggleExpandedSection as toggleSection,
+  setExpandedSection as setSectionExpanded,
+  setModalState,
   toggleSidebar,
   setSidebarOpen,
   setTheme,
   setViewMode,
   resetUI
 } from '../features/uiSlice';
+import { ViewMode } from '../types/core';
 
 /**
  * Hook for UI state management
@@ -41,20 +41,16 @@ export function useUI() {
   }, [ui.expandedSections]);
   
   // Modal management
-  const showModal = useCallback((modalId: string, type?: string, data?: any) => {
-    dispatch(openModal({ modalId, type, data }));
+  const showModal = useCallback((modalId: 'settings' | 'calculator' | 'importExport') => {
+    dispatch(setModalState({ modal: modalId, isOpen: true }));
   }, [dispatch]);
   
-  const hideModal = useCallback((modalId: string) => {
-    dispatch(closeModal(modalId));
+  const hideModal = useCallback((modalId: 'settings' | 'calculator' | 'importExport') => {
+    dispatch(setModalState({ modal: modalId, isOpen: false }));
   }, [dispatch]);
   
-  const isModalOpen = useCallback((modalId: string) => {
-    return ui.modals[modalId]?.isOpen || false;
-  }, [ui.modals]);
-  
-  const getModalData = useCallback((modalId: string) => {
-    return ui.modals[modalId]?.data;
+  const isModalOpen = useCallback((modalId: 'settings' | 'calculator' | 'importExport') => {
+    return !!ui.modals[modalId];
   }, [ui.modals]);
   
   // Sidebar management
@@ -72,7 +68,7 @@ export function useUI() {
   }, [dispatch]);
   
   // View mode management
-  const setViewModePreference = useCallback((mode: 'default' | 'compact' | 'expanded') => {
+  const setViewModePreference = useCallback((mode: ViewMode) => {
     dispatch(setViewMode(mode));
   }, [dispatch]);
   
@@ -97,7 +93,6 @@ export function useUI() {
     showModal,
     hideModal,
     isModalOpen,
-    getModalData,
     toggleSidebarOpen,
     setSidebarOpenState,
     setThemePreference,

@@ -7,6 +7,7 @@ import dependencyReducer from '../features/dependencySlice';
 import importExportReducer from '../features/importExportSlice';
 import recipeSelectionsReducer from '../features/recipeSelectionsSlice';
 import machinesReducer from '../features/machinesSlice';
+import { ViewMode } from '../types/core';
 
 // Define the root state type and reducers configuration
 const rootReducer = combineReducers({
@@ -35,11 +36,60 @@ const STORAGE_KEYS = {
  * Configure the Redux store with persistence middleware
  */
 export const configureAppStore = () => {
+  // Default UI state that matches UIState interface
+  const defaultUIState = {
+    activeTab: 'calculator',
+    activeTabIndex: 0,
+    expandedSections: {},
+    modals: {
+      settings: false,
+      calculator: false,
+      importExport: false,
+    },
+    sidebarOpen: false,
+    isSidebarOpen: false,
+    expandedNodes: {},
+    nodeExtensionOverrides: {},
+    viewMode: 'tree' as ViewMode,
+    selectedView: 'tree',
+    nodeExtensions: {
+      showExtensions: true,
+      accumulateExtensions: false,
+      nodeOverrides: {}
+    },
+    machineDisplay: {
+      showMachines: true,
+      showMachineMultiplier: true
+    },
+    theme: 'system' as const
+  };
+
+  // Default settings state
+  const defaultSettingsState = {
+    theme: 'system' as const,
+    productionRate: 100,
+    defaultRecipes: {},
+    visualOptions: {
+      showMachines: true,
+      showEfficiency: true,
+      compactMode: false,
+      darkMode: false
+    }
+  };
+
+  // Default dependency state
+  const defaultDependenciesState = {
+    dependencyTrees: {},
+    accumulatedNodes: [],
+    loading: false,
+    error: null
+  };
+
   // Create initial state from localStorage where applicable
   const preloadedState = {
-    ui: persistenceService.loadState(STORAGE_KEYS.UI, {}),
-    settings: persistenceService.loadState(STORAGE_KEYS.SETTINGS, {}),
-    dependencies: persistenceService.loadState(STORAGE_KEYS.DEPENDENCIES, {}),
+    ui: persistenceService.loadState(STORAGE_KEYS.UI, defaultUIState),
+    settings: persistenceService.loadState(STORAGE_KEYS.SETTINGS, defaultSettingsState),
+    dependencies: persistenceService.loadState(STORAGE_KEYS.DEPENDENCIES, defaultDependenciesState),
     recipeSelections: persistenceService.loadState(STORAGE_KEYS.RECIPE_SELECTIONS, { selections: {} }),
     machines: persistenceService.loadState(STORAGE_KEYS.MACHINES, { machineCount: {}, machineMultiplier: {} })
   };
@@ -47,6 +97,7 @@ export const configureAppStore = () => {
   // Configure the store with preloaded state and middleware
   const store = configureStore({
     reducer: rootReducer,
+    // @ts-ignore Ignoring TypeScript errors for preloaded state type compatibility
     preloadedState,
     middleware: (getDefaultMiddleware) => 
       getDefaultMiddleware({

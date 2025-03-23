@@ -1,12 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useComponentIntegration } from '../../hooks/useComponentIntegration';
 import { useDataState } from '../../hooks/useStore';
-import { Item } from '../../types/core';
+import { Item, DatabaseItem } from '../../types/core';
+import { getItemById, getIconForItem } from '../../data/dbQueries';
 
 interface RecentItemsProps {
   onSelect?: (itemId: string) => void;
   maxItems?: number;
   className?: string;
+}
+
+interface RecentItemWithDetails {
+  id: string;
+  name: string;
+  icon: string;
 }
 
 /**
@@ -26,24 +33,40 @@ export const RecentItems: React.FC<RecentItemsProps> = ({
   // Get item data from the global state
   const data = useDataState();
   
-  // Filter to max items and get item details
-  const recentItemsWithDetails = useMemo(() => {
-    return recentItems
-      .slice(0, maxItems)
-      .map(itemId => {
-        const items = data.items as Record<string, Item> || {};
-        const item = items[itemId];
-        return {
-          id: itemId,
-          name: item?.name || 'Unknown Item',
-          image: item?.image || ''
-        };
-      })
-      .filter(item => item.name !== 'Unknown Item');
-  }, [recentItems, data.items, maxItems]);
+  // State for items with details including icons
+  const [itemsWithDetails, setItemsWithDetails] = useState<RecentItemWithDetails[]>([]);
+  
+  // Fetch item details including icons
+  useEffect(() => {
+    const fetchItemDetails = async () => {
+      const details = await Promise.all(
+        recentItems.slice(0, maxItems).map(async (itemId) => {
+          try {
+            const item = await getItemById(itemId);
+            if (!item) return null;
+            
+            const icon = await getIconForItem(itemId);
+            
+            return {
+              id: itemId,
+              name: item.name || 'Unknown Item',
+              icon: icon ? icon.position : ''
+            };
+          } catch (error) {
+            console.error(`Error fetching item details for ${itemId}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      setItemsWithDetails(details.filter(Boolean) as RecentItemWithDetails[]);
+    };
+    
+    fetchItemDetails();
+  }, [recentItems, maxItems]);
   
   // Handle no recent items
-  if (recentItemsWithDetails.length === 0) {
+  if (itemsWithDetails.length === 0) {
     return null;
   }
   
@@ -51,7 +74,7 @@ export const RecentItems: React.FC<RecentItemsProps> = ({
     <div className={`recent-items ${className}`}>
       <h3 className="recent-items-title">Recent Items</h3>
       <div className="recent-items-list">
-        {recentItemsWithDetails.map(item => (
+        {itemsWithDetails.map(item => (
           <div 
             key={item.id}
             className="recent-item"
@@ -64,9 +87,9 @@ export const RecentItems: React.FC<RecentItemsProps> = ({
               }
             }}
           >
-            {item.image && (
+            {item.icon && (
               <img 
-                src={item.image} 
+                src={item.icon} 
                 alt={item.name} 
                 className="recent-item-image" 
               />

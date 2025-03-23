@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
 import { 
   startExport, 
   startImport, 
@@ -13,7 +13,7 @@ import {
  * @returns Object with functions and state for import/export
  */
 export const useImportExport = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const importExportState = useSelector((state: RootState) => state.importExport);
   
   // Export all data

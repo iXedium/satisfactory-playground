@@ -29,7 +29,7 @@ export interface DependencyNode {
   /** Available recipes for this item */
   availableRecipes?: Recipe[];
   /** Child nodes (inputs) */
-  children: DependencyNode[] | undefined;
+  children?: DependencyNode[];
   /** Parent node */
   parent?: DependencyNode;
   /** The amount of excess production for this node */
@@ -149,17 +149,23 @@ export interface Machine {
 }
 
 /**
- * Represents an item in the game
+ * Extends the database Item interface with additional properties
  */
-export interface Item {
+export interface DatabaseItem {
   /** The item ID */
   id: string;
   /** The item name */
   name: string;
+  /** The item category */
+  category: string;
+}
+
+/**
+ * Represents an item in the game
+ */
+export interface Item extends DatabaseItem {
   /** The stack size */
   stack?: number;
-  /** The item category */
-  category?: string;
   /** The item type */
   type?: string;
   /** The item description */

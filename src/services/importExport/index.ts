@@ -7,7 +7,7 @@ interface ExportData {
   machineCountMap: any;
   machineMultiplierMap: any;
   viewMode: string;
-  expandedNodes: string[];
+  expandedNodes: Record<string, boolean>;
   nodeExtensionOverrides: any;
   settings: any;
 }
@@ -19,11 +19,11 @@ interface ExportData {
 export const exportData = (state: RootState): void => {
   try {
     const exportData: ExportData = {
-      dependencies: state.data.dependencies,
-      recipeSelections: state.data.recipeSelections,
-      excessMap: state.data.excessMap,
-      machineCountMap: state.data.machineCountMap,
-      machineMultiplierMap: state.data.machineMultiplierMap,
+      dependencies: state.dependencies,
+      recipeSelections: state.recipeSelections,
+      excessMap: {}, // Stub - this property isn't in the current state structure
+      machineCountMap: state.machines?.machineCount || {},
+      machineMultiplierMap: state.machines?.machineMultiplier || {},
       viewMode: state.ui.viewMode,
       expandedNodes: state.ui.expandedNodes,
       nodeExtensionOverrides: state.ui.nodeExtensionOverrides,
@@ -40,8 +40,8 @@ export const exportData = (state: RootState): void => {
     linkElement.setAttribute('download', exportFileName);
     linkElement.click();
   } catch (error) {
-    console.error('Failed to export data:', error);
-    throw new Error('Failed to export data. Please try again.');
+    console.error('Error exporting data:', error);
+    throw error;
   }
 };
 

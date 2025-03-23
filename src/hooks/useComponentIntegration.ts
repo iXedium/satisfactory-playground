@@ -17,9 +17,9 @@ export function useComponentIntegration() {
   // Track recently viewed items
   const [recentItems, setRecentItems] = usePersistentState<string[]>('recentItems', []);
   
-  // Integration: Open settings for a specific tab
-  const openSettingsToTab = useCallback((tab: string) => {
-    showModal('settings', tab);
+  // Integration: Open settings
+  const openSettings = useCallback(() => {
+    showModal('settings');
   }, [showModal]);
   
   // Integration: Recipe selection - update default and show calculator
@@ -58,8 +58,8 @@ export function useComponentIntegration() {
   }, [toggleBooleanSetting]);
   
   // Integration: Handle import/export across components
-  const openImportExport = useCallback((initialMode: 'import' | 'export' = 'export') => {
-    showModal('importExport', initialMode);
+  const openImportExport = useCallback(() => {
+    showModal('importExport');
   }, [showModal]);
   
   // Get the user's recent items
@@ -69,13 +69,13 @@ export function useComponentIntegration() {
   
   return {
     // Cross-component actions
-    openSettingsToTab,
+    openSettings,
     selectRecipeAndShowCalculator,
     toggleComponentVisibility,
     openImportExport,
     getRecentItems,
     
-    // Recent items state
+    // Data
     recentItems
   };
 }

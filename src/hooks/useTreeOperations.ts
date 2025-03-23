@@ -7,9 +7,11 @@
 
 import { useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
 import { DependencyNode } from '../types/core';
 import { deleteTree } from '../features/dependencySlice';
+import { toggleNodeExpanded } from '../features/uiSlice';
+import { getNodeChildren, findNodeInTree } from '../utils/nodeHelpers';
 
 interface UseTreeOperationsProps {
   treeId?: string;
@@ -30,7 +32,7 @@ interface UseTreeOperationsResult {
 export function useTreeOperations({
   treeId
 }: UseTreeOperationsProps = {}): UseTreeOperationsResult {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const expandedNodes = useSelector((state: RootState) => state.ui.expandedNodes);
   const trees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
   
@@ -44,47 +46,29 @@ export function useTreeOperations({
   /**
    * Toggle the expanded state of a node
    */
-  const toggleNodeExpanded = useCallback((nodeId: string): void => {
-    // This will be implemented when we update the UI slice
-    // For now, it's just a placeholder
-    console.log(`Toggle expanded state for node ${nodeId}`);
-  }, []);
+  const toggleNodeExpansion = useCallback((nodeId: string): void => {
+    dispatch(toggleNodeExpanded(nodeId));
+  }, [dispatch]);
   
   /**
-   * Delete a tree by ID
+   * Delete a tree by its ID
    */
-  const deleteTreeById = useCallback((id: string): void => {
-    dispatch(deleteTree(id));
+  const deleteTreeById = useCallback((id: string) => {
+    dispatch(deleteTree({ treeId: id }));
   }, [dispatch]);
   
   /**
    * Find a node by its ID in all trees or in a specific tree
    */
   const findNodeById = useCallback((nodeId: string): DependencyNode | null => {
-    // Helper function to search within a tree
-    const searchInTree = (tree: DependencyNode, id: string): DependencyNode | null => {
-      if (tree.uniqueId === id) {
-        return tree;
-      }
-      
-      for (const child of tree.children) {
-        const found = searchInTree(child, id);
-        if (found) {
-          return found;
-        }
-      }
-      
-      return null;
-    };
-    
-    // If treeId is provided, only search in that tree
+    // If a specific tree is provided, only search in that tree
     if (treeId && trees[treeId]) {
-      return searchInTree(trees[treeId], nodeId);
+      return findNodeInTree(trees[treeId], nodeId) || null;
     }
     
     // Otherwise, search in all trees
     for (const tree of Object.values(trees)) {
-      const found = searchInTree(tree, nodeId);
+      const found = findNodeInTree(tree, nodeId);
       if (found) {
         return found;
       }
@@ -97,7 +81,7 @@ export function useTreeOperations({
     expandedNodes,
     trees,
     isNodeExpanded,
-    toggleNodeExpanded,
+    toggleNodeExpanded: toggleNodeExpansion,
     deleteTreeById,
     findNodeById
   };

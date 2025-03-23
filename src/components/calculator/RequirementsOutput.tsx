@@ -55,7 +55,7 @@ const RequirementsOutput: React.FC<RequirementsOutputProps> = ({
               const icon = await getIconForItem(itemId);
               details[itemId] = {
                 name: item.name || 'Unknown Item',
-                icon: icon?.url || ''
+                icon: icon ? icon.position : ''
               };
             }
           } catch (error) {

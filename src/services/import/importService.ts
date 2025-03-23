@@ -6,9 +6,14 @@
  */
 
 import { DependencyNode } from '../../types/core';
-import { cloneTree, findNodeById } from '../calculation/dependencyTreeService';
+import { cloneTree } from '../calculation/dependencyTreeService';
 import { v4 as uuidv4 } from 'uuid';
-import { getNodeChildren, forEachNodeChild, mapNodeChildren, hasChildren } from '../../utils/nodeHelpers';
+import { getNodeChildren, forEachNodeChild, mapNodeChildren, hasChildren, findNodeInTree } from '../../utils/nodeHelpers';
+
+// Extended DependencyNode type with import-specific properties
+export interface ImportDependencyNode extends DependencyNode {
+  importSourceNodeId?: string;
+}
 
 /**
  * Import map entry defining a relationship between trees
@@ -27,7 +32,7 @@ export interface ImportRelationship {
 }
 
 /**
- * Map of import relationships
+ * Map of node IDs to import relationships
  */
 export type ImportMap = Record<string, ImportRelationship>;
 
@@ -75,127 +80,94 @@ export function createImportNode(
   targetNodeId: string,
   sourceTreeId: string,
   sourceNodeId: string,
-  amount: number
-): Record<string, DependencyNode> {
-  const updatedTrees = { ...trees };
+  amount: number = 0
+): Record<string, DependencyNode> | null {
+  // Get the source and target trees
+  const targetTree = trees[targetTreeId];
+  const sourceTree = trees[sourceTreeId];
+  
+  if (!targetTree || !sourceTree) {
+    console.error("Source or target tree not found");
+    return null;
+  }
   
   // Get the source node
-  const sourceTree = trees[sourceTreeId];
-  const sourceNode = findNodeById(sourceTree, sourceNodeId);
+  const sourceNode = findNodeInTreeById(sourceTree, sourceNodeId);
   
   if (!sourceNode) {
-    return trees; // Source node not found, return original trees
+    console.error("Source node not found");
+    return null;
   }
   
-  // Create a deep copy of the trees
-  const newTrees = JSON.parse(JSON.stringify(trees));
+  // Get the target node
+  const targetNode = findNodeInTreeById(targetTree, targetNodeId);
   
-  // Find the target tree and node
-  const targetTree = newTrees[targetTreeId];
-  
-  if (!targetTree) {
-    return trees; // Target tree not found, return original trees
+  if (!targetNode) {
+    console.error("Target node not found");
+    return null;
   }
   
-  // Create a function to replace the target node with an import node
-  const replaceWithImport = (node: DependencyNode): DependencyNode => {
-    if (node.uniqueId === targetNodeId) {
-      // Create an import node
-      return {
-        ...node,
-        isImport: true,
-        importedFrom: sourceTreeId,
-        importSourceNodeId: sourceNodeId,
-        amount: amount || node.amount, // Use provided amount or keep existing
-        children: [], // Import nodes don't have children
-      };
-    }
-    
-    // Process children recursively
-    if (hasChildren(node)) {
-      return {
-        ...node,
-        children: mapNodeChildren(node, replaceWithImport),
-      };
-    }
-    
-    return node;
-  };
+  console.log("Creating import from", sourceNode, "to", targetNode);
   
-  // Update the target tree
-  newTrees[targetTreeId] = replaceWithImport(targetTree);
+  // Create a new tree structure, preserving the path to the target node
+  const nodePath = getPathToTargetNode(targetTree, targetNodeId);
+  
+  if (!nodePath.length) {
+    console.error("Could not find path to target node");
+    return null;
+  }
+  
+  // Create a new trees object with the updated target tree
+  const newTrees = { ...trees };
+  
+  // Replace the target node with an import node
+  newTrees[targetTreeId] = replaceNodeWithImport(
+    targetTree,
+    nodePath.map(node => node.uniqueId),
+    {
+      ...sourceNode,
+      amount: amount || sourceNode.amount,
+      importedFrom: sourceTreeId,
+      importSourceNodeId: sourceNodeId,
+    } as ImportDependencyNode
+  );
   
   return newTrees;
 }
 
 /**
- * Find a node in a tree by its unique ID
+ * Find a node by ID in a tree
  */
-function findNodeById(tree: DependencyNode, nodeId: string): DependencyNode | null {
-  if (tree.uniqueId === nodeId) {
-    return tree;
-  }
-  
-  if (!hasChildren(tree)) {
-    return null;
-  }
-  
-  for (const child of getNodeChildren(tree)) {
-    const found = findNodeById(child, nodeId);
-    if (found) {
-      return found;
-    }
-  }
-  
-  return null;
+function findNodeInTreeById(tree: DependencyNode, nodeId: string): DependencyNode | null {
+  return findNodeInTree(tree, nodeId) || null;
 }
 
 /**
  * Remove an import node and restore its original children
  */
-export function removeImportNode(
-  trees: Record<string, DependencyNode>,
-  treeId: string,
-  nodeId: string
-): Record<string, DependencyNode> {
-  const tree = trees[treeId];
-  if (!tree) {
-    return trees;
+export function removeImportNode(node: ImportDependencyNode): ImportDependencyNode {
+  // If this is an import node, remove the import flags and reference
+  if (node.isImport) {
+    return {
+      ...node,
+      isImport: false,
+      importedFrom: undefined,
+      importSourceNodeId: undefined
+    };
   }
   
-  // Function to recursively find and remove the import
-  const removeImport = (node: DependencyNode): DependencyNode => {
-    if (node.uniqueId === nodeId) {
-      // If this is the import node to remove
-      if (node.isImport) {
-        return {
-          ...node,
-          isImport: false,
-          importedFrom: undefined,
-          importSourceNodeId: undefined,
-          // Restore original children if they were saved
-          children: node.originalChildren || [],
-        };
-      }
-      return node;
-    }
-    
-    // Process children recursively
-    if (hasChildren(node)) {
-      return {
-        ...node,
-        children: mapNodeChildren(node, removeImport),
-      };
-    }
-    
-    return node;
-  };
+  // If this is not an import node but has children, process children
+  if (node.children && node.children.length > 0) {
+    return {
+      ...node,
+      children: node.children.map(child => 
+        removeImportNode(child as ImportDependencyNode)
+      )
+    };
+  }
   
-  // Create a new trees object with the updated tree
-  return {
-    ...trees,
-    [treeId]: removeImport(tree),
-  };
+  // Otherwise return unchanged node
+  return node;
 }
 
 /**
@@ -204,29 +176,24 @@ export function removeImportNode(
 export function buildImportMap(trees: Record<string, DependencyNode>): ImportMap {
   const importMap: ImportMap = {};
   
-  // Process each tree
+  // Iterate through all trees to find import nodes
   Object.entries(trees).forEach(([treeId, tree]) => {
-    // Function to find all import nodes
-    const findImportNodes = (node: DependencyNode): void => {
+    const findImportNodes = (node: ImportDependencyNode): void => {
       if (node.isImport && node.importedFrom && node.importSourceNodeId) {
-        // Found an import node, add to the map
-        const importId = `${treeId}-${node.uniqueId}`;
-        importMap[importId] = {
+        importMap[node.uniqueId] = {
           sourceTreeId: node.importedFrom,
           targetTreeId: treeId,
           sourceNodeId: node.importSourceNodeId,
           targetNodeId: node.uniqueId,
-          amount: node.amount,
+          amount: node.amount
         };
       }
       
       // Process children
-      if (hasChildren(node)) {
-        getNodeChildren(node).forEach(findImportNodes);
-      }
+      forEachNodeChild(node, (child) => findImportNodes(child as ImportDependencyNode));
     };
     
-    findImportNodes(tree);
+    findImportNodes(tree as ImportDependencyNode);
   });
   
   return importMap;
@@ -293,32 +260,68 @@ export function findAllImportNodes(node: DependencyNode): DependencyNode[] {
 export function replaceNodeWithImport(
   node: DependencyNode,
   nodePath: string[],
-  importedNode: DependencyNode,
+  importedNode: ImportDependencyNode,
   index: number = 0
 ): DependencyNode {
-  // Base case: we've reached the target node
-  if (index === nodePath.length - 1 && node.uniqueId === nodePath[index]) {
+  // Base case: we've processed all elements in the path
+  if (index >= nodePath.length) {
+    return node;
+  }
+  
+  // Current element in the path
+  const currentId = nodePath[index];
+  
+  // If this is the target node, replace with import node
+  if (node.uniqueId === currentId && index === nodePath.length - 1) {
     return {
       ...node,
       isImport: true,
       importedFrom: importedNode.importedFrom,
       importSourceNodeId: importedNode.uniqueId,
-      // Save the original children so they can be restored later
-      originalChildren: node.children,
-      children: [],
-    };
+      children: []
+    } as ImportDependencyNode;
   }
   
-  // If this isn't the target node but we're on the path to it
-  if (node.uniqueId === nodePath[index] && hasChildren(node)) {
-    return {
-      ...node,
-      children: mapNodeChildren(node, (child) => 
-        replaceNodeWithImport(child, nodePath, importedNode, index + 1)
-      ),
-    };
+  // Otherwise, clone the node and continue processing children
+  const clonedNode = { ...node };
+  
+  if (hasChildren(node)) {
+    clonedNode.children = node.children!.map(child => {
+      if (child.uniqueId === currentId) {
+        return replaceNodeWithImport(child, nodePath, importedNode, index + 1);
+      }
+      return child;
+    });
   }
   
-  // Not on the path, return the node unchanged
-  return node;
+  return clonedNode;
+}
+
+/**
+ * Find the path from root to target node
+ */
+function getPathToTargetNode(tree: DependencyNode, targetNodeId: string): DependencyNode[] {
+  const path: DependencyNode[] = [];
+  
+  function findPath(node: DependencyNode): boolean {
+    path.push(node);
+    
+    if (node.uniqueId === targetNodeId) {
+      return true;
+    }
+    
+    if (node.children) {
+      for (const child of node.children) {
+        if (findPath(child)) {
+          return true;
+        }
+      }
+    }
+    
+    path.pop();
+    return false;
+  }
+  
+  findPath(tree);
+  return path;
 } 

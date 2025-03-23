@@ -7,15 +7,14 @@
 
 import { useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
+import { RootState, AppDispatch } from '../store';
+import { ViewMode } from '../types/core';
 import { 
   toggleNodeExpanded, 
   setActiveTabIndex, 
-  setSelectedView,
+  setViewMode,
   toggleSidebar
 } from '../features/uiSlice';
-
-type ViewType = 'tree' | 'accumulated' | 'power' | 'settings';
 
 interface UseUIStateResult {
   // Expanded nodes state
@@ -28,8 +27,8 @@ interface UseUIStateResult {
   setActiveTab: (index: number) => void;
   
   // View selection state
-  selectedView: ViewType;
-  selectView: (view: ViewType) => void;
+  selectedView: ViewMode;
+  selectView: (view: ViewMode) => void;
   
   // Sidebar state
   isSidebarOpen: boolean;
@@ -40,12 +39,12 @@ interface UseUIStateResult {
  * Hook for managing UI state
  */
 export function useUIState(): UseUIStateResult {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   
   // Get UI state from Redux store
   const expandedNodes = useSelector((state: RootState) => state.ui.expandedNodes);
   const activeTabIndex = useSelector((state: RootState) => state.ui.activeTabIndex);
-  const selectedView = useSelector((state: RootState) => state.ui.selectedView);
+  const selectedView = useSelector((state: RootState) => state.ui.viewMode);
   const isSidebarOpen = useSelector((state: RootState) => state.ui.isSidebarOpen);
   
   /**
@@ -72,8 +71,8 @@ export function useUIState(): UseUIStateResult {
   /**
    * Select a view type
    */
-  const selectView = useCallback((view: ViewType): void => {
-    dispatch(setSelectedView(view));
+  const selectView = useCallback((view: ViewMode): void => {
+    dispatch(setViewMode(view));
   }, [dispatch]);
   
   /**
