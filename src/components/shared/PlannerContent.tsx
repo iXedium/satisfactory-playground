@@ -1,13 +1,14 @@
 import React, { RefObject } from 'react';
 import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
-import AccumulatedView from '../AccumulatedView';
+import RefactoredAccumulatedView from '../RefactoredAccumulatedView';
 import TreeViewContainer from './TreeViewContainer';
+import { DependencyNode } from '../../utils/calculateDependencyTree';
 
 interface PlannerContentProps {
   viewMode: 'tree' | 'accumulated';
   treeViewRef: RefObject<HTMLDivElement | null>;
   dependencies: {
-    dependencyTrees: any;
+    dependencyTrees: Record<string, DependencyNode>;
     accumulatedDependencies: Record<string, AccumulatedNode>;
   };
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -85,7 +86,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
           handleImportNode={handleImportNode}
         />
       ) : (
-        <AccumulatedView
+        <RefactoredAccumulatedView
           onRecipeChange={handleTreeRecipeChange}
           onExcessChange={handleExcessChange}
           excessMap={excessMap}
