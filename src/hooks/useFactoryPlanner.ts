@@ -1,0 +1,492 @@
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../store';
+import { getComponents } from '../data/dbQueries';
+import { Item } from '../data/dexieDB';
+import { 
+  loadSavedState, 
+  setDependencies, 
+  deleteTree, 
+  updateAccumulated, 
+  importNode 
+} from '../features/dependencySlice';
+import { 
+  setRecipeSelection, 
+  loadRecipeSelections 
+} from '../features/recipeSelectionsSlice';
+import { calculateDependencyTree, DependencyNode } from '../utils/calculateDependencyTree';
+import { calculateAccumulatedFromTree } from '../utils/calculateAccumulatedFromTree';
+import { findAffectedBranches } from '../utils/treeDiffing';
+
+type ViewMode = "accumulated" | "tree";
+
+export const useFactoryPlanner = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const dependencies = useSelector((state: RootState) => state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  
+  // UI state
+  const [viewMode, setViewMode] = useState<ViewMode>("tree");
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedItem, setSelectedItem] = useState("");
+  const [selectedRecipe, setSelectedRecipe] = useState("");
+  const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
+  
+  // Node specific state
+  const [excessMap, setExcessMap] = useState<Record<string, number>>({});
+  const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
+  const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  
+  // Display options
+  const [showExtensions, setShowExtensions] = useState(false);
+  const [accumulateExtensions, setAccumulateExtensions] = useState(true);
+  const [showMachines, setShowMachines] = useState(true);
+  const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
+  const [nodeExtensionOverrides, setNodeExtensionOverrides] = useState<Record<string, boolean>>({});
+
+  // Load saved state
+  useEffect(() => {
+    try {
+      // Load saved dependencies
+      const savedDependencies = localStorage.getItem('savedDependencies');
+      if (savedDependencies) {
+        const parsed = JSON.parse(savedDependencies);
+        dispatch(loadSavedState(parsed));
+      }
+      
+      // Load saved recipe selections
+      const savedRecipeSelections = localStorage.getItem('savedRecipeSelections');
+      if (savedRecipeSelections) {
+        const parsed = JSON.parse(savedRecipeSelections);
+        dispatch(loadRecipeSelections(parsed));
+      }
+      
+      // Load saved excess map
+      const savedExcessMap = localStorage.getItem('savedExcessMap');
+      if (savedExcessMap) {
+        setExcessMap(JSON.parse(savedExcessMap));
+      }
+      
+      // Load saved machine maps
+      const savedMachineCountMap = localStorage.getItem('savedMachineCountMap');
+      if (savedMachineCountMap) {
+        setMachineCountMap(JSON.parse(savedMachineCountMap));
+      }
+      
+      const savedMachineMultiplierMap = localStorage.getItem('savedMachineMultiplierMap');
+      if (savedMachineMultiplierMap) {
+        setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
+      }
+      
+      // Load UI preferences
+      const savedViewMode = localStorage.getItem('savedViewMode');
+      if (savedViewMode) {
+        setViewMode(savedViewMode as ViewMode);
+      }
+      
+      const savedExpandedNodes = localStorage.getItem('savedExpandedNodes');
+      if (savedExpandedNodes) {
+        setExpandedNodes(JSON.parse(savedExpandedNodes));
+      }
+
+      const savedNodeExtensionOverrides = localStorage.getItem('savedNodeExtensionOverrides');
+      if (savedNodeExtensionOverrides) {
+        setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
+      }
+    } catch (error) {
+      console.error("Error loading saved state:", error);
+    }
+  }, [dispatch]);
+  
+  // Save state to localStorage
+  useEffect(() => {
+    // Only save if we have dependencies to save
+    if (Object.keys(dependencies.dependencyTrees).length > 0) {
+      try {
+        const serialized = JSON.stringify(dependencies);
+        localStorage.setItem('savedDependencies', serialized);
+      } catch (error) {
+        console.error("Error saving dependencies:", error);
+        localStorage.removeItem('savedDependencies');
+      }
+    }
+  }, [dependencies]);
+  
+  useEffect(() => {
+    if (Object.keys(recipeSelections).length > 0) {
+      try {
+        localStorage.setItem('savedRecipeSelections', JSON.stringify(recipeSelections));
+      } catch (error) {
+        console.error("Error saving recipe selections:", error);
+        localStorage.removeItem('savedRecipeSelections');
+      }
+    }
+  }, [recipeSelections]);
+  
+  useEffect(() => {
+    if (Object.keys(excessMap).length > 0) {
+      try {
+        localStorage.setItem('savedExcessMap', JSON.stringify(excessMap));
+      } catch (error) {
+        console.error("Error saving excess map:", error);
+        localStorage.removeItem('savedExcessMap');
+      }
+    }
+  }, [excessMap]);
+  
+  useEffect(() => {
+    try {
+      if (Object.keys(machineCountMap).length > 0) {
+        localStorage.setItem('savedMachineCountMap', JSON.stringify(machineCountMap));
+      }
+      
+      if (Object.keys(machineMultiplierMap).length > 0) {
+        localStorage.setItem('savedMachineMultiplierMap', JSON.stringify(machineMultiplierMap));
+      }
+    } catch (error) {
+      console.error("Error saving machine maps:", error);
+      localStorage.removeItem('savedMachineCountMap');
+      localStorage.removeItem('savedMachineMultiplierMap');
+    }
+  }, [machineCountMap, machineMultiplierMap]);
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('savedViewMode', viewMode);
+      localStorage.setItem('savedExpandedNodes', JSON.stringify(expandedNodes));
+      if (Object.keys(nodeExtensionOverrides).length > 0) {
+        localStorage.setItem('savedNodeExtensionOverrides', JSON.stringify(nodeExtensionOverrides));
+      }
+    } catch (error) {
+      console.error("Error saving UI preferences:", error);
+      localStorage.removeItem('savedViewMode');
+      localStorage.removeItem('savedExpandedNodes');
+      localStorage.removeItem('savedNodeExtensionOverrides');
+    }
+  }, [viewMode, expandedNodes, nodeExtensionOverrides]);
+
+  // Initial load of items from the database
+  useEffect(() => {
+    getComponents().then(loadedItems => {
+      if (loadedItems) {
+        setItems(loadedItems);
+      }
+    });
+  }, []);
+
+  // Clear all saved data
+  const clearSavedData = () => {
+    localStorage.removeItem('savedDependencies');
+    localStorage.removeItem('savedRecipeSelections');
+    localStorage.removeItem('savedExcessMap');
+    localStorage.removeItem('savedMachineCountMap');
+    localStorage.removeItem('savedMachineMultiplierMap');
+    localStorage.removeItem('savedViewMode');
+    localStorage.removeItem('savedExpandedNodes');
+    localStorage.removeItem('savedNodeExtensionOverrides');
+  };
+
+  // Toggle extensions visibility for a specific node
+  const handleToggleNodeExtensions = (nodeId: string) => {
+    setNodeExtensionOverrides(prev => {
+      const currentValue = prev[nodeId] ?? showExtensions;
+      return {
+        ...prev,
+        [nodeId]: !currentValue
+      };
+    });
+  };
+
+  // Generate a unique ID for a new tree
+  const generateTreeId = (itemId: string): string => {
+    const timestamp = Date.now();
+    return `${itemId}-${timestamp}`;
+  };
+
+  // Update calculate handler with dependency checking
+  const handleCalculate = async () => {
+    if (!selectedItem || !selectedRecipe) return;
+    
+    try {
+      const treeId = generateTreeId(selectedItem);
+      
+      // Calculate the dependency tree with amount set to 0
+      const tree = await calculateDependencyTree(
+        selectedItem,
+        0, // Set initial amount to 0 instead of itemCount
+        selectedRecipe,
+        recipeSelections,
+        0,
+        [],
+        '',
+        excessMap
+      );
+      
+      if (!tree) {
+        console.error("Failed to calculate dependency tree");
+        return;
+      }
+      
+      // Calculate accumulated values from the tree
+      const accumulated = calculateAccumulatedFromTree(tree);
+      
+      // Update the tree in Redux
+      dispatch(setDependencies({
+        treeId,
+        tree,
+        accumulated
+      }));
+      
+      // Save recipe selection to Redux
+      dispatch(setRecipeSelection({
+        nodeId: selectedItem,
+        recipeId: selectedRecipe
+      }));
+      
+      // Wait for state update and then recalculate heights
+      setTimeout(() => {
+        const treeViewElement = document.getElementById('tree-view');
+        if (treeViewElement) {
+          treeViewElement.style.opacity = '0.99';
+          setTimeout(() => {
+            if (treeViewElement) treeViewElement.style.opacity = '1';
+          }, 10);
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error calculating dependency tree:", error);
+    }
+  };
+
+  const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
+    // Find which tree this node belongs to
+    const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
+      findNodeById(dependencies.dependencyTrees[id], nodeId)
+    );
+
+    if (!treeId) return;
+
+    const affectedBranches = findAffectedBranches(dependencies.dependencyTrees[treeId], nodeId);
+    
+    const updatedRecipeSelections = {
+      ...recipeSelections,
+      [nodeId]: recipeId
+    };
+    
+    dispatch(setRecipeSelection({ nodeId, recipeId }));
+  };
+
+  const handleImportNode = (nodeId: string) => {
+    console.log("Importing node:", nodeId);
+    
+    // Find the source node in all trees
+    let foundNode: DependencyNode | null = null;
+    let foundTreeId = "";
+    
+    // Find the node in all trees
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      const node = findNodeById(tree, nodeId);
+      if (node) {
+        foundNode = node;
+        foundTreeId = treeId;
+        break;
+      }
+    }
+    
+    if (!foundNode || !foundTreeId) {
+      console.error("Could not find node to import");
+      return;
+    }
+    
+    // Determine target tree ID
+    let targetTreeId = "";
+    let isNewTree = false;
+    
+    // Find a target tree that produces the same item and is not an import
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
+        targetTreeId = treeId;
+        break;
+      }
+    }
+    
+    // If no existing tree found, create a new one
+    if (targetTreeId === "") {
+      isNewTree = true;
+      targetTreeId = `${foundNode.id}-${Date.now()}`;
+      
+      // Create a new root node for this item
+      const newRoot: DependencyNode = {
+        id: foundNode.id,
+        uniqueId: targetTreeId,
+        amount: foundNode.amount,
+        isRoot: true,
+        isImport: false,
+        selectedRecipeId: foundNode.selectedRecipeId,
+        availableRecipes: foundNode.availableRecipes,
+        excess: excessMap[foundNode.uniqueId] || 0,
+        children: []
+      };
+      
+      // Clone children
+      if (foundNode.children && foundNode.children.length > 0) {
+        foundNode.children.forEach(child => {
+          newRoot.children!.push(cloneNodeStructure(child, targetTreeId));
+        });
+      }
+      
+      // Add the tree directly to Redux state
+      dispatch(setDependencies({
+        treeId: targetTreeId,
+        tree: newRoot,
+        accumulated: calculateAccumulatedFromTree(newRoot)
+      }));
+      
+      // Update excess map
+      setExcessMap(prev => ({
+        ...prev,
+        [targetTreeId]: excessMap[foundNode.uniqueId] || 0
+      }));
+    }
+    
+    // Dispatch the import action
+    dispatch(importNode({
+      sourceTreeId: foundTreeId,
+      sourceNodeId: nodeId,
+      targetTreeId: targetTreeId,
+      isNewTree: isNewTree
+    }));
+  };
+  
+  // Helper function to clone a node structure for the new tree
+  function cloneNodeStructure(node: DependencyNode, parentId: string): DependencyNode {
+    const newId = `${parentId}-${node.id}-${Date.now()}`;
+    const clone: DependencyNode = {
+      ...node,
+      uniqueId: newId,
+      isRoot: false,
+      isImport: false,
+      children: []
+    };
+    
+    // Clone children recursively
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        clone.children!.push(cloneNodeStructure(child, newId));
+      });
+    }
+    
+    return clone;
+  }
+  
+  // Helper function to find a node by ID
+  const findNodeById = (tree: DependencyNode, targetId: string): DependencyNode | null => {
+    if (tree.uniqueId === targetId) {
+      return tree;
+    }
+
+    if (tree.children) {
+      for (const child of tree.children) {
+        const found = findNodeById(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Handle expanding/collapsing all nodes
+  const handleExpandCollapseAll = (expand: boolean) => {
+    // Create a map of all node IDs across all trees
+    const newExpandedNodes: Record<string, boolean> = {};
+    
+    // Traverse all trees and collect node IDs
+    const collectNodeIds = (node: any) => {
+      newExpandedNodes[node.uniqueId] = expand;
+      
+      if (node.children) {
+        node.children.forEach(collectNodeIds);
+      }
+    };
+    
+    // Process all trees
+    Object.values(dependencies.dependencyTrees).forEach(collectNodeIds);
+    
+    // Update the expandedNodes state
+    setExpandedNodes(newExpandedNodes);
+  };
+
+  // Handle machine count changes
+  const handleMachineCountChange = (nodeId: string, count: number) => {
+    setMachineCountMap(prev => ({
+      ...prev,
+      [nodeId]: count
+    }));
+  };
+
+  // Handle machine multiplier changes
+  const handleMachineMultiplierChange = (nodeId: string, multiplier: number) => {
+    setMachineMultiplierMap(prev => ({
+      ...prev,
+      [nodeId]: multiplier
+    }));
+  };
+
+  // Handle tree deletion
+  const handleDeleteTree = (treeId: string) => {
+    dispatch(deleteTree({ treeId }));
+  };
+
+  // Handle excess change
+  const handleExcessChange = (nodeId: string, excess: number) => {
+    setExcessMap(prev => ({
+      ...prev,
+      [nodeId]: excess
+    }));
+  };
+
+  return {
+    // State values
+    dependencies,
+    recipeSelections,
+    viewMode,
+    items,
+    selectedItem,
+    selectedRecipe,
+    excessMap,
+    machineCountMap,
+    machineMultiplierMap,
+    expandedNodes,
+    showExtensions,
+    accumulateExtensions,
+    showMachines,
+    showMachineMultiplier,
+    nodeExtensionOverrides,
+    isAddItemCollapsed,
+
+    // Setters
+    setSelectedItem,
+    setSelectedRecipe,
+    setViewMode,
+    setExpandedNodes,
+    setShowExtensions,
+    setAccumulateExtensions,
+    setShowMachines,
+    setShowMachineMultiplier,
+    setIsAddItemCollapsed,
+
+    // Handlers
+    handleCalculate,
+    handleTreeRecipeChange,
+    handleExcessChange,
+    handleMachineCountChange,
+    handleMachineMultiplierChange,
+    handleExpandCollapseAll,
+    handleDeleteTree,
+    handleImportNode,
+    clearSavedData,
+    handleToggleNodeExtensions
+  };
+};
+
+export default useFactoryPlanner; 

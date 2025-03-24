@@ -5,12 +5,14 @@ interface StyledCheckboxProps {
   checked?: boolean;
   onChange?: () => void;
   label?: string;
+  disabled?: boolean;
 }
 
 const StyledCheckbox: React.FC<StyledCheckboxProps> = ({ 
   checked = false, 
   onChange,
-  label
+  label,
+  disabled = false
 }) => {
   const checkboxStyle: React.CSSProperties = {
     position: "relative",
@@ -20,7 +22,8 @@ const StyledCheckbox: React.FC<StyledCheckboxProps> = ({
     borderRadius: "4px",
     border: `1px solid ${theme.colors.dropdown.border}`,
     display: "inline-block",
-    cursor: "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.6 : 1,
   };
 
   const checkmarkStyle: React.CSSProperties = {
@@ -39,13 +42,14 @@ const StyledCheckbox: React.FC<StyledCheckboxProps> = ({
     gap: "8px",
     color: theme.colors.text,
     fontSize: "14px",
-    cursor: "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.6 : 1,
   };
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onChange) {
+    if (onChange && !disabled) {
       onChange();
     }
   };

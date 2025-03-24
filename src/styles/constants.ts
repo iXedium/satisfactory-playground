@@ -27,6 +27,7 @@ export const sizes = {
     medium: '8px',
     large: '16px',
     xlarge: '24px',
+    standard: '8px',
   },
   
   // Border radius

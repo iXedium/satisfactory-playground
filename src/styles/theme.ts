@@ -13,6 +13,8 @@ export const theme = {
     surface: "#2d3744",
     border: "#4a5664",
     danger: "#e63946", // Bright red for dangerous actions
+    error: "#e63946", // For error states
+    buttonText: "#ffffff", // Text color for buttons
     
     // Node colors - Industrial theme
     nodeRoot: '#ff7a00', // Primary orange for root
