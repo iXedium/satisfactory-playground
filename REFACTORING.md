@@ -19,6 +19,8 @@ To ensure consistent styling across components:
 - Maintained z-index hierarchy for proper layering
 - Used consistent spacing and sizing values
 
+**IMPORTANT: All refactored components MUST maintain the exact same styling as the original components. Changes to functionality should never impact the visual appearance.**
+
 ## Completed Refactoring
 
 ### ItemNode Component (Original: 996 lines)
@@ -223,24 +225,51 @@ The CommandBar component has been refactored into the following parts:
   - Multiple settings categories
   - Position-aware dropdown
 
-### Styling Improvements
+**Note on CommandBar Implementation**: The CommandBar implementation required special attention to maintain exact visual appearance. After initial refactoring, the original component styling was completely restored to maintain pixel-perfect equivalence with the original UI. This includes:
+- Identical item selector dropdowns with proper icons
+- Exact positioning of the collapse toggle at the bottom center
+- Matching settings menu dropdown with identical styling
+- Preserved search input and action buttons with icon-based UI
 
-- **Created constants file**: Added `src/styles/constants.ts` to maintain consistent sizing
-- **Fixed container sizing**: Ensured proper sizing of containers and input fields
-- **Added customization**: All components accept style override props
-- **Z-index management**: Established consistent z-index values for proper layering
-- **Consolidated spacing**: Used consistent spacing values across components
+### AccumulatedView Component (Original: 473 lines)
 
-## Upcoming Refactoring
+The AccumulatedView component has been refactored into the following parts:
 
-### AccumulatedView Component (473 lines)
+#### 1. ResourceSummary
+- **Purpose**: Displays individual resource items with proper styling
+- **File**: `src/components/shared/ResourceSummary.tsx`
+- **Features**:
+  - Shows item icon, name, and production amount
+  - Color-coded based on item type (regular, byproduct, raw material)
+  - Displays depth information
+  - Maintains consistent styling with the original
 
-Will be broken down into:
+#### 2. CategorySection
+- **Purpose**: Groups and displays items by category
+- **File**: `src/components/shared/CategorySection.tsx`
+- **Features**:
+  - Category header with item count
+  - Visual indicator of category type
+  - Consistent layout for resource items
+  - Conditional rendering based on filter state
 
-1. **ResourceSummary** - For displaying resource totals
-2. **CategorySection** - For category-based grouping
-3. **SortingControls** - For sorting options
-4. **DetailLevel** - For controlling display detail
+#### 3. SortingControls
+- **Purpose**: UI for search, filtering, and sorting options
+- **File**: `src/components/shared/SortingControls.tsx`
+- **Features**:
+  - Search input for filtering by name
+  - Sort controls for different sort orders and directions
+  - Filter checkboxes for item types
+  - Styled consistently with the application theme
+
+#### 4. RefactoredAccumulatedView
+- **Purpose**: Main component that integrates the smaller components
+- **File**: `src/components/RefactoredAccumulatedView.tsx`
+- **Features**:
+  - Manages state for grouped items, sorting, and filtering
+  - Handles tree traversal and node identification
+  - Implements scroll-to-node functionality
+  - Maintains the exact same styling and behavior as the original
 
 ## Progress Checklist
 
@@ -272,12 +301,13 @@ Will be broken down into:
   - [x] ActionButtons
   - [x] ViewOptionsPanel
   - [x] SettingsPanel
+  - [x] Restored original styling to maintain exact appearance
 
-- [ ] AccumulatedView.tsx (Next)
-  - [ ] ResourceSummary
-  - [ ] CategorySection
-  - [ ] SortingControls
-  - [ ] DetailLevel
+- [x] AccumulatedView.tsx
+  - [x] ResourceSummary
+  - [x] CategorySection
+  - [x] SortingControls
+  - [x] RefactoredAccumulatedView
 
 ## Notes on Implementation
 
@@ -285,6 +315,7 @@ Will be broken down into:
 - Style props allow for customization while maintaining consistent defaults
 - Components preserve the exact functionality of the original implementation
 - Testing is performed after each component extraction to ensure no regression
+- **Styling must be preserved exactly as in the original components, with no visual changes**
 
 ## Integration Testing
 
@@ -299,7 +330,6 @@ Will be broken down into:
 
 ## Future Improvements
 
-- Refactor AccumulatedView component into smaller components
 - Create TypeScript interfaces for common props to reduce duplication
 - Add unit tests for each component
 - Add more customization options through theme variables
