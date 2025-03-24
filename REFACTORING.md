@@ -159,6 +159,33 @@ The DependencyTester component has been refactored into the following parts:
   - Orchestrates interactions between all smaller components
   - Handles layout and positioning of UI elements
 
+#### 9. FactoryPlannerLayout
+- **Purpose**: Manages the overall layout structure
+- **File**: `src/components/shared/FactoryPlannerLayout.tsx`
+- **Features**:
+  - Defines consistent layout for the application
+  - Handles command bar positioning and content area
+  - Provides customizable styling through props
+  - Maintains proper component hierarchy
+
+#### 10. PlannerContent
+- **Purpose**: Handles conditional rendering between views
+- **File**: `src/components/shared/PlannerContent.tsx`
+- **Features**:
+  - Switches between tree and accumulated views
+  - Manages tree view reference for animations
+  - Routes props to appropriate view components
+  - Maintains consistent styling across views
+
+#### 11. TreeViewContainer
+- **Purpose**: Renders the tree view of dependency trees
+- **File**: `src/components/shared/TreeViewContainer.tsx`
+- **Features**:
+  - Maps over dependency trees for rendering
+  - Provides consistent interface for tree interactions
+  - Handles event delegation to dependency trees
+  - Maintains proper component hierarchy
+
 ### CommandBar Component (Original: 528 lines)
 
 The CommandBar component has been refactored into the following parts:
@@ -236,6 +263,9 @@ Will be broken down into:
   - [x] TreeNodeManager
   - [x] ImportExport
   - [x] RefactoredDependencyTester
+  - [x] FactoryPlannerLayout
+  - [x] PlannerContent
+  - [x] TreeViewContainer
 
 - [x] CommandBar.tsx
   - [x] SearchSection
@@ -259,6 +289,7 @@ Will be broken down into:
 ## Integration Testing
 
 - The RefactoredDependencyTester component successfully integrates all smaller components
+- Further refactored the component into FactoryPlannerLayout, PlannerContent, and TreeViewContainer to improve modularity
 - App.tsx has been updated to use the new RefactoredDependencyTester component
 - All TypeScript errors were resolved in the process of integration
 - The build completes successfully with no errors
