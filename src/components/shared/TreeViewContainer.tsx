@@ -1,6 +1,7 @@
 import React from 'react';
 import { DependencyNode } from '../../utils/calculateDependencyTree';
 import DependencyTree from '../DependencyTree';
+import { theme } from '../../styles/theme';
 
 interface TreeViewContainerProps {
   dependencies: {

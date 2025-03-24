@@ -101,9 +101,9 @@ The DependencyTester component has been refactored into the following parts:
   - Provides interface for item and recipe selection
   - Calculates dependency trees
 
-#### 2. TreeViewManager
+#### 2. TreeViewManager / TreeViewContainer
 - **Purpose**: Manages the tree view mode display
-- **File**: `src/components/shared/TreeViewManager.tsx`
+- **File**: `src/components/shared/TreeViewContainer.tsx` (Replaces TreeViewManager)
 - **Features**:
   - Renders multiple dependency trees
   - Handles tree-specific props and actions
@@ -295,4 +295,12 @@ Will be broken down into:
 - The build completes successfully with no errors
 - The application maintains the same functionality as before refactoring
 - State management is now centralized in the useFactoryPlanner hook
-- Components are easier to maintain and reason about 
+- Components are easier to maintain and reason about
+
+## Future Improvements
+
+- Refactor AccumulatedView component into smaller components
+- Create TypeScript interfaces for common props to reduce duplication
+- Add unit tests for each component
+- Add more customization options through theme variables
+- Replace inline styles with styled-components for better maintainability

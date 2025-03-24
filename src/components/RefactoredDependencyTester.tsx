@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import CommandBar from "./CommandBar";
+import RefactoredCommandBar from "./RefactoredCommandBar";
 import { useFactoryPlanner } from "../hooks/useFactoryPlanner";
 import PlannerContent from "./shared/PlannerContent";
 import FactoryPlannerLayout from "./shared/FactoryPlannerLayout";
@@ -57,7 +57,7 @@ const RefactoredDependencyTester: React.FC = () => {
   return (
     <FactoryPlannerLayout
       commandBar={
-        <CommandBar
+        <RefactoredCommandBar
           ref={commandBarRef}
           items={items}
           selectedItem={selectedItem}
