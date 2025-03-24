@@ -1,10 +1,10 @@
 import React, { forwardRef, ForwardRefRenderFunction, useState, useRef } from "react";
 import { Item } from "../data/dexieDB";
 import SearchSection from "./shared/SearchSection";
-import ActionButtons from "./shared/ActionButtons";
 import ViewOptionsPanel from "./shared/ViewOptionsPanel";
 import SettingsPanel from "./shared/SettingsPanel";
 import ViewModeToggle from "./shared/ViewModeToggle";
+import { theme } from "../styles/theme";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -64,63 +64,118 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
   const [compactView, setCompactView] = useState(false);
   const [selectedDepth, setSelectedDepth] = useState("0");
 
+  // Styles matching the original CommandBar
+  const commandBarStyle: React.CSSProperties = {
+    backgroundColor: theme.colors.dark,
+    padding: "8px 12px",
+    borderBottom: `1px solid ${theme.colors.dropdown.border}`,
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+    borderRadius: theme.border.radius,
+    width: "100%",
+    boxSizing: "border-box",
+    position: "relative",
+  };
+
+  const rowStyle: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    alignItems: "center",
+  };
+
+  const sectionStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "0 8px",
+    borderRight: `1px solid ${theme.colors.dropdown.border}`,
+  };
+
+  const lastSectionStyle: React.CSSProperties = {
+    ...sectionStyle,
+    borderRight: "none",
+  };
+
+  const iconButtonStyle: React.CSSProperties = {
+    padding: "4px",
+    backgroundColor: theme.colors.surface,
+    border: `1px solid ${theme.colors.border}`,
+    borderRadius: theme.borderRadius,
+    color: theme.colors.text,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "28px",
+    height: "28px",
+    fontSize: "14px",
+  };
+
   return (
-    <div
-      ref={ref}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        padding: "8px",
-        backgroundColor: "#1a1e24", // Using theme color from the original
-        borderBottom: "1px solid #4a5664", // Using theme color from the original
-      }}
-    >
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <SearchSection
-          items={items}
-          selectedItem={selectedItem}
-          onItemSelect={onItemSelect}
-          selectedRecipe={selectedRecipe}
-          onRecipeSelect={onRecipeSelect}
-          onCalculate={onCalculate}
-          isCollapsed={isAddItemCollapsed}
-          containerStyle={{}}
-        />
-        
-        <div style={{ display: "flex", gap: "8px", marginLeft: "auto" }}>
-          <ActionButtons
-            viewMode={viewMode}
-            onExpandCollapseAll={onExpandCollapseAll}
-            onClearSavedData={onClearSavedData}
-          />
-          
+    <div ref={ref} style={commandBarStyle}>
+      {/* Main Toolbar Row */}
+      <div style={rowStyle}>
+        {/* View Mode Toggle */}
+        <div style={sectionStyle}>
           <ViewModeToggle
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
           />
+        </div>
+        
+        {/* Tree Controls */}
+        <div style={sectionStyle}>
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(true)}
+            title="Expand All"
+          >
+            <span>+</span>
+          </button>
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(false)}
+            title="Collapse All"
+          >
+            <span>-</span>
+          </button>
           
           <ViewOptionsPanel
             compactView={compactView}
             onCompactViewChange={setCompactView}
             selectedDepth={selectedDepth}
             onDepthChange={setSelectedDepth}
-            containerStyle={{}}
+            containerStyle={{ marginLeft: '8px' }}
           />
-          
+        </div>
+        
+        {/* Settings and Actions */}
+        <div style={lastSectionStyle}>
           <button 
             ref={settingsButtonRef}
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: '4px',
-            }}
+            style={iconButtonStyle}
+            title="Settings"
           >
-            ⚙️ Settings
+            <span>⚙️</span>
           </button>
+          
+          {onClearSavedData && (
+            <button
+              style={iconButtonStyle}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear all saved data? This action cannot be undone.')) {
+                  onClearSavedData();
+                }
+              }}
+              title="Clear Saved Data"
+            >
+              <span>🗑️</span>
+            </button>
+          )}
           
           <SettingsPanel
             isOpen={isSettingsOpen}
@@ -138,6 +193,25 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
             onCompactViewChange={setCompactView}
           />
         </div>
+      </div>
+      
+      {/* Item Selection Section */}
+      <div style={{ 
+        display: isAddItemCollapsed ? 'none' : 'block',
+        borderTop: `1px solid ${theme.colors.dropdown.border}`,
+        marginTop: '2px',
+        paddingTop: '4px'
+      }}>
+        <SearchSection
+          items={items}
+          selectedItem={selectedItem}
+          onItemSelect={onItemSelect}
+          selectedRecipe={selectedRecipe}
+          onRecipeSelect={onRecipeSelect}
+          onCalculate={onCalculate}
+          isCollapsed={isAddItemCollapsed}
+          containerStyle={{}}
+        />
       </div>
     </div>
   );
