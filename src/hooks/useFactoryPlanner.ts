@@ -13,7 +13,7 @@ import {
   setRecipeSelection, 
   loadRecipeSelections 
 } from '../features/recipeSelectionsSlice';
-import { calculateDependencyTree, DependencyNode } from '../utils/calculateDependencyTree';
+import { calculateDependencyTree, DependencyNode, findNodeById } from '../utils/calculateDependencyTree';
 import { calculateAccumulatedFromTree } from '../utils/calculateAccumulatedFromTree';
 
 type ViewMode = "accumulated" | "tree";
@@ -583,21 +583,6 @@ export const useFactoryPlanner = () => {
     
     return clone;
   }
-  
-  // Helper function to find a node by ID
-  const findNodeById = (tree: DependencyNode, targetId: string): DependencyNode | null => {
-    if (tree.uniqueId === targetId) {
-      return tree;
-    }
-
-    if (tree.children) {
-      for (const child of tree.children) {
-        const found = findNodeById(child, targetId);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
 
   // Handle expanding/collapsing all nodes
   const handleExpandCollapseAll = (expand: boolean) => {
@@ -748,7 +733,8 @@ export const useFactoryPlanner = () => {
             isImport: true,
             importedFrom: originalNode.importedFrom,
             children: [], // Import nodes don't have children
-            excess: nodeExcess
+            excess: nodeExcess,
+            originalChildren: originalNode.originalChildren // Preserve the stored structure information
           };
         }
         
@@ -1166,6 +1152,64 @@ export const useFactoryPlanner = () => {
     });
   };
 
+  // Handle unimporting a node
+  const handleUnimport = async (uniqueId: string) => {
+    try {
+      // Find the tree containing this node
+      const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
+        findNodeById(dependencies.dependencyTrees[id], uniqueId)
+      );
+      
+      if (!treeId) {
+        console.error("[UNIMPORT ACTION] Could not find tree containing node:", uniqueId);
+        return;
+      }
+      
+      const currentTree = dependencies.dependencyTrees[treeId];
+      const node = findNodeById(currentTree, uniqueId);
+      if (!node) {
+        console.error("[UNIMPORT ACTION] Could not find node with id:", uniqueId);
+        return;
+      }
+      
+      // Before unimporting, log the full node structure including original children
+      console.log("[UNIMPORT ACTION] About to unimport node:", JSON.stringify({
+        id: node.id,
+        uniqueId,
+        isImport: node.isImport,
+        importedFrom: node.importedFrom,
+        amount: node.amount,
+        originalChildrenCount: node.originalChildren?.length || 0,
+        originalChildren: node.originalChildren?.map((child) => ({
+          id: child.id,
+          amount: child.amount,
+          hasChildren: child.children && child.children.length > 0,
+          childrenCount: child.children?.length || 0
+        }))
+      }, null, 2));
+      
+      // Verify this is an import node
+      if (!node.isImport) {
+        console.error("[UNIMPORT ACTION] Cannot unimport a non-import node:", uniqueId);
+        return;
+      }
+      
+      // Get the target tree ID before unimporting
+      const targetTreeId = node.importedFrom || '';
+      
+      console.log("[UNIMPORT ACTION] Dispatching unimport action");
+      // Dispatch the import action with toggle=true to unimport
+      dispatch(importNode({
+        sourceTreeId: treeId,
+        sourceNodeId: uniqueId,
+        targetTreeId: targetTreeId,
+        isNewTree: false
+      }));
+    } catch (error) {
+      console.error("[UNIMPORT ACTION] Error unimporting node:", error);
+    }
+  };
+
   return {
     // State values
     dependencies,
@@ -1208,7 +1252,8 @@ export const useFactoryPlanner = () => {
     handleDeleteTree,
     handleImportNode,
     clearSavedData,
-    handleToggleNodeExtensions
+    handleToggleNodeExtensions,
+    handleUnimport
   };
 };
 
