@@ -7,7 +7,6 @@ import {
   loadSavedState, 
   setDependencies, 
   deleteTree, 
-  updateAccumulated, 
   importNode 
 } from '../features/dependencySlice';
 import { 
@@ -16,7 +15,6 @@ import {
 } from '../features/recipeSelectionsSlice';
 import { calculateDependencyTree, DependencyNode } from '../utils/calculateDependencyTree';
 import { calculateAccumulatedFromTree } from '../utils/calculateAccumulatedFromTree';
-import { findAffectedBranches } from '../utils/treeDiffing';
 
 type ViewMode = "accumulated" | "tree";
 
@@ -313,16 +311,174 @@ export const useFactoryPlanner = () => {
       findNodeById(dependencies.dependencyTrees[id], nodeId)
     );
 
-    if (!treeId) return;
+    if (!treeId) {
+      console.error(`No tree found for node ${nodeId}`);
+      return;
+    }
 
-    const affectedBranches = findAffectedBranches(dependencies.dependencyTrees[treeId], nodeId);
-    
-    const updatedRecipeSelections = {
-      ...recipeSelections,
-      [nodeId]: recipeId
-    };
-    
-    dispatch(setRecipeSelection({ nodeId, recipeId }));
+    // Get the tree and the specific node
+    const tree = dependencies.dependencyTrees[treeId];
+    const node = findNodeById(tree, nodeId);
+
+    if (!node) {
+      console.error(`Node ${nodeId} not found in tree ${treeId}`);
+      return;
+    }
+
+    try {
+      // Map to preserve node IDs during recalculation
+      const nodeIdMap = new Map<string, string>();
+
+      // Collect all node IDs in the affected branch
+      const collectNodeIds = (node: DependencyNode) => {
+        nodeIdMap.set(node.uniqueId, node.uniqueId);
+        if (node.children) {
+          node.children.forEach(collectNodeIds);
+        }
+      };
+
+      // Only collect IDs for the affected node and its children
+      collectNodeIds(node);
+
+      // Recalculate only the affected branch
+      const recalculateBranch = async (
+        node: DependencyNode,
+        amount: number,
+        newRecipeId: string | null
+      ): Promise<DependencyNode> => {
+        // Get recipes for this item
+        const availableRecipes = await getRecipesForItem(node.id);
+        
+        let recipe = null;
+        if (newRecipeId) {
+          recipe = await getRecipeById(newRecipeId);
+        } else if (recipeSelections[node.uniqueId]) {
+          recipe = await getRecipeById(recipeSelections[node.uniqueId]);
+        } else {
+          recipe = await getRecipeByOutput(node.id);
+        }
+
+        if (!recipe) {
+          return {
+            ...node,
+            children: []
+          };
+        }
+
+        // Calculate production based on current amount and excess
+        const outputAmount = recipe.out[node.id] ?? 1;
+        const cyclesNeeded = (amount + (excessMap[node.uniqueId] || 0)) / (outputAmount as number);
+
+        // Recalculate children with new recipe
+        const children = await Promise.all(
+          Object.entries(recipe.in).map(([inputItem, inputAmount]) => {
+            const childAmount = ((inputAmount as number) ?? 0) * cyclesNeeded;
+            
+            // Find existing child with this item ID if it exists
+            const existingChild = node.children?.find(c => c.id === inputItem);
+            
+            if (existingChild) {
+              // Recalculate existing child branch
+              return recalculateBranch(
+                existingChild,
+                childAmount,
+                existingChild.selectedRecipeId || null
+              );
+            } else {
+              // Create new child branch
+              return calculateDependencyTree(
+                inputItem,
+                childAmount,
+                null,
+                recipeSelections,
+                0,
+                [],
+                node.uniqueId
+              );
+            }
+          })
+        );
+
+        // Add byproducts
+        const byproducts = Object.entries(recipe.out)
+          .filter(([outputItem]) => outputItem !== node.id)
+          .map(([outputItem, outputAmount]) => {
+            const byproductAmount = -((outputAmount as number) * cyclesNeeded);
+            return {
+              id: outputItem,
+              amount: byproductAmount,
+              uniqueId: `${node.uniqueId}-${outputItem}`,
+              isByproduct: true,
+              children: [],
+              excess: 0
+            } as DependencyNode;
+          });
+
+        // Return updated node with new recipe and children
+        return {
+          ...node,
+          selectedRecipeId: recipe.id,
+          availableRecipes,
+          children: [...children, ...byproducts].filter(Boolean)
+        };
+      };
+
+      // Create updated node with new recipe
+      const updatedNode = await recalculateBranch(
+        node,
+        node.amount,
+        recipeId
+      );
+
+      if (!updatedNode) {
+        console.error("Failed to recalculate branch");
+        return;
+      }
+
+      // Create a new tree with the updated branch
+      const createUpdatedTree = (currentNode: DependencyNode): DependencyNode => {
+        if (currentNode.uniqueId === nodeId) {
+          return updatedNode;
+        }
+
+        return {
+          ...currentNode,
+          children: currentNode.children?.map(createUpdatedTree)
+        };
+      };
+
+      const updatedTree = createUpdatedTree(tree);
+
+      // Update recipe selection in Redux
+      dispatch(setRecipeSelection({
+        nodeId,
+        recipeId
+      }));
+
+      // Calculate new accumulated values
+      const accumulated = calculateAccumulatedFromTree(updatedTree);
+
+      // Update the tree in Redux
+      dispatch(setDependencies({
+        treeId,
+        tree: updatedTree,
+        accumulated
+      }));
+
+      // Force UI refresh
+      setTimeout(() => {
+        const treeViewElement = document.getElementById('tree-view');
+        if (treeViewElement) {
+          treeViewElement.style.opacity = '0.99';
+          setTimeout(() => {
+            if (treeViewElement) treeViewElement.style.opacity = '1';
+          }, 10);
+        }
+      }, 50);
+
+    } catch (error) {
+      console.error("Error updating recipe:", error);
+    }
   };
 
   const handleImportNode = (nodeId: string) => {
@@ -493,8 +649,8 @@ export const useFactoryPlanner = () => {
     setExcessMap(prev => {
       console.debug(`[EXCESS DEBUG] Updating excess map: ${nodeId} = ${excess}`);
       return {
-        ...prev,
-        [nodeId]: excess
+      ...prev,
+      [nodeId]: excess
       };
     });
     
@@ -779,7 +935,7 @@ export const useFactoryPlanner = () => {
     console.log(`  - Changing root excess from ${initialRootExcess} to ${testRootExcess}`);
     
     // Save initial child amounts
-    let originalChildAmount = childNode.amount;
+    const originalChildAmount = childNode.amount;
     
     // Change root excess
     await handleExcessChange(rootNode.uniqueId, testRootExcess);
