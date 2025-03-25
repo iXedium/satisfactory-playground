@@ -159,8 +159,16 @@ const dependencySlice = createSlice({
         if (sourceNode.importedFrom) {
           const targetRoot = state.dependencyTrees[sourceNode.importedFrom];
           if (targetRoot) {
+            // Preserve the excess value when removing the import relationship
+            const currentExcess = targetRoot.excess || 0;
             targetRoot.amount -= sourceNode.amount;
-            if (targetRoot.amount <= 0) {
+            // Ensure amount doesn't go below zero
+            if (targetRoot.amount < 0) targetRoot.amount = 0;
+            // Maintain the excess value
+            targetRoot.excess = currentExcess;
+            
+            // If tree is now empty (zero amount and no excess), consider removing it
+            if (targetRoot.amount <= 0 && targetRoot.excess <= 0) {
               delete state.dependencyTrees[sourceNode.importedFrom];
             }
           }
@@ -183,7 +191,12 @@ const dependencySlice = createSlice({
         } else {
           // For existing trees, find the root and add the amount
           console.log("Adding to existing root:", targetTree);
+          // Preserve the excess value when setting up the import relationship
+          const currentExcess = targetTree.excess || 0;
           targetTree.amount += sourceNode.amount;
+          // Maintain the excess value
+          targetTree.excess = currentExcess;
+          
           sourceNode.importedFrom = targetTreeId;
         }
       }

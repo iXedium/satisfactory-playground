@@ -17,9 +17,30 @@ export interface DependencyNode {
   importedFrom?: string;
 }
 
+// Cache for memoizing tree calculations
+export const nodeCache = new Map<string, DependencyNode>();
+
+const getNodeFromCache = async (nodeId: string): Promise<DependencyNode | null> => {
+  return nodeCache.get(nodeId) || null;
+};
+
+const cacheNode = async (nodeId: string, node: DependencyNode) => {
+  nodeCache.set(nodeId, node);
+};
+
+const clearNodeFromCache = async (nodeId: string) => {
+  nodeCache.delete(nodeId);
+};
+
+export const clearNodeCache = () => {
+  nodeCache.clear();
+};
+
 const logPerf = (label: string, start: number) => {
-  const elapsed = performance.now() - start;
-  // console.log(`[${new Date().toISOString()}] ${label}: ${elapsed.toFixed(2)}ms`);
+  const duration = performance.now() - start;
+  if (duration > 100) {
+    console.debug(`[PERF] ${label} took ${Math.round(duration)}ms`);
+  }
 };
 
 export const calculateDependencyTree = async (
@@ -34,7 +55,6 @@ export const calculateDependencyTree = async (
   importMap: Record<string, { targetTreeId: string, amount: number }> = {} // Track imported nodes
 ): Promise<DependencyNode> => {
   const start = performance.now();
-  // console.log(`[${new Date().toISOString()}] Starting tree calculation for ${itemId}`);
 
   // Create unique ID that includes parent path
   const nodeId = parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`;
@@ -48,6 +68,14 @@ export const calculateDependencyTree = async (
   if (!isAffected && affectedBranches.length > 0) {
     const cachedNode = await getNodeFromCache(nodeId);
     if (cachedNode) {
+      // Even for cached nodes, we need to update amounts if they're imports
+      if (cachedNode.isImport && importMap[nodeId]) {
+        return {
+          ...cachedNode,
+          amount, // Use the new amount
+          excess: excessMap[itemId] || excessMap[nodeId] || 0
+        };
+      }
       return cachedNode;
     }
   }
@@ -58,16 +86,24 @@ export const calculateDependencyTree = async (
   }
 
   // Check if this node should be an import
-  if (importMap[nodeId]) {
-    // For import nodes, create a minimal node with just the required info
+  const importInfo = importMap[nodeId];
+  if (importInfo) {
+    // For import nodes, create a node with updated amount but preserved import relationship
+    const nodeExcess = excessMap[itemId] || excessMap[nodeId] || 0;
+    
+    // Log import node details for debugging
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(`Creating import node: ${itemId}, amount=${amount}, excess=${nodeExcess}, from=${importInfo.targetTreeId}`);
+    }
+    
     return {
       id: itemId,
-      amount,
+      amount, // Use the new calculated amount
       uniqueId: nodeId,
       isImport: true,
-      importedFrom: importMap[nodeId].targetTreeId,
-      children: [],
-      excess: excessMap[nodeId] || 0
+      importedFrom: importInfo.targetTreeId,
+      children: [], // Import nodes don't have children
+      excess: nodeExcess
     };
   }
 
@@ -92,12 +128,12 @@ export const calculateDependencyTree = async (
       uniqueId: nodeId,
       availableRecipes,
       children: [],
-      excess: excessMap[nodeId] || 0
+      excess: excessMap[itemId] || excessMap[nodeId] || 0
     };
   }
 
   const outputAmount = recipe.out[itemId] ?? 1;
-  const cyclesNeeded = (amount + (excessMap[nodeId] || 0)) / outputAmount;
+  const cyclesNeeded = (amount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
 
   // Pass recipeMap and importMap to child calculations
   const children = await Promise.all(
@@ -136,16 +172,12 @@ export const calculateDependencyTree = async (
     selectedRecipeId: recipe.id,
     availableRecipes,
     children: [...children, ...byproducts],
-    excess: excessMap[nodeId] || 0
+    excess: excessMap[itemId] || excessMap[nodeId] || 0
   };
 
   // Store result in cache
   await cacheNode(nodeId, result);
 
-  // console.log(`[${new Date().toISOString()}] Tree calculation complete`, {
-  //   nodeCount: countNodes(result),
-  //   depth: getTreeDepth(result)
-  // });
   logPerf('Total tree calculation', start);
 
   return result;
@@ -159,23 +191,7 @@ const countNodes = (node: DependencyNode): number => {
 };
 
 const getTreeDepth = (node: DependencyNode): number => {
-  if (!node.children?.length) return 1;
+  if (!node.children || node.children.length === 0) return 0;
   return 1 + Math.max(...node.children.map(getTreeDepth));
-};
-
-// Add simple cache functions
-const nodeCache = new Map<string, DependencyNode>();
-
-const getNodeFromCache = async (nodeId: string): Promise<DependencyNode | null> => {
-  return nodeCache.get(nodeId) || null;
-};
-
-const cacheNode = async (nodeId: string, node: DependencyNode): Promise<void> => {
-  nodeCache.set(nodeId, node);
-};
-
-// Add cache clearing function
-const clearNodeFromCache = async (nodeId: string): Promise<void> => {
-  nodeCache.delete(nodeId);
 };
 
