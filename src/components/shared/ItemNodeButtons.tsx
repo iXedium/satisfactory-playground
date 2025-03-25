@@ -6,8 +6,11 @@ interface ItemNodeButtonsProps {
   isRoot?: boolean;
   isImport?: boolean;
   itemId: string;
+  hasChildren?: boolean;
+  childrenVisible?: boolean;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
+  onToggleChildrenVisibility?: () => void;
   containerStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
 }
@@ -16,8 +19,11 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
   isRoot = false,
   isImport = false,
   itemId,
+  hasChildren = false,
+  childrenVisible,
   onDelete,
   onImport,
+  onToggleChildrenVisibility,
   containerStyle,
   buttonStyle: customButtonStyle,
 }) => {
@@ -74,6 +80,31 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
           title="Delete chain"
         >
           ×
+        </button>
+      )}
+      
+      {/* Hide/Show Children button for nodes with children */}
+      {hasChildren && onToggleChildrenVisibility && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleChildrenVisibility();
+          }}
+          style={{
+            ...buttonBaseStyle,
+            background: 'rgba(100, 100, 100, 0.1)',
+            border: '1px solid rgba(100, 100, 100, 0.3)',
+            color: childrenVisible === false ? '#ff9900' : '#00aaff',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(100, 100, 100, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(100, 100, 100, 0.1)';
+          }}
+          title={childrenVisible === false ? "Show children" : "Hide children"}
+        >
+          {childrenVisible === false ? "👁" : "🔍"}
         </button>
       )}
       

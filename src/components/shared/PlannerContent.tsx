@@ -26,6 +26,7 @@ interface PlannerContentProps {
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
+  handleNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   nodeExtensionOverrides: Record<string, boolean>;
   handleToggleNodeExtensions: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
@@ -53,6 +54,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
   showMachineMultiplier,
   handleDeleteTree,
   handleImportNode,
+  handleNodeUpdate,
   nodeExtensionOverrides,
   handleToggleNodeExtensions,
   containerStyle
@@ -84,6 +86,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
           showMachineMultiplier={showMachineMultiplier}
           handleDeleteTree={handleDeleteTree}
           handleImportNode={handleImportNode}
+          handleNodeUpdate={handleNodeUpdate}
         />
       ) : (
         <RefactoredAccumulatedView

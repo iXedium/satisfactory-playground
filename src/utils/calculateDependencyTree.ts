@@ -15,6 +15,13 @@ export interface DependencyNode {
   excess: number;
   originalChildren?: DependencyNode[];
   importedFrom?: string;
+  
+  // New reference-based import system properties
+  importReference?: {
+    targetTreeId: string;
+    targetNodeId: string;
+  };
+  childrenVisible?: boolean; // Default to true, set to false for imported nodes
 }
 
 // Cache for memoizing tree calculations

@@ -20,6 +20,7 @@ interface TreeViewManagerProps {
   showMachineMultiplier: boolean;
   onDeleteTree: (treeId: string) => void;
   onImportNode: (nodeId: string) => void;
+  onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   containerStyle?: React.CSSProperties;
 }
 
@@ -40,6 +41,7 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
   showMachineMultiplier,
   onDeleteTree,
   onImportNode,
+  onNodeUpdate,
   containerStyle,
 }) => {
   return (
@@ -70,6 +72,7 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
           isRoot={true}
           onDelete={() => onDeleteTree(treeId)}
           onImportNode={onImportNode}
+          onNodeUpdate={onNodeUpdate}
         />
       ))}
     </div>

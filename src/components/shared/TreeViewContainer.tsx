@@ -22,6 +22,7 @@ interface TreeViewContainerProps {
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
+  handleNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   containerStyle?: React.CSSProperties;
 }
 
@@ -45,6 +46,7 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
   showMachineMultiplier,
   handleDeleteTree,
   handleImportNode,
+  handleNodeUpdate,
   containerStyle
 }) => {
   return (
@@ -74,6 +76,7 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
           isRoot={true}
           onDelete={() => handleDeleteTree(treeId)}
           onImportNode={handleImportNode}
+          onNodeUpdate={handleNodeUpdate}
         />
       ))}
     </div>

@@ -49,6 +49,7 @@ const RefactoredDependencyTester: React.FC = () => {
     handleExpandCollapseAll,
     handleDeleteTree,
     handleImportNode,
+    handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions
   } = useFactoryPlanner();
@@ -105,6 +106,7 @@ const RefactoredDependencyTester: React.FC = () => {
           showMachineMultiplier={showMachineMultiplier}
           handleDeleteTree={handleDeleteTree}
           handleImportNode={handleImportNode}
+          handleNodeUpdate={handleNodeUpdate}
           nodeExtensionOverrides={nodeExtensionOverrides}
           handleToggleNodeExtensions={handleToggleNodeExtensions}
         />

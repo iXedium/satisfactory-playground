@@ -482,6 +482,39 @@ const dependencySlice = createSlice({
     loadSavedState: (state, action: PayloadAction<DependencyState>) => {
       // Replace the entire state with the saved state
       return action.payload;
+    },
+    updateNodeProperties: (
+      state,
+      action: PayloadAction<{
+        nodeId: string;
+        updatedNode: Partial<DependencyNode>;
+      }>
+    ) => {
+      const { nodeId, updatedNode } = action.payload;
+      
+      // Update the node in all trees
+      const updateNodeInTree = (tree: DependencyNode): boolean => {
+        if (tree.uniqueId === nodeId) {
+          // Apply the updates to this node
+          Object.assign(tree, updatedNode);
+          return true;
+        }
+        
+        if (tree.children) {
+          for (const child of tree.children) {
+            if (updateNodeInTree(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      // Try to update the node in all trees
+      Object.values(state.dependencyTrees).forEach(tree => {
+        updateNodeInTree(tree);
+      });
     }
   },
 });
@@ -491,7 +524,8 @@ export const {
   deleteTree, 
   updateAccumulated, 
   importNode, 
-  loadSavedState 
+  loadSavedState,
+  updateNodeProperties
 } = dependencySlice.actions;
 export default dependencySlice.reducer;
 

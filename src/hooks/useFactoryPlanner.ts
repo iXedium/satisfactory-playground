@@ -7,7 +7,8 @@ import {
   loadSavedState, 
   setDependencies, 
   deleteTree, 
-  importNode 
+  importNode,
+  updateNodeProperties
 } from '../features/dependencySlice';
 import { 
   setRecipeSelection, 
@@ -1143,13 +1144,17 @@ export const useFactoryPlanner = () => {
 
   // Toggle extensions visibility for a specific node
   const handleToggleNodeExtensions = (nodeId: string) => {
-    setNodeExtensionOverrides(prev => {
-      const currentValue = prev[nodeId] ?? showExtensions;
-      return {
-        ...prev,
-        [nodeId]: !currentValue
-      };
-    });
+    setNodeExtensionOverrides(prev => ({
+      ...prev,
+      [nodeId]: !prev[nodeId]
+    }));
+  };
+
+  const handleNodeUpdate = (nodeId: string, updatedNode: Partial<DependencyNode>) => {
+    dispatch(updateNodeProperties({
+      nodeId,
+      updatedNode
+    }));
   };
 
   // Handle unimporting a node
@@ -1251,6 +1256,7 @@ export const useFactoryPlanner = () => {
     handleExpandCollapseAll,
     handleDeleteTree,
     handleImportNode,
+    handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,
     handleUnimport

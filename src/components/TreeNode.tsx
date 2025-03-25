@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
 import { theme } from '../styles/theme';
+import { toggleChildrenVisibility } from '../utils/nodeReferenceUtils';
+import ItemNodeButtons from './shared/ItemNodeButtons';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -20,6 +22,7 @@ interface TreeNodeProps {
   isRoot?: boolean;
   onDelete?: (treeId: string) => void;
   onImport?: (nodeId: string) => void;
+  onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -38,7 +41,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   showMachineMultiplier = false,
   isRoot = false,
   onDelete,
-  onImport
+  onImport,
+  onNodeUpdate
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
@@ -60,10 +64,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDelete) {
-      onDelete(node.uniqueId);
+  const handleToggleChildrenVisibility = () => {
+    if (hasChildren && onNodeUpdate) {
+      const updatedNode = toggleChildrenVisibility(node);
+      onNodeUpdate(node.uniqueId, { childrenVisible: updatedNode.childrenVisible });
     }
   };
 
@@ -81,6 +85,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     return `rgb(${r}, ${g}, ${b})`;
   };
 
+  // Check if children should be visible (use childrenVisible property if available)
+  const shouldShowChildren = isExpanded && hasChildren && 
+    (node.childrenVisible !== false); // If childrenVisible is undefined or true, show children
+
   return (
     <div>
       <div
@@ -90,13 +98,24 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
-          paddingLeft: `${depth * 32}px`,
           borderRadius: theme.border.radius,
           position: 'relative',
           zIndex: 0
         }}
         data-node-id={node.uniqueId}
       >
+        {/* Buttons section */}
+        <ItemNodeButtons
+          isRoot={isRoot}
+          isImport={node.isImport}
+          itemId={node.id}
+          hasChildren={hasChildren}
+          childrenVisible={node.childrenVisible}
+          onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
+          onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
+          onToggleChildrenVisibility={hasChildren && onNodeUpdate ? handleToggleChildrenVisibility : undefined}
+        />
+
         <div
           onClick={handleToggle}
           style={{ 
@@ -139,13 +158,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
             showMachines={showMachineSection}
             showMachineMultiplier={showMachineMultiplier}
-            onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
-            onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
           />
         </div>
       </div>
 
-      {isExpanded && hasChildren && (
+      {shouldShowChildren && (
         <div>
           {node.children?.map(child => (
             <TreeNode
@@ -166,6 +183,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               isRoot={false}
               onDelete={onDelete}
               onImport={onImport}
+              onNodeUpdate={onNodeUpdate}
             />
           ))}
         </div>
