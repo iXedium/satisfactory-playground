@@ -26,6 +26,7 @@ const RefactoredDependencyTester: React.FC = () => {
     showMachineMultiplier,
     nodeExtensionOverrides,
     isAddItemCollapsed,
+    recentItems,
 
     // Setters
     setSelectedItem,
@@ -37,6 +38,7 @@ const RefactoredDependencyTester: React.FC = () => {
     setShowMachines,
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
+    updateRecentItems,
 
     // Handlers
     handleCalculate,
@@ -79,6 +81,8 @@ const RefactoredDependencyTester: React.FC = () => {
           isAddItemCollapsed={isAddItemCollapsed}
           onAddItemCollapsedChange={setIsAddItemCollapsed}
           onClearSavedData={clearSavedData}
+          recentItems={recentItems}
+          updateRecentItems={updateRecentItems}
         />
       }
       content={

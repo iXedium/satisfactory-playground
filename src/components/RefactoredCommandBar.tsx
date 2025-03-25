@@ -31,6 +31,8 @@ interface CommandBarProps {
   isAddItemCollapsed: boolean;
   onAddItemCollapsedChange: (collapsed: boolean) => void;
   onClearSavedData: () => void;
+  recentItems?: string[];
+  updateRecentItems?: (itemId: string) => void;
 }
 
 const depthOptions = [
@@ -66,7 +68,9 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
     onShowMachineMultiplierChange,
     isAddItemCollapsed,
     onAddItemCollapsedChange,
-    onClearSavedData
+    onClearSavedData,
+    recentItems = [],
+    updateRecentItems
   },
   ref
 ) => {
@@ -169,6 +173,14 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
   const toggleItemSection = () => {
     const newState = !isAddItemCollapsed;
     onAddItemCollapsedChange(newState);
+  };
+
+  // Handle item selection with recent items update
+  const handleItemSelect = (itemId: string) => {
+    if (updateRecentItems) {
+      updateRecentItems(itemId);
+    }
+    onItemSelect(itemId);
   };
 
   // Styles
@@ -422,7 +434,7 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
         {/* Item Selector */}
         <StyledSelect
           value={selectedItem}
-          onChange={onItemSelect}
+          onChange={handleItemSelect}
           options={items}
           placeholder="Select an Item"
           style={{ 
@@ -443,6 +455,7 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
               {option.name}
             </div>
           )}
+          recentItems={recentItems}
         />
         
         {/* Recipe Selector */}

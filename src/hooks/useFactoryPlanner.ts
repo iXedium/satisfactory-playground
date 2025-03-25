@@ -32,6 +32,9 @@ export const useFactoryPlanner = () => {
   const [selectedRecipe, setSelectedRecipe] = useState("");
   const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
   
+  // Recent items state
+  const [recentItems, setRecentItems] = useState<string[]>([]);
+  
   // Node specific state
   const [excessMap, setExcessMap] = useState<Record<string, number>>({});
   const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
@@ -93,6 +96,12 @@ export const useFactoryPlanner = () => {
       const savedNodeExtensionOverrides = localStorage.getItem('savedNodeExtensionOverrides');
       if (savedNodeExtensionOverrides) {
         setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
+      }
+      
+      // Load saved recent items
+      const savedRecentItems = localStorage.getItem('savedRecentItems');
+      if (savedRecentItems) {
+        setRecentItems(JSON.parse(savedRecentItems));
       }
     } catch (error) {
       console.error("Error loading saved state:", error);
@@ -166,6 +175,16 @@ export const useFactoryPlanner = () => {
     }
   }, [viewMode, expandedNodes, nodeExtensionOverrides]);
 
+  // Save recent items to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('savedRecentItems', JSON.stringify(recentItems));
+    } catch (error) {
+      console.error("Error saving recent items:", error);
+      localStorage.removeItem('savedRecentItems');
+    }
+  }, [recentItems]);
+
   // Initial load of items from the database
   useEffect(() => {
     getComponents().then(loadedItems => {
@@ -174,6 +193,18 @@ export const useFactoryPlanner = () => {
       }
     });
   }, []);
+
+  // Update recent items when an item is selected
+  const updateRecentItems = (itemId: string) => {
+    setRecentItems(prev => {
+      // Remove the item if it already exists
+      const filtered = prev.filter(id => id !== itemId);
+      // Add the item to the beginning (most recent first)
+      const updated = [itemId, ...filtered];
+      // Limit to 10 items
+      return updated.slice(0, 10);
+    });
+  };
 
   // Clear all saved data
   const clearSavedData = () => {
@@ -185,6 +216,8 @@ export const useFactoryPlanner = () => {
     localStorage.removeItem('savedViewMode');
     localStorage.removeItem('savedExpandedNodes');
     localStorage.removeItem('savedNodeExtensionOverrides');
+    localStorage.removeItem('savedRecentItems');
+    setRecentItems([]);
   };
 
   // Toggle extensions visibility for a specific node
@@ -207,6 +240,9 @@ export const useFactoryPlanner = () => {
   // Update calculate handler with dependency checking
   const handleCalculate = async () => {
     if (!selectedItem || !selectedRecipe) return;
+    
+    // Add selected item to recent items
+    updateRecentItems(selectedItem);
     
     try {
       const treeId = generateTreeId(selectedItem);
@@ -463,6 +499,7 @@ export const useFactoryPlanner = () => {
     showMachineMultiplier,
     nodeExtensionOverrides,
     isAddItemCollapsed,
+    recentItems,
 
     // Setters
     setSelectedItem,
@@ -474,6 +511,7 @@ export const useFactoryPlanner = () => {
     setShowMachines,
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
+    updateRecentItems,
 
     // Handlers
     handleCalculate,

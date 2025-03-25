@@ -12,6 +12,7 @@ interface StyledSelectProps {
   renderOption?: (option: { id: string; name: string }, isInDropdown: boolean) => React.ReactNode;
   variant?: 'default' | 'compact';
   disabled?: boolean;
+  recentItems?: string[];
 }
 
 const SelectContainer = styled('div')({
@@ -75,6 +76,18 @@ const DropdownItem = styled('div')<{ $highlighted?: boolean }>(({ $highlighted }
   }
 }));
 
+const SectionDivider = styled('div')({
+  padding: '4px 12px',
+  backgroundColor: theme.colors.darker,
+  color: theme.colors.text + '80',
+  fontSize: '12px',
+  fontWeight: 'bold',
+  display: 'flex',
+  alignItems: 'center',
+  borderTop: `1px solid ${theme.colors.dropdown.border}`,
+  borderBottom: `1px solid ${theme.colors.dropdown.border}`,
+});
+
 const StyledSelect: React.FC<StyledSelectProps> = ({
   value,
   onChange,
@@ -83,7 +96,8 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
   style,
   renderOption,
   variant = 'default',
-  disabled = false
+  disabled = false,
+  recentItems = []
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,19 +119,47 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
     setHighlightedIndex(-1);
   }, [searchTerm]);
 
+  // Filter options based on search term
   const filteredOptions = options.filter(option => 
     option.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Generate a list of recent options based on recentItems
+  const recentOptions = recentItems
+    .map(itemId => options.find(opt => opt.id === itemId))
+    .filter((item): item is { id: string; name: string } => !!item);
+
+  // Filter out recent items from the main filtered list to avoid duplicates
+  const nonRecentFilteredOptions = recentOptions.length > 0 
+    ? filteredOptions.filter(opt => !recentItems.includes(opt.id))
+    : filteredOptions;
+
+  // Function to handle arrow key navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) return;
+    
+    // Calculate total items (recent + regular, taking into account the divider)
+    const totalItems = recentOptions.length > 0 && searchTerm === '' 
+      ? recentOptions.length + nonRecentFilteredOptions.length
+      : filteredOptions.length;
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex(prev => {
-          const next = prev + 1 >= filteredOptions.length ? 0 : prev + 1;
-          const element = listRef.current?.children[next];
+          const next = prev + 1 >= totalItems ? 0 : prev + 1;
+          
+          // Skip divider when navigating
+          let element;
+          if (recentOptions.length > 0 && searchTerm === '' && next === recentOptions.length) {
+            // Skip divider when going down
+            const nextAfterDivider = next + 1;
+            element = listRef.current?.children[nextAfterDivider];
+            return nextAfterDivider;
+          } else {
+            element = listRef.current?.children[next];
+          }
+          
           element?.scrollIntoView({ block: 'nearest' });
           return next;
         });
@@ -125,8 +167,19 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
       case 'ArrowUp':
         e.preventDefault();
         setHighlightedIndex(prev => {
-          const next = prev - 1 < 0 ? filteredOptions.length - 1 : prev - 1;
-          const element = listRef.current?.children[next];
+          const next = prev - 1 < 0 ? totalItems - 1 : prev - 1;
+          
+          // Skip divider when navigating
+          let element;
+          if (recentOptions.length > 0 && searchTerm === '' && next === recentOptions.length) {
+            // Skip divider when going up
+            const nextBeforeDivider = next - 1;
+            element = listRef.current?.children[nextBeforeDivider];
+            return nextBeforeDivider;
+          } else {
+            element = listRef.current?.children[next];
+          }
+          
           element?.scrollIntoView({ block: 'nearest' });
           return next;
         });
@@ -134,11 +187,26 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
       case 'Enter':
         e.preventDefault();
         if (highlightedIndex >= 0) {
-          const selectedOption = filteredOptions[highlightedIndex];
-          onChange(selectedOption.id);
-          setIsOpen(false);
-          setSearchTerm('');
-          setHighlightedIndex(-1);
+          let selectedOption;
+          
+          if (recentOptions.length > 0 && searchTerm === '') {
+            // Handle selection from either recent or main list
+            if (highlightedIndex < recentOptions.length) {
+              selectedOption = recentOptions[highlightedIndex];
+            } else if (highlightedIndex > recentOptions.length) { // Skip divider
+              const indexInNonRecent = highlightedIndex - recentOptions.length - 1;
+              selectedOption = nonRecentFilteredOptions[indexInNonRecent];
+            }
+          } else {
+            selectedOption = filteredOptions[highlightedIndex];
+          }
+          
+          if (selectedOption) {
+            onChange(selectedOption.id);
+            setIsOpen(false);
+            setSearchTerm('');
+            setHighlightedIndex(-1);
+          }
         }
         break;
       case 'Escape':
@@ -196,21 +264,65 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
             onClick={(e) => e.stopPropagation()}
           />
           <div ref={listRef} style={{ overflow: 'auto', minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
-            {filteredOptions.map((option, index) => (
-              <DropdownItem
-                key={option.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange(option.id);
-                  setIsOpen(false);
-                  setSearchTerm('');
-                  setHighlightedIndex(-1);
-                }}
-                $highlighted={index === highlightedIndex}
-              >
-                {renderOption ? renderOption(option, true) : option.name}
-              </DropdownItem>
-            ))}
+            {/* Show recent items at the top if search is empty */}
+            {recentOptions.length > 0 && searchTerm === '' && (
+              <>
+                {recentOptions.map((option, index) => (
+                  <DropdownItem
+                    key={`recent-${option.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange(option.id);
+                      setIsOpen(false);
+                      setSearchTerm('');
+                      setHighlightedIndex(-1);
+                    }}
+                    $highlighted={index === highlightedIndex}
+                  >
+                    {renderOption ? renderOption(option, true) : option.name}
+                  </DropdownItem>
+                ))}
+                
+                <SectionDivider>
+                  Recent Items
+                </SectionDivider>
+                
+                {nonRecentFilteredOptions.map((option, index) => (
+                  <DropdownItem
+                    key={option.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange(option.id);
+                      setIsOpen(false);
+                      setSearchTerm('');
+                      setHighlightedIndex(-1);
+                    }}
+                    $highlighted={index + recentOptions.length + 1 === highlightedIndex}
+                  >
+                    {renderOption ? renderOption(option, true) : option.name}
+                  </DropdownItem>
+                ))}
+              </>
+            )}
+            
+            {/* Show filtered list when searching or no recent items */}
+            {(searchTerm !== '' || recentOptions.length === 0) && 
+              filteredOptions.map((option, index) => (
+                <DropdownItem
+                  key={option.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(option.id);
+                    setIsOpen(false);
+                    setSearchTerm('');
+                    setHighlightedIndex(-1);
+                  }}
+                  $highlighted={index === highlightedIndex}
+                >
+                  {renderOption ? renderOption(option, true) : option.name}
+                </DropdownItem>
+              ))
+            }
           </div>
         </DropdownContainer>
       </DropdownPortal>
