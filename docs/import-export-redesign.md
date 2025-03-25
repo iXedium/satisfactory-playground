@@ -187,17 +187,28 @@ Current progress on the implementation:
   - ✅ Calculation Updates
   - ✅ UI Integration
   - ✅ Bug Fix: Preserve recipe selection during import/unimport
-- Phase 3: Modify Unimport Logic (next focus)
-  - ⬜ Simplify Unimport Logic
-  - ⬜ Update Tests for New Reference System
+- Phase 3: Modify Unimport Logic ⬜ (in progress)
+  - ✅ Bug Fix: Restore complete node chain when unimporting
+  - ✅ Bug Fix: Preserve recipe dropdowns in unimported nodes
+  - ✅ Add tests for import/unimport cycle
   - ⬜ Remove Legacy Code & Clean up
 - Phase 4: Handling Edge Cases (not started)
 
+## Bug Fixes Completed
+
+1. **Fixed Node Chain Restoration**: The unimport process now properly restores the complete node chain, including all children and their properties.
+
+2. **Fixed Recipe Dropdown Preservation**: Recipe selections and dropdown options are now properly preserved throughout the import/unimport cycle.
+
+3. **TypeScript Improvements**: Fixed TypeScript errors in the calculateDependencyTree module to ensure proper typing of node properties.
+
+4. **Comprehensive Testing**: Added tests that verify the integrity of node structure and properties throughout the import/unimport cycle.
+
 ## Next Steps
 
-1. Fix remaining linter errors in calculateDependencyTree.ts
-2. Update importExcessBug.test.ts to work with new reference system
-3. Begin work on Phase 3 to simplify unimport logic and remove redundant code
+1. Start removing the legacy code now that the reference-based system is working correctly.
+2. Update the deleteTree action to use the reference-based system for handling orphaned references.
+3. Add circular reference detection to prevent import loops.
 
 ## Incremental Implementation
 

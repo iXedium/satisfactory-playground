@@ -212,11 +212,45 @@ const dependencySlice = createSlice({
         // This maintains backward compatibility with existing code
         const updatedSourceNode = clearImportReference(sourceNode);
         
+        // Before applying changes, make a backup of important UI properties
+        const preservedProperties = {
+          selectedRecipeId: sourceNode.selectedRecipeId,
+          availableRecipes: sourceNode.availableRecipes
+        };
+        
         // Apply changes to source node
         Object.assign(sourceNode, updatedSourceNode);
         
-        // Make children visible again
-        toggleChildrenVisibility(sourceNode, true);
+        // Explicitly ensure UI properties are preserved
+        if (preservedProperties.selectedRecipeId) {
+          sourceNode.selectedRecipeId = preservedProperties.selectedRecipeId;
+        }
+        
+        if (preservedProperties.availableRecipes) {
+          sourceNode.availableRecipes = preservedProperties.availableRecipes;
+        }
+        
+        // Make sure children are visible and properly structured
+        if (sourceNode.children) {
+          // Ensure each child has proper properties for UI
+          const ensureChildProperties = (node) => {
+            if (!node.children) return;
+            
+            node.children.forEach(child => {
+              // Make recipe selector work
+              if (!child.availableRecipes && child.id) {
+                // This will be populated on next calculation, but we need
+                // to ensure the property exists for proper UI rendering
+                child.availableRecipes = [];
+              }
+              
+              // Recursively process children
+              ensureChildProperties(child);
+            });
+          };
+          
+          ensureChildProperties(sourceNode);
+        }
         
         // Reduce the target tree's amount by the amount that was imported
         if (targetTree) {
@@ -237,6 +271,36 @@ const dependencySlice = createSlice({
         }
       } else {
         console.log("Converting to import node");
+        
+        // Store original children structure for legacy compatibility
+        // This is crucial for properly restoring the node later
+        if (sourceNode.children && sourceNode.children.length > 0) {
+          console.log("[IMPORT DEBUG] Storing original children for later restoration");
+          
+          // Deep clone to avoid reference issues
+          sourceNode.originalChildren = JSON.parse(JSON.stringify(sourceNode.children));
+          
+          // Store original recipe selection in children
+          const storeRecipeSelections = (originalChildren) => {
+            if (!originalChildren) return;
+            
+            originalChildren.forEach(child => {
+              // Store recipe ID for restoration
+              if (child.selectedRecipeId) {
+                child.originalRecipeId = child.selectedRecipeId;
+              }
+              
+              // Recursively store for nested children
+              if (child.children && child.children.length > 0) {
+                storeRecipeSelections(child.children);
+              }
+            });
+          };
+          
+          storeRecipeSelections(sourceNode.originalChildren);
+        } else {
+          sourceNode.originalChildren = [];
+        }
         
         // Use reference-based approach to set import reference
         // This sets up the new reference system while maintaining backward compatibility

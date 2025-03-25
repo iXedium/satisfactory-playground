@@ -3,7 +3,8 @@ import * as dbQueries from '../data/dbQueries'; // Import the module to spy on t
 import dependencyReducer, { importNode, setDependencies, loadSavedState } from '../features/dependencySlice';
 import { AccumulatedNode } from '../utils/calculateAccumulatedFromTree';
 import { configureStore } from '@reduxjs/toolkit';
-import { findNodeById, DependencyNode } from '../utils/calculateDependencyTree';
+import { findNodeById } from '../utils/nodeReferenceUtils';
+import { DependencyNode } from '../utils/calculateDependencyTree';
 
 // Import the mock setup
 import './mockData';

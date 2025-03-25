@@ -46,6 +46,11 @@ export const setImportReference = (
   // Create a shallow copy to maintain immutability
   const updatedNode = { ...node };
   
+  // Store original children before we hide them
+  if (!updatedNode.originalChildren && updatedNode.children && updatedNode.children.length > 0) {
+    updatedNode.originalChildren = JSON.parse(JSON.stringify(updatedNode.children));
+  }
+  
   // Set the new reference
   updatedNode.importReference = {
     targetTreeId,
@@ -54,6 +59,9 @@ export const setImportReference = (
   
   // Set childrenVisible to false for imported nodes
   updatedNode.childrenVisible = false;
+  
+  // Empty the children array (but preserve in originalChildren)
+  updatedNode.children = [];
   
   // Support legacy system during transition
   updatedNode.isImport = true;
@@ -79,14 +87,48 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
   updatedNode.isImport = false;
   updatedNode.importedFrom = undefined;
   
-  // Ensure we preserve essential properties
-  if (node.selectedRecipeId) {
-    updatedNode.selectedRecipeId = node.selectedRecipeId;
+  // Restore original children if available
+  if (node.originalChildren && node.originalChildren.length > 0) {
+    // Replace children with original structure
+    updatedNode.children = JSON.parse(JSON.stringify(node.originalChildren));
+    console.log("[UNIMPORT] Restored original children structure with", updatedNode.children.length, "children");
   }
   
-  if (node.availableRecipes) {
-    updatedNode.availableRecipes = node.availableRecipes;
-  }
+  // Ensure we preserve essential properties explicitly
+  // These properties might be lost in the deep copy or not exist in originalChildren
+  const propertiesToPreserve = [
+    'selectedRecipeId',
+    'availableRecipes',
+    'excess'
+  ];
+  
+  propertiesToPreserve.forEach(prop => {
+    if (node[prop] !== undefined) {
+      updatedNode[prop] = node[prop];
+    }
+  });
+  
+  // Ensure child nodes have their essential properties preserved too
+  const preservePropertiesInChildren = (children) => {
+    if (!children || !children.length) return;
+    
+    children.forEach(child => {
+      // Ensure children are properly visible
+      child.childrenVisible = true;
+      
+      // Make sure children have their recipe properties
+      if (child.originalRecipeId) {
+        child.selectedRecipeId = child.originalRecipeId;
+      }
+      
+      // Recursively process nested children
+      if (child.children && child.children.length > 0) {
+        preservePropertiesInChildren(child.children);
+      }
+    });
+  };
+  
+  preservePropertiesInChildren(updatedNode.children);
   
   return updatedNode;
 };
