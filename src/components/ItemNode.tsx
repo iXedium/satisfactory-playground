@@ -75,8 +75,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [nominalRate, setNominalRate] = useState(0);
 
   useEffect(() => {
+    console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`);
     setLocalExcess(excess);
-  }, [excess]);
+  }, [excess, itemId]);
 
   useEffect(() => {
     getItemById(itemId).then((item) => setItem(item || null));
@@ -114,6 +115,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         // Use precise excess value for accurate calculations
         const neededAmount = amount + localExcess;
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
+        
+        console.debug(`[EXCESS DEBUG] ItemNode ${itemId} calculating efficiency:
+          amount: ${amount}
+          localExcess: ${localExcess}
+          totalMachineCapacity: ${totalMachineCapacity}
+          neededAmount: ${neededAmount}
+          efficiency: ${Math.round(newEfficiency * 100) / 100}%`);
+        
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
     }
@@ -142,6 +151,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleExcessChange = (value: number) => {
+    console.debug(`[EXCESS DEBUG] ItemNode ${itemId} handleExcessChange called with: ${value}`);
     setLocalExcess(value);
     onExcessChange?.(value);
   };
@@ -187,6 +197,16 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   if (!item) return null;
+
+  // Development mode test button
+  const showTestButton = process.env.NODE_ENV === 'development';
+  
+  const testExcessCascade = () => {
+    console.debug(`[EXCESS TEST] Testing excess cascade for node ${itemId}`);
+    const testExcess = localExcess + 5; // Add 5 to current excess
+    console.debug(`[EXCESS TEST] Changing excess from ${localExcess} to ${testExcess}`);
+    handleExcessChange(testExcess);
+  };
 
   return (
     <div
@@ -263,6 +283,29 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           getEfficiencyColor={getEfficiencyColor}
         />
       </div>
+
+      {/* Debug test button - only in development */}
+      {showTestButton && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            testExcessCascade();
+          }}
+          style={{
+            padding: "2px 4px",
+            fontSize: "10px",
+            backgroundColor: "#ff5722",
+            color: "white",
+            border: "none",
+            borderRadius: "2px",
+            cursor: "pointer",
+            marginLeft: "4px"
+          }}
+          title="Test Excess Cascade (Debug)"
+        >
+          Test
+        </button>
+      )}
     </div>
   );
 };

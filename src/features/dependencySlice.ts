@@ -24,8 +24,19 @@ const dependencySlice = createSlice({
         accumulated: Record<string, AccumulatedNode>;
       }>
     ) => {
-      state.dependencyTrees[action.payload.treeId] = action.payload.tree;
+      console.debug(`[EXCESS DEBUG] Redux setDependencies called for tree: ${action.payload.treeId}`);
+      console.debug(`[EXCESS DEBUG] Accumulated nodes count: ${Object.keys(action.payload.accumulated).length}`);
+      
+      // Create completely new references to ensure React detects changes
+      state.dependencyTrees = {
+        ...state.dependencyTrees,
+        [action.payload.treeId]: action.payload.tree 
+      };
+      
+      // Always create a fresh object for accumulated dependencies
       state.accumulatedDependencies = action.payload.accumulated;
+      
+      console.debug('[EXCESS DEBUG] Redux state updated');
     },
     deleteTree: (
       state,

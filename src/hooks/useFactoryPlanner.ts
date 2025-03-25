@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { getComponents } from '../data/dbQueries';
+import { getComponents, getRecipesForItem, getRecipeById, getRecipeByOutput } from '../data/dbQueries';
 import { Item } from '../data/dexieDB';
 import { 
   loadSavedState, 
@@ -449,7 +449,7 @@ export const useFactoryPlanner = () => {
     const newExpandedNodes: Record<string, boolean> = {};
     
     // Traverse all trees and collect node IDs
-    const collectNodeIds = (node: any) => {
+    const collectNodeIds = (node: DependencyNode) => {
       newExpandedNodes[node.uniqueId] = expand;
       
       if (node.children) {
@@ -487,66 +487,412 @@ export const useFactoryPlanner = () => {
 
   // Handle excess change
   const handleExcessChange = async (nodeId: string, excess: number) => {
+    console.debug(`[EXCESS DEBUG] Starting excess change for node ${nodeId} to ${excess}`);
+    
     // Update the excess map with the new value
-    setExcessMap(prev => ({
-      ...prev,
-      [nodeId]: excess
-    }));
+    setExcessMap(prev => {
+      console.debug(`[EXCESS DEBUG] Updating excess map: ${nodeId} = ${excess}`);
+      return {
+        ...prev,
+        [nodeId]: excess
+      };
+    });
     
     // Find which tree this node belongs to
     const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
       findNodeById(dependencies.dependencyTrees[id], nodeId)
     );
     
-    if (!treeId) return;
+    console.debug(`[EXCESS DEBUG] Found tree ID: ${treeId}`);
+    
+    if (!treeId) {
+      console.error(`[EXCESS DEBUG] No tree found for node ${nodeId}`);
+      return;
+    }
     
     // Get the tree and the specific node
     const tree = dependencies.dependencyTrees[treeId];
     const node = findNodeById(tree, nodeId);
     
-    if (!node) return;
+    if (!node) {
+      console.error(`[EXCESS DEBUG] Node ${nodeId} not found in tree ${treeId}`);
+      return;
+    }
+    
+    console.debug(`[EXCESS DEBUG] Node found: ${node.id}, amount: ${node.amount}, current excess: ${node.excess}`);
     
     try {
-      // We need to completely recalculate the tree with the updated excess values
-      // First, create an updated excess map
+      // Create a copy of the current excess map with the updated value
       const updatedExcessMap = {...excessMap, [nodeId]: excess};
+      console.debug(`[EXCESS DEBUG] Created updated excess map with ${Object.keys(updatedExcessMap).length} entries`);
       
       // Get the root node of the tree
       const rootNode = dependencies.dependencyTrees[treeId];
+      console.debug(`[EXCESS DEBUG] Root node: ${rootNode.id}, amount: ${rootNode.amount}`);
       
-      // Recalculate the tree with the updated excess values
-      const recalculatedTree = await calculateDependencyTree(
+      // Map of original node IDs to preserve during recalculation
+      const nodeIdMap = new Map<string, string>();
+      
+      // First pass: collect all original node IDs in the tree and map them
+      const collectNodeIds = (node: DependencyNode) => {
+        // Store with both formats - by ID-depth and by uniqueId
+        nodeIdMap.set(`${node.id}-${node.uniqueId.split('-').pop()}`, node.uniqueId);
+        nodeIdMap.set(node.uniqueId, node.uniqueId); // Direct mapping for treeIds and full uniqueIds
+        
+        if (node.children) {
+          node.children.forEach(collectNodeIds);
+        }
+      };
+      
+      collectNodeIds(rootNode);
+      console.debug(`[EXCESS DEBUG] Collected ${nodeIdMap.size} node IDs for preservation`);
+      
+      // Log the excess value for the node we're changing
+      console.debug(`[EXCESS DEBUG] Updated excess value for node ${nodeId}: ${updatedExcessMap[nodeId]}`);
+      
+      // Modified recalculation that preserves original node IDs
+      const recalculateTreeWithIds = async (
+        itemId: string,
+        amount: number,
+        recipeId: string | null,
+        depth: number = 0,
+        parentId: string = '',
+        origTreeId: string
+      ): Promise<DependencyNode> => {
+        // Generate a temporary id to look up the original
+        const tempId = `${itemId}-${depth}`;
+        
+        // For the root node, use the tree ID directly if it matches
+        let origId: string;
+        if (depth === 0 && origTreeId) {
+          origId = origTreeId; // Use tree ID for the root node
+          console.debug(`[EXCESS DEBUG] Using treeId ${origTreeId} for root node lookup`);
+        } else {
+          // For other nodes, try to find the original ID from our map
+          origId = nodeIdMap.get(tempId) || `${parentId ? parentId+'-' : ''}${itemId}-${depth}`;
+        }
+        
+        // Check excess for this node - first try direct lookup by uniqueId, then by generated ID
+        const nodeExcess = nodeId === origId 
+          ? excess // Use the new excess value directly for the node being changed
+          : (updatedExcessMap[origId] || 0);
+        
+        console.debug(`[EXCESS DEBUG] Processing node: ${itemId}, origId: ${origId}, excess: ${nodeExcess}`);
+        
+        // Get recipes for this item
+        const availableRecipes = await getRecipesForItem(itemId);
+        
+        let recipe = null;
+        if (recipeId) {
+          recipe = await getRecipeById(recipeId);
+        } else if (recipeSelections[origId]) {
+          recipe = await getRecipeById(recipeSelections[origId]);
+        } else {
+          recipe = await getRecipeByOutput(itemId);
+        }
+        
+        if (!recipe) {
+          console.debug(`[EXCESS DEBUG] No recipe found for ${itemId}, returning leaf node`);
+          return {
+            id: itemId,
+            amount,
+            uniqueId: origId,
+            availableRecipes,
+            children: [],
+            excess: nodeExcess
+          };
+        }
+        
+        // Calculate production based on excess
+        const outputAmount = recipe.out[itemId] ?? 1;
+        const cyclesNeeded = (amount + nodeExcess) / (outputAmount as number);
+        
+        console.debug(`[EXCESS DEBUG] ${itemId}: amount=${amount}, excess=${nodeExcess}, output=${outputAmount}, cycles=${cyclesNeeded}`);
+        
+        // Recalculate children
+        const children = await Promise.all(
+          Object.entries(recipe.in).map(([inputItem, inputAmount]) => {
+            const childAmount = ((inputAmount as number) ?? 0) * cyclesNeeded;
+            console.debug(`[EXCESS DEBUG] Child ${inputItem}: amount=${childAmount} (${inputAmount} * ${cyclesNeeded})`);
+            
+            return recalculateTreeWithIds(
+              inputItem,
+              childAmount,
+              null,
+              depth + 1,
+              origId,
+              origTreeId
+            );
+          })
+        );
+        
+        // Add byproducts
+        const byproducts = Object.entries(recipe.out)
+          .filter(([outputItem]) => outputItem !== itemId)
+          .map(([outputItem, outputAmount]) => {
+            const byproductAmount = -((outputAmount as number) * cyclesNeeded);
+            console.debug(`[EXCESS DEBUG] Byproduct ${outputItem}: amount=${byproductAmount}`);
+            
+            return {
+              id: outputItem,
+              amount: byproductAmount,
+              uniqueId: `${origId}-${outputItem}-${depth}`,
+              isByproduct: true,
+              children: [],
+              excess: 0
+            } as DependencyNode;
+          });
+        
+        return {
+          id: itemId,
+          amount,
+          uniqueId: origId,
+          isRoot: depth === 0,
+          selectedRecipeId: recipe.id,
+          availableRecipes,
+          children: [...children, ...byproducts],
+          excess: nodeExcess
+        };
+      };
+      
+      console.debug(`[EXCESS DEBUG] Starting tree recalculation`);
+      // Recalculate tree preserving node IDs
+      const recalculatedTree = await recalculateTreeWithIds(
         rootNode.id,
         rootNode.amount,
         rootNode.selectedRecipeId || null,
-        recipeSelections,
         0,
-        [], // No affected branches - full recalculation
         '',
-        updatedExcessMap
+        treeId
       );
       
       if (!recalculatedTree) {
-        console.error("Failed to recalculate dependency tree");
+        console.error(`[EXCESS DEBUG] Failed to recalculate dependency tree`);
         return;
       }
       
-      // Ensure the unique ID of the root node stays the same
+      console.debug(`[EXCESS DEBUG] Tree recalculated successfully`);
+      
+      // Ensure the unique ID of the root node is the tree ID
       recalculatedTree.uniqueId = treeId;
       
-      // Calculate accumulated values from the recalculated tree
+      // Calculate accumulated values 
       const accumulated = calculateAccumulatedFromTree(recalculatedTree);
+      console.debug(`[EXCESS DEBUG] Accumulated values calculated: ${Object.keys(accumulated).length} entries`);
       
-      // Dispatch the update to Redux
+      // Add a test function to compare trees before and after
+      const compareTreeNodes = (original: DependencyNode, recalculated: DependencyNode, path = "") => {
+        const currentPath = path ? `${path} > ${recalculated.id}` : recalculated.id;
+        
+        const originalExcess = original.excess || 0;
+        const recalculatedExcess = recalculated.excess || 0;
+        
+        if (original.uniqueId === nodeId || recalculated.uniqueId === nodeId) {
+          console.debug(`[EXCESS DEBUG] Changed node at ${currentPath}: excess ${originalExcess} -> ${recalculatedExcess}`);
+        }
+        
+        // Compare child counts
+        const originalChildCount = original.children?.length || 0;
+        const recalculatedChildCount = recalculated.children?.length || 0;
+        
+        if (originalChildCount !== recalculatedChildCount) {
+          console.warn(`[EXCESS DEBUG] Child count mismatch at ${currentPath}: ${originalChildCount} vs ${recalculatedChildCount}`);
+        }
+        
+        // Compare amounts
+        if (original.amount !== recalculated.amount) {
+          console.debug(`[EXCESS DEBUG] Amount changed at ${currentPath}: ${original.amount} -> ${recalculated.amount}`);
+        }
+        
+        // Recursively compare children
+        if (original.children && recalculated.children) {
+          for (let i = 0; i < Math.min(original.children.length, recalculated.children.length); i++) {
+            compareTreeNodes(original.children[i], recalculated.children[i], currentPath);
+          }
+        }
+      };
+      
+      // Compare the original and recalculated trees
+      console.debug(`[EXCESS DEBUG] Comparing trees:`);
+      compareTreeNodes(tree, recalculatedTree);
+      
+      // Force a deep clone of the tree to ensure React picks up the changes
+      const clonedTree = JSON.parse(JSON.stringify(recalculatedTree));
+      
+      // Dispatch the update to Redux to trigger UI refresh
+      console.debug(`[EXCESS DEBUG] Dispatching tree update to Redux`);
       dispatch(setDependencies({
         treeId,
-        tree: recalculatedTree,
+        tree: clonedTree,
         accumulated
       }));
+      
+      // Force UI refresh with a slight delay
+      setTimeout(() => {
+        console.debug(`[EXCESS DEBUG] Forcing UI refresh`);
+        const treeViewElement = document.getElementById('tree-view');
+        if (treeViewElement) {
+          treeViewElement.style.opacity = '0.99';
+          setTimeout(() => {
+            if (treeViewElement) treeViewElement.style.opacity = '1';
+          }, 10);
+        }
+      }, 50);
     } catch (error) {
-      console.error("Error recalculating dependency tree after excess change:", error);
+      console.error(`[EXCESS DEBUG] Error recalculating dependency tree after excess change:`, error);
     }
   };
+
+  // Unit test function for excess propagation
+  const testExcessCascade = async () => {
+    // Step 1: Find a tree to test with
+    const anyTreeId = Object.keys(dependencies.dependencyTrees)[0];
+    if (!anyTreeId) {
+      console.error("[TEST] No trees found for testing");
+      return "FAILED: No trees available for testing";
+    }
+    
+    // Step 2: Get the root node and a child node
+    const tree = dependencies.dependencyTrees[anyTreeId];
+    const rootNode = tree;
+    const childNode = tree.children && tree.children.length > 0 ? tree.children[0] : null;
+    
+    if (!childNode) {
+      console.error("[TEST] Tree has no child nodes for testing");
+      return "FAILED: Selected tree has no child nodes";
+    }
+    
+    console.log("[TEST] Starting excess cascade test with:");
+    console.log(`  - Tree: ${anyTreeId} (${rootNode.id})`);
+    console.log(`  - Root node ID: ${rootNode.uniqueId}`);
+    console.log(`  - Child node ID: ${childNode.uniqueId} (${childNode.id})`);
+    
+    // Step 3: Record initial state
+    const initialRootExcess = excessMap[rootNode.uniqueId] || 0;
+    const initialChildExcess = excessMap[childNode.uniqueId] || 0;
+    
+    // Set test values
+    const testRootExcess = initialRootExcess + 10;
+    
+    // Step 4: Run test for root node excess change
+    console.log("\n[TEST] PART 1: Testing root node excess change");
+    console.log(`  - Changing root excess from ${initialRootExcess} to ${testRootExcess}`);
+    
+    // Save initial child amounts
+    let originalChildAmount = childNode.amount;
+    
+    // Change root excess
+    await handleExcessChange(rootNode.uniqueId, testRootExcess);
+    
+    // Wait for state updates
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check if child amount changed in response to root excess change
+    const updatedTree = dependencies.dependencyTrees[anyTreeId];
+    const updatedChildNode = updatedTree.children && updatedTree.children.length > 0 
+      ? updatedTree.children.find(c => c.uniqueId === childNode.uniqueId) 
+      : null;
+    
+    if (!updatedChildNode) {
+      console.error("[TEST] Cannot find child node after update");
+      return "FAILED: Child node not found after update";
+    }
+    
+    const rootTestResult = updatedChildNode.amount !== originalChildAmount;
+    
+    console.log("\n[TEST] Root excess test results:");
+    console.log(`  - Root excess changed: ${initialRootExcess} -> ${excessMap[rootNode.uniqueId]}`);
+    console.log(`  - Child amount changed: ${originalChildAmount} -> ${updatedChildNode.amount}`);
+    console.log(`  - Child amount should change: ${rootTestResult ? "SUCCESS" : "FAILED"}`);
+    
+    // Reset for second test
+    await handleExcessChange(rootNode.uniqueId, initialRootExcess);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Step 5: Run test for child node excess change
+    console.log("\n[TEST] PART 2: Testing child node excess change");
+    const testChildExcess = initialChildExcess + 10;
+    console.log(`  - Changing child excess from ${initialChildExcess} to ${testChildExcess}`);
+    
+    await handleExcessChange(childNode.uniqueId, testChildExcess);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const childTestResult = excessMap[childNode.uniqueId] === testChildExcess;
+    
+    console.log("\n[TEST] Child excess test results:");
+    console.log(`  - Child excess changed: ${initialChildExcess} -> ${excessMap[childNode.uniqueId]}`);
+    console.log(`  - Child excess should be ${testChildExcess}: ${childTestResult ? "SUCCESS" : "FAILED"}`);
+    
+    // Reset to original values
+    await handleExcessChange(childNode.uniqueId, initialChildExcess);
+    
+    // Overall result
+    if (rootTestResult && childTestResult) {
+      return "SUCCESS: Both root and child excess changes propagate correctly";
+    } else if (rootTestResult) {
+      return "PARTIAL SUCCESS: Root excess changes propagate but child excess test failed";
+    } else if (childTestResult) {
+      return "PARTIAL SUCCESS: Child excess changes propagate but root excess test failed";
+    } else {
+      return "FAILED: Neither root nor child excess changes propagate correctly";
+    }
+  };
+
+  // Test excess propagation (can be run from browser console for testing)
+  const manualTestExcessPropagation = () => {
+    // Find a node to test with
+    const anyTreeId = Object.keys(dependencies.dependencyTrees)[0];
+    if (!anyTreeId) {
+      console.error("No trees found for testing");
+      return;
+    }
+    
+    const tree = dependencies.dependencyTrees[anyTreeId];
+    const nodeToTest = findFirstNonRootNode(tree);
+    
+    if (!nodeToTest) {
+      console.error("Could not find a non-root node for testing");
+      return;
+    }
+    
+    console.debug(`[TEST] Testing excess propagation with node: ${nodeToTest.id}, uniqueId: ${nodeToTest.uniqueId}`);
+    
+    // Test increasing excess
+    const initialExcess = excessMap[nodeToTest.uniqueId] || 0;
+    const newExcess = initialExcess + 10;
+    
+    console.debug(`[TEST] Changing excess from ${initialExcess} to ${newExcess}`);
+    handleExcessChange(nodeToTest.uniqueId, newExcess);
+    
+    // Helper to find the first non-root node
+    function findFirstNonRootNode(node: DependencyNode): DependencyNode | null {
+      if (node.children && node.children.length > 0) {
+        // Return the first child
+        return node.children[0];
+      }
+      return null;
+    }
+  };
+
+  // Make test functions available on window for debugging
+  if (typeof window !== 'undefined') {
+    // Use a specific interface to define the additions to Window
+    interface CustomWindow extends Window {
+      testExcessPropagation?: () => void;
+      runExcessCascadeTest?: () => Promise<string>;
+      debugExcessMap?: () => void;
+    }
+    
+    const customWindow = window as CustomWindow;
+    customWindow.testExcessPropagation = manualTestExcessPropagation;
+    customWindow.runExcessCascadeTest = testExcessCascade;
+    
+    // Add a debug function to dump the excess map
+    customWindow.debugExcessMap = () => {
+      console.debug('[EXCESS DEBUG] Current excess map:', excessMap);
+      console.debug('[EXCESS DEBUG] Current dependencies:', dependencies);
+    };
+  }
 
   // Clear all saved data
   const clearSavedData = () => {

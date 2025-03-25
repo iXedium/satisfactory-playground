@@ -79,6 +79,8 @@ const ListNode: React.FC<ListNodeProps> = ({
   nodeExtensionOverrides,
   onToggleNodeExtensions,
 }) => {
+  console.debug(`[EXCESS DEBUG] ListNode ${itemId} received excess: ${excess}`);
+  
   const [expanded, setExpanded] = useState(true);
   const [item, setItem] = useState<Item | null>(null);
   const [consumers, setConsumers] = useState<ConsumptionDetail[]>([]);
@@ -87,6 +89,12 @@ const ListNode: React.FC<ListNodeProps> = ({
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const nodeRef = useRef<HTMLDivElement>(null);
   
+  // Wrap onExcessChange callback to add debugging
+  const handleExcessChange = (newExcess: number) => {
+    console.debug(`[EXCESS DEBUG] ListNode ${itemId} handleExcessChange called with: ${newExcess}`);
+    onExcessChange?.(newExcess);
+  };
+
   // Update expanded state when showExtensions changes
   useEffect(() => {
     // If this node has an override, use that instead of the global setting
@@ -190,7 +198,7 @@ const ListNode: React.FC<ListNodeProps> = ({
           selectedRecipeId={selectedRecipeId}
           onRecipeChange={onRecipeChange}
           excess={excess}
-          onExcessChange={onExcessChange}
+          onExcessChange={handleExcessChange}
           index={index}
           machineCount={machineCount}
           onMachineCountChange={onMachineCountChange}

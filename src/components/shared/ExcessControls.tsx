@@ -27,6 +27,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   const excessRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.debug(`[EXCESS DEBUG] ExcessControls received new excess prop: ${excess}`);
     setPreciseExcess(excess);
   }, [excess]);
 
@@ -43,13 +44,17 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   const handleExcessChange = (value: string) => {
     // Parse and store the full precision value
     const inputValue = value;
+    console.debug(`[EXCESS DEBUG] ExcessControls handleExcessChange: ${inputValue}`);
+    
     // Handle empty input or invalid numbers
     if (inputValue === "" || isNaN(parseFloat(inputValue))) {
+      console.debug('[EXCESS DEBUG] Empty or invalid input, setting excess to 0');
       setPreciseExcess(0);
       onExcessChange(0);
     } else {
       // Store the full precision number
       const numValue = parseFloat(inputValue);
+      console.debug(`[EXCESS DEBUG] Setting excess to ${numValue}`);
       setPreciseExcess(numValue);
       onExcessChange(numValue);
     }
