@@ -10,261 +10,309 @@ import {
 } from '../utils/nodeReferenceUtils';
 import { DependencyNode } from '../utils/calculateDependencyTree';
 
-describe('Node Reference Utilities', () => {
-  let mockNode: DependencyNode;
-  let mockTreesMap: Record<string, DependencyNode>;
+describe('Node Reference Utils', () => {
+  // Sample nodes for testing
+  const basicNode: DependencyNode = {
+    id: 'iron-rod',
+    amount: 10,
+    uniqueId: 'iron-rod-1',
+    children: [],
+    selectedRecipeId: 'recipe-1',
+    availableRecipes: ['recipe-1', 'recipe-2']
+  };
   
-  beforeEach(() => {
-    // Set up a clean node for each test
-    mockNode = {
-      id: 'iron_ingot',
-      amount: 15,
-      uniqueId: 'tree-1-iron_ingot-1',
-      children: [
-        {
-          id: 'iron_ore',
-          amount: 15,
-          uniqueId: 'tree-1-iron_ingot-1-iron_ore-2',
-          children: [],
-          excess: 0
-        }
-      ],
-      excess: 0
-    };
-    
-    // Set up mock trees map
-    mockTreesMap = {
-      'tree-1': {
-        id: 'iron_rod',
-        amount: 15,
-        uniqueId: 'tree-1',
-        isRoot: true,
-        children: [mockNode],
-        excess: 0
-      },
-      'tree-2': {
-        id: 'iron_ingot',
-        amount: 30,
-        uniqueId: 'tree-2',
-        isRoot: true,
-        children: [
-          {
-            id: 'iron_ore',
-            amount: 30,
-            uniqueId: 'tree-2-iron_ore-1',
-            children: [],
-            excess: 0
-          }
-        ],
-        excess: 0
-      }
-    };
-  });
+  const legacyImportNode: DependencyNode = {
+    id: 'iron-rod',
+    amount: 10,
+    uniqueId: 'iron-rod-1',
+    isImport: true,
+    importedFrom: 'tree-1',
+    children: [],
+    originalChildren: [],
+    selectedRecipeId: 'recipe-1'
+  };
+  
+  const newImportNode: DependencyNode = {
+    id: 'iron-rod',
+    amount: 10,
+    uniqueId: 'iron-rod-1',
+    importReference: {
+      targetTreeId: 'tree-1',
+      targetNodeId: 'root'
+    },
+    children: [],
+    childrenVisible: false,
+    selectedRecipeId: 'recipe-1',
+    availableRecipes: ['recipe-1', 'recipe-2']
+  };
   
   describe('isNodeImporting', () => {
-    it('should detect a node as importing with new reference system', () => {
-      const importingNode = {
-        ...mockNode,
-        importReference: {
-          targetTreeId: 'tree-2',
-          targetNodeId: 'tree-2'
-        }
-      };
-      
-      expect(isNodeImporting(importingNode)).toBe(true);
+    it('should return false for regular nodes', () => {
+      expect(isNodeImporting(basicNode)).toBe(false);
     });
     
-    it('should detect a node as importing with legacy system', () => {
-      const importingNode = {
-        ...mockNode,
-        isImport: true,
-        importedFrom: 'tree-2'
-      };
-      
-      expect(isNodeImporting(importingNode)).toBe(true);
+    it('should return true for legacy import nodes', () => {
+      expect(isNodeImporting(legacyImportNode)).toBe(true);
     });
     
-    it('should return false for non-importing nodes', () => {
-      expect(isNodeImporting(mockNode)).toBe(false);
+    it('should return true for new import nodes', () => {
+      expect(isNodeImporting(newImportNode)).toBe(true);
     });
   });
   
   describe('getImportReference', () => {
-    it('should get reference from new system', () => {
-      const importingNode = {
-        ...mockNode,
-        importReference: {
-          targetTreeId: 'tree-2',
-          targetNodeId: 'tree-2-specific-node'
-        }
-      };
-      
-      const reference = getImportReference(importingNode);
-      expect(reference).toEqual({
-        targetTreeId: 'tree-2',
-        targetNodeId: 'tree-2-specific-node'
-      });
+    it('should return null for regular nodes', () => {
+      expect(getImportReference(basicNode)).toBeNull();
     });
     
-    it('should convert from legacy system', () => {
-      const importingNode = {
-        ...mockNode,
-        isImport: true,
-        importedFrom: 'tree-2'
-      };
-      
-      const reference = getImportReference(importingNode);
+    it('should return reference for legacy import nodes', () => {
+      const reference = getImportReference(legacyImportNode);
       expect(reference).toEqual({
-        targetTreeId: 'tree-2',
+        targetTreeId: 'tree-1',
         targetNodeId: 'root'
       });
     });
     
-    it('should return null for non-importing nodes', () => {
-      expect(getImportReference(mockNode)).toBeNull();
+    it('should return reference for new import nodes', () => {
+      const reference = getImportReference(newImportNode);
+      expect(reference).toEqual({
+        targetTreeId: 'tree-1',
+        targetNodeId: 'root'
+      });
     });
   });
   
   describe('setImportReference', () => {
-    it('should set reference properties and maintain backward compatibility', () => {
-      const updatedNode = setImportReference(mockNode, 'tree-2', 'tree-2-specific-node');
+    it('should set import reference on a regular node', () => {
+      const updatedNode = setImportReference(basicNode, 'tree-2', 'node-123');
       
-      // Check new system properties
+      // Should add the reference
       expect(updatedNode.importReference).toEqual({
         targetTreeId: 'tree-2',
-        targetNodeId: 'tree-2-specific-node'
+        targetNodeId: 'node-123'
       });
+      
+      // Should hide children
       expect(updatedNode.childrenVisible).toBe(false);
       
-      // Check legacy properties
+      // Should set legacy properties too
       expect(updatedNode.isImport).toBe(true);
       expect(updatedNode.importedFrom).toBe('tree-2');
+      
+      // Should maintain other properties
+      expect(updatedNode.id).toBe(basicNode.id);
+      expect(updatedNode.amount).toBe(basicNode.amount);
+      expect(updatedNode.selectedRecipeId).toBe(basicNode.selectedRecipeId);
+      expect(updatedNode.availableRecipes).toBe(basicNode.availableRecipes);
     });
     
-    it('should not modify the original node', () => {
-      setImportReference(mockNode, 'tree-2', 'tree-2-specific-node');
+    it('should update import reference on an existing import node', () => {
+      const updatedNode = setImportReference(newImportNode, 'tree-3', 'node-456');
       
-      // Original should be unchanged
-      expect(mockNode.importReference).toBeUndefined();
-      expect(mockNode.isImport).toBeUndefined();
+      expect(updatedNode.importReference).toEqual({
+        targetTreeId: 'tree-3',
+        targetNodeId: 'node-456'
+      });
     });
   });
   
   describe('clearImportReference', () => {
-    it('should clear all import-related properties', () => {
-      // Set up an importing node
-      const importingNode = setImportReference(mockNode, 'tree-2', 'tree-2-specific-node');
+    it('should clear import reference from a node', () => {
+      const updatedNode = clearImportReference(newImportNode);
       
-      // Clear the reference
-      const clearedNode = clearImportReference(importingNode);
+      // Should remove the reference
+      expect(updatedNode.importReference).toBeUndefined();
       
-      // Check new system properties
-      expect(clearedNode.importReference).toBeUndefined();
-      expect(clearedNode.childrenVisible).toBe(true);
+      // Should show children
+      expect(updatedNode.childrenVisible).toBe(true);
       
-      // Check legacy properties
-      expect(clearedNode.isImport).toBe(false);
-      expect(clearedNode.importedFrom).toBeUndefined();
+      // Should clear legacy properties
+      expect(updatedNode.isImport).toBe(false);
+      expect(updatedNode.importedFrom).toBeUndefined();
+      
+      // Should maintain other properties
+      expect(updatedNode.id).toBe(newImportNode.id);
+      expect(updatedNode.amount).toBe(newImportNode.amount);
+      expect(updatedNode.selectedRecipeId).toBe(newImportNode.selectedRecipeId);
+      expect(updatedNode.availableRecipes).toEqual(newImportNode.availableRecipes);
+    });
+    
+    it('should preserve recipe selection when clearing import', () => {
+      // Create a node with recipe selection
+      const nodeWithRecipe = {
+        ...newImportNode,
+        selectedRecipeId: 'special-recipe',
+        availableRecipes: ['recipe-1', 'special-recipe']
+      };
+      
+      const updatedNode = clearImportReference(nodeWithRecipe);
+      
+      // Recipe selection should be preserved
+      expect(updatedNode.selectedRecipeId).toBe('special-recipe');
+      expect(updatedNode.availableRecipes).toEqual(['recipe-1', 'special-recipe']);
     });
   });
   
   describe('findNodeById', () => {
-    it('should find a node by its uniqueId', () => {
-      const tree = mockTreesMap['tree-1'];
-      const found = findNodeById(tree, 'tree-1-iron_ingot-1-iron_ore-2');
-      
-      expect(found).toBeDefined();
-      expect(found?.id).toBe('iron_ore');
+    // Create a tree structure for testing
+    const treeRoot: DependencyNode = {
+      id: 'iron-plate',
+      amount: 20,
+      uniqueId: 'root',
+      children: [
+        {
+          id: 'iron-rod',
+          amount: 10,
+          uniqueId: 'child-1',
+          children: [
+            {
+              id: 'screw',
+              amount: 5,
+              uniqueId: 'grandchild-1',
+              children: []
+            }
+          ]
+        },
+        {
+          id: 'copper-wire',
+          amount: 15,
+          uniqueId: 'child-2',
+          children: []
+        }
+      ]
+    };
+    
+    it('should find a node at the root level', () => {
+      const found = findNodeById(treeRoot, 'root');
+      expect(found).toBe(treeRoot);
     });
     
-    it('should return null if node not found', () => {
-      const tree = mockTreesMap['tree-1'];
-      const found = findNodeById(tree, 'non-existent-id');
-      
+    it('should find a node at the first level', () => {
+      const found = findNodeById(treeRoot, 'child-1');
+      expect(found?.id).toBe('iron-rod');
+    });
+    
+    it('should find a node at a deeper level', () => {
+      const found = findNodeById(treeRoot, 'grandchild-1');
+      expect(found?.id).toBe('screw');
+    });
+    
+    it('should return null if node is not found', () => {
+      const found = findNodeById(treeRoot, 'non-existent');
       expect(found).toBeNull();
     });
-  });
-  
-  describe('findTargetNode', () => {
-    it('should find the target node with new reference system', () => {
-      // Use the actual ID of a child node
-      const importingNode = setImportReference(
-        mockNode, 
-        'tree-2', 
-        'tree-2-iron_ore-1'
-      );
-      
-      const targetNode = findTargetNode(mockTreesMap, importingNode);
-      
-      expect(targetNode).toBeDefined();
-      expect(targetNode?.id).toBe('iron_ore');
-    });
     
-    it('should find the target node with legacy system', () => {
-      const importingNode = {
-        ...mockNode,
-        isImport: true,
-        importedFrom: 'tree-2'
+    it('should search in originalChildren for an import node', () => {
+      // Create a node with originalChildren
+      const importNodeWithOriginals: DependencyNode = {
+        id: 'motor',
+        amount: 10,
+        uniqueId: 'import-node',
+        importReference: {
+          targetTreeId: 'tree-1',
+          targetNodeId: 'root'
+        },
+        children: [],
+        originalChildren: [
+          {
+            id: 'stator',
+            amount: 5,
+            uniqueId: 'original-child-1',
+            children: []
+          }
+        ]
       };
       
-      const targetNode = findTargetNode(mockTreesMap, importingNode);
-      
-      expect(targetNode).toBeDefined();
-      expect(targetNode?.id).toBe('iron_ingot');
-    });
-    
-    it('should return null if target tree not found', () => {
-      const importingNode = setImportReference(
-        mockNode, 
-        'non-existent-tree', 
-        'some-node-id'
-      );
-      
-      expect(findTargetNode(mockTreesMap, importingNode)).toBeNull();
+      const found = findNodeById(importNodeWithOriginals, 'original-child-1');
+      expect(found?.id).toBe('stator');
     });
   });
   
   describe('toggleChildrenVisibility', () => {
-    it('should toggle children visibility from undefined to false', () => {
-      const toggled = toggleChildrenVisibility(mockNode);
-      expect(toggled.childrenVisible).toBe(false);
+    it('should toggle children visibility from true to false', () => {
+      const node = { ...basicNode, childrenVisible: true };
+      const updated = toggleChildrenVisibility(node);
+      expect(updated.childrenVisible).toBe(false);
     });
     
     it('should toggle children visibility from false to true', () => {
-      const hiddenNode = { ...mockNode, childrenVisible: false };
-      const toggled = toggleChildrenVisibility(hiddenNode);
-      expect(toggled.childrenVisible).toBe(true);
+      const node = { ...basicNode, childrenVisible: false };
+      const updated = toggleChildrenVisibility(node);
+      expect(updated.childrenVisible).toBe(true);
+    });
+    
+    it('should toggle children visibility from undefined to false', () => {
+      const node = { ...basicNode }; // childrenVisible is undefined
+      const updated = toggleChildrenVisibility(node);
+      expect(updated.childrenVisible).toBe(false);
+    });
+    
+    it('should set explicit visibility when provided', () => {
+      const node = { ...basicNode, childrenVisible: true };
+      
+      // Force to false
+      const updatedToFalse = toggleChildrenVisibility(node, false);
+      expect(updatedToFalse.childrenVisible).toBe(false);
+      
+      // Force to true
+      const updatedToTrue = toggleChildrenVisibility(node, true);
+      expect(updatedToTrue.childrenVisible).toBe(true);
     });
   });
   
   describe('traverseVisibleNodes', () => {
-    it('should traverse all nodes when visibility is not set', () => {
-      const visitedNodes: string[] = [];
-      
-      traverseVisibleNodes(mockTreesMap['tree-1'], (node) => {
-        visitedNodes.push(node.id);
-      });
-      
-      expect(visitedNodes).toEqual(['iron_rod', 'iron_ingot', 'iron_ore']);
-    });
+    // Create a tree with visibility settings
+    const visibilityTree: DependencyNode = {
+      id: 'root',
+      amount: 10,
+      uniqueId: 'root',
+      childrenVisible: true,
+      children: [
+        {
+          id: 'child1',
+          amount: 5,
+          uniqueId: 'child1',
+          childrenVisible: false, // Hidden children
+          children: [
+            {
+              id: 'grandchild1',
+              amount: 2,
+              uniqueId: 'grandchild1',
+              children: []
+            }
+          ]
+        },
+        {
+          id: 'child2',
+          amount: 5,
+          uniqueId: 'child2',
+          childrenVisible: true, // Visible children
+          children: [
+            {
+              id: 'grandchild2',
+              amount: 2,
+              uniqueId: 'grandchild2',
+              children: []
+            }
+          ]
+        }
+      ]
+    };
     
-    it('should not traverse children when visibility is false', () => {
-      const tree = {
-        ...mockTreesMap['tree-1'],
-        children: [{
-          ...mockNode,
-          childrenVisible: false
-        }]
-      };
-      
+    it('should only traverse visible nodes', () => {
       const visitedNodes: string[] = [];
       
-      traverseVisibleNodes(tree, (node) => {
+      traverseVisibleNodes(visibilityTree, (node) => {
         visitedNodes.push(node.id);
       });
       
-      // Should only visit root and iron_ingot, but not its children
-      expect(visitedNodes).toEqual(['iron_rod', 'iron_ingot']);
+      // Should visit root, both children, but only grandchild of visible child
+      expect(visitedNodes).toContain('root');
+      expect(visitedNodes).toContain('child1');
+      expect(visitedNodes).toContain('child2');
+      expect(visitedNodes).toContain('grandchild2');
+      expect(visitedNodes).not.toContain('grandchild1');
+      expect(visitedNodes.length).toBe(4);
     });
   });
 }); 

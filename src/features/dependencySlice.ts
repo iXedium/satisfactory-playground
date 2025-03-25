@@ -1,6 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { DependencyNode, restoreOriginalChildren } from "../utils/calculateDependencyTree";
 import { AccumulatedNode, calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
+import { 
+  setImportReference, 
+  clearImportReference, 
+  findNodeById,
+  toggleChildrenVisibility
+} from "../utils/nodeReferenceUtils";
 
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
@@ -189,22 +195,8 @@ const dependencySlice = createSlice({
         return;
       }
 
-      // Find the source node
-      const findNode = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
-        if (tree.uniqueId === nodeId) {
-          return tree;
-        }
-
-        if (tree.children) {
-          for (const child of tree.children) {
-            const found = findNode(child, nodeId);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const sourceNode = findNode(sourceTree, sourceNodeId);
+      // Find the source node using our utility function
+      const sourceNode = findNodeById(sourceTree, sourceNodeId);
       if (!sourceNode) {
         console.error("Source node not found");
         return;
@@ -212,243 +204,54 @@ const dependencySlice = createSlice({
 
       console.log("Found source node:", sourceNode);
 
-      // If this is import node, toggle import off
-      if (sourceNode.isImport) {
+      // If this is already an import node, toggle import off
+      if (sourceNode.importReference || sourceNode.isImport) {
         console.log("[UNIMPORT DEBUG] Toggling import off for node:", sourceNode.uniqueId);
         
-        // Save the original children before making changes
-        const originalChildren = sourceNode.originalChildren;
-        console.log("[UNIMPORT DEBUG] Original children to restore:", originalChildren ? 
-          JSON.stringify(originalChildren.map(child => ({
-            id: child.id,
-            amount: child.amount,
-            hasChildren: child.children && child.children.length > 0
-          }))) : 
-          "undefined"
-        );
+        // Use reference-based approach to clear the import reference
+        // This maintains backward compatibility with existing code
+        const updatedSourceNode = clearImportReference(sourceNode);
         
-        // Restore original children to this node
-        console.log("[RESTORE DEBUG] Restoring original children for node:", sourceNode.id);
+        // Apply changes to source node
+        Object.assign(sourceNode, updatedSourceNode);
         
-        try {
-          // First, create a copy of the source node to work with
-          const restoredNode = JSON.parse(JSON.stringify(sourceNode));
+        // Make children visible again
+        toggleChildrenVisibility(sourceNode, true);
+        
+        // Reduce the target tree's amount by the amount that was imported
+        if (targetTree) {
+          console.log("[UNIMPORT DEBUG] Reducing target tree amount by:", sourceNode.amount);
           
-          // Remove import attributes
-          restoredNode.isImport = false;
-          delete restoredNode.importedFrom;
+          // Reduce the amount in the target tree
+          targetTree.amount -= sourceNode.amount;
           
-          // Check if we have stored structure information
-          if (sourceNode.originalChildren && sourceNode.originalChildren.length > 0) {
-            console.log("[UNIMPORT DEBUG] Found stored structure information:", sourceNode.originalChildren);
-            
-            // Reconstruct the children using the stored structure info and current amounts
-            restoredNode.children = sourceNode.originalChildren.map(childStructure => {
-              // Calculate proportional amount based on parent's current amount
-              const childNode = {
-                id: childStructure.id,
-                amount: sourceNode.amount, // Will be scaled by recipe in the calculation
-                uniqueId: childStructure.uniqueId,
-                selectedRecipeId: childStructure.recipeId,
-                excess: childStructure.excess || 0,
-                isImport: childStructure.isImport,
-                importedFrom: childStructure.importedFrom,
-                children: []
-              };
-              
-              // If this child was itself an import, preserve that relationship
-              if (childStructure.isImport && childStructure.importedFrom) {
-                childNode.isImport = true;
-                childNode.importedFrom = childStructure.importedFrom;
-                childNode.children = [];
-              }
-              // Otherwise add any nested children
-              else if (childStructure.children && childStructure.children.length > 0) {
-                childNode.children = childStructure.children.map(grandchildStructure => ({
-                  id: grandchildStructure.id,
-                  amount: sourceNode.amount, // Will be scaled during next calculation
-                  uniqueId: grandchildStructure.uniqueId,
-                  selectedRecipeId: grandchildStructure.recipeId,
-                  children: [],
-                  excess: 0
-                }));
-              }
-              
-              return childNode;
-            });
-            
-            console.log("[UNIMPORT DEBUG] Reconstructed children from stored structure:", 
-              JSON.stringify(restoredNode.children.map(c => ({
-                id: c.id,
-                amount: c.amount,
-                isImport: c.isImport,
-                childCount: c.children ? c.children.length : 0
-              })))
-            );
-          } 
-          // Fallback to generating from recipe if no structure info is available
-          else {
-            console.log("[UNIMPORT DEBUG] No stored structure information, will generate from recipe");
-            
-            // Find the recipe for this item to generate children
-            const generateChildrenFromRecipe = () => {
-              // Since we can't make async calls here, we need to create basic children
-              const recipeId = sourceNode.selectedRecipeId || `recipe_${sourceNode.id}`;
-              console.log(`[UNIMPORT DEBUG] Generating children from recipe ${recipeId} for ${sourceNode.id} with amount ${sourceNode.amount}`);
-              
-              // Normalize the item name format to use underscores consistently
-              const normalizeId = (id: string) => id.replace(/-/g, '_');
-              const normalizedNodeId = normalizeId(sourceNode.id);
-              
-              // For iron_ingot, create iron_ore child
-              if (normalizedNodeId === "iron_ingot") {
-                return [{
-                  id: "iron_ore",
-                  amount: sourceNode.amount,
-                  uniqueId: `${sourceNode.uniqueId}-iron_ore-generated`,
-                  children: [],
-                  excess: 0
-                }];
-              }
-              
-              // For other common recipes, create basic children
-              // This is not ideal, but better than losing the chain completely
-              if (normalizedNodeId === "iron_rod") {
-                return [{
-                  id: "iron_ingot",
-                  amount: sourceNode.amount,
-                  uniqueId: `${sourceNode.uniqueId}-iron_ingot-generated`,
-                  children: [],
-                  excess: 0
-                }];
-              }
-              
-              // For other items, make more intelligent guesses based on item ID
-              // Extract the base material from items like "copper-sheet", "steel-pipe", etc.
-              const idParts = normalizedNodeId.split('_');
-              if (idParts.length > 1) {
-                const baseMaterial = idParts[0];
-                // Common base materials
-                if (["iron", "copper", "steel", "aluminum", "concrete", "plastic", "rubber"].includes(baseMaterial)) {
-                  return [{
-                    id: `${baseMaterial}_ingot`,
-                    amount: sourceNode.amount,
-                    uniqueId: `${sourceNode.uniqueId}-${baseMaterial}_ingot-generated`,
-                    children: [],
-                    excess: 0
-                  }];
-                }
-              }
-              
-              // Default empty array for unknown recipes
-              console.log(`[UNIMPORT DEBUG] Could not generate children for unknown recipe ${recipeId}`);
-              return [];
-            };
-            
-            try {
-              restoredNode.children = generateChildrenFromRecipe();
-              delete restoredNode.originalChildren;
-              
-              console.log("[UNIMPORT DEBUG] Generated backup children:", JSON.stringify(restoredNode.children));
-            } catch (error) {
-              console.error("[UNIMPORT ERROR] Failed to generate children from recipe:", error);
-              // Fallback to empty children array if generation fails
-              restoredNode.children = [];
-            }
-          }
-          
-          // After the restoredNode has been fully constructed, add back the logging:
-          console.log("[UNIMPORT DEBUG] Restored node structure:", JSON.stringify({
-            id: restoredNode.id,
-            amount: restoredNode.amount,
-            children: restoredNode.children?.map((c: any) => ({
-              id: c.id,
-              amount: c.amount,
-              hasChildren: c.children && c.children.length > 0
-            })),
-            isImport: restoredNode.isImport
-          }));
-          
-          // Find and replace this node in the tree
-          const result = findAndReplaceNode(state.dependencyTrees[sourceTreeId], sourceNode.uniqueId, restoredNode);
-          
-          if (result) {
-            console.log("[UNIMPORT DEBUG] Node replacement successful");
+          // If the target tree is empty (zero or negative amount AND no excess), delete it
+          if (targetTree.amount <= 0 && (!targetTree.excess || targetTree.excess <= 0)) {
+            console.log("[UNIMPORT DEBUG] Removing empty target tree:", targetTreeId);
+            delete state.dependencyTrees[targetTreeId];
           } else {
-            console.error("[UNIMPORT DEBUG] Failed to replace node in tree");
+            // Ensure amount is never negative
+            targetTree.amount = Math.max(0, targetTree.amount);
+            console.log("[UNIMPORT DEBUG] Target tree has been updated to amount:", targetTree.amount);
           }
-          
-          // Reduce the target tree's amount by the amount that was imported
-          if (targetTree) {
-            console.log("[UNIMPORT DEBUG] Reducing target tree amount by:", sourceNode.amount);
-            
-            // Reduce the amount in the target tree
-            targetTree.amount -= sourceNode.amount;
-            
-            // If the target tree is empty (zero or negative amount AND no excess), delete it
-            if (targetTree.amount <= 0 && (!targetTree.excess || targetTree.excess <= 0)) {
-              console.log("[UNIMPORT DEBUG] Removing empty target tree:", targetTreeId);
-              delete state.dependencyTrees[targetTreeId];
-            } else {
-              // Ensure amount is never negative
-              targetTree.amount = Math.max(0, targetTree.amount);
-              console.log("[UNIMPORT DEBUG] Target tree has been updated to amount:", targetTree.amount);
-            }
-          }
-          
-          console.log("[UNIMPORT DEBUG] Final node structure in tree:", JSON.stringify({
-            id: restoredNode.id,
-            amount: restoredNode.amount,
-            children: restoredNode.children?.map((c: any) => ({
-              id: c.id,
-              amount: c.amount,
-              hasChildren: c.hasChildren || !!c.children?.length
-            })),
-            isImport: restoredNode.isImport
-          }));
-        } catch (error) {
-          console.error("[UNIMPORT ERROR] Critical error during unimport process:", error);
         }
       } else {
         console.log("Converting to import node");
-        // Convert to import node
-        sourceNode.isImport = true;
         
-        // Store minimized original structure with recipe info rather than full node structure with amounts
-        if (sourceNode.children && sourceNode.children.length > 0) {
-          console.log("[IMPORT DEBUG] Storing recipe and structure info for children");
-          
-          // Store minimal information needed to reconstruct the node structure
-          sourceNode.originalChildren = sourceNode.children.map(child => ({
-            id: child.id,
-            recipeId: child.selectedRecipeId,
-            uniqueId: child.uniqueId,
-            isImport: child.isImport,
-            importedFrom: child.importedFrom,
-            excess: child.excess || 0,
-            // Recursively store structure for nested children if they exist
-            children: child.children && child.children.length > 0 ? 
-              child.children.map(grandchild => ({
-                id: grandchild.id,
-                recipeId: grandchild.selectedRecipeId,
-                uniqueId: grandchild.uniqueId
-              })) : []
-          }));
-          
-          console.log("[IMPORT DEBUG] Stored structural information:", JSON.stringify(sourceNode.originalChildren));
-        } else {
-          console.log("[IMPORT DEBUG] No children to store structural information for");
-          sourceNode.originalChildren = [];
-        }
+        // Use reference-based approach to set import reference
+        // This sets up the new reference system while maintaining backward compatibility
+        const updatedSourceNode = setImportReference(sourceNode, targetTreeId, targetTree.uniqueId);
         
-        // Clear children for import node
-        sourceNode.children = [];
-
+        // Apply changes to source node
+        Object.assign(sourceNode, updatedSourceNode);
+        
+        // Hide children for imported nodes
+        toggleChildrenVisibility(sourceNode, false);
+        
         // If this is a newly created tree, we've already set the correct amount
         // so don't modify the target tree's amount
         if (isNewTree) {
           console.log("Using newly created tree - amount already set");
-          sourceNode.importedFrom = targetTreeId;
         } else {
           // For existing trees, find the root and add the amount
           console.log("Adding to existing root:", targetTree);
@@ -457,8 +260,6 @@ const dependencySlice = createSlice({
           targetTree.amount += sourceNode.amount;
           // Maintain the excess value
           targetTree.excess = currentExcess;
-          
-          sourceNode.importedFrom = targetTreeId;
         }
       }
 
@@ -468,14 +269,6 @@ const dependencySlice = createSlice({
         const treeAccumulated = calculateAccumulatedFromTree(tree);
         Object.assign(allAccumulated, treeAccumulated);
       });
-
-      // Double-check to make sure no import nodes are included
-      for (const nodeId in allAccumulated) {
-        const node = findNode(sourceTree, nodeId);
-        if (node && node.isImport) {
-          delete allAccumulated[nodeId];
-        }
-      }
       
       state.accumulatedDependencies = allAccumulated;
     },

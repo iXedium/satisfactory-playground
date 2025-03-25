@@ -178,13 +178,26 @@ Since this is a significant architecture change, we'll need a migration strategy
 
 Current progress on the implementation:
 
-- Phase 1: Infrastructure and Utility Changes
+- Phase 1: Infrastructure and Utility Changes ✅
   - ✅ Add new node properties to DependencyNode interface
   - ✅ Create Node Reference Utils
   - ✅ Update Tree Visualization
-- Phase 2: Modify Import Logic (not started)
-- Phase 3: Modify Unimport Logic (not started)
+- Phase 2: Modify Import Logic ✅
+  - ✅ Refactor Import Action
+  - ✅ Calculation Updates
+  - ✅ UI Integration
+  - ✅ Bug Fix: Preserve recipe selection during import/unimport
+- Phase 3: Modify Unimport Logic (next focus)
+  - ⬜ Simplify Unimport Logic
+  - ⬜ Update Tests for New Reference System
+  - ⬜ Remove Legacy Code & Clean up
 - Phase 4: Handling Edge Cases (not started)
+
+## Next Steps
+
+1. Fix remaining linter errors in calculateDependencyTree.ts
+2. Update importExcessBug.test.ts to work with new reference system
+3. Begin work on Phase 3 to simplify unimport logic and remove redundant code
 
 ## Incremental Implementation
 

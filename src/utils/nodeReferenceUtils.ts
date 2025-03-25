@@ -66,8 +66,8 @@ export const setImportReference = (
  * Clear import reference from a node
  */
 export const clearImportReference = (node: DependencyNode): DependencyNode => {
-  // Create a shallow copy to maintain immutability
-  const updatedNode = { ...node };
+  // Create a deep copy to preserve all properties
+  const updatedNode = JSON.parse(JSON.stringify(node));
   
   // Clear the reference
   updatedNode.importReference = undefined;
@@ -78,6 +78,15 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
   // Support legacy system during transition
   updatedNode.isImport = false;
   updatedNode.importedFrom = undefined;
+  
+  // Ensure we preserve essential properties
+  if (node.selectedRecipeId) {
+    updatedNode.selectedRecipeId = node.selectedRecipeId;
+  }
+  
+  if (node.availableRecipes) {
+    updatedNode.availableRecipes = node.availableRecipes;
+  }
   
   return updatedNode;
 };
@@ -90,8 +99,19 @@ export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNo
     return tree;
   }
   
+  // Check children
   if (tree.children) {
     for (const child of tree.children) {
+      const found = findNodeById(child, nodeId);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  
+  // Also check originalChildren if present
+  if (tree.originalChildren) {
+    for (const child of tree.originalChildren) {
       const found = findNodeById(child, nodeId);
       if (found) {
         return found;
@@ -127,15 +147,25 @@ export const findTargetNode = (
 
 /**
  * Toggle the visibility of a node's children
+ * @param node The node to update
+ * @param explicitVisibility Optional explicit visibility value to set (if not provided, will toggle current value)
  */
-export const toggleChildrenVisibility = (node: DependencyNode): DependencyNode => {
-  // If childrenVisible is undefined, we should treat it as true and toggle to false
-  // Otherwise, just toggle the boolean value
+export const toggleChildrenVisibility = (
+  node: DependencyNode,
+  explicitVisibility?: boolean
+): DependencyNode => {
+  // If childrenVisible is undefined, we should treat it as true when toggling
   const currentVisibility = node.childrenVisible === undefined ? true : node.childrenVisible;
+  
+  // If explicitVisibility is provided, use that value
+  // Otherwise toggle the current visibility
+  const newVisibility = explicitVisibility !== undefined 
+    ? explicitVisibility 
+    : !currentVisibility;
   
   return {
     ...node,
-    childrenVisible: !currentVisibility
+    childrenVisible: newVisibility
   };
 };
 

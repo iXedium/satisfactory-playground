@@ -3,7 +3,6 @@ import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
 import { theme } from '../styles/theme';
 import { toggleChildrenVisibility } from '../utils/nodeReferenceUtils';
-import ItemNodeButtons from './shared/ItemNodeButtons';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -61,13 +60,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       if (onNodeExpandChange) {
         onNodeExpandChange(node.uniqueId, newExpanded);
       }
-    }
-  };
-
-  const handleToggleChildrenVisibility = () => {
-    if (hasChildren && onNodeUpdate) {
-      const updatedNode = toggleChildrenVisibility(node);
-      onNodeUpdate(node.uniqueId, { childrenVisible: updatedNode.childrenVisible });
+      
+      // If this is an imported node, also toggle children visibility
+      if (node.isImport && onNodeUpdate) {
+        const updatedNode = toggleChildrenVisibility(node);
+        onNodeUpdate(node.uniqueId, { childrenVisible: updatedNode.childrenVisible });
+      }
     }
   };
 
@@ -98,24 +96,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           background: getBackgroundColor(depth),
           marginBottom: '8px',
           padding: '0 12px 0 0',
+          paddingLeft: `${depth * 32}px`,
           borderRadius: theme.border.radius,
           position: 'relative',
           zIndex: 0
         }}
         data-node-id={node.uniqueId}
       >
-        {/* Buttons section */}
-        <ItemNodeButtons
-          isRoot={isRoot}
-          isImport={node.isImport}
-          itemId={node.id}
-          hasChildren={hasChildren}
-          childrenVisible={node.childrenVisible}
-          onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
-          onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
-          onToggleChildrenVisibility={hasChildren && onNodeUpdate ? handleToggleChildrenVisibility : undefined}
-        />
-
         <div
           onClick={handleToggle}
           style={{ 
@@ -158,6 +145,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             onMachineMultiplierChange={(multiplier) => onMachineMultiplierChange?.(node.uniqueId, multiplier)}
             showMachines={showMachineSection}
             showMachineMultiplier={showMachineMultiplier}
+            onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
+            onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
           />
         </div>
       </div>

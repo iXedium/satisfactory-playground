@@ -1,6 +1,7 @@
 import { Recipe } from "../data/dexieDB";
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data/dbQueries";
 import { NodePath } from "./treeDiffing";
+import { isNodeImporting, getImportReference } from "./nodeReferenceUtils";
 
 export interface DependencyNode {
   id: string;
@@ -59,7 +60,8 @@ export const calculateDependencyTree = async (
   affectedBranches: NodePath[] = [],
   parentId: string = '',
   excessMap: Record<string, number> = {},
-  importMap: Record<string, { targetTreeId: string, amount: number }> = {} // Track imported nodes
+  importMap: Record<string, { targetTreeId: string, amount: number }> = {}, // Track imported nodes
+  dependencyTrees?: Record<string, DependencyNode> // Access to all trees for import references
 ): Promise<DependencyNode> => {
   const start = performance.now();
 
@@ -75,8 +77,9 @@ export const calculateDependencyTree = async (
   if (!isAffected && affectedBranches.length > 0) {
     const cachedNode = await getNodeFromCache(nodeId);
     if (cachedNode) {
-      // Even for cached nodes, we need to update amounts if they're imports
-      if (cachedNode.isImport && importMap[nodeId]) {
+      // Use new reference-based check for importing nodes
+      if (isNodeImporting(cachedNode)) {
+        // For import nodes, update the amount but preserve the import reference
         return {
           ...cachedNode,
           amount, // Use the new amount
@@ -92,62 +95,87 @@ export const calculateDependencyTree = async (
     await clearNodeFromCache(nodeId);
   }
 
-  // Check if this node should be an import
+  // Check if this node should be an import - support both legacy and new system
   const importInfo = importMap[nodeId];
-  if (importInfo) {
-    // For import nodes, create a node with updated amount but preserved import relationship
-    const nodeExcess = excessMap[itemId] || excessMap[nodeId] || 0;
+  if (importInfo || (dependencyTrees && await shouldUseImportReference(nodeId, dependencyTrees))) {
+    let targetTreeId = '';
     
-    // Log import node details for debugging
-    console.debug(`Creating import node: ${itemId}, amount=${amount}, excess=${nodeExcess}, from=${importInfo.targetTreeId}`);
+    // Use importMap (legacy) or find reference in dependencyTrees (new system)
+    if (importInfo) {
+      targetTreeId = importInfo.targetTreeId;
+    } else if (dependencyTrees) {
+      // Find node in all trees
+      const nodeWithReference = await findNodeWithReference(nodeId, dependencyTrees);
+      if (nodeWithReference) {
+        const importReference = getImportReference(nodeWithReference);
+        if (importReference) {
+          targetTreeId = importReference.targetTreeId;
+        }
+      }
+    }
     
-    // Check if this node exists in the cache and get important properties to preserve
-    const cachedNode = await getNodeFromCache(nodeId);
-    
-    // Initialize from cache or generate new
-    let originalChildren;
-    
-    if (cachedNode && cachedNode.originalChildren && cachedNode.originalChildren.length > 0) {
-      console.log(`[IMPORT DEBUG] Using cached original children for ${itemId}`);
-      // Deep clone to avoid reference issues
-      originalChildren = JSON.parse(JSON.stringify(cachedNode.originalChildren));
+    if (!targetTreeId) {
+      console.warn(`[IMPORT WARNING] Could not find target tree ID for import node ${nodeId}`);
     } else {
-      // Calculate original children using our storeOriginalChildren function
-      originalChildren = await storeOriginalChildren(
-        itemId,
-        amount > 0 ? amount : 1, // Use at least 1 for amount to ensure we get proper children
-        nodeExcess,
-        recipeMap[nodeId]
-      );
+      // Log import node details for debugging
+      console.debug(`Creating import node: ${itemId}, amount=${amount}, from=${targetTreeId}`);
       
-      console.log(`[IMPORT DEBUG] Generated ${originalChildren.length} original children for import node ${itemId}:`, 
-        JSON.stringify(originalChildren)
-      );
+      // Get node from cache if it exists
+      const cachedNode = await getNodeFromCache(nodeId);
+      let originalChildren;
+      
+      if (cachedNode && cachedNode.originalChildren && cachedNode.originalChildren.length > 0) {
+        console.log(`[IMPORT DEBUG] Using cached original children for ${itemId}`);
+        // Deep clone to avoid reference issues
+        originalChildren = JSON.parse(JSON.stringify(cachedNode.originalChildren));
+      } else {
+        // Calculate original children using our storeOriginalChildren function
+        originalChildren = await storeOriginalChildren(
+          itemId,
+          amount > 0 ? amount : 1, // Use at least 1 for amount to ensure we get proper children
+          excessMap[itemId] || excessMap[nodeId] || 0,
+          recipeMap[nodeId]
+        );
+        
+        console.log(`[IMPORT DEBUG] Generated ${originalChildren.length} original children for import node ${itemId}`);
+      }
+      
+      // Create node with both legacy and new import reference system properties
+      const importNode = {
+        id: itemId,
+        amount,
+        uniqueId: nodeId,
+        // Legacy properties
+        isImport: true,
+        importedFrom: targetTreeId,
+        originalChildren,
+        children: [], // Import nodes don't have active children
+        // New system properties
+        importReference: {
+          targetTreeId,
+          targetNodeId: 'root' // Default to root for now
+        },
+        childrenVisible: false, // Hide children for import nodes
+        excess: excessMap[itemId] || excessMap[nodeId] || 0
+      };
+      
+      // Ensure correct selectedRecipeId is preserved from cache or set to default
+      if (cachedNode && cachedNode.selectedRecipeId) {
+        importNode.selectedRecipeId = cachedNode.selectedRecipeId;
+      } else if (recipeMap[nodeId]) {
+        importNode.selectedRecipeId = recipeMap[nodeId];
+      }
+      
+      // Preserve availableRecipes if they exist
+      if (cachedNode && cachedNode.availableRecipes) {
+        importNode.availableRecipes = cachedNode.availableRecipes;
+      }
+      
+      // Cache this node to ensure original children are preserved in future recalculations
+      await cacheNode(nodeId, importNode);
+      
+      return importNode;
     }
-    
-    // Create the import node with original children preserved
-    const importNode = {
-      id: itemId,
-      amount, // Use the new calculated amount
-      uniqueId: nodeId,
-      isImport: true,
-      importedFrom: importInfo.targetTreeId,
-      children: [], // Import nodes don't have children
-      excess: nodeExcess,
-      originalChildren // Store the original children for restoration when unimporting
-    };
-    
-    // Ensure correct selectedRecipeId is preserved from cache or set to default
-    if (cachedNode && cachedNode.selectedRecipeId) {
-      importNode.selectedRecipeId = cachedNode.selectedRecipeId;
-    } else if (recipeMap[nodeId]) {
-      importNode.selectedRecipeId = recipeMap[nodeId];
-    }
-    
-    // Cache this node to ensure original children are preserved in future recalculations
-    await cacheNode(nodeId, importNode);
-    
-    return importNode;
   }
 
   // Get available recipes for this item
@@ -178,7 +206,7 @@ export const calculateDependencyTree = async (
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded = (amount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
 
-  // Pass recipeMap and importMap to child calculations
+  // Pass dependencyTrees to child calculations for import references
   const children = await Promise.all(
     Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
       calculateDependencyTree(
@@ -190,7 +218,8 @@ export const calculateDependencyTree = async (
         affectedBranches,
         nodeId,
         excessMap,
-        importMap
+        importMap,
+        dependencyTrees
       )
     )
   );
@@ -340,74 +369,99 @@ const getTreeDepth = (node: DependencyNode): number => {
   return 1 + Math.max(...node.children.map(getTreeDepth));
 };
 
-export const storeOriginalChildren = async (
+// Helper function to calculate and store the original children for an import node
+export async function storeOriginalChildren(
   itemId: string,
   amount: number,
-  excessAmount: number = 0,
+  excess: number = 0, 
   recipeId?: string
-): Promise<{ id: string; amount: number; hasChildren: boolean; childrenIds: string[] }[]> => {
-  try {
-    // Normalize item ID for consistent lookups
-    const normalizedItemId = itemId.includes('-') ? itemId.replace(/-/g, '_') : itemId;
-    
-    // Find the recipe for this item
-    const recipe = recipeId 
-      ? await getRecipeById(recipeId)
-      : await getRecipeByOutput(normalizedItemId);
-    
-    if (!recipe) {
-      console.log(`[IMPORT DEBUG] No recipe found for ${normalizedItemId}, returning empty originalChildren`);
-      return [];
-    }
-    
-    console.log(`[IMPORT DEBUG] Calculating original children for ${normalizedItemId} with amount ${amount} and excess ${excessAmount}`);
-    
-    // Calculate how many cycles of the recipe we need
-    const effectiveAmount = amount + excessAmount; // Include excess in calculation
-    const outputAmount = recipe.out?.[normalizedItemId] || 1;
-    const cyclesNeeded = Math.ceil(effectiveAmount / outputAmount);
-    
-    console.log(`[IMPORT DEBUG] ${normalizedItemId}: effectiveAmount=${effectiveAmount}, outputAmount=${outputAmount}, cyclesNeeded=${cyclesNeeded}`);
-
-    // If the amount is 0, ensure we at least create children with the minimal recipe amounts
-    // This is critical for nodes created with 0 amount initially
-    const scaleFactor = effectiveAmount <= 0 ? 1 : cyclesNeeded;
-    
-    // Calculate child amounts
-    const originalChildren = await Promise.all(
-      Object.entries(recipe.in || {}).map(async ([childId, childAmount]) => {
-        // Normalize child ID to underscore format for consistency
-        const normalizedChildId = childId.includes('-') ? childId.replace(/-/g, '_') : childId;
-        
-        const actualChildAmount = (childAmount || 1) * scaleFactor;
-        console.log(`[IMPORT DEBUG] Adding original child ${normalizedChildId} with amount ${actualChildAmount}`);
-        
-        // Recursively get children of children
-        const childrenOfChild = await storeOriginalChildren(normalizedChildId, actualChildAmount);
-        const hasChildren = childrenOfChild.length > 0;
-        const childrenIds = childrenOfChild.map(child => child.id);
-        
-        return {
-          id: normalizedChildId,
-          amount: actualChildAmount,
-          hasChildren,
-          childrenIds,
-          children: hasChildren ? childrenOfChild : undefined
-        };
-      })
-    );
-    
-    console.log(`[IMPORT DEBUG] Calculated ${originalChildren.length} original children for ${normalizedItemId}: ${JSON.stringify(originalChildren.map(child => ({
-      id: child.id,
-      amount: child.amount,
-      hasChildren: child.hasChildren,
-      childrenIds: child.childrenIds
-    })))}`);
-    
-    return originalChildren;
-  } catch (error) {
-    console.error(`Error calculating original children for ${itemId}:`, error);
-    return [];
+): Promise<DependencyNode[]> {
+  // Get recipe for this item
+  let recipe: Recipe | undefined;
+  
+  if (recipeId) {
+    recipe = await getRecipeById(recipeId);
+  } else {
+    recipe = await getRecipeByOutput(itemId);
   }
-};
+  
+  if (!recipe) {
+    return []; // No recipe means no children
+  }
+  
+  const outputAmount = recipe.out[itemId] ?? 1;
+  const cyclesNeeded = (amount + excess) / outputAmount;
+  
+  // Calculate children without using import references
+  const children = await Promise.all(
+    Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
+      calculateDependencyTree(
+        inputItem,
+        (inputAmount ?? 0) * cyclesNeeded,
+        null,
+        {}, // Empty recipe map for original children
+        0, // Reset depth for clarity
+        [], // No affected branches
+        '', // No parent ID
+        {}, // No excess map
+        {} // No import map - crucial to avoid circular imports
+      )
+    )
+  );
+  
+  return children;
+}
+
+// Helper to check if a node has an import reference in any tree
+async function shouldUseImportReference(
+  nodeId: string,
+  dependencyTrees: Record<string, DependencyNode>
+): Promise<boolean> {
+  // Try to find this node in any tree
+  const node = await findNodeWithReference(nodeId, dependencyTrees);
+  return node ? isNodeImporting(node) : false;
+}
+
+// Helper to find a node with the given ID in any tree
+async function findNodeWithReference(
+  nodeId: string,
+  dependencyTrees: Record<string, DependencyNode>
+): Promise<DependencyNode | null> {
+  for (const treeId in dependencyTrees) {
+    const node = findNodeInTree(dependencyTrees[treeId], nodeId);
+    if (node) {
+      return node;
+    }
+  }
+  return null;
+}
+
+// Helper to find a node by its uniqueId in a dependency tree
+function findNodeInTree(node: DependencyNode, nodeId: string): DependencyNode | null {
+  if (node.uniqueId === nodeId) {
+    return node;
+  }
+  
+  // Check children
+  if (node.children && node.children.length > 0) {
+    for (const child of node.children) {
+      const foundNode = findNodeInTree(child, nodeId);
+      if (foundNode) {
+        return foundNode;
+      }
+    }
+  }
+  
+  // Also check originalChildren for import nodes
+  if (node.originalChildren && node.originalChildren.length > 0) {
+    for (const child of node.originalChildren) {
+      const foundNode = findNodeInTree(child, nodeId);
+      if (foundNode) {
+        return foundNode;
+      }
+    }
+  }
+  
+  return null;
+}
 
