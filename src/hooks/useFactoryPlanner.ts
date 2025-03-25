@@ -206,35 +206,11 @@ export const useFactoryPlanner = () => {
     });
   };
 
-  // Clear all saved data
-  const clearSavedData = () => {
-    localStorage.removeItem('savedDependencies');
-    localStorage.removeItem('savedRecipeSelections');
-    localStorage.removeItem('savedExcessMap');
-    localStorage.removeItem('savedMachineCountMap');
-    localStorage.removeItem('savedMachineMultiplierMap');
-    localStorage.removeItem('savedViewMode');
-    localStorage.removeItem('savedExpandedNodes');
-    localStorage.removeItem('savedNodeExtensionOverrides');
-    localStorage.removeItem('savedRecentItems');
-    setRecentItems([]);
-  };
-
-  // Toggle extensions visibility for a specific node
-  const handleToggleNodeExtensions = (nodeId: string) => {
-    setNodeExtensionOverrides(prev => {
-      const currentValue = prev[nodeId] ?? showExtensions;
-      return {
-        ...prev,
-        [nodeId]: !currentValue
-      };
-    });
-  };
-
   // Generate a unique ID for a new tree
   const generateTreeId = (itemId: string): string => {
     const timestamp = Date.now();
-    return `${itemId}-${timestamp}`;
+    const randomSuffix = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+    return `tree-${itemId}-${timestamp}-${randomSuffix}`;
   };
 
   // Update calculate handler with dependency checking
@@ -245,7 +221,12 @@ export const useFactoryPlanner = () => {
     updateRecentItems(selectedItem);
     
     try {
+      // Generate a truly unique ID for this tree
       const treeId = generateTreeId(selectedItem);
+      
+      // Create a unique parentId prefix for all nodes in this tree to ensure
+      // they don't conflict with nodes in other trees
+      const uniquePrefix = `${treeId}`;
       
       // Calculate the dependency tree with amount set to 0
       const tree = await calculateDependencyTree(
@@ -255,14 +236,17 @@ export const useFactoryPlanner = () => {
         recipeSelections,
         0,
         [],
-        '',
-        excessMap
+        uniquePrefix, // Use unique prefix as parent ID
+        {} // Use empty excess map instead of inheriting existing excess values
       );
       
       if (!tree) {
         console.error("Failed to calculate dependency tree");
         return;
       }
+      
+      // Update the tree's uniqueId to match the treeId
+      tree.uniqueId = treeId;
       
       // Calculate accumulated values from the tree
       const accumulated = calculateAccumulatedFromTree(tree);
@@ -279,6 +263,34 @@ export const useFactoryPlanner = () => {
         nodeId: selectedItem,
         recipeId: selectedRecipe
       }));
+      
+      // Set default values for machine count and multiplier (1) and excess (0) for this new tree
+      const resetMachineValues = (node: DependencyNode) => {
+        // Set default machine count and multiplier for this node
+        setMachineCountMap(prev => ({
+          ...prev,
+          [node.uniqueId]: 1
+        }));
+        
+        setMachineMultiplierMap(prev => ({
+          ...prev,
+          [node.uniqueId]: 1
+        }));
+        
+        // Set default excess for this node
+        setExcessMap(prev => ({
+          ...prev,
+          [node.uniqueId]: 0
+        }));
+        
+        // Process children recursively
+        if (node.children) {
+          node.children.forEach(resetMachineValues);
+        }
+      };
+      
+      // Reset values for the entire tree
+      resetMachineValues(tree);
       
       // Wait for state update and then recalculate heights
       setTimeout(() => {
@@ -474,11 +486,102 @@ export const useFactoryPlanner = () => {
   };
 
   // Handle excess change
-  const handleExcessChange = (nodeId: string, excess: number) => {
+  const handleExcessChange = async (nodeId: string, excess: number) => {
+    // Update the excess map with the new value
     setExcessMap(prev => ({
       ...prev,
       [nodeId]: excess
     }));
+    
+    // Find which tree this node belongs to
+    const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
+      findNodeById(dependencies.dependencyTrees[id], nodeId)
+    );
+    
+    if (!treeId) return;
+    
+    // Get the tree and the specific node
+    const tree = dependencies.dependencyTrees[treeId];
+    const node = findNodeById(tree, nodeId);
+    
+    if (!node) return;
+    
+    try {
+      // We need to completely recalculate the tree with the updated excess values
+      // First, create an updated excess map
+      const updatedExcessMap = {...excessMap, [nodeId]: excess};
+      
+      // Get the root node of the tree
+      const rootNode = dependencies.dependencyTrees[treeId];
+      
+      // Recalculate the tree with the updated excess values
+      const recalculatedTree = await calculateDependencyTree(
+        rootNode.id,
+        rootNode.amount,
+        rootNode.selectedRecipeId || null,
+        recipeSelections,
+        0,
+        [], // No affected branches - full recalculation
+        '',
+        updatedExcessMap
+      );
+      
+      if (!recalculatedTree) {
+        console.error("Failed to recalculate dependency tree");
+        return;
+      }
+      
+      // Ensure the unique ID of the root node stays the same
+      recalculatedTree.uniqueId = treeId;
+      
+      // Calculate accumulated values from the recalculated tree
+      const accumulated = calculateAccumulatedFromTree(recalculatedTree);
+      
+      // Dispatch the update to Redux
+      dispatch(setDependencies({
+        treeId,
+        tree: recalculatedTree,
+        accumulated
+      }));
+    } catch (error) {
+      console.error("Error recalculating dependency tree after excess change:", error);
+    }
+  };
+
+  // Clear all saved data
+  const clearSavedData = () => {
+    // Clear all local storage items
+    localStorage.removeItem('savedDependencies');
+    localStorage.removeItem('savedRecipeSelections');
+    localStorage.removeItem('savedExcessMap');
+    localStorage.removeItem('savedMachineCountMap');
+    localStorage.removeItem('savedMachineMultiplierMap');
+    localStorage.removeItem('savedViewMode');
+    localStorage.removeItem('savedExpandedNodes');
+    localStorage.removeItem('savedNodeExtensionOverrides');
+    // Keep recent items - don't remove from localStorage
+    
+    // Clear local state but keep recentItems
+    setExcessMap({});
+    setMachineCountMap({});
+    setMachineMultiplierMap({});
+    setExpandedNodes({});
+    setNodeExtensionOverrides({});
+    
+    // Clear Redux state by loading empty data
+    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {} }));
+    dispatch(loadRecipeSelections({}));
+  };
+
+  // Toggle extensions visibility for a specific node
+  const handleToggleNodeExtensions = (nodeId: string) => {
+    setNodeExtensionOverrides(prev => {
+      const currentValue = prev[nodeId] ?? showExtensions;
+      return {
+        ...prev,
+        [nodeId]: !currentValue
+      };
+    });
   };
 
   return {

@@ -409,9 +409,8 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
             <button
               style={iconButtonStyle}
               onClick={() => {
-                if (window.confirm('Are you sure you want to clear all saved data? This action cannot be undone.')) {
-                  onClearSavedData();
-                }
+                // Removed confirmation dialog - directly clear data
+                onClearSavedData();
               }}
               title="Clear Saved Data"
             >
