@@ -5,17 +5,23 @@ import {
   setImportReference, 
   clearImportReference, 
   findNodeById,
-  toggleChildrenVisibility
+  toggleChildrenVisibility,
+  wouldCreateCircularReference,
+  hasImportReference,
+  getImportReference
 } from "../utils/nodeReferenceUtils";
 
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
   accumulatedDependencies: Record<string, AccumulatedNode>;
+  // Additional properties for better state management
+  errors?: string[]; // Track errors like circular references
 }
 
 const initialState: DependencyState = {
   dependencyTrees: {},
   accumulatedDependencies: {},
+  errors: []
 };
 
 const dependencySlice = createSlice({
@@ -44,6 +50,7 @@ const dependencySlice = createSlice({
       
       console.debug('[EXCESS DEBUG] Redux state updated');
     },
+    
     deleteTree: (
       state,
       action: PayloadAction<{
@@ -52,109 +59,54 @@ const dependencySlice = createSlice({
     ) => {
       const treeIdToDelete = action.payload.treeId;
       
-      // Find all import nodes in all trees that reference the tree being deleted
-      const findImportNodes = (tree: DependencyNode): DependencyNode[] => {
-        const results: DependencyNode[] = [];
+      // Clear any previous errors
+      state.errors = [];
+      
+      // Use helper function to find all nodes importing from the deleted tree
+      const findNodesImportingFromTree = (trees: Record<string, DependencyNode>, targetTreeId: string): {
+        tree: DependencyNode;
+        node: DependencyNode;
+      }[] => {
+        const results: { tree: DependencyNode; node: DependencyNode }[] = [];
         
-        // Check if this node is importing from the deleted tree
-        if (tree.isImport && tree.importedFrom === treeIdToDelete) {
-          results.push(tree);
-        }
-        
-        // Check children recursively
-        if (tree.children) {
-          for (const child of tree.children) {
-            results.push(...findImportNodes(child));
-          }
-        }
+        // Check all trees
+        Object.values(trees).forEach(tree => {
+          // Recursive helper to check each node
+          const checkNode = (node: DependencyNode, currentTree: DependencyNode) => {
+            // Check if this node is importing from the target tree
+            const importRef = getImportReference(node);
+            if (importRef && importRef.targetTreeId === targetTreeId) {
+              results.push({ tree: currentTree, node });
+            }
+            
+            // Check all children
+            if (node.children) {
+              node.children.forEach(child => checkNode(child, currentTree));
+            }
+          };
+          
+          // Start at the root of each tree
+          checkNode(tree, tree);
+        });
         
         return results;
       };
       
-      // Find and restore all import nodes that reference the tree being deleted
-      Object.values(state.dependencyTrees).forEach(tree => {
-        const importNodes = findImportNodes(tree);
+      // Find all nodes importing from the to-be-deleted tree
+      const affectedNodes = findNodesImportingFromTree(state.dependencyTrees, treeIdToDelete);
+      
+      // For each affected node, clear the import reference
+      affectedNodes.forEach(({ node }) => {
+        console.log(`Restoring node ${node.id} that was importing from deleted tree ${treeIdToDelete}`);
         
-        // Restore each import node
-        importNodes.forEach(node => {
-          console.log("Restoring import node after source deletion:", node);
-          
-          // Create a copy of the node to work with
-          const restoredNode = JSON.parse(JSON.stringify(node));
-          
-          // Remove import attributes
-          restoredNode.isImport = false;
-          delete restoredNode.importedFrom;
-          
-          // Check if we have stored structure information
-          if (node.originalChildren && node.originalChildren.length > 0) {
-            console.log("[DELETE TREE] Found stored structure information:", node.originalChildren);
-            
-            // Reconstruct the children using the stored structure info and current amounts
-            restoredNode.children = node.originalChildren.map(childStructure => {
-              // Calculate proportional amount based on parent's current amount
-              const childNode = {
-                id: childStructure.id,
-                amount: node.amount, // Will be scaled by recipe in the calculation
-                uniqueId: childStructure.uniqueId,
-                selectedRecipeId: childStructure.recipeId,
-                excess: childStructure.excess || 0,
-                isImport: childStructure.isImport,
-                importedFrom: childStructure.importedFrom,
-                children: []
-              };
-              
-              // If this child was itself an import, preserve that relationship
-              // But only if the target tree isn't the one being deleted
-              if (childStructure.isImport && childStructure.importedFrom && childStructure.importedFrom !== treeIdToDelete) {
-                childNode.isImport = true;
-                childNode.importedFrom = childStructure.importedFrom;
-                childNode.children = [];
-              }
-              // Otherwise add any nested children
-              else if (childStructure.children && childStructure.children.length > 0) {
-                childNode.children = childStructure.children.map(grandchildStructure => ({
-                  id: grandchildStructure.id,
-                  amount: node.amount, // Will be scaled during next calculation
-                  uniqueId: grandchildStructure.uniqueId,
-                  selectedRecipeId: grandchildStructure.recipeId,
-                  children: [],
-                  excess: 0
-                }));
-              }
-              
-              return childNode;
-            });
-            
-            console.log("[DELETE TREE] Reconstructed children from stored structure:", 
-              JSON.stringify(restoredNode.children.map(c => ({
-                id: c.id,
-                amount: c.amount,
-                isImport: c.isImport,
-                childCount: c.children ? c.children.length : 0
-              })))
-            );
-          } 
-          // Fall back to old behavior if no structure info
-          else if (node.originalChildren) {
-            console.log("[DELETE TREE] Using legacy originalChildren restoration");
-            restoredNode.children = node.originalChildren;
-            delete restoredNode.originalChildren;
-          } 
-          // Fallback to generating from recipe if no children available
-          else {
-            console.log("[DELETE TREE] No children available for restoration");
-            // Generate basic children based on item type
-            // (Similar to our fallback in importNode)
-            restoredNode.children = [];
-          }
-          
-          // Replace the node in place
-          Object.assign(node, restoredNode);
-        });
+        // Use our reference-based utility to properly clear import reference
+        const clearedNode = clearImportReference(node);
+        
+        // Apply changes to the node in place
+        Object.assign(node, clearedNode);
       });
       
-      // Delete the tree with the specified ID
+      // Delete the tree
       delete state.dependencyTrees[treeIdToDelete];
       
       // Recalculate accumulated dependencies
@@ -170,12 +122,14 @@ const dependencySlice = createSlice({
         state.accumulatedDependencies = allAccumulated;
       }
     },
+    
     updateAccumulated: (
       state,
       action: PayloadAction<Record<string, AccumulatedNode>>
     ) => {
       state.accumulatedDependencies = action.payload;
     },
+    
     importNode: (
       state,
       action: PayloadAction<{
@@ -185,72 +139,45 @@ const dependencySlice = createSlice({
         isNewTree?: boolean; // Flag to indicate if this is a newly created tree
       }>
     ) => {
-      console.log("Import action:", action.payload);
       const { sourceTreeId, sourceNodeId, targetTreeId, isNewTree } = action.payload;
       const sourceTree = state.dependencyTrees[sourceTreeId];
       const targetTree = state.dependencyTrees[targetTreeId];
 
+      // Clear any previous errors
+      state.errors = [];
+      
       if (!sourceTree || !targetTree) {
         console.error("Source or target tree not found");
+        state.errors?.push("Source or target tree not found");
+        return;
+      }
+      
+      // Check for circular references
+      if (!isNewTree && wouldCreateCircularReference(state.dependencyTrees, sourceTreeId, targetTreeId)) {
+        console.error("Circular reference detected - cannot import");
+        state.errors?.push("Cannot create circular import reference");
         return;
       }
 
-      // Find the source node using our utility function
+      // Find the source node
       const sourceNode = findNodeById(sourceTree, sourceNodeId);
       if (!sourceNode) {
         console.error("Source node not found");
+        state.errors?.push("Source node not found");
         return;
       }
 
       console.log("Found source node:", sourceNode);
 
       // If this is already an import node, toggle import off
-      if (sourceNode.importReference || sourceNode.isImport) {
+      if (hasImportReference(sourceNode) || sourceNode.isImport) {
         console.log("[UNIMPORT DEBUG] Toggling import off for node:", sourceNode.uniqueId);
         
         // Use reference-based approach to clear the import reference
-        // This maintains backward compatibility with existing code
         const updatedSourceNode = clearImportReference(sourceNode);
-        
-        // Before applying changes, make a backup of important UI properties
-        const preservedProperties = {
-          selectedRecipeId: sourceNode.selectedRecipeId,
-          availableRecipes: sourceNode.availableRecipes
-        };
         
         // Apply changes to source node
         Object.assign(sourceNode, updatedSourceNode);
-        
-        // Explicitly ensure UI properties are preserved
-        if (preservedProperties.selectedRecipeId) {
-          sourceNode.selectedRecipeId = preservedProperties.selectedRecipeId;
-        }
-        
-        if (preservedProperties.availableRecipes) {
-          sourceNode.availableRecipes = preservedProperties.availableRecipes;
-        }
-        
-        // Make sure children are visible and properly structured
-        if (sourceNode.children) {
-          // Ensure each child has proper properties for UI
-          const ensureChildProperties = (node) => {
-            if (!node.children) return;
-            
-            node.children.forEach(child => {
-              // Make recipe selector work
-              if (!child.availableRecipes && child.id) {
-                // This will be populated on next calculation, but we need
-                // to ensure the property exists for proper UI rendering
-                child.availableRecipes = [];
-              }
-              
-              // Recursively process children
-              ensureChildProperties(child);
-            });
-          };
-          
-          ensureChildProperties(sourceNode);
-        }
         
         // Reduce the target tree's amount by the amount that was imported
         if (targetTree) {
@@ -272,22 +199,19 @@ const dependencySlice = createSlice({
       } else {
         console.log("Converting to import node");
         
-        // Store original children structure for legacy compatibility
-        // This is crucial for properly restoring the node later
+        // Store original recipe selections in children for restoration later
         if (sourceNode.children && sourceNode.children.length > 0) {
-          console.log("[IMPORT DEBUG] Storing original children for later restoration");
-          
-          // Deep clone to avoid reference issues
-          sourceNode.originalChildren = JSON.parse(JSON.stringify(sourceNode.children));
+          console.log("[IMPORT DEBUG] Storing recipe selections for later restoration");
           
           // Store original recipe selection in children
-          const storeRecipeSelections = (originalChildren) => {
-            if (!originalChildren) return;
+          const storeRecipeSelections = (children) => {
+            if (!children) return;
             
-            originalChildren.forEach(child => {
+            children.forEach(child => {
               // Store recipe ID for restoration
               if (child.selectedRecipeId) {
                 child.originalRecipeId = child.selectedRecipeId;
+                console.log(`[IMPORT DEBUG] Stored recipe ID ${child.selectedRecipeId} for ${child.id}`);
               }
               
               // Recursively store for nested children
@@ -297,20 +221,14 @@ const dependencySlice = createSlice({
             });
           };
           
-          storeRecipeSelections(sourceNode.originalChildren);
-        } else {
-          sourceNode.originalChildren = [];
+          storeRecipeSelections(sourceNode.children);
         }
         
         // Use reference-based approach to set import reference
-        // This sets up the new reference system while maintaining backward compatibility
         const updatedSourceNode = setImportReference(sourceNode, targetTreeId, targetTree.uniqueId);
         
         // Apply changes to source node
         Object.assign(sourceNode, updatedSourceNode);
-        
-        // Hide children for imported nodes
-        toggleChildrenVisibility(sourceNode, false);
         
         // If this is a newly created tree, we've already set the correct amount
         // so don't modify the target tree's amount
@@ -336,10 +254,12 @@ const dependencySlice = createSlice({
       
       state.accumulatedDependencies = allAccumulated;
     },
+    
     loadSavedState: (state, action: PayloadAction<DependencyState>) => {
       // Replace the entire state with the saved state
       return action.payload;
     },
+    
     updateNodeProperties: (
       state,
       action: PayloadAction<{
@@ -372,6 +292,10 @@ const dependencySlice = createSlice({
       Object.values(state.dependencyTrees).forEach(tree => {
         updateNodeInTree(tree);
       });
+    },
+    
+    clearErrors: (state) => {
+      state.errors = [];
     }
   },
 });
@@ -382,7 +306,8 @@ export const {
   updateAccumulated, 
   importNode, 
   loadSavedState,
-  updateNodeProperties
+  updateNodeProperties,
+  clearErrors
 } = dependencySlice.actions;
 export default dependencySlice.reducer;
 

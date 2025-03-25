@@ -735,7 +735,10 @@ export const useFactoryPlanner = () => {
             importedFrom: originalNode.importedFrom,
             children: [], // Import nodes don't have children
             excess: nodeExcess,
-            originalChildren: originalNode.originalChildren // Preserve the stored structure information
+            originalChildren: originalNode.originalChildren, // Preserve the stored structure information
+            selectedRecipeId: originalNode.selectedRecipeId,
+            availableRecipes: originalNode.availableRecipes || [],
+            childrenVisible: false // Import nodes have children hidden
           };
         }
         

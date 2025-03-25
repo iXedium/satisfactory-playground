@@ -1,28 +1,38 @@
 import { Recipe } from "../data/dexieDB";
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data/dbQueries";
 import { NodePath } from "./treeDiffing";
-import { isNodeImporting, getImportReference } from "./nodeReferenceUtils";
+import { isNodeImporting, ImportReference } from "./nodeReferenceUtils";
 
 export interface DependencyNode {
+  // Core required properties
   id: string;
   amount: number;
   uniqueId: string;
-  isRoot?: boolean;
-  isByproduct?: boolean;
-  isImport?: boolean;
+  excess: number;
+  children?: DependencyNode[];
+  
+  // Recipe-related properties
   selectedRecipeId?: string;
   availableRecipes?: Recipe[];
-  children?: DependencyNode[];
-  excess: number;
-  originalChildren?: DependencyNode[];
+  
+  // Node type flags
+  isRoot?: boolean;
+  isByproduct?: boolean;
+  
+  // Legacy import system properties (deprecated)
+  /** @deprecated Use importReference instead */
+  isImport?: boolean;
+  /** @deprecated Use importReference instead */
   importedFrom?: string;
+  /** @deprecated Will be phased out in favor of storing in Redux */
+  originalChildren?: DependencyNode[];
   
   // New reference-based import system properties
-  importReference?: {
-    targetTreeId: string;
-    targetNodeId: string;
-  };
+  importReference?: ImportReference;
   childrenVisible?: boolean; // Default to true, set to false for imported nodes
+  
+  // Recipe selection storage for import/unimport
+  originalRecipeId?: string;
 }
 
 // Cache for memoizing tree calculations
@@ -60,7 +70,7 @@ export const calculateDependencyTree = async (
   affectedBranches: NodePath[] = [],
   parentId: string = '',
   excessMap: Record<string, number> = {},
-  importMap: Record<string, { targetTreeId: string, amount: number }> = {}, // Track imported nodes
+  importMap: Record<string, { targetTreeId: string, amount: number }> = {}, // Legacy import system - will be deprecated
   dependencyTrees?: Record<string, DependencyNode> // Access to all trees for import references
 ): Promise<DependencyNode> => {
   const start = performance.now();
@@ -95,92 +105,38 @@ export const calculateDependencyTree = async (
     await clearNodeFromCache(nodeId);
   }
 
-  // Check if this node should be an import - support both legacy and new system
-  const importInfo = importMap[nodeId];
-  if (importInfo || (dependencyTrees && await shouldUseImportReference(nodeId, dependencyTrees))) {
-    let targetTreeId = '';
-    
-    // Use importMap (legacy) or find reference in dependencyTrees (new system)
-    if (importInfo) {
-      targetTreeId = importInfo.targetTreeId;
-    } else if (dependencyTrees) {
-      // Find node in all trees
-      const nodeWithReference = await findNodeWithReference(nodeId, dependencyTrees);
-      if (nodeWithReference) {
-        const importReference = getImportReference(nodeWithReference);
-        if (importReference) {
-          targetTreeId = importReference.targetTreeId;
-        }
-      }
-    }
-    
-    if (!targetTreeId) {
-      console.warn(`[IMPORT WARNING] Could not find target tree ID for import node ${nodeId}`);
-    } else {
-      // Log import node details for debugging
-      console.debug(`Creating import node: ${itemId}, amount=${amount}, from=${targetTreeId}`);
-      
-      // Get node from cache if it exists
-      const cachedNode = await getNodeFromCache(nodeId);
-      let originalChildren;
-      
-      if (cachedNode && cachedNode.originalChildren && cachedNode.originalChildren.length > 0) {
-        console.log(`[IMPORT DEBUG] Using cached original children for ${itemId}`);
-        // Deep clone to avoid reference issues
-        originalChildren = JSON.parse(JSON.stringify(cachedNode.originalChildren));
-      } else {
-        // Calculate original children using our storeOriginalChildren function
-        originalChildren = await storeOriginalChildren(
-          itemId,
-          amount > 0 ? amount : 1, // Use at least 1 for amount to ensure we get proper children
-          excessMap[itemId] || excessMap[nodeId] || 0,
-          recipeMap[nodeId]
-        );
-        
-        console.log(`[IMPORT DEBUG] Generated ${originalChildren.length} original children for import node ${itemId}`);
-      }
-      
-      // Create node with both legacy and new import reference system properties
-      const importNode: DependencyNode = {
-        id: itemId,
+  // 1. First check new reference system via dependency trees
+  if (dependencyTrees) {
+    const nodeWithReference = await findNodeWithReference(nodeId, dependencyTrees);
+    if (nodeWithReference && isNodeImporting(nodeWithReference)) {
+      return createImportNode(
+        nodeWithReference,
+        itemId,
         amount,
-        uniqueId: nodeId,
-        // Legacy properties
-        isImport: true,
-        importedFrom: targetTreeId,
-        originalChildren,
-        children: [], // Import nodes don't have active children
-        // New system properties
-        importReference: {
-          targetTreeId,
-          targetNodeId: 'root' // Default to root for now
-        },
-        childrenVisible: false, // Hide children for import nodes
-        excess: excessMap[itemId] || excessMap[nodeId] || 0,
-        // Initialize these properties to ensure they exist
-        selectedRecipeId: undefined,
-        availableRecipes: undefined,
-      };
-      
-      // Ensure correct selectedRecipeId is preserved from cache or set to default
-      if (cachedNode && cachedNode.selectedRecipeId) {
-        importNode.selectedRecipeId = cachedNode.selectedRecipeId;
-      } else if (recipeMap[nodeId]) {
-        importNode.selectedRecipeId = recipeMap[nodeId];
-      }
-      
-      // Preserve availableRecipes if they exist
-      if (cachedNode && cachedNode.availableRecipes) {
-        importNode.availableRecipes = cachedNode.availableRecipes;
-      }
-      
-      // Cache this node to ensure original children are preserved in future recalculations
-      await cacheNode(nodeId, importNode);
-      
-      return importNode;
+        nodeId,
+        excessMap[itemId] || excessMap[nodeId] || 0,
+        recipeMap[nodeId]
+      );
     }
   }
+  
+  // 2. For backward compatibility, check legacy importMap
+  const importInfo = importMap[nodeId];
+  if (importInfo) {
+    const targetTreeId = importInfo.targetTreeId;
+    return createImportNode(
+      null, // No existing node with reference
+      itemId,
+      amount,
+      nodeId,
+      excessMap[itemId] || excessMap[nodeId] || 0,
+      recipeMap[nodeId],
+      targetTreeId
+    );
+  }
 
+  // If not an import node, proceed with normal calculation
+  
   // Get available recipes for this item
   const availableRecipes = await getRecipesForItem(itemId);
   
@@ -257,6 +213,94 @@ export const calculateDependencyTree = async (
 
   return result;
 };
+
+// Helper function to create an import node with proper reference
+async function createImportNode(
+  existingNode: DependencyNode | null,
+  itemId: string,
+  amount: number,
+  nodeId: string,
+  excess: number = 0,
+  recipeId?: string,
+  legacyTargetTreeId?: string // For backward compatibility
+): Promise<DependencyNode> {
+  // Log import node details for debugging
+  console.debug(`Creating import node: ${itemId}, amount=${amount}`);
+  
+  // Get node from cache if it exists and we don't have an existing node
+  const cachedNode = existingNode || await getNodeFromCache(nodeId);
+  let originalChildren;
+  
+  if (cachedNode && cachedNode.originalChildren && cachedNode.originalChildren.length > 0) {
+    console.log(`[IMPORT DEBUG] Using cached original children for ${itemId}`);
+    // Deep clone to avoid reference issues
+    originalChildren = JSON.parse(JSON.stringify(cachedNode.originalChildren));
+  } else {
+    // Calculate original children using our storeOriginalChildren function
+    originalChildren = await storeOriginalChildren(
+      itemId,
+      amount > 0 ? amount : 1, // Use at least 1 for amount to ensure we get proper children
+      excess,
+      recipeId
+    );
+    
+    console.log(`[IMPORT DEBUG] Generated ${originalChildren.length} original children for import node ${itemId}`);
+  }
+  
+  // Extract target tree ID from either existing node or legacy system
+  let targetTreeId = '';
+  if (existingNode && existingNode.importReference) {
+    targetTreeId = existingNode.importReference.targetTreeId;
+  } else if (existingNode && existingNode.importedFrom) {
+    targetTreeId = existingNode.importedFrom;
+  } else if (legacyTargetTreeId) {
+    targetTreeId = legacyTargetTreeId;
+  }
+  
+  if (!targetTreeId) {
+    console.warn('[IMPORT WARNING] No target tree ID found for import node');
+  }
+  
+  // Create node with both legacy and new import reference system properties
+  const importNode: DependencyNode = {
+    id: itemId,
+    amount,
+    uniqueId: nodeId,
+    // New system properties (primary)
+    importReference: {
+      targetTreeId,
+      targetNodeId: 'root' // Default to root for now
+    },
+    childrenVisible: false, // Hide children for import nodes
+    excess: excess,
+    originalChildren, // Keep for now, but will be phased out
+    children: [], // Import nodes don't have active children
+    // Legacy properties (deprecated)
+    isImport: true,
+    importedFrom: targetTreeId,
+  };
+  
+  // Ensure correct selectedRecipeId is preserved from existing node, cache, or set to default
+  if (existingNode && existingNode.selectedRecipeId) {
+    importNode.selectedRecipeId = existingNode.selectedRecipeId;
+  } else if (cachedNode && cachedNode.selectedRecipeId) {
+    importNode.selectedRecipeId = cachedNode.selectedRecipeId;
+  } else if (recipeId) {
+    importNode.selectedRecipeId = recipeId;
+  }
+  
+  // Preserve availableRecipes if they exist
+  if (existingNode && existingNode.availableRecipes) {
+    importNode.availableRecipes = existingNode.availableRecipes;
+  } else if (cachedNode && cachedNode.availableRecipes) {
+    importNode.availableRecipes = cachedNode.availableRecipes;
+  }
+  
+  // Cache this node to ensure original children are preserved in future recalculations
+  await cacheNode(nodeId, importNode);
+  
+  return importNode;
+}
 
 // Helper function to find a node by its unique ID
 export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
@@ -413,16 +457,6 @@ export async function storeOriginalChildren(
   );
   
   return children;
-}
-
-// Helper to check if a node has an import reference in any tree
-async function shouldUseImportReference(
-  nodeId: string,
-  dependencyTrees: Record<string, DependencyNode>
-): Promise<boolean> {
-  // Try to find this node in any tree
-  const node = await findNodeWithReference(nodeId, dependencyTrees);
-  return node ? isNodeImporting(node) : false;
 }
 
 // Helper to find a node with the given ID in any tree

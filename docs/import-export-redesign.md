@@ -176,39 +176,45 @@ Since this is a significant architecture change, we'll need a migration strategy
 
 ## Progress Tracking
 
-Current progress on the implementation:
+- **Phase 1: Infrastructure and Utility Changes** (completed)
+  - Add new node properties to DependencyNode interface (completed)
+  - Create Node Reference Utils (completed)
+  - Update Tree Visualization (completed)
 
-- Phase 1: Infrastructure and Utility Changes ✅
-  - ✅ Add new node properties to DependencyNode interface
-  - ✅ Create Node Reference Utils
-  - ✅ Update Tree Visualization
-- Phase 2: Modify Import Logic ✅
-  - ✅ Refactor Import Action
-  - ✅ Calculation Updates
-  - ✅ UI Integration
-  - ✅ Bug Fix: Preserve recipe selection during import/unimport
-- Phase 3: Modify Unimport Logic ⬜ (in progress)
-  - ✅ Bug Fix: Restore complete node chain when unimporting
-  - ✅ Bug Fix: Preserve recipe dropdowns in unimported nodes
-  - ✅ Add tests for import/unimport cycle
-  - ⬜ Remove Legacy Code & Clean up
-- Phase 4: Handling Edge Cases (not started)
+- **Phase 2: Modify Import Logic** (completed)
+  - Refactor Import Action (completed) 
+  - Calculation Updates (completed)
+  - UI Integration (completed)
+
+- **Phase 3: Modify Unimport Logic** (completed)
+  - Update clearing reference logic (completed)
+  - Remove legacy code (completed)
+
+- **Phase 4: Handling Edge Cases** (completed)
+  - Improved deleteTree action (completed)
+  - Circular reference detection (completed)
+  - State serialization preservation (completed)
 
 ## Bug Fixes Completed
 
-1. **Fixed Node Chain Restoration**: The unimport process now properly restores the complete node chain, including all children and their properties.
-
-2. **Fixed Recipe Dropdown Preservation**: Recipe selections and dropdown options are now properly preserved throughout the import/unimport cycle.
-
-3. **TypeScript Improvements**: Fixed TypeScript errors in the calculateDependencyTree module to ensure proper typing of node properties.
-
-4. **Comprehensive Testing**: Added tests that verify the integrity of node structure and properties throughout the import/unimport cycle.
+1. Fixed Node Chain Restoration
+2. Fixed Recipe Dropdown Preservation 
+3. TypeScript Improvements
+4. Comprehensive Testing
+5. Circular Reference Detection
+6. Improved Tree Deletion
 
 ## Next Steps
 
-1. Start removing the legacy code now that the reference-based system is working correctly.
-2. Update the deleteTree action to use the reference-based system for handling orphaned references.
-3. Add circular reference detection to prevent import loops.
+1. Add more advanced features:
+   - Import/export statistics dashboard
+   - Visibility toggles in UI for imported nodes
+   - Bulk import/export operations
+
+2. Code cleanup:
+   - Begin formal deprecation process for legacy properties
+   - Add more comprehensive documentation
+   - Refactor remaining dependent components
 
 ## Incremental Implementation
 

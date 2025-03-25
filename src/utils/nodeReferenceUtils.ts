@@ -4,8 +4,15 @@ import { DependencyNode } from './calculateDependencyTree';
  * Utilities for working with node references in the import/export system
  */
 
+// Interface for reference system
+export interface ImportReference {
+  targetTreeId: string;
+  targetNodeId: string;
+}
+
 /**
  * Check if a node is importing from another node
+ * @deprecated Use hasImportReference instead (will be removed in future)
  */
 export const isNodeImporting = (node: DependencyNode): boolean => {
   // Support both legacy and new system
@@ -13,11 +20,19 @@ export const isNodeImporting = (node: DependencyNode): boolean => {
 };
 
 /**
+ * Check if a node has an import reference
+ */
+export const hasImportReference = (node: DependencyNode): boolean => {
+  return !!node.importReference;
+};
+
+/**
  * Get the reference info for a node (supports both legacy and new system)
+ * @deprecated Use getImportReferenceOnly instead (will be removed in future)
  */
 export const getImportReference = (
   node: DependencyNode
-): { targetTreeId: string; targetNodeId: string } | null => {
+): ImportReference | null => {
   if (node.importReference) {
     return node.importReference;
   }
@@ -33,6 +48,13 @@ export const getImportReference = (
   }
   
   return null;
+};
+
+/**
+ * Get the import reference from a node (new system only)
+ */
+export const getImportReferenceOnly = (node: DependencyNode): ImportReference | null => {
+  return node.importReference || null;
 };
 
 /**
@@ -119,6 +141,13 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
       // Make sure children have their recipe properties
       if (child.originalRecipeId) {
         child.selectedRecipeId = child.originalRecipeId;
+        console.log(`[UNIMPORT] Restored recipe ${child.originalRecipeId} for child ${child.id}`);
+      }
+      
+      // Ensure child has availableRecipes property for dropdown to work
+      if (!child.availableRecipes) {
+        child.availableRecipes = [];
+        console.log(`[UNIMPORT] Initialized availableRecipes for child ${child.id}`);
       }
       
       // Recursively process nested children
@@ -131,6 +160,47 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
   preservePropertiesInChildren(updatedNode.children);
   
   return updatedNode;
+};
+
+/**
+ * Detect circular import references
+ * Returns true if adding the given reference would create a circular dependency
+ */
+export const wouldCreateCircularReference = (
+  trees: Record<string, DependencyNode>,
+  sourceTreeId: string,
+  targetTreeId: string
+): boolean => {
+  // Simple case: direct self-reference
+  if (sourceTreeId === targetTreeId) {
+    return true;
+  }
+  
+  // Check if the target tree is already importing from the source (reverse dependency)
+  const targetTree = trees[targetTreeId];
+  if (!targetTree) return false;
+  
+  // Helper function to check if any node in the tree has a reference to the source tree
+  const hasReferenceToSource = (node: DependencyNode): boolean => {
+    // Check if this node imports from the source
+    const reference = getImportReference(node);
+    if (reference && reference.targetTreeId === sourceTreeId) {
+      return true;
+    }
+    
+    // Check children
+    if (node.children) {
+      for (const child of node.children) {
+        if (hasReferenceToSource(child)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+  
+  return hasReferenceToSource(targetTree);
 };
 
 /**
