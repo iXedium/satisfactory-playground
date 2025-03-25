@@ -283,29 +283,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           getEfficiencyColor={getEfficiencyColor}
         />
       </div>
-
-      {/* Debug test button - only in development */}
-      {showTestButton && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            testExcessCascade();
-          }}
-          style={{
-            padding: "2px 4px",
-            fontSize: "10px",
-            backgroundColor: "#ff5722",
-            color: "white",
-            border: "none",
-            borderRadius: "2px",
-            cursor: "pointer",
-            marginLeft: "4px"
-          }}
-          title="Test Excess Cascade (Debug)"
-        >
-          Test
-        </button>
-      )}
     </div>
   );
 };
