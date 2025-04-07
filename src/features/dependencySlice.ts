@@ -364,6 +364,35 @@ const dependencySlice = createSlice({
         }
       };
       
+      // The critical fix: When a tree's amount changes due to import/unimport,
+      // we need to propagate this change through its entire production chain
+      // by recalculating the amount for each child node
+      const updatedTargetTree = state.dependencyTrees[targetTreeId];
+      if (updatedTargetTree && updatedTargetTree.children && updatedTargetTree.children.length > 0) {
+        // Calculate the total production (forced + excess)
+        const totalProduction = (updatedTargetTree.amount || 0) + (updatedTargetTree.excess || 0);
+        console.log(`[IMPORT DEBUG] Propagating total production of ${totalProduction} through the chain`);
+        
+        // Helper function to recursively update amounts in the chain
+        const updateChildAmounts = (node: DependencyNode, amount: number) => {
+          if (!node.children || node.children.length === 0) return;
+          
+          node.children.forEach(child => {
+            if (!child.isImport && !child.importReference) {
+              // Only update non-import nodes (import nodes get their amount from their source)
+              child.amount = amount;
+              console.log(`[IMPORT DEBUG] Updated child ${child.id} amount to ${amount}`);
+              
+              // Recursively update nested children
+              updateChildAmounts(child, amount);
+            }
+          });
+        };
+        
+        // Update all child nodes in the tree with the total production amount
+        updateChildAmounts(updatedTargetTree, totalProduction);
+      }
+      
       // Update accumulated dependencies
       const allAccumulated: Record<string, AccumulatedNode> = {};
       Object.values(state.dependencyTrees).forEach(tree => {
@@ -600,6 +629,35 @@ const dependencySlice = createSlice({
         }
       };
       
+      // The critical fix: When a tree's amount changes due to import/unimport,
+      // we need to propagate this change through its entire production chain
+      // by recalculating the amount for each child node
+      const updatedTargetTree = state.dependencyTrees[targetTreeId];
+      if (updatedTargetTree && updatedTargetTree.children && updatedTargetTree.children.length > 0) {
+        // Calculate the total production (forced + excess)
+        const totalProduction = (updatedTargetTree.amount || 0) + (updatedTargetTree.excess || 0);
+        console.log(`[IMPORT DEBUG] Propagating total production of ${totalProduction} through the chain`);
+        
+        // Helper function to recursively update amounts in the chain
+        const updateChildAmounts = (node: DependencyNode, amount: number) => {
+          if (!node.children || node.children.length === 0) return;
+          
+          node.children.forEach(child => {
+            if (!child.isImport && !child.importReference) {
+              // Only update non-import nodes (import nodes get their amount from their source)
+              child.amount = amount;
+              console.log(`[IMPORT DEBUG] Updated child ${child.id} amount to ${amount}`);
+              
+              // Recursively update nested children
+              updateChildAmounts(child, amount);
+            }
+          });
+        };
+        
+        // Update all child nodes in the tree with the total production amount
+        updateChildAmounts(updatedTargetTree, totalProduction);
+      }
+      
       // Update accumulated dependencies
       const allAccumulated: Record<string, AccumulatedNode> = {};
       Object.values(state.dependencyTrees).forEach(tree => {
@@ -651,6 +709,33 @@ const dependencySlice = createSlice({
               excess: excess
             }
           };
+          
+          // Now propagate the total production (amount + excess) through the tree's chain
+          const updatedTree = state.dependencyTrees[treeId];
+          if (updatedTree && updatedTree.children && updatedTree.children.length > 0) {
+            // Calculate the total production (forced + excess)
+            const totalProduction = (updatedTree.amount || 0) + (updatedTree.excess || 0);
+            console.log(`[EXCESS DEBUG] Propagating total production of ${totalProduction} through the chain`);
+            
+            // Helper function to recursively update amounts in the chain
+            const updateChildAmounts = (node: DependencyNode, amount: number) => {
+              if (!node.children || node.children.length === 0) return;
+              
+              node.children.forEach(child => {
+                if (!child.isImport && !child.importReference) {
+                  // Only update non-import nodes (import nodes get their amount from their source)
+                  child.amount = amount;
+                  console.log(`[EXCESS DEBUG] Updated child ${child.id} amount to ${amount}`);
+                  
+                  // Recursively update nested children
+                  updateChildAmounts(child, amount);
+                }
+              });
+            };
+            
+            // Update all child nodes in the tree with the total production amount
+            updateChildAmounts(updatedTree, totalProduction);
+          }
         } else {
           // Otherwise, find and update the specific node
           const updatedTree = replaceNode(tree, nodeId, {
@@ -662,6 +747,33 @@ const dependencySlice = createSlice({
             ...state.dependencyTrees,
             [treeId]: updatedTree
           };
+          
+          // Check if we need to propagate the change to children of the specific node
+          const updatedNode = findNodeById(state.dependencyTrees[treeId], nodeId);
+          if (updatedNode && updatedNode.children && updatedNode.children.length > 0) {
+            // Calculate the total production for this specific node
+            const totalNodeProduction = (updatedNode.amount || 0) + (updatedNode.excess || 0);
+            console.log(`[EXCESS DEBUG] Propagating node's total production of ${totalNodeProduction} through its children`);
+            
+            // Helper function to recursively update amounts in the chain
+            const updateChildAmounts = (node: DependencyNode, amount: number) => {
+              if (!node.children || node.children.length === 0) return;
+              
+              node.children.forEach(child => {
+                if (!child.isImport && !child.importReference) {
+                  // Only update non-import nodes
+                  child.amount = amount;
+                  console.log(`[EXCESS DEBUG] Updated node's child ${child.id} amount to ${amount}`);
+                  
+                  // Recursively update nested children
+                  updateChildAmounts(child, amount);
+                }
+              });
+            };
+            
+            // Update all children of this specific node
+            updateChildAmounts(updatedNode, totalNodeProduction);
+          }
         }
       });
   }
