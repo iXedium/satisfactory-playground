@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { getComponents, getRecipesForItem, getRecipeById, getRecipeByOutput } from '../data/dbQueries';
@@ -8,7 +8,10 @@ import {
   setDependencies, 
   deleteTree, 
   importNode,
-  updateNodeProperties
+  importNodeAction,
+  updateNodeProperties,
+  unimportNode,
+  setError
 } from '../features/dependencySlice';
 import { 
   setRecipeSelection, 
@@ -16,6 +19,10 @@ import {
 } from '../features/recipeSelectionsSlice';
 import { calculateDependencyTree, DependencyNode, findNodeById } from '../utils/calculateDependencyTree';
 import { calculateAccumulatedFromTree } from '../utils/calculateAccumulatedFromTree';
+import {
+  hasImportReference,
+  wouldCreateCircularReference
+} from '../utils/nodeReferenceUtils';
 
 type ViewMode = "accumulated" | "tree";
 
@@ -327,20 +334,21 @@ export const useFactoryPlanner = () => {
     }
 
     try {
-      // Map to preserve node IDs during recalculation
+      // Map of original node IDs to preserve during recalculation
       const nodeIdMap = new Map<string, string>();
-
-      // Collect all node IDs in the affected branch
+      
+      // First pass: collect all original node IDs in the tree and map them
       const collectNodeIds = (node: DependencyNode) => {
-        nodeIdMap.set(node.uniqueId, node.uniqueId);
+        nodeIdMap.set(`${node.id}-${node.uniqueId.split('-').pop()}`, node.uniqueId);
+        nodeIdMap.set(node.uniqueId, node.uniqueId); // Direct mapping for treeIds and full uniqueIds
+        
         if (node.children) {
           node.children.forEach(collectNodeIds);
         }
       };
-
-      // Only collect IDs for the affected node and its children
-      collectNodeIds(node);
-
+      
+      collectNodeIds(tree);
+      
       // Recalculate only the affected branch
       const recalculateBranch = async (
         node: DependencyNode,
@@ -482,108 +490,51 @@ export const useFactoryPlanner = () => {
     }
   };
 
-  const handleImportNode = (nodeId: string) => {
-    console.log("Importing node:", nodeId);
+  // Import a node from one tree to another
+  const handleImportNode = useCallback((
+    sourceNode: DependencyNode, 
+    targetTreeId: string, 
+    sourceTreeId: string
+  ) => {
+    if (!sourceNode || !targetTreeId || !sourceTreeId) return;
     
-    // Find the source node in all trees
-    let foundNode: DependencyNode | null = null;
-    let foundTreeId = "";
+    // Use the slice's action to maintain compatibility with existing code
+    dispatch(importNode({
+      nodeId: sourceNode.uniqueId,
+      sourceTreeId,
+      targetTreeId,
+      shouldImport: true
+    }));
+  }, [dispatch]);
+
+  // Unimport node action
+  const handleUnimportNode = useCallback((
+    sourceNode: DependencyNode,
+    sourceTreeId: string
+  ) => {
+    if (!sourceNode || !sourceTreeId) return;
     
-    // Find the node in all trees
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      const node = findNodeById(tree, nodeId);
-      if (node) {
-        foundNode = node;
-        foundTreeId = treeId;
-        break;
-      }
-    }
+    // Determine if this is an import node
+    const isImportNode = !!(sourceNode.isImport || (sourceNode.importReference && Object.keys(sourceNode.importReference).length > 0));
     
-    if (!foundNode || !foundTreeId) {
-      console.error("Could not find node to import");
+    if (!isImportNode) {
+      console.warn('Not an import node, cannot unimport', sourceNode);
       return;
     }
     
-    // Determine target tree ID
-    let targetTreeId = "";
-    let isNewTree = false;
-    
-    // Find a target tree that produces the same item and is not an import
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
-        targetTreeId = treeId;
-        break;
-      }
+    // Get the target tree ID from the node
+    const targetTreeId = sourceNode.importedFrom || sourceNode.importReference?.targetTreeId;
+    if (!targetTreeId) {
+      console.error('Cannot unimport - missing target tree ID');
+      return;
     }
     
-    // If no existing tree found, create a new one
-    if (targetTreeId === "") {
-      isNewTree = true;
-      targetTreeId = `${foundNode.id}-${Date.now()}`;
-      
-      // Create a new root node for this item
-      const newRoot: DependencyNode = {
-        id: foundNode.id,
-        uniqueId: targetTreeId,
-        amount: foundNode.amount,
-        isRoot: true,
-        isImport: false,
-        selectedRecipeId: foundNode.selectedRecipeId,
-        availableRecipes: foundNode.availableRecipes,
-        excess: excessMap[foundNode.uniqueId] || 0,
-        children: []
-      };
-      
-      // Clone children
-      if (foundNode.children && foundNode.children.length > 0) {
-        foundNode.children.forEach(child => {
-          newRoot.children!.push(cloneNodeStructure(child, targetTreeId));
-        });
-      }
-      
-      // Add the tree directly to Redux state
-      dispatch(setDependencies({
-        treeId: targetTreeId,
-        tree: newRoot,
-        accumulated: calculateAccumulatedFromTree(newRoot)
-      }));
-      
-      // Update excess map
-      setExcessMap(prev => ({
-        ...prev,
-        [targetTreeId]: excessMap[foundNode.uniqueId] || 0
-      }));
-    }
-    
-    // Dispatch the import action
-    dispatch(importNode({
-      sourceTreeId: foundTreeId,
-      sourceNodeId: nodeId,
-      targetTreeId: targetTreeId,
-      isNewTree: isNewTree
+    dispatch(unimportNode({
+      nodeId: sourceNode.uniqueId,
+      sourceTreeId,
+      targetTreeId
     }));
-  };
-  
-  // Helper function to clone a node structure for the new tree
-  function cloneNodeStructure(node: DependencyNode, parentId: string): DependencyNode {
-    const newId = `${parentId}-${node.id}-${Date.now()}`;
-    const clone: DependencyNode = {
-      ...node,
-      uniqueId: newId,
-      isRoot: false,
-      isImport: false,
-      children: []
-    };
-    
-    // Clone children recursively
-    if (node.children && node.children.length > 0) {
-      node.children.forEach(child => {
-        clone.children!.push(cloneNodeStructure(child, newId));
-      });
-    }
-    
-    return clone;
-  }
+  }, [dispatch]);
 
   // Handle expanding/collapsing all nodes
   const handleExpandCollapseAll = (expand: boolean) => {
@@ -629,26 +580,38 @@ export const useFactoryPlanner = () => {
 
   // Handle excess change
   const handleExcessChange = async (nodeId: string, excess: number) => {
-    console.debug(`[EXCESS DEBUG] Starting excess change for node ${nodeId} to ${excess}`);
+    console.debug(`[SEQUENCE DEBUG] Step 1: handleExcessChange called for ${nodeId} with excess ${excess}`);
     
     // Update the excess map with the new value
-    setExcessMap(prev => {
-      console.debug(`[EXCESS DEBUG] Updating excess map: ${nodeId} = ${excess}`);
-      return {
-      ...prev,
-      [nodeId]: excess
-      };
+    // Use a promise to ensure the state is updated before continuing
+    await new Promise<void>(resolve => {
+      console.debug(`[SEQUENCE DEBUG] Step 2: Setting excess map state`);
+      setExcessMap(prev => {
+        console.debug(`[SEQUENCE DEBUG] Step 2.1: Inside setExcessMap callback`);
+        return {
+          ...prev,
+          [nodeId]: excess
+        };
+      });
+      
+      // Give React a chance to process the state update
+      console.debug(`[SEQUENCE DEBUG] Step 2.2: Waiting for state update to process`);
+      setTimeout(() => {
+        console.debug(`[SEQUENCE DEBUG] Step 2.3: State update processed`);
+        resolve();
+      }, 0);
     });
     
     // Find which tree this node belongs to
+    console.debug(`[SEQUENCE DEBUG] Step 3: Finding tree ID for node ${nodeId}`);
     const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
       findNodeById(dependencies.dependencyTrees[id], nodeId)
     );
     
-    console.debug(`[EXCESS DEBUG] Found tree ID: ${treeId}`);
+    console.debug(`[SEQUENCE DEBUG] Step 4: Found tree ID: ${treeId}`);
     
     if (!treeId) {
-      console.error(`[EXCESS DEBUG] No tree found for node ${nodeId}`);
+      console.error(`[SEQUENCE DEBUG] Error: No tree found for node ${nodeId}`);
       return;
     }
     
@@ -657,16 +620,19 @@ export const useFactoryPlanner = () => {
     const node = findNodeById(tree, nodeId);
     
     if (!node) {
-      console.error(`[EXCESS DEBUG] Node ${nodeId} not found in tree ${treeId}`);
+      console.error(`[SEQUENCE DEBUG] Error: Node ${nodeId} not found in tree ${treeId}`);
       return;
     }
     
-    console.debug(`[EXCESS DEBUG] Node found: ${node.id}, amount: ${node.amount}, current excess: ${node.excess}`);
+    console.debug(`[SEQUENCE DEBUG] Step 5: Node found: ${node.id}, amount: ${node.amount}, current excess: ${node.excess}`);
     
     try {
       // Create a copy of the current excess map with the updated value
+      console.debug(`[SEQUENCE DEBUG] Step 6: Creating updated excess map`);
+      // Use the directly updated map instead of relying on state which might not be updated yet
       const updatedExcessMap = {...excessMap, [nodeId]: excess};
-      console.debug(`[EXCESS DEBUG] Created updated excess map with ${Object.keys(updatedExcessMap).length} entries`);
+      console.debug(`[SEQUENCE DEBUG] Step 6.1: Updated excess map created with ${Object.keys(updatedExcessMap).length} entries`);
+      console.debug(`[SEQUENCE DEBUG] Step 6.2: Node ${nodeId} excess value is ${updatedExcessMap[nodeId]}`);
       
       // Get the root node of the tree
       const rootNode = dependencies.dependencyTrees[treeId];
@@ -727,7 +693,8 @@ export const useFactoryPlanner = () => {
         // If this is an import node, preserve that relationship
         if (originalNode?.isImport) {
           console.debug(`[EXCESS DEBUG] Preserving import relationship for ${itemId} (${origId})`);
-          return {
+          
+          const importNode = {
             id: itemId,
             amount, // Use the new calculated amount
             uniqueId: origId,
@@ -740,6 +707,25 @@ export const useFactoryPlanner = () => {
             availableRecipes: originalNode.availableRecipes || [],
             childrenVisible: false // Import nodes have children hidden
           };
+          
+          // IMPORTANT FIX FOR NESTED IMPORTS:
+          // For nodes that are both imported and have others importing from them,
+          // we need to update the target tree amount here to ensure proper propagation
+          if (originalNode.importedFrom) {
+            const targetTreeId = originalNode.importedFrom;
+            console.debug(`[NESTED IMPORT] Node ${itemId} (${origId}) imports from ${targetTreeId} with amount ${amount}`);
+            
+            // This will be used later when we update target trees
+            // We'll mark this tree and node for special handling during the target tree update phase
+            dispatch(updateNodeProperties({
+              nodeId: origId,
+              updatedNode: {
+                amount: amount // Ensure the import node has the correct amount
+              }
+            }));
+          }
+          
+          return importNode;
         }
         
         // Get recipes for this item
@@ -892,53 +878,159 @@ export const useFactoryPlanner = () => {
       
       // If the tree has import nodes, propagate the changes to the target trees
       const importNodes = findImportNodes(recalculatedTree);
+      console.debug(`[TARGET DEBUG] Found ${importNodes.length} import nodes in recalculated tree`);
+      
       if (importNodes.length > 0) {
-        // For each import node, update the target tree with the new amount
-        await Promise.all(importNodes.map(async (importNode) => {
-          if (!importNode.importedFrom) return;
+        // Track which target trees we've already processed to avoid duplicate updates
+        const processedTargetTrees = new Set<string>();
+        console.debug(`[TARGET DEBUG] Processing import nodes to update target trees`);
+        
+        // Instead of using Promise.all, process each target tree sequentially
+        // This ensures changes are fully synchronized
+        for (const importNode of importNodes) {
+          if (!importNode.importedFrom) {
+            console.debug(`[TARGET DEBUG] Import node has no importedFrom property, skipping`);
+            continue;
+          }
+          
+          console.debug(`[TARGET DEBUG] Processing import node: ${importNode.id} (${importNode.uniqueId}) importing from ${importNode.importedFrom}`);
+          
+          // Skip if we've already processed this target tree
+          if (processedTargetTrees.has(importNode.importedFrom)) {
+            console.debug(`[TARGET DEBUG] Target tree ${importNode.importedFrom} already processed, skipping`);
+            continue;
+          }
+          
+          // Mark this target tree as processed
+          processedTargetTrees.add(importNode.importedFrom);
+          console.debug(`[TARGET DEBUG] Marked target tree ${importNode.importedFrom} as processed`);
           
           // Find the target tree
           const targetTree = dependencies.dependencyTrees[importNode.importedFrom];
           if (!targetTree) {
-            console.debug(`[EXCESS DEBUG] Target tree ${importNode.importedFrom} not found for import node ${importNode.id}`);
-            return;
+            console.debug(`[TARGET DEBUG] Target tree ${importNode.importedFrom} not found for import node ${importNode.id}`);
+            continue;
           }
           
-          console.debug(`[EXCESS DEBUG] Updating target tree ${importNode.importedFrom} for import node ${importNode.id} with amount ${importNode.amount}`);
+          console.debug(`[TARGET DEBUG] Found target tree ${importNode.importedFrom}, proceeding with update`);
           
-          // Recalculate the target tree with the new amount
-          const updatedTargetTree = await calculateDependencyTree(
-            targetTree.id,
-            importNode.amount, // Use the import node's amount
-            targetTree.selectedRecipeId || null,
-            recipeSelections,
-            0,
-            [],
-            '',
-            excessMap // Use the existing excess map for the target tree
-          );
+          // Calculate import amounts for the target tree
+          const getImportAmountForTargetTree = (targetTreeId: string): number => {
+            // First directly get the amount from our current updated tree
+            // This ensures we get the latest calculated amount
+            let totalAmount = 0;
+            
+            // Find any nodes in the recalculated tree that import from this target
+            const findImportsInTree = (node: DependencyNode) => {
+              // Check if this node imports from our target
+              if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
+                  (node.isImport && node.importedFrom === targetTreeId)) {
+                console.debug(`[SYNC DEBUG] Found import in current tree: ${node.id} (${node.uniqueId}) with amount ${node.amount || 0}`);
+                
+                // CRITICAL FIX FOR NESTED IMPORTS:
+                // If this node is itself imported in other trees, we need to consider the demand 
+                // from those trees when updating this target tree
+                if (node.amount > 0) {
+                  // Use the current recalculated amount, which includes any new demands
+                  totalAmount += node.amount || 0;
+                  console.debug(`[NESTED IMPORT] Adding ${node.amount} from ${node.id} (${node.uniqueId}) to total demand for ${targetTreeId}`);
+                }
+              }
+              
+              // Check children
+              if (node.children && node.children.length > 0) {
+                node.children.forEach(findImportsInTree);
+              }
+            };
+            
+            // Start with the current tree we just recalculated
+            console.debug(`[SYNC DEBUG] Searching for imports in current recalculated tree`);
+            findImportsInTree(recalculatedTree);
+            
+            // Now search other trees in the state (excluding the current one)
+            console.debug(`[SYNC DEBUG] Searching for imports in other trees`);
+            Object.entries(dependencies.dependencyTrees).forEach(([id, tree]) => {
+              // Skip the tree we're currently updating and the target tree itself
+              if (id === treeId || id === targetTreeId) return;
+              
+              // Check this tree for imports from our target
+              const findImportsInOtherTree = (node: DependencyNode) => {
+                // Check if this node imports from our target
+                if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
+                    (node.isImport && node.importedFrom === targetTreeId)) {
+                  console.debug(`[SYNC DEBUG] Found import in other tree ${id}: ${node.id} (${node.uniqueId}) with amount ${node.amount || 0}`);
+                  totalAmount += node.amount || 0;
+                  console.debug(`[NESTED IMPORT] Adding ${node.amount} from other tree ${id} to total demand for ${targetTreeId}`);
+                }
+                
+                // Check children
+                if (node.children && node.children.length > 0) {
+                  node.children.forEach(findImportsInOtherTree);
+                }
+              };
+              
+              findImportsInOtherTree(tree);
+            });
+            
+            console.debug(`[NESTED IMPORT] Final total demand for ${targetTreeId}: ${totalAmount}`);
+            return totalAmount;
+          };
           
-          if (!updatedTargetTree) return;
+          // Get the total amount needed for this target tree
+          const totalRequiredAmount = getImportAmountForTargetTree(importNode.importedFrom);
+          console.debug(`[SYNC DEBUG] Total required amount for target tree ${importNode.importedFrom}: ${totalRequiredAmount}`);
           
-          // Ensure the unique ID of the target tree is preserved
-          updatedTargetTree.uniqueId = importNode.importedFrom;
+          // Get a fresh copy of the excess map to ensure current values
+          const currentExcessMap = {...excessMap};
           
-          // Create a deep clone to ensure Redux detects the changes
-          const clonedTargetTree = JSON.parse(JSON.stringify(updatedTargetTree));
-          
-          // Update the target tree in Redux
-          const updatedAccumulated = calculateAccumulatedFromTree(clonedTargetTree);
-          dispatch(setDependencies({
-            treeId: importNode.importedFrom,
-            tree: clonedTargetTree,
-            accumulated: updatedAccumulated
-          }));
-        }));
+          // Recalculate the target tree with the aggregated amount
+          try {
+            const updatedTargetTree = await calculateDependencyTree(
+              targetTree.id,
+              totalRequiredAmount,
+              targetTree.selectedRecipeId || null,
+              recipeSelections,
+              0,
+              [],
+              '',
+              currentExcessMap
+            );
+            
+            if (!updatedTargetTree) {
+              console.debug(`[SYNC DEBUG] Failed to recalculate target tree ${importNode.importedFrom}`);
+              continue;
+            }
+            
+            // Ensure the unique ID of the target tree is preserved
+            updatedTargetTree.uniqueId = importNode.importedFrom;
+            
+            // Create a deep clone to ensure Redux detects the changes
+            const clonedTargetTree = JSON.parse(JSON.stringify(updatedTargetTree));
+            
+            // Update the target tree in Redux
+            const updatedAccumulated = calculateAccumulatedFromTree(clonedTargetTree);
+            
+            console.debug(`[SYNC DEBUG] Dispatching update for target tree ${importNode.importedFrom} with amount ${totalRequiredAmount}`);
+            
+            // Dispatch synchronously to ensure state is updated before next processing
+            dispatch(setDependencies({
+              treeId: importNode.importedFrom,
+              tree: clonedTargetTree,
+              accumulated: updatedAccumulated
+            }));
+            
+            // Give Redux time to update state before processing next tree
+            await new Promise<void>(resolve => setTimeout(resolve, 5));
+            
+          } catch (error) {
+            console.error(`[SYNC DEBUG] Error recalculating target tree ${importNode.importedFrom}:`, error);
+          }
+        }
       }
       
       // Force UI refresh with a slight delay
       setTimeout(() => {
-        console.debug(`[EXCESS DEBUG] Forcing UI refresh`);
+        console.debug(`[SEQUENCE DEBUG] Step 7: Forcing UI refresh after state updates`);
         const treeViewElement = document.getElementById('tree-view');
         if (treeViewElement) {
           treeViewElement.style.opacity = '0.99';
@@ -948,7 +1040,7 @@ export const useFactoryPlanner = () => {
         }
       }, 50);
     } catch (error) {
-      console.error(`[EXCESS DEBUG] Error recalculating dependency tree after excess change:`, error);
+      console.error(`[SEQUENCE DEBUG] Error during tree recalculation:`, error);
     }
   };
 
@@ -1122,7 +1214,11 @@ export const useFactoryPlanner = () => {
 
   // Clear all saved data
   const clearSavedData = () => {
-    // Clear all local storage items
+    if (!confirm('This will delete ALL saved trees and recipe selections. This cannot be undone. Are you sure?')) {
+      return;
+    }
+    
+    // Clear local storage
     localStorage.removeItem('savedDependencies');
     localStorage.removeItem('savedRecipeSelections');
     localStorage.removeItem('savedExcessMap');
@@ -1141,7 +1237,7 @@ export const useFactoryPlanner = () => {
     setNodeExtensionOverrides({});
     
     // Clear Redux state by loading empty data
-    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {} }));
+    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));
     dispatch(loadRecipeSelections({}));
   };
 
@@ -1160,63 +1256,130 @@ export const useFactoryPlanner = () => {
     }));
   };
 
-  // Handle unimporting a node
-  const handleUnimport = async (uniqueId: string) => {
-    try {
-      // Find the tree containing this node
-      const treeId = Object.keys(dependencies.dependencyTrees).find(id => 
-        findNodeById(dependencies.dependencyTrees[id], uniqueId)
-      );
-      
-      if (!treeId) {
-        console.error("[UNIMPORT ACTION] Could not find tree containing node:", uniqueId);
-        return;
-      }
-      
-      const currentTree = dependencies.dependencyTrees[treeId];
-      const node = findNodeById(currentTree, uniqueId);
-      if (!node) {
-        console.error("[UNIMPORT ACTION] Could not find node with id:", uniqueId);
-        return;
-      }
-      
-      // Before unimporting, log the full node structure including original children
-      console.log("[UNIMPORT ACTION] About to unimport node:", JSON.stringify({
-        id: node.id,
-        uniqueId,
-        isImport: node.isImport,
-        importedFrom: node.importedFrom,
-        amount: node.amount,
-        originalChildrenCount: node.originalChildren?.length || 0,
-        originalChildren: node.originalChildren?.map((child) => ({
-          id: child.id,
-          amount: child.amount,
-          hasChildren: child.children && child.children.length > 0,
-          childrenCount: child.children?.length || 0
-        }))
-      }, null, 2));
-      
-      // Verify this is an import node
-      if (!node.isImport) {
-        console.error("[UNIMPORT ACTION] Cannot unimport a non-import node:", uniqueId);
-        return;
-      }
-      
-      // Get the target tree ID before unimporting
-      const targetTreeId = node.importedFrom || '';
-      
-      console.log("[UNIMPORT ACTION] Dispatching unimport action");
-      // Dispatch the import action with toggle=true to unimport
-      dispatch(importNode({
-        sourceTreeId: treeId,
-        sourceNodeId: uniqueId,
-        targetTreeId: targetTreeId,
-        isNewTree: false
-      }));
-    } catch (error) {
-      console.error("[UNIMPORT ACTION] Error unimporting node:", error);
+  // Create a new tree function
+  const handleCreateNewTree = (
+    itemId: string, 
+    amount: number, 
+    treeId: string = `${itemId}-${Date.now()}`,
+    selectedRecipeId: string | null = null
+  ) => {
+    if (!itemId) {
+      console.error('Cannot create tree without itemId');
+      return;
     }
+    
+    if (amount < 0) {
+      console.error('Cannot create tree with negative amount');
+      return;
+    }
+    
+    // Create the tree and calculate dependencies
+    calculateDependencyTree(itemId, amount, selectedRecipeId)
+      .then(tree => {
+        // Set a unique ID for the root node
+        tree.uniqueId = treeId;
+        tree.isRoot = true;
+        
+        // Add the tree to the state
+        dispatch(setDependencies({
+          treeId,
+          tree,
+          accumulated: calculateAccumulatedFromTree(tree)
+        }));
+      });
   };
+
+  // Import a node function
+  const importNodeForTree = (nodeId: string) => {
+    console.log(`Importing node ${nodeId}`);
+    
+    // Find the node in all trees
+    let foundNode: DependencyNode | null = null;
+    let foundTreeId = "";
+    
+    // Find the node in all trees
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      const node = findNodeById(tree, nodeId);
+      if (node) {
+        foundNode = node;
+        foundTreeId = treeId;
+        break;
+      }
+    }
+    
+    if (!foundNode || !foundTreeId) {
+      console.error("Could not find node to import");
+      return;
+    }
+    
+    // Determine target tree ID
+    let targetTreeId = "";
+    
+    // Find a target tree that produces the same item and is not an import
+    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
+        targetTreeId = treeId;
+        break;
+      }
+    }
+    
+    // If no existing tree found, create a new one
+    if (targetTreeId === "") {
+      // Create a new root node for this item and add it to the tree
+      const newTreeId = `${foundNode.id}-${Date.now()}`;
+      
+      // Clone and create a new tree
+      handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.selectedRecipeId || null);
+      
+      // Set the target tree ID to the newly created tree
+      targetTreeId = newTreeId;
+    }
+    
+    // Use the new import action
+    handleImportNode(foundNode, targetTreeId, foundTreeId);
+  };
+
+  // Handle unimporting a node
+  const handleUnimport = (nodeId: string) => {
+    // Find the node and its tree
+    let sourceNode: DependencyNode | null = null;
+    let sourceTreeId = '';
+    
+    // Search through all trees
+    Object.entries(dependencies.dependencyTrees).forEach(([treeId, tree]) => {
+      const node = findNodeById(tree, nodeId);
+      if (node) {
+        sourceNode = node;
+        sourceTreeId = treeId;
+      }
+    });
+    
+    // If node not found or not an import node, exit
+    if (!sourceNode || !sourceTreeId) {
+      console.error('Node not found');
+      return;
+    }
+    
+    // Check if it's an import node with proper type assertion
+    const isImportNode = !!(
+      (sourceNode as any).isImport || 
+      ((sourceNode as any).importReference && 
+      Object.keys((sourceNode as any).importReference).length > 0)
+    );
+    
+    if (!isImportNode) {
+      console.error('Not an import node');
+      return;
+    }
+    
+    // Use the new unimport function
+    handleUnimportNode(sourceNode, sourceTreeId);
+  };
+
+  // Wrapper for compatibility with UI components
+  const handleImportNodeById = useCallback((nodeId: string) => {
+    importNodeForTree(nodeId);
+  }, [importNodeForTree]);
 
   return {
     // State values
@@ -1258,11 +1421,13 @@ export const useFactoryPlanner = () => {
     handleMachineMultiplierChange,
     handleExpandCollapseAll,
     handleDeleteTree,
-    handleImportNode,
+    handleImportNode: handleImportNodeById, // Use the wrapper for UI compatibility
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,
-    handleUnimport
+    handleUnimport,
+    handleCreateNewTree,
+    importNodeForTree
   };
 };
 

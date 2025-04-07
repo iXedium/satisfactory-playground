@@ -151,6 +151,48 @@ describe('Node Reference Utils', () => {
       expect(updatedNode.selectedRecipeId).toBe('special-recipe');
       expect(updatedNode.availableRecipes).toEqual(['recipe-1', 'special-recipe']);
     });
+
+    it('should update child amounts when clearing import reference', () => {
+      // Create a mock node structure with originalChildren
+      const mockNode: DependencyNode = {
+        id: 'iron-ingot',
+        uniqueId: 'tree-1-iron-ingot-0',
+        amount: 15, // Current production amount
+        importReference: {
+          targetTreeId: 'source-tree',
+          targetNodeId: 'source-node',
+        },
+        originalChildren: [
+          {
+            id: 'iron-ore',
+            uniqueId: 'tree-1-iron-ingot-0-iron-ore-1',
+            amount: 0, // Original amount when imported was 0
+            children: [],
+          },
+        ],
+        isImport: true,
+        importedFrom: 'source-tree',
+        selectedRecipeId: 'iron-ingot-recipe',
+        children: [], // Children are empty for imported nodes
+      };
+
+      // Clear the import reference
+      const result = clearImportReference(mockNode);
+
+      // Verify that children were restored with updated amounts
+      expect(result.children).toBeDefined();
+      expect(result.children.length).toBe(1);
+      expect(result.children[0].id).toBe('iron-ore');
+      expect(result.children[0].amount).toBe(15); // Amount should be updated to match parent
+      
+      // Check import properties were cleared
+      expect(result.importReference).toBeUndefined();
+      expect(result.isImport).toBe(false);
+      expect(result.importedFrom).toBeUndefined();
+      
+      // Verify childrenVisible was set to true
+      expect(result.childrenVisible).toBe(true);
+    });
   });
   
   describe('findNodeById', () => {

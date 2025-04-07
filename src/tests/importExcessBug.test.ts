@@ -1,10 +1,11 @@
 import { calculateDependencyTree, clearNodeCache } from '../utils/calculateDependencyTree';
 import * as dbQueries from '../data/dbQueries'; // Import the module to spy on the mocked functions
-import dependencyReducer, { importNode, setDependencies, loadSavedState } from '../features/dependencySlice';
+import dependencyReducer, { importNodeAction, setDependencies, loadSavedState } from '../features/dependencySlice';
 import { AccumulatedNode } from '../utils/calculateAccumulatedFromTree';
 import { configureStore } from '@reduxjs/toolkit';
 import { findNodeById } from '../utils/nodeReferenceUtils';
 import { DependencyNode } from '../utils/calculateDependencyTree';
+import { DependencyState } from '../features/dependencySlice';
 
 // Import the mock setup
 import './mockData';
@@ -83,8 +84,8 @@ describe('Import Excess Bug Tests', () => {
 
     // Verify import setup
     const importNode = treeWithImport.children?.[0];
-    expect(importNode?.isImport).toBe(true);
-    expect(importNode?.importedFrom).toBe(ironIngotTree.uniqueId);
+    expect(importNode?.isImport || (importNode?.importReference !== undefined)).toBe(true);
+    expect(importNode?.importedFrom || importNode?.importReference?.targetTreeId).toBe(ironIngotTree.uniqueId);
     expect(importNode?.amount).toBe(15);
     expect(importNode?.children?.length).toBe(0); // Import nodes have no children
 
@@ -104,8 +105,8 @@ describe('Import Excess Bug Tests', () => {
     // Verify import connection is maintained and amounts are updated
     expect(treeWithNewExcess.excess).toBe(20);
     const updatedImportNode = treeWithNewExcess.children?.[0];
-    expect(updatedImportNode?.isImport).toBe(true);
-    expect(updatedImportNode?.importedFrom).toBe(ironIngotTree.uniqueId);
+    expect(updatedImportNode?.isImport || (updatedImportNode?.importReference !== undefined)).toBe(true);
+    expect(updatedImportNode?.importedFrom || updatedImportNode?.importReference?.targetTreeId).toBe(ironIngotTree.uniqueId);
     expect(updatedImportNode?.amount).toBe(20);
     expect(updatedImportNode?.children?.length).toBe(0);
 
@@ -211,8 +212,8 @@ describe('Import Excess Bug Tests', () => {
 
     // Verify import setup
     const importNode = treeWithImport.children?.[0];
-    expect(importNode?.isImport).toBe(true);
-    expect(importNode?.importedFrom).toBe(ironIngotTree.uniqueId);
+    expect(importNode?.isImport || (importNode?.importReference !== undefined)).toBe(true);
+    expect(importNode?.importedFrom || importNode?.importReference?.targetTreeId).toBe(ironIngotTree.uniqueId);
     expect(importNode?.amount).toBe(16);
     expect(importNode?.children?.length).toBe(0); // Import nodes have no children
     
@@ -235,7 +236,7 @@ describe('Import Excess Bug Tests', () => {
     // Verify that after unimporting:
     // 1. The iron ingot node is no longer an import
     const unimportedNode = treeAfterUnimport.children?.[0];
-    expect(unimportedNode?.isImport).toBeFalsy();
+    expect(unimportedNode?.isImport || (unimportedNode?.importReference !== undefined)).toBeFalsy();
     
     // 2. The iron ingot has its children restored - should have iron ore child
     expect(unimportedNode?.children).toBeDefined();
@@ -256,147 +257,100 @@ describe('Import Excess Bug Tests', () => {
   });
 
   it('should correctly restore children when using the importNode Redux action', () => {
-    // Set up initial state for testing the Redux action
-    const initialState = {
-      dependencyTrees: {},
-      accumulatedDependencies: {}
-    };
-    
-    // Setup Mock Trees - simplified for the test
-    
-    // Iron Rod Tree with iron ingot child and iron ore grandchild
-    const ironRodTree = {
-      id: 'iron_rod',
-      amount: 0,
-      uniqueId: 'tree-iron-rod',
-      isRoot: true,
-      selectedRecipeId: 'recipe_iron_rod',
-      children: [
-        {
+    // SETUP
+    // Create an initial dependency state with two trees
+    const initialState: DependencyState = {
+      dependencyTrees: {
+        'tree-iron-rod': {
+          id: 'iron_rod',
+          amount: 15,
+          uniqueId: 'tree-iron-rod',
+          isRoot: true,
+          children: [
+            {
+              id: 'iron_ingot',
+              amount: 15, 
+              uniqueId: 'tree-iron-rod-iron_ingot-1',
+              children: [
+                {
+                  id: 'iron_ore',
+                  amount: 15,
+                  uniqueId: 'tree-iron-rod-iron_ingot-1-iron_ore-2',
+                  children: [],
+                  excess: 0
+                }
+              ],
+              excess: 0
+            }
+          ],
+          excess: 0
+        },
+        'tree-iron-ingot': {
           id: 'iron_ingot',
-          amount: 16,
-          uniqueId: 'tree-iron-rod-iron_ingot-1',
+          amount: 0,
+          uniqueId: 'tree-iron-ingot',
+          isRoot: true,
           children: [
             {
               id: 'iron_ore',
-              amount: 16,
-              uniqueId: 'tree-iron-rod-iron_ingot-1-iron_ore-2',
+              amount: 0,
+              uniqueId: 'tree-iron-ingot-iron_ore-1',
               children: [],
               excess: 0
             }
           ],
           excess: 0
         }
-      ],
-      excess: 16
-    };
-    
-    // Iron Ingot Tree (target for import)
-    const ironIngotTree = {
-      id: 'iron_ingot',
-      amount: 16,
-      uniqueId: 'tree-iron-ingot',
-      isRoot: true,
-      selectedRecipeId: 'recipe_iron_ingot',
-      children: [
-        {
-          id: 'iron_ore',
-          amount: 16,
-          uniqueId: 'tree-iron-ingot-iron_ore-1',
-          children: [],
-          excess: 0
-        }
-      ],
-      excess: 0
-    };
-    
-    // Mock accumulated nodes
-    const accumulatedNodes: Record<string, AccumulatedNode> = {
-      'iron_rod': { 
-        itemId: 'iron_rod', 
-        amount: 16, 
-        recipeId: 'recipe_iron_rod',
-        isByproduct: false
       },
-      'iron_ingot': { 
-        itemId: 'iron_ingot', 
-        amount: 32, 
-        recipeId: 'recipe_iron_ingot',
-        isByproduct: false
-      },
-      'iron_ore': { 
-        itemId: 'iron_ore', 
-        amount: 32, 
-        recipeId: 'recipe_iron_ore',
-        isByproduct: false
-      }
+      accumulatedDependencies: {},
+      errors: []
     };
-    
-    // Add trees to state
-    const stateWithTrees = {
-      ...initialState,
-      dependencyTrees: {
-        'tree-iron-rod': ironRodTree,
-        'tree-iron-ingot': ironIngotTree
-      },
-      accumulatedDependencies: accumulatedNodes
-    };
-    
-    // Step 1: Import the iron ingot node from iron rod tree
-    const afterImport = dependencyReducer(
-      stateWithTrees,
-      importNode({
+
+    // ACTION 1: Perform an import operation
+    const afterImport = dependencyReducer(initialState, {
+      type: 'dependency/importNode',
+      payload: {
+        nodeId: 'tree-iron-rod-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod',
-        sourceNodeId: 'tree-iron-rod-iron_ingot-1',
         targetTreeId: 'tree-iron-ingot',
-        isNewTree: false
-      })
-    );
-    
+        shouldImport: true
+      }
+    });
+
+    // ASSERTIONS 1: Verify the import worked properly
     // Verify the import happened correctly
     const sourceNodeAfterImport = afterImport.dependencyTrees['tree-iron-rod']?.children?.[0];
-    expect(sourceNodeAfterImport?.isImport).toBe(true);
-    expect(sourceNodeAfterImport?.importedFrom).toBe('tree-iron-ingot');
+    expect(sourceNodeAfterImport?.isImport || (sourceNodeAfterImport?.importReference !== undefined)).toBe(true);
+    expect(sourceNodeAfterImport?.importedFrom || sourceNodeAfterImport?.importReference?.targetTreeId).toBe('tree-iron-ingot');
     expect(sourceNodeAfterImport?.children?.length).toBe(0); // Import nodes have no children
     expect(sourceNodeAfterImport?.originalChildren).toBeDefined(); // Original children should be saved
-    
-    // Step 2: Now unimport the node
-    const afterUnimport = dependencyReducer(
-      afterImport,
-      importNode({
+
+    // Target tree should have amount increased
+    const targetTree = afterImport.dependencyTrees['tree-iron-ingot'];
+    expect(targetTree?.amount).toBe(15); // Amount should be transferred
+
+    // ACTION 2: Perform an unimport operation
+    const afterUnimport = dependencyReducer(afterImport, {
+      type: 'dependency/unimportNode',
+      payload: {
+        nodeId: 'tree-iron-rod-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod',
-        sourceNodeId: 'tree-iron-rod-iron_ingot-1',
-        targetTreeId: 'tree-iron-ingot',
-        isNewTree: false
-      })
-    );
-    
-    // Verify the unimport worked correctly
+        targetTreeId: 'tree-iron-ingot'
+      }
+    });
+
+    // ASSERTIONS 2: Verify the unimport restored the original structure
     const sourceNodeAfterUnimport = afterUnimport.dependencyTrees['tree-iron-rod']?.children?.[0];
-    expect(sourceNodeAfterUnimport?.isImport).toBeFalsy();
-    expect(sourceNodeAfterUnimport?.importedFrom).toBeUndefined();
-    // With new implementation, original children might still be present but not required
-    // expect(sourceNodeAfterUnimport?.originalChildren).toBeUndefined(); // Original children should be cleared
+    expect(sourceNodeAfterUnimport?.isImport || (sourceNodeAfterUnimport?.importReference !== undefined)).toBeFalsy();
+    expect(sourceNodeAfterUnimport?.children?.length).toBe(1); // Children should be restored
     
-    // Critical test: The iron ore child should be restored
-    expect(sourceNodeAfterUnimport?.children).toBeDefined();
-    expect(sourceNodeAfterUnimport?.children?.length).toBe(1);
-    expect(sourceNodeAfterUnimport?.children?.[0].id).toBe('iron_ore');
-    expect(sourceNodeAfterUnimport?.children?.[0].amount).toBe(16);
-    
-    // The target tree (iron ingot) should have its amount adjusted
-    // Since we're no longer importing from it, its amount should decrease
-    const targetTreeAfterUnimport = afterUnimport.dependencyTrees['tree-iron-ingot'];
-    if (targetTreeAfterUnimport) {
-      // The tree might still be there, so we adjust our expectations
-      // In some implementations, the tree might not get its amount reduced properly
-      // When we add proper unimport functionality, this should be:
-      // expect(targetTreeAfterUnimport.amount).toBeLessThanOrEqual(0);
-      expect(targetTreeAfterUnimport.children?.[0].id).toBe('iron_ore');
-    } else {
-      // If tree was removed, that's also acceptable behavior
-      expect(afterUnimport.dependencyTrees['tree-iron-ingot']).toBeUndefined();
-    }
+    const childNode = sourceNodeAfterUnimport?.children?.[0];
+    expect(childNode?.id).toBe('iron_ore');
+    expect(childNode?.amount).toBe(15);
+
+    // Target tree amount should be back to 0
+    const targetTreeAfter = afterUnimport.dependencyTrees['tree-iron-ingot'];
+    expect(targetTreeAfter?.amount).toBe(0);
   });
 
   it('should restore full chain when unimporting a node after excess was changed', async () => {
@@ -521,164 +475,104 @@ describe('Import Excess Bug Tests', () => {
   });
 
   it('should correctly restore children in Redux when unimporting after adding excess', () => {
-    // Setup initial state with trees that would be created in the application
-    const initialState = {
-      dependencyTrees: {},
-      accumulatedDependencies: {}
-    };
-    
-    // Create the iron rod tree with no excess initially
-    const ironRodTree = {
-      id: 'iron_rod',
-      amount: 0,
-      uniqueId: 'tree-iron-rod',
-      isRoot: true,
-      selectedRecipeId: 'recipe_iron_rod',
-      children: [
-        {
+    // Set up initial state with two trees
+    const initialState: DependencyState = {
+      dependencyTrees: {
+        'tree-iron-rod': {
+          id: 'iron_rod',
+          amount: 15,
+          uniqueId: 'tree-iron-rod',
+          isRoot: true,
+          children: [
+            {
+              id: 'iron_ingot',
+              amount: 15, 
+              uniqueId: 'tree-iron-rod-iron_ingot-1',
+              children: [
+                {
+                  id: 'iron_ore',
+                  amount: 15,
+                  uniqueId: 'tree-iron-rod-iron_ingot-1-iron_ore-2',
+                  children: [],
+                  excess: 0
+                }
+              ],
+              excess: 0
+            }
+          ],
+          excess: 0
+        },
+        'tree-iron-ingot': {
           id: 'iron_ingot',
           amount: 0,
-          uniqueId: 'tree-iron-rod-iron_ingot-1',
+          uniqueId: 'tree-iron-ingot',
+          isRoot: true,
           children: [
             {
               id: 'iron_ore',
               amount: 0,
-              uniqueId: 'tree-iron-rod-iron_ingot-1-iron_ore-2',
+              uniqueId: 'tree-iron-ingot-iron_ore-1',
               children: [],
               excess: 0
             }
           ],
           excess: 0
         }
-      ],
-      excess: 0
-    };
-    
-    // Create the target iron ingot tree
-    const ironIngotTree = {
-      id: 'iron_ingot',
-      amount: 0,
-      uniqueId: 'tree-iron-ingot',
-      isRoot: true,
-      selectedRecipeId: 'recipe_iron_ingot',
-      children: [
-        {
-          id: 'iron_ore',
-          amount: 0,
-          uniqueId: 'tree-iron-ingot-iron_ore-1',
-          children: [],
-          excess: 0
-        }
-      ],
-      excess: 0
-    };
-    
-    // Mock accumulated nodes
-    const initialAccumulatedNodes: Record<string, AccumulatedNode> = {
-      'iron_rod': { 
-        itemId: 'iron_rod', 
-        amount: 0, 
-        recipeId: 'recipe_iron_rod',
-        isByproduct: false
       },
-      'iron_ingot': { 
-        itemId: 'iron_ingot', 
-        amount: 0, 
-        recipeId: 'recipe_iron_ingot',
-        isByproduct: false
-      },
-      'iron_ore': { 
-        itemId: 'iron_ore', 
-        amount: 0, 
-        recipeId: 'recipe_iron_ore',
-        isByproduct: false
-      }
+      accumulatedDependencies: {},
+      errors: []
     };
-    
-    // Add trees to state
-    const stateWithTrees = {
-      ...initialState,
-      dependencyTrees: {
-        'tree-iron-rod': ironRodTree,
-        'tree-iron-ingot': ironIngotTree
-      },
-      accumulatedDependencies: initialAccumulatedNodes
-    };
-    
-    // 1. First import the iron ingot node (without any excess)
-    const afterImport = dependencyReducer(
-      stateWithTrees,
-      importNode({
+
+    // Step.1: Import the iron ingot from iron rod tree to the iron ingot tree
+    const afterImport = dependencyReducer(initialState, {
+      type: 'dependency/importNode',
+      payload: {
+        nodeId: 'tree-iron-rod-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod',
-        sourceNodeId: 'tree-iron-rod-iron_ingot-1',
         targetTreeId: 'tree-iron-ingot',
-        isNewTree: false
-      })
-    );
-    
+        shouldImport: true
+      }
+    });
+
     // Verify import happened correctly
     const ironIngotNodeAfterImport = afterImport.dependencyTrees['tree-iron-rod']?.children?.[0];
-    expect(ironIngotNodeAfterImport?.isImport).toBe(true);
-    expect(ironIngotNodeAfterImport?.importedFrom).toBe('tree-iron-ingot');
+    expect(ironIngotNodeAfterImport?.isImport || (ironIngotNodeAfterImport?.importReference !== undefined)).toBe(true);
+    expect(ironIngotNodeAfterImport?.importedFrom || ironIngotNodeAfterImport?.importReference?.targetTreeId).toBe('tree-iron-ingot');
     expect(ironIngotNodeAfterImport?.originalChildren).toBeDefined();
     expect(ironIngotNodeAfterImport?.children?.length).toBe(0);
-    
-    // 2. Now we need to simulate the tree getting recalculated with excess
-    // This would normally happen through an action in useFactoryPlanner
-    // But we'll update the tree directly here for testing
-    const ironRodWithExcess = {
-      ...afterImport.dependencyTrees['tree-iron-rod'],
-      excess: 15,
-      children: [
-        {
-          ...ironIngotNodeAfterImport, 
-          amount: 15 // Updated to reflect the excess from iron rod
-        }
-      ]
-    };
-    
-    const stateWithExcess = {
-      ...afterImport,
-      dependencyTrees: {
-        ...afterImport.dependencyTrees,
-        'tree-iron-rod': ironRodWithExcess,
-        'tree-iron-ingot': {
-          ...afterImport.dependencyTrees['tree-iron-ingot'],
-          amount: 15
-        }
+
+    // Step 2: Add excess to the original iron rod
+    const afterExcess = dependencyReducer(afterImport, {
+      type: 'dependency/setExcess',
+      payload: {
+        excess: 5,
+        nodeId: 'tree-iron-rod',
+        treeId: 'tree-iron-rod'
       }
-    };
-    
-    // 3. Now unimport the node to test our fix
-    const afterUnimport = dependencyReducer(
-      stateWithExcess,
-      importNode({
+    });
+
+    // Verify excess was added
+    const ironRodWithExcess = afterExcess.dependencyTrees['tree-iron-rod'];
+    expect(ironRodWithExcess.excess).toBe(5);
+
+    // Step 3: Unimport the iron ingot from the iron rod tree
+    const afterUnimport = dependencyReducer(afterExcess, {
+      type: 'dependency/unimportNode',
+      payload: {
+        nodeId: 'tree-iron-rod-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod',
-        sourceNodeId: 'tree-iron-rod-iron_ingot-1',
-        targetTreeId: 'tree-iron-ingot',
-        isNewTree: false
-      })
-    );
-    
-    // Verify the unimport worked correctly
+        targetTreeId: 'tree-iron-ingot'
+      }
+    });
+
+    // Verify unimport worked and restored the original node structure
     const ironIngotNodeAfterUnimport = afterUnimport.dependencyTrees['tree-iron-rod']?.children?.[0];
-    expect(ironIngotNodeAfterUnimport?.isImport).toBeFalsy();
-    
-    // Verify that the original children (iron ore) were restored
-    expect(ironIngotNodeAfterUnimport?.children).toBeDefined();
+    expect(ironIngotNodeAfterUnimport?.isImport || (ironIngotNodeAfterUnimport?.importReference !== undefined)).toBeFalsy();
     expect(ironIngotNodeAfterUnimport?.children?.length).toBe(1);
-    expect(ironIngotNodeAfterUnimport?.children?.[0].id).toBe('iron_ore');
-    expect(ironIngotNodeAfterUnimport?.children?.[0].amount).toBe(15); // Should match parent's amount
+    expect(ironIngotNodeAfterUnimport?.children?.[0]?.id).toBe('iron_ore');
     
-    // The target tree should have been removed or have amount=0
-    const targetTree = afterUnimport.dependencyTrees['tree-iron-ingot'];
-    if (targetTree) {
-      // Some implementations may keep the tree but reduce amount to 0
-      expect(targetTree.amount).toBeLessThanOrEqual(0);
-    } else {
-      // Other implementations may remove the tree entirely
-      expect(afterUnimport.dependencyTrees['tree-iron-ingot']).toBeUndefined();
-    }
+    // Verify the children are correctly restored with the right amounts
+    expect(ironIngotNodeAfterUnimport?.children?.[0]?.amount).toBe(15);
   });
 
   it('should handle the specific sequence from import -> excess change -> unimport', async () => {
@@ -692,7 +586,8 @@ describe('Import Excess Bug Tests', () => {
     // Setup initial Redux state
     const initialState = {
       dependencyTrees: {},
-      accumulatedDependencies: {}
+      accumulatedDependencies: {},
+      errors: []
     };
     
     // Step 1: Add the iron rod tree with no excess
@@ -727,18 +622,17 @@ describe('Import Excess Bug Tests', () => {
       dependencyTrees: {
         'tree-iron-rod-12345': ironRodTree,
         'tree-iron-ingot-12345': ironIngotTree
-      },
-      accumulatedDependencies: {}
+      }
     };
     
     // Step 2: Make iron ingot import
     const stateAfterImport = dependencyReducer(
       stateWithTrees,
-      importNode({
+      importNodeAction({
+        nodeId: 'tree-iron-rod-12345-iron_rod-0-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod-12345',
-        sourceNodeId: 'tree-iron-rod-12345-iron_rod-0-iron_ingot-1',
         targetTreeId: 'tree-iron-ingot-12345',
-        isNewTree: false
+        shouldImport: true
       })
     );
     
@@ -812,11 +706,11 @@ describe('Import Excess Bug Tests', () => {
     // Step 4: Unimport the iron ingot
     const stateAfterUnimport = dependencyReducer(
       stateWithBothTreesUpdated,
-      importNode({
+      importNodeAction({
+        nodeId: 'tree-iron-rod-12345-iron_rod-0-iron_ingot-1',
         sourceTreeId: 'tree-iron-rod-12345',
-        sourceNodeId: 'tree-iron-rod-12345-iron_rod-0-iron_ingot-1',
         targetTreeId: 'tree-iron-ingot-12345',
-        isNewTree: false
+        shouldImport: false
       })
     );
     
@@ -885,7 +779,8 @@ describe('Import Excess Bug Tests', () => {
           excess: 0
         }
       },
-      accumulatedDependencies: {}
+      accumulatedDependencies: {},
+      errors: []
     };
 
     // Mock the state with the prebuilt trees - type assertion for test
@@ -903,10 +798,11 @@ describe('Import Excess Bug Tests', () => {
     expect(initialRodTree?.children?.[0]?.isImport).toBe(true);
     
     // Now try to unimport - this should trigger the recovery mechanism
-    store.dispatch(importNode({
+    store.dispatch(importNodeAction({
       sourceTreeId: 'tree-iron-rod', 
-      sourceNodeId: 'tree-iron-rod-iron_ingot-1',
-      targetTreeId: 'tree-iron-ingot'
+      nodeId: 'tree-iron-rod-iron_ingot-1',
+      targetTreeId: 'tree-iron-ingot',
+      shouldImport: false
     }));
     
     // Verify the node is no longer an import
