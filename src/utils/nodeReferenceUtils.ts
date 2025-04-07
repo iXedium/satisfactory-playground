@@ -90,13 +90,24 @@ export const setImportReference = (
   // Extract the base tree ID without the node specific part
   // Example: 'tree-iron-ore-iron_ore-0' becomes 'tree-iron-ore'
   const extractBaseTreeId = (fullId: string): string => {
-    // If it already looks like a base tree ID, return as is
-    if (fullId.match(/^tree-[^-]+-[^-]+$/)) {
+    // If it's a full tree ID with a node suffix like 'tree-iron-rod-iron_ingot-1',
+    // extract just the tree part
+    if (fullId.match(/^tree-[^-]+-[^-]+-[^-]+-\d+$/)) {
+      // This is a node ID within a tree, extract the tree part
+      const match = fullId.match(/^(tree-[^-]+(?:-\d+)?)/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    // If it's a tree ID with a numerical suffix like 'tree-iron-ingot-12345',
+    // keep it intact
+    if (fullId.match(/^tree-[^-]+-(?:\d+|[^-]+)$/)) {
       return fullId;
     }
     
     // Try to extract the base tree ID using a pattern
-    const match = fullId.match(/^(tree-[^-]+)/);
+    const match = fullId.match(/^(tree-[^-]+(?:-\d+)?)/);
     if (match && match[1]) {
       return match[1];
     }
@@ -120,7 +131,7 @@ export const setImportReference = (
   
   // Support legacy system during transition
   updatedNode.isImport = true;
-  updatedNode.importedFrom = baseTreeId;
+  updatedNode.importedFrom = treeId;
   
   return updatedNode;
 };

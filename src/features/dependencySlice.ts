@@ -282,29 +282,43 @@ const dependencySlice = createSlice({
       console.log('[IMPORT DEBUG] Storing recipe selections for later restoration');
       
       // Find the target tree to import from
-      const targetTree = state.dependencyTrees[targetTreeId];
-      if (!targetTree) return;
+      let targetTree = state.dependencyTrees[targetTreeId];
       
-      console.log('Adding to existing root:', targetTree);
+      // If target tree doesn't exist, create it based on the imported node
+      if (!targetTree) {
+        console.log(`[IMPORT DEBUG] Creating new target tree: ${targetTreeId}`);
+        // Create a new tree with the same ID as the node being imported
+        targetTree = {
+          id: nodeToToggle.id,
+          amount: nodeToToggle.amount || 0,
+          uniqueId: targetTreeId,
+          isRoot: true,
+          children: []
+        };
+        
+        // Add it to state
+        state.dependencyTrees = {
+          ...state.dependencyTrees,
+          [targetTreeId]: targetTree
+        };
+      } else {
+        console.log('Adding to existing root:', targetTree);
+      }
       
       // Create an import node using the node reference utilities
-      const importedNode = setImportReference(nodeToToggle, {
-        targetTreeId,
-        targetNodeId: targetTree.uniqueId || 'root',
-      });
+      // IMPORTANT: This is the key fix - we need to create a properly formed import reference
+      const importedNode = setImportReference(
+        nodeToToggle, 
+        {
+          targetTreeId,
+          targetNodeId: targetTree.uniqueId || targetTreeId, // Use tree uniqueId or fallback to treeId
+        }
+      );
       
-      // For legacy compatibility, also set legacy import properties
-      // These will be deprecated in future versions
-      const updatedNode = {
-        ...importedNode,
-        isImport: true, // Legacy property
-        importedFrom: targetTreeId, // Legacy property
-        children: [], // Import nodes should not have active children
-        childrenVisible: false // Hide children for import nodes
-      };
+      // Apply the imported node to the source tree by replacing the original node
+      const updatedSourceTree = replaceNode(sourceTree, nodeId, importedNode);
       
-      // Apply the imported node to the source tree
-      const updatedSourceTree = replaceNode(sourceTree, nodeId, updatedNode);
+      // Update state with the modified source tree
       state.dependencyTrees = {
         ...state.dependencyTrees,
         [sourceTreeId]: updatedSourceTree
@@ -504,29 +518,43 @@ const dependencySlice = createSlice({
       console.log('[IMPORT DEBUG] Storing recipe selections for later restoration');
       
       // Find the target tree to import from
-      const targetTree = state.dependencyTrees[targetTreeId];
-      if (!targetTree) return;
+      let targetTree = state.dependencyTrees[targetTreeId];
       
-      console.log('Adding to existing root:', targetTree);
+      // If target tree doesn't exist, create it based on the imported node
+      if (!targetTree) {
+        console.log(`[IMPORT DEBUG] Creating new target tree: ${targetTreeId}`);
+        // Create a new tree with the same ID as the node being imported
+        targetTree = {
+          id: nodeToToggle.id,
+          amount: nodeToToggle.amount || 0,
+          uniqueId: targetTreeId,
+          isRoot: true,
+          children: []
+        };
+        
+        // Add it to state
+        state.dependencyTrees = {
+          ...state.dependencyTrees,
+          [targetTreeId]: targetTree
+        };
+      } else {
+        console.log('Adding to existing root:', targetTree);
+      }
       
       // Create an import node using the node reference utilities
-      const importedNode = setImportReference(nodeToToggle, {
-        targetTreeId,
-        targetNodeId: targetTree.uniqueId || 'root',
-      });
+      // IMPORTANT: This is the key fix - we need to create a properly formed import reference
+      const importedNode = setImportReference(
+        nodeToToggle, 
+        {
+          targetTreeId,
+          targetNodeId: targetTree.uniqueId || targetTreeId, // Use tree uniqueId or fallback to treeId
+        }
+      );
       
-      // Preserve the original excess value
-      const updatedNode = {
-        ...importedNode,
-        isImport: true, // Legacy property
-        importedFrom: targetTreeId, // Legacy property
-        children: [], // Import nodes should not have active children
-        childrenVisible: false, // Hide children for import nodes
-        excess: nodeToToggle.excess // Preserve excess value
-      };
+      // Apply the imported node to the source tree by replacing the original node
+      const updatedSourceTree = replaceNode(sourceTree, nodeId, importedNode);
       
-      // Apply the imported node to the source tree
-      const updatedSourceTree = replaceNode(sourceTree, nodeId, updatedNode);
+      // Update state with the modified source tree
       state.dependencyTrees = {
         ...state.dependencyTrees,
         [sourceTreeId]: updatedSourceTree
