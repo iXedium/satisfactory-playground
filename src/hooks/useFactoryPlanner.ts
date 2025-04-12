@@ -526,7 +526,33 @@ export const useFactoryPlanner = () => {
       console.warn(`[IMPORT WARNING] Target tree ${targetTreeId} not found in current state. This may be expected if the tree was just created.`);
       console.log('[IMPORT DEBUG] Available tree IDs:', Object.keys(dependencies.dependencyTrees));
     } else {
-      console.log(`[IMPORT DEBUG] Target tree found: ${targetTreeId} (${targetTree.id})`);
+      console.log(`[IMPORT DEBUG] Target tree found: ${targetTreeId} (${targetTree.id}), current amount: ${targetTree.amount}`);
+      
+      // Check for existing imports to this target
+      let totalImports = 0;
+      Object.values(dependencies.dependencyTrees).forEach(tree => {
+        const findImports = (node: DependencyNode): number => {
+          let amount = 0;
+          
+          if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
+              (node.isImport && node.importedFrom === targetTreeId)) {
+            amount += node.amount || 0;
+          }
+          
+          if (node.children) {
+            node.children.forEach(child => {
+              amount += findImports(child);
+            });
+          }
+          
+          return amount;
+        };
+        
+        totalImports += findImports(tree);
+      });
+      
+      console.log(`[IMPORT DEBUG] Current total imports to ${targetTreeId}: ${totalImports}`);
+      console.log(`[IMPORT DEBUG] After adding this import (${sourceNode.amount || 0}), total should be: ${totalImports + (sourceNode.amount || 0)}`);
     }
     
     // Use the slice's action to maintain compatibility with existing code
@@ -687,9 +713,9 @@ export const useFactoryPlanner = () => {
 
     if (!foundTreeId) {
       console.error(`Node ${nodeId} not found in any tree`);
-      return;
-    }
-
+        return;
+      }
+      
     console.log(`[SEQUENCE DEBUG] Step 4: Found tree ID: ${foundTreeId}`);
     
     // Use the correct node ID - the one passed to this function, not the tree ID
@@ -701,10 +727,10 @@ export const useFactoryPlanner = () => {
     
     // Force a UI refresh after state updates
     console.log(`[SEQUENCE DEBUG] Step 7: Forcing UI refresh after state updates`);
-    setTimeout(() => {
+      setTimeout(() => {
       // Force component re-render by updating a dummy state value
       setForceUpdateCounter(prev => prev + 1);
-    }, 50);
+      }, 50);
   };
 
   // Helper function to find all import nodes in a tree
