@@ -1286,24 +1286,57 @@ export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<De
         // Total production includes forced + excess
         const totalProduction = totalImportAmount + (targetTree.excess || 0);
         
-        // Recursive helper to update children
-        const updateChildren = (node: DependencyNode, amount: number) => {
-          if (!node.children || node.children.length === 0) return;
+        // CRITICAL FIX: Fully recursive function to update ALL nodes in the chain, including imports
+        const updateAllNodesInChain = (node: DependencyNode, amount: number, processingChain = new Set<string>()) => {
+          // Prevent infinite loops with circular references
+          if (processingChain.has(node.uniqueId)) {
+            console.log(`[CIRCULAR REF] Detected circular reference at node ${node.id} (${node.uniqueId}), skipping`);
+            return;
+          }
+          
+          // Add this node to the processing chain
+          processingChain.add(node.uniqueId);
+          
+          if (!node.children || node.children.length === 0) {
+            // Remove this node from the processing chain before returning
+            processingChain.delete(node.uniqueId);
+            return;
+          }
           
           node.children.forEach(child => {
-            if (!hasImportReference(child) && !child.isImport) {
-              // Only update non-import children
-              child.amount = amount;
-              console.log(`[IMPORT AGGREGATION FIX] Updated child ${child.id} (${child.uniqueId}) to ${amount}`);
+            // Update the child's amount
+            child.amount = amount;
+            console.log(`[IMPORT CHAIN UPDATE] Updated node ${child.id} (${child.uniqueId}) to ${amount}`);
+            
+            // CRITICAL FIX: Handle imported nodes by updating their target trees too
+            if (hasImportReference(child) || child.isImport) {
+              console.log(`[IMPORT CHAIN UPDATE] Node ${child.id} is an import node, updating target tree`);
               
-              // Recursively process its children
-              updateChildren(child, amount);
+              // Get reference to the imported tree
+              const importRef = getImportReference(child);
+              const childTargetTreeId = importRef ? importRef.targetTreeId : child.importedFrom;
+              
+              if (childTargetTreeId && state.dependencyTrees[childTargetTreeId]) {
+                // Update the target tree with this node's amount
+                const importedTree = state.dependencyTrees[childTargetTreeId];
+                importedTree.amount = amount;
+                console.log(`[IMPORT CHAIN UPDATE] Updated target tree ${childTargetTreeId} to ${amount}`);
+                
+                // Continue the chain with the imported tree
+                updateAllNodesInChain(importedTree, amount, processingChain);
+              }
+            } else {
+              // Normal node - just recurse
+              updateAllNodesInChain(child, amount, processingChain);
             }
           });
+          
+          // Remove this node from the processing chain
+          processingChain.delete(node.uniqueId);
         };
         
-        // Start updating from the target tree's children 
-        updateChildren(targetTree, totalProduction);
+        // Start the update chain with the target tree
+        updateAllNodesInChain(targetTree, totalProduction);
       }
     });
 };
@@ -1350,7 +1383,7 @@ export const updateTreeProduction =
         const previousAmount = nodeToUpdate.amount || 0;
         
         // For import nodes, when updating amounts we need to track what changes
-        // This ensures proper aggregation across multiple imports to the same target
+        // This ensures proper aggregation across multiple imports
         console.log(`[IMPORT UPDATE] Amount changing from ${previousAmount} to ${amount} (diff: ${amount - previousAmount})`);
         
         // CRITICAL FIX: Keep track of this specific import in the target tree's metadata
