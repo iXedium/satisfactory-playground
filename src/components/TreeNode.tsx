@@ -3,7 +3,6 @@ import ItemNode from './ItemNode';
 import { DependencyNode } from '../utils/calculateDependencyTree';
 import { theme } from '../styles/theme';
 import { toggleChildrenVisibility } from '../utils/nodeReferenceUtils';
-import useImportedNodeAmount from '../hooks/useImportedNodeAmount';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -46,9 +45,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
-  
-  // Get the correct amount value for this node, especially for imports
-  const displayAmount = useImportedNodeAmount(node);
   
   // Update isExpanded when expandedNodes changes
   useEffect(() => {
@@ -129,12 +125,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         }}>
           <ItemNode
             itemId={node.id}
-            amount={displayAmount}
-            isRoot={!!node.isRoot}
-            isByproduct={!!node.isByproduct}
-            isImport={!!node.isImport}
-            recipes={node.availableRecipes || []}
-            selectedRecipeId={node.selectedRecipeId || undefined}
+            amount={node.amount}
+            isRoot={node.isRoot}
+            isByproduct={node.isByproduct}
+            isImport={node.isImport}
+            recipes={node.availableRecipes}
+            selectedRecipeId={node.selectedRecipeId}
             onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
             style={{ 
               backgroundColor: 'transparent'

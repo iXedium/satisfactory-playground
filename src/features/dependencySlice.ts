@@ -28,33 +28,6 @@ const initialState: DependencyState = {
   errors: []
 };
 
-// Helper function to find all trees that a given tree imports from
-const findImportedTrees = (tree: DependencyNode): string[] => {
-  const importedTrees: string[] = [];
-  
-  // Helper function to recursively check nodes
-  const checkNode = (node: DependencyNode) => {
-    // Check if this node imports from a tree
-    if ((node.importReference && node.importReference.targetTreeId) ||
-        (node.isImport && node.importedFrom)) {
-      const targetId = node.importReference?.targetTreeId || node.importedFrom;
-      if (targetId && !importedTrees.includes(targetId)) {
-        importedTrees.push(targetId);
-      }
-    }
-    
-    // Check children
-    if (node.children && node.children.length > 0) {
-      node.children.forEach(checkNode);
-    }
-  };
-  
-  // Start checking from root
-  checkNode(tree);
-  
-  return importedTrees;
-};
-
 // Helper function to find nodes importing to a specific tree
 function findNodesImportingToTree(trees: Record<string, DependencyNode>, targetTreeId: string): DependencyNode[] {
   const results: DependencyNode[] = [];
@@ -323,44 +296,6 @@ const dependencySlice = createSlice({
           children: []
         };
         
-        // BUGFIX: Initialize the target tree with proper children
-        // Copy the original children from the node being imported if available
-        if (nodeToToggle.originalChildren && nodeToToggle.originalChildren.length > 0) {
-          targetTree.children = JSON.parse(JSON.stringify(nodeToToggle.originalChildren));
-        } else if (nodeToToggle.children && nodeToToggle.children.length > 0) {
-          targetTree.children = JSON.parse(JSON.stringify(nodeToToggle.children));
-        } else {
-          // Create fallback child nodes based on item type
-          if (nodeToToggle.id.includes('ingot') || nodeToToggle.id === 'iron_ingot') {
-            targetTree.children = [{
-              id: 'iron_ore',
-              amount: nodeToToggle.amount || 0,
-              uniqueId: `${targetTreeId}-iron_ore-1`,
-              children: [],
-              excess: 0,
-              availableRecipes: []
-            }];
-            console.log(`[IMPORT DEBUG] Created fallback ore child for new ingot tree`);
-          } else if (nodeToToggle.id.includes('rod') || nodeToToggle.id.includes('plate')) {
-            targetTree.children = [{
-              id: 'iron_ingot',
-              amount: nodeToToggle.amount || 0,
-              uniqueId: `${targetTreeId}-iron_ingot-1`,
-              children: [{
-                id: 'iron_ore',
-                amount: nodeToToggle.amount || 0,
-                uniqueId: `${targetTreeId}-iron_ingot-1-iron_ore-2`,
-                children: [],
-                excess: 0,
-                availableRecipes: []
-              }],
-              excess: 0,
-              availableRecipes: []
-            }];
-            console.log(`[IMPORT DEBUG] Created fallback ingot and ore children for new manufactured item tree`);
-          }
-        }
-        
         // Add it to state
         state.dependencyTrees = {
           ...state.dependencyTrees,
@@ -429,62 +364,6 @@ const dependencySlice = createSlice({
         }
       };
       
-      // BUGFIX: Handle multi-level import case where node references are in opposite direction
-      // For example when an iron rod with excess imports iron ingot, then a screw imports iron rod
-      // We need to update the ingot tree directly based on the rod tree's total production
-      if (nodeToToggle.id.includes('rod') && targetTree.id.includes('rod')) {
-        // Find any ingot imports in the rod tree
-        const rodChildren = targetTree.children || [];
-        const ingotImport = rodChildren.find(child => 
-          child.id.includes('ingot') && 
-          (child.isImport || child.importReference)
-        );
-        
-        if (ingotImport) {
-          // Get the target ingot tree ID
-          const ingotTreeId = ingotImport.importedFrom || ingotImport.importReference?.targetTreeId;
-          if (ingotTreeId && state.dependencyTrees[ingotTreeId]) {
-            // Calculate total rod production
-            const rodExcess = targetTree.excess || 0;
-            const totalRodProduction = totalRequiredAmount + rodExcess;
-            
-            console.log(`[MULTI-LEVEL IMPORT] Found imported ingot in rod tree, updating ingot tree ${ingotTreeId} to amount ${totalRodProduction}`);
-            
-            // Update the ingot tree with the rod's total production
-            const ingotTree = state.dependencyTrees[ingotTreeId];
-            state.dependencyTrees = {
-              ...state.dependencyTrees,
-              [ingotTreeId]: {
-                ...ingotTree,
-                amount: totalRodProduction
-              }
-            };
-            
-            // Propagate the changes through the ingot tree's children
-            const updatedIngotTree = state.dependencyTrees[ingotTreeId];
-            if (updatedIngotTree && updatedIngotTree.children && updatedIngotTree.children.length > 0) {
-              // Update child amounts with the same function we used above
-              const updateChildAmounts = (node: DependencyNode, amount: number) => {
-                if (!node.children || node.children.length === 0) return;
-                
-                node.children.forEach(child => {
-                  if (!child.isImport && !child.importReference) {
-                    // Only update non-import nodes
-                    child.amount = amount;
-                    console.log(`[MULTI-LEVEL IMPORT] Updated ingot child ${child.id} amount to ${amount}`);
-                    
-                    // Recursively update nested children
-                    updateChildAmounts(child, amount);
-                  }
-                });
-              };
-              
-              updateChildAmounts(updatedIngotTree, totalRodProduction);
-            }
-          }
-        }
-      }
-      
       // The critical fix: When a tree's amount changes due to import/unimport,
       // we need to propagate this change through its entire production chain
       // by recalculating the amount for each child node
@@ -506,196 +385,37 @@ const dependencySlice = createSlice({
               
               // Recursively update nested children
               updateChildAmounts(child, amount);
+            } else {
+              // Important fix for nested imports: update the amount of imported nodes too
+              // This ensures that when a tree's total production changes, the imported nodes
+              // within this tree also get updated with the new amount
+              child.amount = amount;
+              console.log(`[IMPORT DEBUG] Updated imported child ${child.id} amount to ${amount}`);
+              
+              // Update the tree that this node imports from
+              if (child.importReference && child.importReference.targetTreeId) {
+                const importTargetTreeId = child.importReference.targetTreeId;
+                if (state.dependencyTrees[importTargetTreeId]) {
+                  // Update the imported tree's amount to match
+                  state.dependencyTrees = {
+                    ...state.dependencyTrees,
+                    [importTargetTreeId]: {
+                      ...state.dependencyTrees[importTargetTreeId],
+                      amount: amount
+                    }
+                  };
+                  console.log(`[IMPORT DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
+                  
+                  // Recursively update the imported tree's children as well
+                  updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
+                }
+              }
             }
           });
         };
         
         // Update all child nodes in the tree with the total production amount
         updateChildAmounts(updatedTargetTree, totalProduction);
-      }
-      
-      // BUGFIX: Multi-level import propagation - find all trees importing from this tree's imports
-      // Helper function to find trees that import from a tree that was just updated
-      const findTreesWithImportsFrom = (targetId: string): string[] => {
-        // Get all trees that have nodes importing from the target tree
-        const treesWithImports: string[] = [];
-        
-        Object.entries(state.dependencyTrees).forEach(([treeId, tree]) => {
-          if (treeId === targetId) return; // Skip the tree itself
-          
-          // Function to find import nodes within a tree
-          const hasImportFrom = (node: DependencyNode): boolean => {
-            // Check if this node imports from the target
-            if ((node.importReference && node.importReference.targetTreeId === targetId) ||
-                (node.isImport && node.importedFrom === targetId)) {
-              return true;
-            }
-            
-            // Check children
-            if (node.children && node.children.length > 0) {
-              for (const child of node.children) {
-                if (hasImportFrom(child)) {
-                  return true;
-                }
-              }
-            }
-            
-            return false;
-          };
-          
-          if (hasImportFrom(tree)) {
-            treesWithImports.push(treeId);
-          }
-        });
-        
-        return treesWithImports;
-      };
-      
-      // For each tree that imports from our updated tree, update their imports
-      const treesWithImports = findTreesWithImportsFrom(targetTreeId);
-      if (treesWithImports.length > 0) {
-        console.log(`[MULTI-LEVEL IMPORT] Found ${treesWithImports.length} trees importing from updated tree ${targetTreeId}`);
-        
-        treesWithImports.forEach(importingTreeId => {
-          const importingTree = state.dependencyTrees[importingTreeId];
-          if (!importingTree) return;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Updating tree ${importingTreeId} that imports from ${targetTreeId}`);
-          
-          // Helper function to update amounts in any node importing from target
-          const updateImportedAmounts = (node: DependencyNode): boolean => {
-            let updated = false;
-            
-            // Check if this node imports from our target
-            if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
-                (node.isImport && node.importedFrom === targetTreeId)) {
-              // No need to update amount - the import already has the correct amount
-              // But mark it as updated so we can propagate the change up the tree
-              updated = true;
-            }
-            
-            // Check children
-            if (node.children && node.children.length > 0) {
-              for (const child of node.children) {
-                if (updateImportedAmounts(child)) {
-                  updated = true;
-                }
-              }
-            }
-            
-            return updated;
-          };
-          
-          // Check if any node in this tree imports from our target
-          if (updateImportedAmounts(importingTree)) {
-            // If there were updates to imports, we need to propagate through this tree as well
-            const totalTreeProduction = (importingTree.amount || 0) + (importingTree.excess || 0);
-            console.log(`[MULTI-LEVEL IMPORT] Propagating changes through tree ${importingTreeId} with total production ${totalTreeProduction}`);
-            
-            // Update child amounts with the same function we used above
-            if (importingTree.children && importingTree.children.length > 0) {
-              const updateChildAmounts = (node: DependencyNode, amount: number) => {
-                if (!node.children || node.children.length === 0) return;
-                
-                node.children.forEach(child => {
-                  if (!child.isImport && !child.importReference) {
-                    // Only update non-import nodes
-                    child.amount = amount;
-                    console.log(`[MULTI-LEVEL IMPORT] Updated child ${child.id} amount to ${amount}`);
-                    
-                    // Recursively update nested children
-                    updateChildAmounts(child, amount);
-                  }
-                });
-              };
-              
-              updateChildAmounts(importingTree, totalTreeProduction);
-            }
-          }
-        });
-      }
-      
-      // BUGFIX: Also look for any trees that this tree imports from
-      // This is the critical case for the multi-level import bug
-      const importedTrees = findImportedTrees(updatedSourceTree);
-      if (importedTrees.length > 0) {
-        console.log(`[MULTI-LEVEL IMPORT] Source tree imports from ${importedTrees.length} other trees - updating them`);
-        
-        // Update amounts in imported trees
-        importedTrees.forEach(importedTreeId => {
-          // Skip the target tree we just handled above
-          if (importedTreeId === targetTreeId) return;
-          
-          const importedTree = state.dependencyTrees[importedTreeId];
-          if (!importedTree) return;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Updating imported tree ${importedTreeId}`);
-          
-          // Gather total imports from all trees that import from this target
-          let totalRequiredAmount = 0;
-          
-          // Collect imports from all trees
-          Object.entries(state.dependencyTrees).forEach(([sourceId, sourceTree]) => {
-            // Function to find import nodes within a tree
-            const getImportAmount = (node: DependencyNode): number => {
-              let amount = 0;
-              
-              // Check if this node imports from our target
-              if ((node.importReference && node.importReference.targetTreeId === importedTreeId) ||
-                  (node.isImport && node.importedFrom === importedTreeId)) {
-                amount += node.amount || 0;
-              }
-              
-              // Check children
-              if (node.children && node.children.length > 0) {
-                for (const child of node.children) {
-                  amount += getImportAmount(child);
-                }
-              }
-              
-              return amount;
-            };
-            
-            totalRequiredAmount += getImportAmount(sourceTree);
-          });
-          
-          // Update the imported tree with the aggregated amount
-          const importedExcess = importedTree.excess || 0;
-          
-          state.dependencyTrees = {
-            ...state.dependencyTrees,
-            [importedTreeId]: {
-              ...importedTree,
-              amount: totalRequiredAmount
-            }
-          };
-          
-          // Propagate total production through the imported tree
-          const updatedImportedTree = state.dependencyTrees[importedTreeId];
-          const importedTotalProduction = totalRequiredAmount + importedExcess;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Imported tree ${importedTreeId} updated to amount=${totalRequiredAmount}, total production=${importedTotalProduction}`);
-          
-          if (updatedImportedTree.children && updatedImportedTree.children.length > 0) {
-            // Use the same helper function to recursively update child amounts
-            const updateChildAmounts = (node: DependencyNode, amount: number) => {
-              if (!node.children || node.children.length === 0) return;
-              
-              node.children.forEach(child => {
-                if (!child.isImport && !child.importReference) {
-                  // Only update non-import nodes (import nodes get their amount from their source)
-                  child.amount = amount;
-                  console.log(`[MULTI-LEVEL IMPORT] Updated child ${child.id} amount to ${amount}`);
-                  
-                  // Recursively update nested children
-                  updateChildAmounts(child, amount);
-                }
-              });
-            };
-            
-            updateChildAmounts(updatedImportedTree, importedTotalProduction);
-          }
-        });
       }
       
       // Update accumulated dependencies
@@ -830,7 +550,7 @@ const dependencySlice = createSlice({
                 amount: 0
               }
             };
-      } else {
+          } else {
             console.log(`[UNIMPORT DEBUG] Target tree has been updated to amount: ${totalRequiredAmount}`);
             // Update with the total amount from other imports
             state.dependencyTrees = {
@@ -865,44 +585,6 @@ const dependencySlice = createSlice({
           isRoot: true,
           children: []
         };
-        
-        // BUGFIX: Initialize the target tree with proper children
-        // Copy the original children from the node being imported if available
-        if (nodeToToggle.originalChildren && nodeToToggle.originalChildren.length > 0) {
-          targetTree.children = JSON.parse(JSON.stringify(nodeToToggle.originalChildren));
-        } else if (nodeToToggle.children && nodeToToggle.children.length > 0) {
-          targetTree.children = JSON.parse(JSON.stringify(nodeToToggle.children));
-        } else {
-          // Create fallback child nodes based on item type
-          if (nodeToToggle.id.includes('ingot') || nodeToToggle.id === 'iron_ingot') {
-            targetTree.children = [{
-              id: 'iron_ore',
-              amount: nodeToToggle.amount || 0,
-              uniqueId: `${targetTreeId}-iron_ore-1`,
-              children: [],
-              excess: 0,
-              availableRecipes: []
-            }];
-            console.log(`[IMPORT DEBUG] Created fallback ore child for new ingot tree`);
-          } else if (nodeToToggle.id.includes('rod') || nodeToToggle.id.includes('plate')) {
-            targetTree.children = [{
-              id: 'iron_ingot',
-              amount: nodeToToggle.amount || 0,
-              uniqueId: `${targetTreeId}-iron_ingot-1`,
-              children: [{
-                id: 'iron_ore',
-                amount: nodeToToggle.amount || 0,
-                uniqueId: `${targetTreeId}-iron_ingot-1-iron_ore-2`,
-                children: [],
-                excess: 0,
-                availableRecipes: []
-              }],
-              excess: 0,
-              availableRecipes: []
-            }];
-            console.log(`[IMPORT DEBUG] Created fallback ingot and ore children for new manufactured item tree`);
-          }
-        }
         
         // Add it to state
         state.dependencyTrees = {
@@ -972,62 +654,6 @@ const dependencySlice = createSlice({
         }
       };
       
-      // BUGFIX: Handle multi-level import case where node references are in opposite direction
-      // For example when an iron rod with excess imports iron ingot, then a screw imports iron rod
-      // We need to update the ingot tree directly based on the rod tree's total production
-      if (nodeToToggle.id.includes('rod') && targetTree.id.includes('rod')) {
-        // Find any ingot imports in the rod tree
-        const rodChildren = targetTree.children || [];
-        const ingotImport = rodChildren.find(child => 
-          child.id.includes('ingot') && 
-          (child.isImport || child.importReference)
-        );
-        
-        if (ingotImport) {
-          // Get the target ingot tree ID
-          const ingotTreeId = ingotImport.importedFrom || ingotImport.importReference?.targetTreeId;
-          if (ingotTreeId && state.dependencyTrees[ingotTreeId]) {
-            // Calculate total rod production
-            const rodExcess = targetTree.excess || 0;
-            const totalRodProduction = totalRequiredAmount + rodExcess;
-            
-            console.log(`[MULTI-LEVEL IMPORT] Found imported ingot in rod tree, updating ingot tree ${ingotTreeId} to amount ${totalRodProduction}`);
-            
-            // Update the ingot tree with the rod's total production
-            const ingotTree = state.dependencyTrees[ingotTreeId];
-            state.dependencyTrees = {
-              ...state.dependencyTrees,
-              [ingotTreeId]: {
-                ...ingotTree,
-                amount: totalRodProduction
-              }
-            };
-            
-            // Propagate the changes through the ingot tree's children
-            const updatedIngotTree = state.dependencyTrees[ingotTreeId];
-            if (updatedIngotTree && updatedIngotTree.children && updatedIngotTree.children.length > 0) {
-              // Update child amounts with the same function we used above
-              const updateChildAmounts = (node: DependencyNode, amount: number) => {
-                if (!node.children || node.children.length === 0) return;
-                
-                node.children.forEach(child => {
-                  if (!child.isImport && !child.importReference) {
-                    // Only update non-import nodes
-                    child.amount = amount;
-                    console.log(`[MULTI-LEVEL IMPORT] Updated ingot child ${child.id} amount to ${amount}`);
-                    
-                    // Recursively update nested children
-                    updateChildAmounts(child, amount);
-                  }
-                });
-              };
-              
-              updateChildAmounts(updatedIngotTree, totalRodProduction);
-            }
-          }
-        }
-      }
-      
       // The critical fix: When a tree's amount changes due to import/unimport,
       // we need to propagate this change through its entire production chain
       // by recalculating the amount for each child node
@@ -1049,196 +675,37 @@ const dependencySlice = createSlice({
               
               // Recursively update nested children
               updateChildAmounts(child, amount);
+            } else {
+              // Important fix for nested imports: update the amount of imported nodes too
+              // This ensures that when a tree's total production changes, the imported nodes
+              // within this tree also get updated with the new amount
+              child.amount = amount;
+              console.log(`[IMPORT DEBUG] Updated imported child ${child.id} amount to ${amount}`);
+              
+              // Update the tree that this node imports from
+              if (child.importReference && child.importReference.targetTreeId) {
+                const importTargetTreeId = child.importReference.targetTreeId;
+                if (state.dependencyTrees[importTargetTreeId]) {
+                  // Update the imported tree's amount to match
+                  state.dependencyTrees = {
+                    ...state.dependencyTrees,
+                    [importTargetTreeId]: {
+                      ...state.dependencyTrees[importTargetTreeId],
+                      amount: amount
+                    }
+                  };
+                  console.log(`[IMPORT DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
+                  
+                  // Recursively update the imported tree's children as well
+                  updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
+                }
+              }
             }
           });
         };
         
         // Update all child nodes in the tree with the total production amount
         updateChildAmounts(updatedTargetTree, totalProduction);
-      }
-      
-      // BUGFIX: Multi-level import propagation - find all trees importing from this tree's imports
-      // Helper function to find trees that import from a tree that was just updated
-      const findTreesWithImportsFrom = (targetId: string): string[] => {
-        // Get all trees that have nodes importing from the target tree
-        const treesWithImports: string[] = [];
-        
-        Object.entries(state.dependencyTrees).forEach(([treeId, tree]) => {
-          if (treeId === targetId) return; // Skip the tree itself
-          
-          // Function to find import nodes within a tree
-          const hasImportFrom = (node: DependencyNode): boolean => {
-            // Check if this node imports from the target
-            if ((node.importReference && node.importReference.targetTreeId === targetId) ||
-                (node.isImport && node.importedFrom === targetId)) {
-              return true;
-            }
-            
-            // Check children
-            if (node.children && node.children.length > 0) {
-              for (const child of node.children) {
-                if (hasImportFrom(child)) {
-                  return true;
-                }
-              }
-            }
-            
-            return false;
-          };
-          
-          if (hasImportFrom(tree)) {
-            treesWithImports.push(treeId);
-          }
-        });
-        
-        return treesWithImports;
-      };
-      
-      // For each tree that imports from our updated tree, update their imports
-      const treesWithImports = findTreesWithImportsFrom(targetTreeId);
-      if (treesWithImports.length > 0) {
-        console.log(`[MULTI-LEVEL IMPORT] Found ${treesWithImports.length} trees importing from updated tree ${targetTreeId}`);
-        
-        treesWithImports.forEach(importingTreeId => {
-          const importingTree = state.dependencyTrees[importingTreeId];
-          if (!importingTree) return;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Updating tree ${importingTreeId} that imports from ${targetTreeId}`);
-          
-          // Helper function to update amounts in any node importing from target
-          const updateImportedAmounts = (node: DependencyNode): boolean => {
-            let updated = false;
-            
-            // Check if this node imports from our target
-            if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
-                (node.isImport && node.importedFrom === targetTreeId)) {
-              // No need to update amount - the import already has the correct amount
-              // But mark it as updated so we can propagate the change up the tree
-              updated = true;
-            }
-            
-            // Check children
-            if (node.children && node.children.length > 0) {
-              for (const child of node.children) {
-                if (updateImportedAmounts(child)) {
-                  updated = true;
-                }
-              }
-            }
-            
-            return updated;
-          };
-          
-          // Check if any node in this tree imports from our target
-          if (updateImportedAmounts(importingTree)) {
-            // If there were updates to imports, we need to propagate through this tree as well
-            const totalTreeProduction = (importingTree.amount || 0) + (importingTree.excess || 0);
-            console.log(`[MULTI-LEVEL IMPORT] Propagating changes through tree ${importingTreeId} with total production ${totalTreeProduction}`);
-            
-            // Update child amounts with the same function we used above
-            if (importingTree.children && importingTree.children.length > 0) {
-              const updateChildAmounts = (node: DependencyNode, amount: number) => {
-                if (!node.children || node.children.length === 0) return;
-                
-                node.children.forEach(child => {
-                  if (!child.isImport && !child.importReference) {
-                    // Only update non-import nodes
-                    child.amount = amount;
-                    console.log(`[MULTI-LEVEL IMPORT] Updated child ${child.id} amount to ${amount}`);
-                    
-                    // Recursively update nested children
-                    updateChildAmounts(child, amount);
-                  }
-                });
-              };
-              
-              updateChildAmounts(importingTree, totalTreeProduction);
-            }
-          }
-        });
-      }
-      
-      // BUGFIX: Also look for any trees that this tree imports from
-      // This is the critical case for the multi-level import bug
-      const importedTrees = findImportedTrees(updatedSourceTree);
-      if (importedTrees.length > 0) {
-        console.log(`[MULTI-LEVEL IMPORT] Source tree imports from ${importedTrees.length} other trees - updating them`);
-        
-        // Update amounts in imported trees
-        importedTrees.forEach(importedTreeId => {
-          // Skip the target tree we just handled above
-          if (importedTreeId === targetTreeId) return;
-          
-          const importedTree = state.dependencyTrees[importedTreeId];
-          if (!importedTree) return;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Updating imported tree ${importedTreeId}`);
-          
-          // Gather total imports from all trees that import from this target
-          let totalRequiredAmount = 0;
-          
-          // Collect imports from all trees
-          Object.entries(state.dependencyTrees).forEach(([sourceId, sourceTree]) => {
-            // Function to find import nodes within a tree
-            const getImportAmount = (node: DependencyNode): number => {
-              let amount = 0;
-              
-              // Check if this node imports from our target
-              if ((node.importReference && node.importReference.targetTreeId === importedTreeId) ||
-                  (node.isImport && node.importedFrom === importedTreeId)) {
-                amount += node.amount || 0;
-              }
-              
-              // Check children
-              if (node.children && node.children.length > 0) {
-                for (const child of node.children) {
-                  amount += getImportAmount(child);
-                }
-              }
-              
-              return amount;
-            };
-            
-            totalRequiredAmount += getImportAmount(sourceTree);
-          });
-          
-          // Update the imported tree with the aggregated amount
-          const importedExcess = importedTree.excess || 0;
-          
-          state.dependencyTrees = {
-            ...state.dependencyTrees,
-            [importedTreeId]: {
-              ...importedTree,
-              amount: totalRequiredAmount
-            }
-          };
-          
-          // Propagate total production through the imported tree
-          const updatedImportedTree = state.dependencyTrees[importedTreeId];
-          const importedTotalProduction = totalRequiredAmount + importedExcess;
-          
-          console.log(`[MULTI-LEVEL IMPORT] Imported tree ${importedTreeId} updated to amount=${totalRequiredAmount}, total production=${importedTotalProduction}`);
-          
-          if (updatedImportedTree.children && updatedImportedTree.children.length > 0) {
-            // Use the same helper function to recursively update child amounts
-            const updateChildAmounts = (node: DependencyNode, amount: number) => {
-              if (!node.children || node.children.length === 0) return;
-              
-              node.children.forEach(child => {
-                if (!child.isImport && !child.importReference) {
-                  // Only update non-import nodes (import nodes get their amount from their source)
-                  child.amount = amount;
-                  console.log(`[MULTI-LEVEL IMPORT] Updated child ${child.id} amount to ${amount}`);
-                  
-                  // Recursively update nested children
-                  updateChildAmounts(child, amount);
-                }
-              });
-            };
-            
-            updateChildAmounts(updatedImportedTree, importedTotalProduction);
-          }
-        });
       }
 
       // Update accumulated dependencies
@@ -1312,78 +779,37 @@ const dependencySlice = createSlice({
                   
                   // Recursively update nested children
                   updateChildAmounts(child, amount);
+                } else {
+                  // Important fix for nested imports: update the amount of imported nodes too
+                  // This ensures that when a tree's total production changes, the imported nodes
+                  // within this tree also get updated with the new amount
+                  child.amount = amount;
+                  console.log(`[EXCESS DEBUG] Updated imported child ${child.id} amount to ${amount}`);
+                  
+                  // Update the tree that this node imports from
+                  if (child.importReference && child.importReference.targetTreeId) {
+                    const importTargetTreeId = child.importReference.targetTreeId;
+                    if (state.dependencyTrees[importTargetTreeId]) {
+                      // Update the imported tree's amount to match
+                      state.dependencyTrees = {
+                        ...state.dependencyTrees,
+                        [importTargetTreeId]: {
+                          ...state.dependencyTrees[importTargetTreeId],
+                          amount: amount
+                        }
+                      };
+                      console.log(`[EXCESS DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
+                      
+                      // Recursively update the imported tree's children as well
+                      updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
+                    }
+                  }
                 }
               });
             };
             
             // Update all child nodes in the tree with the total production amount
             updateChildAmounts(updatedTree, totalProduction);
-            
-            // BUGFIX: Also propagate changes to imported trees (multi-level)
-            // Find all import references in this tree
-            const importedTrees = findImportedTrees(updatedTree);
-            
-            if (importedTrees.length > 0) {
-              console.log(`[EXCESS DEBUG] This tree imports from ${importedTrees.length} other trees - updating them`);
-              
-              // Update amounts in imported trees
-              importedTrees.forEach(targetId => {
-                const targetTree = state.dependencyTrees[targetId];
-                if (!targetTree) return;
-                
-                console.log(`[EXCESS DEBUG] Updating imported tree ${targetId}`);
-                
-                // Gather total imports from all trees that import from this target
-                let totalRequiredAmount = 0;
-                
-                // Collect imports from all trees
-                Object.entries(state.dependencyTrees).forEach(([sourceId, sourceTree]) => {
-                  // Function to find import nodes within a tree
-                  const getImportAmount = (node: DependencyNode): number => {
-                    let amount = 0;
-                    
-                    // Check if this node imports from our target
-                    if ((node.importReference && node.importReference.targetTreeId === targetId) ||
-                        (node.isImport && node.importedFrom === targetId)) {
-                      amount += node.amount || 0;
-                    }
-                    
-                    // Check children
-                    if (node.children && node.children.length > 0) {
-                      for (const child of node.children) {
-                        amount += getImportAmount(child);
-                      }
-                    }
-                    
-                    return amount;
-                  };
-                  
-                  totalRequiredAmount += getImportAmount(sourceTree);
-                });
-                
-                // Update the target tree with the aggregated amount
-                const targetExcess = targetTree.excess || 0;
-                
-                state.dependencyTrees = {
-                  ...state.dependencyTrees,
-                  [targetId]: {
-                    ...targetTree,
-                    amount: totalRequiredAmount
-                  }
-                };
-                
-                // Propagate total production through the target tree
-                const updatedTargetTree = state.dependencyTrees[targetId];
-                const targetTotalProduction = totalRequiredAmount + targetExcess;
-                
-                console.log(`[EXCESS DEBUG] Target tree ${targetId} updated to amount=${totalRequiredAmount}, total production=${targetTotalProduction}`);
-                
-                if (updatedTargetTree.children && updatedTargetTree.children.length > 0) {
-                  // Use the same helper function to recursively update child amounts
-                  updateChildAmounts(updatedTargetTree, targetTotalProduction);
-                }
-              });
-            }
           }
         } else {
           // Otherwise, find and update the specific node
@@ -1416,6 +842,29 @@ const dependencySlice = createSlice({
                   
                   // Recursively update nested children
                   updateChildAmounts(child, amount);
+                } else {
+                  // Important fix for nested imports: update the amount of imported nodes too
+                  child.amount = amount;
+                  console.log(`[EXCESS DEBUG] Updated node's imported child ${child.id} amount to ${amount}`);
+                  
+                  // Update the tree that this node imports from
+                  if (child.importReference && child.importReference.targetTreeId) {
+                    const importTargetTreeId = child.importReference.targetTreeId;
+                    if (state.dependencyTrees[importTargetTreeId]) {
+                      // Update the imported tree's amount to match
+                      state.dependencyTrees = {
+                        ...state.dependencyTrees,
+                        [importTargetTreeId]: {
+                          ...state.dependencyTrees[importTargetTreeId],
+                          amount: amount
+                        }
+                      };
+                      console.log(`[EXCESS DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
+                      
+                      // Recursively update the imported tree's children as well
+                      updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
+                    }
+                  }
                 }
               });
             };
