@@ -1,16 +1,21 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { DependencyNode, restoreOriginalChildren } from "../utils/calculateDependencyTree";
+import { createSlice, PayloadAction, createAction, ActionReducerMapBuilder } from "@reduxjs/toolkit";
+import { DependencyNode } from "../utils/calculateDependencyTree";
 import { AccumulatedNode, calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
 import { 
-  setImportReference, 
   clearImportReference, 
-  findNodeById,
-  toggleChildrenVisibility,
-  wouldCreateCircularReference,
+  getImportReference, 
   hasImportReference,
-  getImportReference
+  setImportReference,
+  findNodeById
 } from "../utils/nodeReferenceUtils";
-import { createAction } from "@reduxjs/toolkit";
+import { getRecipeById, getRecipeByOutput } from "../data/dbQueries";
+import { AppDispatch } from "../store";
+import { machine } from "../data/machine";
+import { AppThunk } from "../store";
+import { Recipe } from "../types";
+import { 
+  findNodesImportingToTree
+} from "../utils/nodeReferenceUtils";
 
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
@@ -219,9 +224,9 @@ const dependencySlice = createSlice({
           let totalRequiredAmount = 0;
           
           // Collect all nodes that import from this target tree
-          Object.entries(state.dependencyTrees).forEach(([treeId, tree]) => {
+          Object.values(state.dependencyTrees).forEach((tree) => {
             // Skip the source tree since we're already removing its import
-            if (treeId === sourceTreeId) return;
+            if (tree.uniqueId === sourceTreeId) return;
             
             // Function to find import nodes within a tree
             const findImportsToTarget = (node: DependencyNode): number => {
@@ -247,7 +252,7 @@ const dependencySlice = createSlice({
           });
           
           // Update the target tree with the aggregated amount
-      const targetTree = state.dependencyTrees[targetTreeId];
+          const targetTree = state.dependencyTrees[targetTreeId];
 
           // Only remove the tree if no other trees are importing from it
           if (totalRequiredAmount <= 0) {
@@ -283,6 +288,14 @@ const dependencySlice = createSlice({
       
       // Find the target tree to import from
       let targetTree = state.dependencyTrees[targetTreeId];
+      
+      // Add explicit debug logging for target tree existence
+      if (!targetTree) {
+        console.error(`[IMPORT ERROR] Target tree with ID '${targetTreeId}' not found in state!`);
+        console.log(`[IMPORT DEBUG] Available tree IDs:`, Object.keys(state.dependencyTrees));
+      } else {
+        console.log(`[IMPORT DEBUG] Found target tree with ID '${targetTreeId}'`, targetTree);
+      }
       
       // If target tree doesn't exist, create it based on the imported node
       if (!targetTree) {
@@ -328,10 +341,10 @@ const dependencySlice = createSlice({
       let totalRequiredAmount = 0;
       
       // Collect imports from all trees, including the updated source tree
-      Object.entries({
+      Object.values({
         ...state.dependencyTrees,
         [sourceTreeId]: updatedSourceTree // Use the updated source tree
-      }).forEach(([treeId, tree]) => {
+      }).forEach(tree => {
         // Function to find import nodes within a tree
         const findImportsToTarget = (node: DependencyNode): number => {
           let amount = 0;
@@ -509,9 +522,9 @@ const dependencySlice = createSlice({
           let totalRequiredAmount = 0;
           
           // Collect all nodes that import from this target tree
-          Object.entries(state.dependencyTrees).forEach(([treeId, tree]) => {
+          Object.values(state.dependencyTrees).forEach((tree) => {
             // Skip the source tree since we're already removing its import
-            if (treeId === sourceTreeId) return;
+            if (tree.uniqueId === sourceTreeId) return;
             
             // Function to find import nodes within a tree
             const findImportsToTarget = (node: DependencyNode): number => {
@@ -574,6 +587,14 @@ const dependencySlice = createSlice({
       // Find the target tree to import from
       let targetTree = state.dependencyTrees[targetTreeId];
       
+      // Add explicit debug logging for target tree existence
+      if (!targetTree) {
+        console.error(`[IMPORT ERROR] Target tree with ID '${targetTreeId}' not found in state!`);
+        console.log(`[IMPORT DEBUG] Available tree IDs:`, Object.keys(state.dependencyTrees));
+      } else {
+        console.log(`[IMPORT DEBUG] Found target tree with ID '${targetTreeId}'`, targetTree);
+      }
+      
       // If target tree doesn't exist, create it based on the imported node
       if (!targetTree) {
         console.log(`[IMPORT DEBUG] Creating new target tree: ${targetTreeId}`);
@@ -618,10 +639,10 @@ const dependencySlice = createSlice({
       let totalRequiredAmount = 0;
       
       // Collect imports from all trees, including the updated source tree
-      Object.entries({
+      Object.values({
         ...state.dependencyTrees,
         [sourceTreeId]: updatedSourceTree // Use the updated source tree
-      }).forEach(([treeId, tree]) => {
+      }).forEach(tree => {
         // Function to find import nodes within a tree
         const findImportsToTarget = (node: DependencyNode): number => {
           let amount = 0;
@@ -732,148 +753,78 @@ const dependencySlice = createSlice({
           shouldImport: false
         }
       });
+    },
+    
+    // Add these new reducers to the slice
+    applyExcessProduction: (
+      state,
+      action: PayloadAction<{
+        nodeId: string;
+        treeId: string;
+        amount: number;
+      }>
+    ) => {
+      const { nodeId, treeId, amount } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+      
+      // Find and update the node's excess value
+      const updateNodeInTree = (node: DependencyNode): boolean => {
+        if (node.uniqueId === nodeId) {
+          node.excess = amount;
+          return true;
+        }
+        
+        if (node.children) {
+          for (const child of node.children) {
+            if (updateNodeInTree(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      updateNodeInTree(tree);
+    },
+    
+    applyForcedProduction: (
+      state,
+      action: PayloadAction<{
+        nodeId: string;
+        treeId: string;
+        amount: number;
+      }>
+    ) => {
+      const { nodeId, treeId, amount } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+      
+      // Find and update the node's amount value (forced production)
+      const updateNodeInTree = (node: DependencyNode): boolean => {
+        if (node.uniqueId === nodeId) {
+          node.amount = amount;
+          return true;
+        }
+        
+        if (node.children) {
+          for (const child of node.children) {
+            if (updateNodeInTree(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      updateNodeInTree(tree);
     }
   },
   extraReducers: (builder) => {
-    builder
-      .addCase(importNodeAction, (state, action) => {
-        dependencySlice.caseReducers.handleNodeImport(state, action);
-      })
-      .addCase(unimportNode, (state, action) => {
-        dependencySlice.caseReducers.handleNodeUnimport(state, action);
-      })
-      .addCase(setExcess, (state, action) => {
-        const { excess, nodeId, treeId } = action.payload;
-        const tree = state.dependencyTrees[treeId];
-        
-        if (!tree) return;
-        
-        console.debug(`[REDUX DEBUG] Setting excess for node ${nodeId} in tree ${treeId} to ${excess}`);
-        
-        // If the nodeId is the tree ID itself, update the root node
-        if (nodeId === treeId) {
-          state.dependencyTrees = {
-            ...state.dependencyTrees,
-            [treeId]: {
-              ...tree,
-              excess: excess
-            }
-          };
-          
-          // Now propagate the total production (amount + excess) through the tree's chain
-          const updatedTree = state.dependencyTrees[treeId];
-          if (updatedTree && updatedTree.children && updatedTree.children.length > 0) {
-            // Calculate the total production (forced + excess)
-            const totalProduction = (updatedTree.amount || 0) + (updatedTree.excess || 0);
-            console.log(`[EXCESS DEBUG] Propagating total production of ${totalProduction} through the chain`);
-            
-            // Helper function to recursively update amounts in the chain
-            const updateChildAmounts = (node: DependencyNode, amount: number) => {
-              if (!node.children || node.children.length === 0) return;
-              
-              node.children.forEach(child => {
-                if (!child.isImport && !child.importReference) {
-                  // Only update non-import nodes (import nodes get their amount from their source)
-                  child.amount = amount;
-                  console.log(`[EXCESS DEBUG] Updated child ${child.id} amount to ${amount}`);
-                  
-                  // Recursively update nested children
-                  updateChildAmounts(child, amount);
-                } else {
-                  // Important fix for nested imports: update the amount of imported nodes too
-                  // This ensures that when a tree's total production changes, the imported nodes
-                  // within this tree also get updated with the new amount
-                  child.amount = amount;
-                  console.log(`[EXCESS DEBUG] Updated imported child ${child.id} amount to ${amount}`);
-                  
-                  // Update the tree that this node imports from
-                  if (child.importReference && child.importReference.targetTreeId) {
-                    const importTargetTreeId = child.importReference.targetTreeId;
-                    if (state.dependencyTrees[importTargetTreeId]) {
-                      // Update the imported tree's amount to match
-                      state.dependencyTrees = {
-                        ...state.dependencyTrees,
-                        [importTargetTreeId]: {
-                          ...state.dependencyTrees[importTargetTreeId],
-                          amount: amount
-                        }
-                      };
-                      console.log(`[EXCESS DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
-                      
-                      // Recursively update the imported tree's children as well
-                      updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
-                    }
-                  }
-                }
-              });
-            };
-            
-            // Update all child nodes in the tree with the total production amount
-            updateChildAmounts(updatedTree, totalProduction);
-          }
-        } else {
-          // Otherwise, find and update the specific node
-          const updatedTree = replaceNode(tree, nodeId, {
-            ...findNodeById(tree, nodeId)!,
-            excess: excess
-          });
-          
-          state.dependencyTrees = {
-            ...state.dependencyTrees,
-            [treeId]: updatedTree
-          };
-          
-          // Check if we need to propagate the change to children of the specific node
-          const updatedNode = findNodeById(state.dependencyTrees[treeId], nodeId);
-          if (updatedNode && updatedNode.children && updatedNode.children.length > 0) {
-            // Calculate the total production for this specific node
-            const totalNodeProduction = (updatedNode.amount || 0) + (updatedNode.excess || 0);
-            console.log(`[EXCESS DEBUG] Propagating node's total production of ${totalNodeProduction} through its children`);
-            
-            // Helper function to recursively update amounts in the chain
-            const updateChildAmounts = (node: DependencyNode, amount: number) => {
-              if (!node.children || node.children.length === 0) return;
-              
-              node.children.forEach(child => {
-                if (!child.isImport && !child.importReference) {
-                  // Only update non-import nodes
-                  child.amount = amount;
-                  console.log(`[EXCESS DEBUG] Updated node's child ${child.id} amount to ${amount}`);
-                  
-                  // Recursively update nested children
-                  updateChildAmounts(child, amount);
-                } else {
-                  // Important fix for nested imports: update the amount of imported nodes too
-                  child.amount = amount;
-                  console.log(`[EXCESS DEBUG] Updated node's imported child ${child.id} amount to ${amount}`);
-                  
-                  // Update the tree that this node imports from
-                  if (child.importReference && child.importReference.targetTreeId) {
-                    const importTargetTreeId = child.importReference.targetTreeId;
-                    if (state.dependencyTrees[importTargetTreeId]) {
-                      // Update the imported tree's amount to match
-                      state.dependencyTrees = {
-                        ...state.dependencyTrees,
-                        [importTargetTreeId]: {
-                          ...state.dependencyTrees[importTargetTreeId],
-                          amount: amount
-                        }
-                      };
-                      console.log(`[EXCESS DEBUG] Updated imported tree ${importTargetTreeId} amount to ${amount}`);
-                      
-                      // Recursively update the imported tree's children as well
-                      updateChildAmounts(state.dependencyTrees[importTargetTreeId], amount);
-                    }
-                  }
-                }
-              });
-            };
-            
-            // Update all children of this specific node
-            updateChildAmounts(updatedNode, totalNodeProduction);
-          }
-        }
-      });
+    // Add production update handlers
+    productionSliceExtraReducers(builder);
   }
 });
 
@@ -884,7 +835,9 @@ export const {
   importNode, 
   loadSavedState,
   updateNodeProperties,
-  clearErrors
+  clearErrors,
+  applyExcessProduction,
+  applyForcedProduction
 } = dependencySlice.actions;
 export default dependencySlice.reducer;
 
@@ -961,3 +914,488 @@ const replaceNode = (tree: DependencyNode, nodeId: string, newNode: DependencyNo
     children: tree.children.map((child) => replaceNode(child, nodeId, newNode))
   };
 };
+
+// Add new action types for granular production control
+export const updateExcessProduction = createAction<{
+  nodeId: string;
+  treeId: string;
+  amount: number;
+}>('dependencies/updateExcessProduction');
+
+export const updateForcedProduction = createAction<{
+  nodeId: string;
+  treeId: string;
+  amount: number;
+}>('dependencies/updateForcedProduction');
+
+export const updateImportedProduction = createAction<{
+  nodeId: string;
+  treeId: string;
+  targetTreeId: string;
+  amount: number;
+}>('dependencies/updateImportedProduction');
+
+// Helper function to determine which nodes are affected by a production change
+function calculateAffectedNodes(
+  trees: Record<string, DependencyNode>,
+  treeId: string,
+  nodeId: string,
+  productionType: 'excess' | 'forced' | 'imported',
+  amount: number
+) {
+  const result: Array<{
+    nodeId: string;
+    treeId: string;
+    productionType: 'excess' | 'forced' | 'imported';
+    amount: number;
+    targetTreeId?: string;
+    needsRecipe?: boolean;
+  }> = [];
+  
+  // Get the current tree and node
+  const tree = trees[treeId];
+  if (!tree) {
+    console.error(`[AFFECTED] Tree ${treeId} not found`);
+    return result;
+  }
+  
+  // Find the specific node in the tree
+  const node = findNodeById(tree, nodeId);
+  if (!node) {
+    console.error(`[AFFECTED] Node ${nodeId} not found in tree ${treeId}`);
+    console.log(`[AFFECTED] Available nodes in tree:`, getAllNodeIds(tree));
+    return result;
+  }
+  
+  console.log(`[AFFECTED] Processing node: ${node.id} (${node.uniqueId}), with children: ${node.children?.length || 0}`);
+  
+  // Debug node properties
+  console.log(`[AFFECTED] Node properties:`, {
+    id: node.id,
+    uniqueId: node.uniqueId,
+    amount: node.amount,
+    excess: node.excess,
+    hasRecipe: !!node.recipe,
+    recipeId: node.selectedRecipeId,
+    hasChildren: node.children && node.children.length > 0,
+    isImport: hasImportReference(node)
+  });
+  
+  // Check if this is an import node
+  if (hasImportReference(node)) {
+    // If it's an import node being updated, we need to update its target tree
+    if (productionType === 'excess' || productionType === 'forced') {
+      const importRef = getImportReference(node);
+      if (importRef) {
+        // Pass the production to the target tree's root as forced production
+        console.log(`[AFFECTED] Node is an import, updating target tree: ${importRef.targetTreeId}`);
+        result.push({
+          nodeId: importRef.targetNodeId || 'root',
+          treeId: importRef.targetTreeId,
+          productionType: 'forced',
+          amount: amount,
+        });
+      }
+    }
+  } 
+  // For regular nodes, update the children based on recipe
+  else if (node.children && node.children.length > 0) {
+    // We'll need to add the recipe loading here...
+    const hasRecipeNeeded = !node.recipe && !!node.selectedRecipeId;
+    
+    // Calculate total production based on the update type
+    let totalProduction = node.amount || 0;
+    
+    if (productionType === 'excess') {
+      // Use the new excess value to calculate total production
+      totalProduction += amount;
+      console.log(`[PROPAGATION] Node ${node.id} has total production: ${totalProduction} (amount: ${node.amount}, excess: ${amount})`);
+    } else if (productionType === 'forced') {
+      // For forced production updates, use the provided amount plus existing excess
+      totalProduction = amount + (node.excess || 0);
+      console.log(`[PROPAGATION] Node ${node.id} has total production: ${totalProduction} (forced: ${amount}, excess: ${node.excess || 0})`);
+    }
+    
+    // Push an update for each child, even if we don't have the recipe yet
+    // This ensures the propagation doesn't stop
+    node.children.forEach(child => {
+      // Pass the same forced production to all children
+      result.push({
+        nodeId: child.uniqueId,
+        treeId: treeId,
+        productionType: 'forced',
+        // If we don't have the recipe yet, pass the same amount to ensure propagation continues
+        amount: totalProduction,
+        needsRecipe: hasRecipeNeeded
+      });
+    });
+    
+    // If we have the recipe, we can calculate more accurate child amounts
+    if (node.recipe) {
+      console.log(`[AFFECTED] Node has recipe ${node.selectedRecipeId} with outputs:`, 
+        Object.keys(node.recipe.out).join(', '));
+      
+      // Get recipe output amount to calculate cycles
+      const outputAmount = node.recipe.out[node.id] || 1;
+      const cyclesNeeded = totalProduction / outputAmount;
+      console.log(`[PROPAGATION] Cycles needed: ${cyclesNeeded} (total: ${totalProduction} / output: ${outputAmount})`);
+      
+      // Update the result with correct amounts
+      const updatedResult = result.map(item => {
+        // Find the corresponding child
+        const child = node.children?.find(c => c.uniqueId === item.nodeId);
+        if (child) {
+          const inputAmount = node.recipe?.in[child.id] || 0;
+          const childAmount = inputAmount * cyclesNeeded;
+          console.log(`[PROPAGATION] Child ${child.id} needs: ${childAmount} (input: ${inputAmount} * cycles: ${cyclesNeeded})`);
+          
+          // Update the amount in the result
+          return {
+            ...item,
+            amount: childAmount
+          };
+        }
+        return item;
+      });
+      
+      // Replace the result with updated amounts
+      result.length = 0;
+      result.push(...updatedResult);
+    } else {
+      console.error(`[AFFECTED] Node ${node.id} has no recipe, cannot calculate precise child amounts`);
+      
+      // Try to find a recipe if there isn't one already
+      if (node.selectedRecipeId) {
+        console.log(`[AFFECTED] Node has selectedRecipeId ${node.selectedRecipeId}, but no recipe object`);
+        console.log(`[AFFECTED] Continuing propagation with estimated values. Recipe will be loaded during calculation.`);
+      }
+    }
+  } else {
+    console.log(`[AFFECTED] Node has no children to update`);
+  }
+  
+  // Log the result
+  console.log(`[AFFECTED] Returning ${result.length} affected nodes`);
+  return result;
+}
+
+// Helper function to get all node IDs in a tree for debugging
+function getAllNodeIds(tree: DependencyNode): string[] {
+  const ids: string[] = [tree.uniqueId];
+  
+  if (tree.children && tree.children.length > 0) {
+    tree.children.forEach(child => {
+      ids.push(...getAllNodeIds(child));
+    });
+  }
+  
+  return ids;
+}
+
+// Handle the external action types inside the slice's extraReducers
+export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<DependencyState>) => {
+  builder
+    .addCase(updateExcessProduction, (state: DependencyState, action: PayloadAction<{
+      nodeId: string;
+      treeId: string;
+      amount: number;
+    }>) => {
+      const { nodeId, treeId, amount } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+      
+      // Find and update the node's excess value
+      const updateNodeInTree = (node: DependencyNode): boolean => {
+        if (node.uniqueId === nodeId) {
+          node.excess = amount;
+          return true;
+        }
+        
+        if (node.children) {
+          for (const child of node.children) {
+            if (updateNodeInTree(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      updateNodeInTree(tree);
+    })
+    .addCase(updateForcedProduction, (state: DependencyState, action: PayloadAction<{
+      nodeId: string;
+      treeId: string;
+      amount: number;
+    }>) => {
+      const { nodeId, treeId, amount } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+      
+      // Find and update the node's amount value (forced production)
+      const updateNodeInTree = (node: DependencyNode): boolean => {
+        if (node.uniqueId === nodeId) {
+          node.amount = amount;
+          return true;
+        }
+        
+        if (node.children) {
+          for (const child of node.children) {
+            if (updateNodeInTree(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      updateNodeInTree(tree);
+    })
+    .addCase(updateImportedProduction, (state: DependencyState, action: PayloadAction<{
+      nodeId: string;
+      treeId: string;
+      targetTreeId: string;
+      amount: number;
+    }>) => {
+      const { nodeId, treeId, targetTreeId, amount } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+      
+      // For import nodes, we update both the source import node
+      // and add a forced production to the target tree
+      const updateImportNode = (node: DependencyNode): boolean => {
+        if (node.uniqueId === nodeId) {
+          // Update the import node's amount
+          node.amount = amount;
+          return true;
+        }
+        
+        if (node.children) {
+          for (const child of node.children) {
+            if (updateImportNode(child)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      // Update the import node
+      updateImportNode(tree);
+      
+      // Update the target tree if it exists
+      const targetTree = state.dependencyTrees[targetTreeId];
+      if (targetTree) {
+        targetTree.amount = amount;
+      }
+    });
+};
+
+// Sequential production update thunk
+export const updateTreeProduction = 
+  (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string) => 
+  async (dispatch: AppDispatch, getState: () => { dependencies: DependencyState }) => {
+    console.log(`[PRODUCTION UPDATE] Starting update for ${nodeId} in tree ${treeId}, type: ${productionType}, amount: ${amount}`);
+    
+    // CRITICAL DEBUGGING: Check that the node exists before we try to update it
+    const initialState = getState();
+    const tree = initialState.dependencies.dependencyTrees[treeId];
+    if (!tree) {
+      console.error(`[FATAL] Tree ${treeId} not found in state`);
+      return;
+    }
+    
+    // Find the node we're trying to update
+    const nodeToUpdate = findNodeById(tree, nodeId);
+    if (!nodeToUpdate) {
+      console.error(`[FATAL] Node ${nodeId} not found in tree ${treeId}`);
+      console.log(`[DEBUG] Available nodes in tree:`, getAllNodeIds(tree));
+      return;
+    }
+    
+    console.log(`[NODE FOUND] Will update node ${nodeToUpdate.id} (${nodeToUpdate.uniqueId})`);
+    
+    // Step 1: Update the node's production value based on type
+    if (productionType === 'excess') {
+      dispatch(updateExcessProduction({ nodeId, treeId, amount }));
+    } 
+    else if (productionType === 'forced') {
+      dispatch(updateForcedProduction({ nodeId, treeId, amount }));
+    } 
+    else if (productionType === 'imported' && targetTreeId) {
+      dispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
+    }
+    
+    // Step 2: Get the updated state after the first action
+    const state = getState();
+    const { dependencyTrees } = state.dependencies;
+    
+    // Check if the node needs a recipe and load it if needed
+    const updatedNode = findNodeById(dependencyTrees[treeId], nodeId);
+    if (updatedNode && updatedNode.selectedRecipeId && !updatedNode.recipe) {
+      console.log(`[RECIPE AUTO-LOAD] Node ${nodeId} has recipeId ${updatedNode.selectedRecipeId} but no recipe object. Loading now...`);
+      
+      try {
+        // Load the recipe from the database
+        const recipe = await getRecipeById(updatedNode.selectedRecipeId);
+        if (recipe) {
+          console.log(`[RECIPE AUTO-LOAD] Successfully loaded recipe ${recipe.id} for node ${nodeId}`);
+          
+          // Update the node with the loaded recipe
+          dispatch(updateNodeProperties({
+            nodeId,
+            updatedNode: {
+              recipe
+            }
+          }));
+          
+          // Get updated state after recipe loading
+          const updatedState = getState();
+          const updatedDependencyTrees = updatedState.dependencies.dependencyTrees;
+          
+          // Step 3: Calculate affected nodes with the updated node that has a recipe
+          const affectedNodes = calculateAffectedNodes(
+            updatedDependencyTrees,
+            treeId,
+            nodeId,
+            productionType,
+            amount
+          );
+          
+          console.log(`[PROPAGATION] Found ${affectedNodes.length} affected nodes to update after recipe loading`);
+          
+          // Step 4: Process each affected node sequentially
+          for (const node of affectedNodes) {
+            console.log(`[PROPAGATION] Updating child node: ${node.nodeId} in tree ${node.treeId} with amount ${node.amount}`);
+            
+            // Check if we need to load a recipe for this node
+            if (node.needsRecipe) {
+              console.log(`[RECIPE LOADING] Child node ${node.nodeId} needs recipe, will be loaded during its processing`);
+            }
+            
+            await dispatch(updateTreeProduction(
+              node.nodeId,
+              node.treeId,
+              node.productionType,
+              node.amount,
+              node.targetTreeId
+            ));
+          }
+          
+          return Promise.resolve();
+        } else {
+          console.error(`[RECIPE AUTO-LOAD] Failed to load recipe ${updatedNode.selectedRecipeId}`);
+        }
+      } catch (error) {
+        console.error(`[RECIPE AUTO-LOAD] Error loading recipe:`, error);
+      }
+    }
+    
+    // Step 3: Calculate affected nodes
+    const affectedNodes = calculateAffectedNodes(
+      dependencyTrees,
+      treeId,
+      nodeId,
+      productionType,
+      amount
+    );
+    
+    console.log(`[PROPAGATION] Found ${affectedNodes.length} affected nodes to update`);
+    
+    // Step 4: Process each affected node sequentially
+    for (const node of affectedNodes) {
+      console.log(`[PROPAGATION] Updating child node: ${node.nodeId} in tree ${node.treeId} with amount ${node.amount}`);
+      
+      await dispatch(updateTreeProduction(
+        node.nodeId,
+        node.treeId,
+        node.productionType,
+        node.amount,
+        node.targetTreeId
+      ));
+    }
+    
+    return Promise.resolve();
+  };
+
+// Action to load a recipe for a node
+export const loadNodeRecipe = 
+  (nodeId: string, treeId: string) => 
+  async (dispatch: AppDispatch, getState: () => { dependencies: DependencyState }) => {
+    console.log(`[RECIPE LOADER] Loading recipe for node ${nodeId} in tree ${treeId}`);
+    
+    const state = getState();
+    const tree = state.dependencies.dependencyTrees[treeId];
+    if (!tree) {
+      console.error(`[RECIPE LOADER] Tree ${treeId} not found`);
+      return;
+    }
+    
+    const node = findNodeById(tree, nodeId);
+    if (!node) {
+      console.error(`[RECIPE LOADER] Node ${nodeId} not found in tree ${treeId}`);
+      return;
+    }
+    
+    // Check if the node already has a recipe
+    if (node.recipe) {
+      console.log(`[RECIPE LOADER] Node ${nodeId} already has a recipe`);
+      return;
+    }
+    
+    // Get the recipe ID from the node
+    const recipeId = node.selectedRecipeId;
+    if (!recipeId) {
+      console.error(`[RECIPE LOADER] Node ${nodeId} has no selectedRecipeId`);
+      
+      // Try to get a default recipe for this item
+      try {
+        console.log(`[RECIPE LOADER] Attempting to get default recipe for item ${node.id}`);
+        const recipe = await getRecipeByOutput(node.id);
+        if (recipe) {
+          console.log(`[RECIPE LOADER] Found default recipe ${recipe.id} for item ${node.id}`);
+          
+          // Update the node with the recipe
+          dispatch(updateNodeProperties({
+            nodeId,
+            updatedNode: {
+              recipe,
+              selectedRecipeId: recipe.id
+            }
+          }));
+          
+          return;
+        } else {
+          console.error(`[RECIPE LOADER] No default recipe found for item ${node.id}`);
+        }
+      } catch (error) {
+        console.error(`[RECIPE LOADER] Error getting default recipe:`, error);
+      }
+      
+      return;
+    }
+    
+    // Load the recipe from the database
+    try {
+      console.log(`[RECIPE LOADER] Loading recipe ${recipeId} for node ${nodeId}`);
+      const recipe = await getRecipeById(recipeId);
+      if (recipe) {
+        console.log(`[RECIPE LOADER] Successfully loaded recipe ${recipe.id}`);
+        
+        // Update the node with the loaded recipe
+        dispatch(updateNodeProperties({
+          nodeId,
+          updatedNode: {
+            recipe
+          }
+        }));
+      } else {
+        console.error(`[RECIPE LOADER] Failed to load recipe ${recipeId}`);
+      }
+    } catch (error) {
+      console.error(`[RECIPE LOADER] Error loading recipe:`, error);
+    }
+  };

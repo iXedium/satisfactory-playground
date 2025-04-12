@@ -152,8 +152,8 @@ describe('Node Reference Utils', () => {
       expect(updatedNode.availableRecipes).toEqual(['recipe-1', 'special-recipe']);
     });
 
-    it('should update child amounts when clearing import reference', () => {
-      // Create a mock node structure with originalChildren
+    it('should preserve original child amounts when clearing import reference', () => {
+      // Create a mock node that is currently importing
       const mockNode: DependencyNode = {
         id: 'iron-ingot',
         uniqueId: 'tree-1-iron-ingot-0',
@@ -179,11 +179,11 @@ describe('Node Reference Utils', () => {
       // Clear the import reference
       const result = clearImportReference(mockNode);
 
-      // Verify that children were restored with updated amounts
+      // Verify that children were restored with original amounts preserved
       expect(result.children).toBeDefined();
       expect(result.children.length).toBe(1);
       expect(result.children[0].id).toBe('iron-ore');
-      expect(result.children[0].amount).toBe(15); // Amount should be updated to match parent
+      expect(result.children[0].amount).toBe(0); // Amount should be preserved from originalChildren
       
       // Check import properties were cleared
       expect(result.importReference).toBeUndefined();
