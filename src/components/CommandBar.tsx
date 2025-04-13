@@ -1,12 +1,14 @@
 import React, { ForwardRefRenderFunction, useState, useRef, useEffect, forwardRef } from "react";
-import ReactDOM from "react-dom";
 import { Item, Recipe } from "../types";
 import ViewModeSwitch from './ViewModeSwitch'; 
 import StyledSelect from "./shared/StyledSelect";
 import { theme } from "../styles/theme";
-import { getRecipesForItem } from "../data";
 import StyledCheckbox from "./shared/StyledCheckbox";
 import Icon from "./Icon";
+import ChainCreatorControls from "./shared/ChainCreatorControls";
+import SettingsMenu from "./shared/SettingsMenu";
+import ViewTreeControls from "./shared/ViewTreeControls";
+import PlannerActions from "./shared/PlannerActions";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -34,15 +36,6 @@ interface CommandBarProps {
   recentItems?: string[];
   updateRecentItems?: (itemId: string) => void;
 }
-
-const depthOptions = [
-  { id: "all", name: "All" },
-  { id: "1", name: "1" },
-  { id: "2", name: "2" },
-  { id: "3", name: "3" },
-  { id: "4", name: "4" },
-  { id: "5", name: "5" },
-];
 
 /**
  * The refactored command bar component
@@ -74,113 +67,8 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
   },
   ref
 ) => {
-  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const [compactView, setCompactView] = useState(false);
-  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
-  
-  // Placeholder functions for future implementation
-  const handleDepthChange = () => {};
-  const handleSearch = () => {};
-  const handleToggleCompact = () => {};
-  
-  // Update menu position when it's opened
-  useEffect(() => {
-    if (isSettingsMenuOpen && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
-    }
-  }, [isSettingsMenuOpen]);
-  
-  // Close settings menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isSettingsMenuOpen && 
-          settingsButtonRef.current && 
-          !settingsButtonRef.current.contains(event.target as Node) &&
-          event.target instanceof Node &&
-          document.getElementById('settings-menu') &&
-          !document.getElementById('settings-menu')?.contains(event.target as Node)) {
-        setIsSettingsMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSettingsMenuOpen]);
-  
-  // Update filtered recipes when selected item changes
-  useEffect(() => {
-    if (selectedItem) {
-      getRecipesForItem(selectedItem)
-        .then(recipes => {
-          setFilteredRecipes(recipes);
-          // Always select a default recipe when the item changes
-          if (recipes.length > 0) {
-            // Try to find a recipe with the same name as the item
-            const selectedItemObj = items.find(i => i.id === selectedItem);
-            const matchingRecipe = recipes.find(r => r.name === selectedItemObj?.name);
-            
-            if (matchingRecipe) {
-              onRecipeSelect(matchingRecipe.id);
-            } else {
-              // Fall back to first recipe if no matching name found
-              onRecipeSelect(recipes[0].id);
-            }
-          }
-        })
-        .catch(console.error);
-    } else {
-      setFilteredRecipes([]);
-    }
-  }, [selectedItem, onRecipeSelect, items]);
-  
-  // Checkbox handlers
-  const toggleCompactView = () => {
-    setCompactView(!compactView);
-    handleToggleCompact();
-  };
-  
-  const toggleShowExtensions = () => {
-    onShowExtensionsChange(!showExtensions);
-  };
-  
-  const toggleAccumulateExtensions = () => {
-    onAccumulateExtensionsChange(!accumulateExtensions);
-  };
-
-  const toggleShowMachines = () => {
-    onShowMachinesChange(!showMachines);
-  };
-
-  const toggleShowMachineMultiplier = () => {
-    onShowMachineMultiplierChange(!showMachineMultiplier);
-  };
-
-  // Toggle settings menu
-  const toggleSettingsMenu = () => {
-    setIsSettingsMenuOpen(!isSettingsMenuOpen);
-  };
-  
-  // Handle item section collapse
   const toggleItemSection = () => {
-    const newState = !isAddItemCollapsed;
-    onAddItemCollapsedChange(newState);
-  };
-
-  // Handle item selection with recent items update
-  const handleItemSelect = (itemId: string) => {
-    if (updateRecentItems) {
-      updateRecentItems(itemId);
-    }
-    onItemSelect(itemId);
+    onAddItemCollapsedChange(!isAddItemCollapsed);
   };
 
   // Styles
@@ -205,305 +93,52 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     alignItems: "center",
   };
 
-  const sectionStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "0 8px",
-    borderRight: `1px solid ${theme.colors.dropdown.border}`,
-  };
-
-  const lastSectionStyle: React.CSSProperties = {
-    ...sectionStyle,
-    borderRight: "none",
-  };
-
-  const iconButtonStyle: React.CSSProperties = {
-    padding: "4px",
-    backgroundColor: theme.colors.surface,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius,
-    color: theme.colors.text,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "28px",
-    height: "28px",
-    fontSize: "14px",
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: "4px 8px",
-    backgroundColor: theme.colors.surface,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius,
-    color: theme.colors.text,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "13px",
-  };
-
-  const searchStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: "4px 8px",
-    fontSize: "13px",
-    width: "180px",
-  };
-
-  const settingsMenuStyle: React.CSSProperties = {
-    position: "fixed",
-    top: `${menuPosition.top}px`,
-    left: `${menuPosition.left - 180 + menuPosition.width}px`, // Align right edge with button
-    backgroundColor: theme.colors.dark,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.borderRadius,
-    padding: "12px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-    zIndex: 9999,
-    minWidth: "200px",
-    marginTop: "4px",
-  };
-
-  const settingsButtonContainerStyle: React.CSSProperties = {
-    position: "relative",
-  };
-
-  const checkboxContainerStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  };
-
-  const compactCheckboxStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "13px",
+  // Placeholder search handler to pass down
+  const handleSearchChange = (term: string) => {
+    console.log("Search term:", term); // Implement actual search logic
   };
 
   return (
     <div ref={ref} style={commandBarStyle}>
       {/* Main Toolbar Row */}
       <div style={rowStyle}>
-        {/* View Mode Toggle */}
-        <div style={sectionStyle}>
-          <ViewModeSwitch
-            viewMode={viewMode}
-            onChange={onViewModeChange}
-            data-view-mode-switch
-          />
-        </div>
-
-        {/* Tree Controls */}
-        <div style={sectionStyle}>
-          <button 
-            style={iconButtonStyle}
-            onClick={() => onExpandCollapseAll(true)}
-            title="Expand All"
-          >
-            <span>+</span>
-          </button>
-          <button 
-            style={iconButtonStyle}
-            onClick={() => onExpandCollapseAll(false)}
-            title="Collapse All"
-          >
-            <span>-</span>
-          </button>
-          
-          <StyledSelect
-            options={depthOptions}
-            value="all"
-            onChange={handleDepthChange}
-            variant="compact"
-            style={{ width: "60px" }}
-          />
-        </div>
-
-        {/* Search & Actions */}
-        <div style={lastSectionStyle}>
-          <input
-            type="text"
-            placeholder="Search..."
-            style={searchStyle}
-            onChange={handleSearch}
-          />
-
-          {/* Settings Menu Toggle */}
-          <div style={settingsButtonContainerStyle}>
-            <button 
-              ref={settingsButtonRef}
-              style={iconButtonStyle}
-              onClick={toggleSettingsMenu}
-              title="Settings"
-            >
-              <span>⚙️</span>
-            </button>
-          </div>
-          
-          {/* Settings Dropdown Menu - Rendered in Portal */}
-          {isSettingsMenuOpen && ReactDOM.createPortal(
-            <div 
-              id="settings-menu" 
-              style={settingsMenuStyle}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h4 style={{ margin: "0 0 8px 0", color: theme.colors.text, fontSize: "14px" }}>Display Options</h4>
-              <div style={checkboxContainerStyle}>
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showExtensions} 
-                    onChange={toggleShowExtensions}
-                    label=""
-                  />
-                  <span>Show Extensions</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={accumulateExtensions} 
-                    onChange={toggleAccumulateExtensions}
-                    label=""
-                  />
-                  <span>Accumulate Extensions</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showMachines} 
-                    onChange={toggleShowMachines}
-                    label=""
-                  />
-                  <span>Show Machines</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={showMachineMultiplier} 
-                    onChange={toggleShowMachineMultiplier}
-                    label=""
-                  />
-                  <span>Show Multiplier</span>
-                </div>
-                
-                <div style={compactCheckboxStyle}>
-                  <StyledCheckbox 
-                    checked={compactView} 
-                    onChange={toggleCompactView}
-                    label=""
-                  />
-                  <span>Compact View</span>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
-          
-          {onClearSavedData && (
-            <button
-              style={iconButtonStyle}
-              onClick={() => {
-                // Removed confirmation dialog - directly clear data
-                onClearSavedData();
-              }}
-              title="Clear Saved Data"
-            >
-              <span>🗑️</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Item Selection Section - Collapsible */}
-      <div style={{
-        display: isAddItemCollapsed ? 'none' : 'flex',
-        flexWrap: 'wrap',
-        gap: '8px',
-        alignItems: 'center',
-        padding: '4px 0',
-        borderTop: `1px solid ${theme.colors.dropdown.border}`,
-        marginTop: '2px',
-      }}>
-        {/* Item Selector */}
-        <StyledSelect
-          value={selectedItem}
-          onChange={handleItemSelect}
-          options={items}
-          placeholder="Select an Item"
-          style={{ 
-            minWidth: '150px', 
-            maxWidth: '250px', 
-            flex: '1 1 auto'
-          }}
-          renderOption={(option, isInDropdown) => (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              padding: '4px 8px',
-              backgroundColor: isInDropdown && option.id === selectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
-              borderRadius: theme.border.radius,
-            }}>
-              <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
-              {option.name}
-            </div>
-          )}
-          recentItems={recentItems}
+        <ViewTreeControls 
+           viewMode={viewMode}
+           onViewModeChange={onViewModeChange}
+           onExpandCollapseAll={onExpandCollapseAll}
         />
         
-        {/* Recipe Selector */}
-        <StyledSelect
-          value={selectedRecipe}
-          onChange={onRecipeSelect}
-          options={filteredRecipes}
-          placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
-          style={{ 
-            minWidth: '150px', 
-            maxWidth: '250px', 
-            flex: '1 1 auto',
-            opacity: selectedItem ? 1 : 0.7
-          }}
-          disabled={!selectedItem || filteredRecipes.length === 0}
-          renderOption={(option, isInDropdown) => (
-            <div 
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                padding: '4px 8px',
-                backgroundColor: isInDropdown && option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
-                borderRadius: theme.border.radius,
-              }}
-            >
-              <span style={{ fontWeight: 'bold' }}>{option.name}</span>
-            </div>
-          )}
+        {/* --- Render PlannerActions --- */}
+        <PlannerActions 
+          onSearchChange={handleSearchChange} // Pass placeholder or real handler
+          onClearSavedData={onClearSavedData}
+          // Pass settings props down
+          showExtensions={showExtensions}
+          onShowExtensionsChange={onShowExtensionsChange}
+          accumulateExtensions={accumulateExtensions}
+          onAccumulateExtensionsChange={onAccumulateExtensionsChange}
+          showMachines={showMachines}
+          onShowMachinesChange={onShowMachinesChange}
+          showMachineMultiplier={showMachineMultiplier}
+          onShowMachineMultiplierChange={onShowMachineMultiplierChange}
         />
-        
-        {/* Add Button */}
-        <button 
-          onClick={onCalculate}
-          style={{
-            ...buttonStyle,
-            backgroundColor: theme.colors.primary,
-            color: '#fff',
-            opacity: (selectedItem && selectedRecipe) ? 1 : 0.7,
-          }}
-          disabled={!selectedItem || !selectedRecipe}
-          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
-          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.primary)}
-        >
-          Add
-        </button>
       </div>
 
-      {/* Toggle button for collapsing/expanding item section - at bottom center */}
+      {/* Chain Creator Controls */}
+      <ChainCreatorControls 
+        items={items}
+        selectedItem={selectedItem}
+        onItemSelect={onItemSelect}
+        selectedRecipe={selectedRecipe}
+        onRecipeSelect={onRecipeSelect}
+        onCalculate={onCalculate}
+        recentItems={recentItems}
+        updateRecentItems={updateRecentItems}
+        isCollapsed={isAddItemCollapsed}
+        onToggleCollapse={toggleItemSection}
+      />
+
+      {/* Toggle button for collapsing/expanding item section */}
       <div 
         style={{
           position: 'absolute',

@@ -4,10 +4,11 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import ListNode from "./ListNode";
 import { Recipe, Item, DependencyNode } from "../../../types";
-import { getRecipesForItem, getItemById } from "../../../data";
 import { AccumulatedNode } from "../../../utils";
 import Icon from '../../../components/Icon';
 import { findNodeById, findParentNode } from "../../../utils/treeUtils";
+import { useGroupedAccumulatedItems, GroupedItem } from "../hooks/useGroupedAccumulatedItems";
+import { useItemFilteringSorting } from "../hooks/useItemFilteringSorting";
 
 interface RefactoredAccumulatedViewProps {
   onRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -22,24 +23,10 @@ interface RefactoredAccumulatedViewProps {
   showMachineSection?: boolean;
   showMachineMultiplier?: boolean;
   onDelete?: (treeId: string) => void;
-  accumulatedDependencies: Record<string, AccumulatedNode>;
   onDeleteTree?: (treeId: string) => void;
   onImportNode?: (nodeId: string) => void;
   nodeExtensionOverrides?: Record<string, boolean>;
   onToggleNodeExtensions?: (nodeId: string) => void;
-}
-
-interface GroupedItem {
-  itemId: string;
-  amount: number;
-  recipes: Recipe[];
-  recipeId: string;
-  isByproduct: boolean;
-  nodeIds: string[];
-  name?: string;
-  depth: number;
-  normalizedMachineCount: number;
-  isImport: boolean;
 }
 
 interface NodeMachineInfo {
@@ -61,32 +48,52 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
   showMachineSection = true,
   showMachineMultiplier = false,
   onDelete,
-  accumulatedDependencies,
   onDeleteTree,
   onImportNode,
   nodeExtensionOverrides,
   onToggleNodeExtensions
 }) => {
-  const dependencies = useSelector((state: RootState) => state.dependencies);
+  const dependenciesState = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
-  const [groupedItems, setGroupedItems] = useState<GroupedItem[]>([]);
-  const [itemsMap, setItemsMap] = useState<Record<string, Item>>({});
-  const [recipesMap, setRecipesMap] = useState<Record<string, Recipe[]>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "amount" | "depth">("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [showByproducts, setShowByproducts] = useState(true);
-  const [showRawMaterials, setShowRawMaterials] = useState(true);
-  const [showIntermediates, setShowIntermediates] = useState(true);
+  const accumulatedDependencies = dependenciesState.accumulatedDependencies;
+
+  const { 
+    groupedItems, 
+    recipesMap,
+    isLoading 
+  } = useGroupedAccumulatedItems({
+    accumulatedDependencies,
+    dependenciesState,
+    recipeSelections,
+    showExtensions,
+    accumulateExtensions,
+    machineCountMap,
+    machineMultiplierMap,
+  });
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    sortBy,
+    setSortBy,
+    sortDirection,
+    setSortDirection,
+    showByproducts,
+    setShowByproducts,
+    showRawMaterials,
+    setShowRawMaterials,
+    showIntermediates,
+    setShowIntermediates,
+    getFilteredAndSortedItems,
+  } = useItemFilteringSorting();
+
   const [showMachines, setShowMachines] = useState(true);
   const [compactView, setCompactView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Scroll to a specific node when clicked
   const scrollToNode = (nodeId: string) => {
-    if (!dependencies.dependencyTrees || Object.keys(dependencies.dependencyTrees).length === 0) return;
+    if (!dependenciesState.dependencyTrees || Object.keys(dependenciesState.dependencyTrees).length === 0) return;
     
     // Find the clicked node in any tree
     const clickedNode = findNodeById(dependencies.dependencyTrees[Object.keys(dependencies.dependencyTrees)[0]], nodeId);
@@ -127,141 +134,15 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
     }
   };
 
-  // Process the dependency tree to create grouped items
-  useEffect(() => {
-    const processTree = async () => {
-      if (!dependencies.accumulatedDependencies) return;
-      
-      const grouped: Record<string, GroupedItem> = {};
-      const itemIds = new Set<string>();
-      const newRecipeMap: Record<string, Recipe[]> = {};
-      
-      // First pass: collect all items and their total amounts
-      Object.entries(dependencies.accumulatedDependencies).forEach(([nodeId, node]) => {
-        // Skip extension nodes if not showing extensions or not accumulating them
-        if (node.isExtension && (!showExtensions || !accumulateExtensions)) {
-          return;
-        }
-        
-        // Skip import nodes to avoid double-counting
-        if (node.isImport) {
-          return;
-        }
-        
-        const itemId = node.itemId;
-        itemIds.add(itemId);
-        
-        if (!grouped[itemId]) {
-          grouped[itemId] = {
-            itemId,
-            amount: 0,
-            recipes: [],
-            recipeId: node.recipeId,
-            isByproduct: node.isByproduct || false,
-            nodeIds: [],
-            name: node.name,
-            depth: node.depth || 0,
-            normalizedMachineCount: 0,
-            isImport: node.isImport || false
-          };
-        }
-        
-        // Add this node's contribution
-        grouped[itemId].amount += node.amount;
-        grouped[itemId].nodeIds.push(nodeId);
-        
-        // Update the normalized machine count
-        const machineCount = machineCountMap[nodeId] || 0;
-        const multiplier = machineMultiplierMap[nodeId] || 1;
-        grouped[itemId].normalizedMachineCount += machineCount * multiplier;
-      });
-      
-      // Fetch all item details and recipes
-      const recipePromises: Promise<Recipe[]>[] = [];
-      const namePromises: Promise<Item | null>[] = [];
-      
-      itemIds.forEach(itemId => {
-        recipePromises.push(getRecipesForItem(itemId));
-        namePromises.push(getItemById(itemId).then(item => item || null));
-      });
-      
-      const recipes = await Promise.all(recipePromises);
-      const items = await Promise.all(namePromises);
-      
-      // Create item and recipe maps
-      const newItemsMap: Record<string, Item> = {};
-      
-      items.forEach((item, index) => {
-        if (item) {
-          const itemId = item.id;
-          newItemsMap[itemId] = item;
-          newRecipeMap[itemId] = recipes[index] || [];
-          
-          if (grouped[itemId]) {
-            grouped[itemId].name = item.name;
-            grouped[itemId].recipes = recipes[index] || [];
-          }
-        }
-      });
-      
-      setItemsMap(newItemsMap);
-      setRecipesMap(newRecipeMap);
-      setGroupedItems(Object.values(grouped));
-      setIsLoading(false);
-    };
-    
-    processTree();
-  }, [
-    dependencies.accumulatedDependencies, 
-    showExtensions, 
-    accumulateExtensions, 
-    machineCountMap, 
-    machineMultiplierMap
-  ]);
+  if (isLoading) {
+    return <div>Loading accumulated resources...</div>;
+  }
 
-  // Filter and sort the grouped items
-  const getFilteredAndSortedItems = () => {
-    return groupedItems
-      .filter(item => {
-        // Apply search filter
-        const nameMatch = item.name?.toLowerCase().includes(searchTerm.toLowerCase());
-        if (searchTerm && !nameMatch) return false;
-        
-        // Apply type filters
-        if (item.isByproduct && !showByproducts) return false;
-        
-        // Determine if it's a raw material (no recipe)
-        const isRawMaterial = !item.recipes || item.recipes.length === 0;
-        if (isRawMaterial && !showRawMaterials) return false;
-        
-        // Determine if it's an intermediate product
-        const isIntermediate = !item.isByproduct && !isRawMaterial;
-        if (isIntermediate && !showIntermediates) return false;
-        
-        return true;
-      })
-      .sort((a, b) => {
-        // Apply sorting
-        if (sortBy === "name") {
-          return sortDirection === "asc" 
-            ? (a.name || "").localeCompare(b.name || "")
-            : (b.name || "").localeCompare(a.name || "");
-        } else if (sortBy === "amount") {
-          return sortDirection === "asc" 
-            ? a.amount - b.amount
-            : b.amount - a.amount;
-        } else if (sortBy === "depth") {
-          return sortDirection === "asc" 
-            ? a.depth - b.depth
-            : b.depth - a.depth;
-        }
-        return 0;
-      });
-  };
+  const finalItemsToRender = getFilteredAndSortedItems(groupedItems);
 
   return (
     <div ref={containerRef} style={{ padding: "4px" }}>
-      {getFilteredAndSortedItems().map((item, index) => {
+      {finalItemsToRender.map((item, index) => {
         // Use the actual nodeId from the dependency tree
         const nodeId = item.nodeIds[0];
         const key = `${item.itemId}-${item.recipeId || "default"}`;
