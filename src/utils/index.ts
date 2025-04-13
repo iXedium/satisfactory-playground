@@ -15,3 +15,4 @@ export {
   traverseVisibleNodes 
 } from './nodeReferenceUtils';
 export * from './treeDiffing'; 
+export * from './treeUtils';

@@ -7,6 +7,7 @@ import { Recipe, Item, DependencyNode } from "../../../types";
 import { getRecipesForItem, getItemById } from "../../../data";
 import { AccumulatedNode } from "../../../utils";
 import Icon from '../../../components/Icon';
+import { findNodeById, findParentNode } from "../../../utils/treeUtils";
 
 interface RefactoredAccumulatedViewProps {
   onRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -83,67 +84,16 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Find a node in any tree by its unique ID
-  const findNodeInAllTrees = (nodeId: string): DependencyNode | null => {
-    if (!dependencies.dependencyTrees) return null;
-
-    for (const treeId in dependencies.dependencyTrees) {
-      const found = findNodeById(dependencies.dependencyTrees[treeId], nodeId);
-      if (found) return found;
-    }
-    return null;
-  };
-
-  // Find the parent node and tree containing the node with the given ID
-  const findParentInAllTrees = (nodeId: string): { tree: DependencyNode, node: DependencyNode } | null => {
-    if (!dependencies.dependencyTrees) return null;
-
-    for (const treeId in dependencies.dependencyTrees) {
-      const tree = dependencies.dependencyTrees[treeId];
-      const foundParent = findParentNode(tree, nodeId);
-      if (foundParent) return { tree, node: foundParent };
-    }
-    return null;
-  };
-
-  // Find a node in a tree by its unique ID
-  const findNodeById = (tree: DependencyNode, id: string): DependencyNode | null => {
-    if (tree.uniqueId === id) return tree;
-
-    if (tree.children) {
-      for (const child of tree.children) {
-        const found = findNodeById(child, id);
-        if (found) return found;
-      }
-    }
-    
-    return null;
-  };
-
-  // Find the parent node that contains the child with the given target ID
-  const findParentNode = (tree: DependencyNode, targetId: string): DependencyNode | null => {
-    if (tree.children) {
-      for (const child of tree.children) {
-        if (child.uniqueId === targetId) {
-          return tree;
-        }
-        const found = findParentNode(child, targetId);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
   // Scroll to a specific node when clicked
   const scrollToNode = (nodeId: string) => {
     if (!dependencies.dependencyTrees || Object.keys(dependencies.dependencyTrees).length === 0) return;
     
     // Find the clicked node in any tree
-    const clickedNode = findNodeInAllTrees(nodeId);
+    const clickedNode = findNodeById(dependencies.dependencyTrees[Object.keys(dependencies.dependencyTrees)[0]], nodeId);
     if (!clickedNode) return;
     
     // Find the parent that produces this item
-    const parentResult = findParentInAllTrees(nodeId);
+    const parentResult = findParentNode(dependencies.dependencyTrees[Object.keys(dependencies.dependencyTrees)[0]], nodeId);
     if (!parentResult) return;
     
     const parentNode = parentResult.node;
