@@ -2,18 +2,24 @@ import { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
 import { getRecipeById } from '../../../data';
-import { DependencyNode, Recipe, NodesState } from '../../../types';
+import { DependencyNode } from '../../../types';
 import { 
   setDependencies, 
   setRecipeSelection 
 } from '../store';
-import { calculateDependencyTree, calculateAccumulatedFromTree } from '../../../utils';
+import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
+
+interface DependencySliceStateForCalc {
+  dependencyTrees: Record<string, DependencyNode>;
+  accumulatedDependencies: Record<string, AccumulatedNode>; 
+  errors: unknown[]; // Replace any[] with unknown[]
+}
 
 interface PlannerTreeCalculationProps {
   selectedItem: string;
   selectedRecipe: string;
   recipeSelections: Record<string, string>;
-  dependencies: NodesState; // Contains dependencyTrees
+  dependencies: DependencySliceStateForCalc; // Use the local type
   excessMap: Record<string, number>;
   updateRecentItems: (itemId: string) => void;
   setMachineCountMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
