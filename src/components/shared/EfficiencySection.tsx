@@ -90,6 +90,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
           {/* Rate */}
           <RateDisplay 
             amount={amount}
+            excess={excess}
             isByproduct={isByproduct}
             isImport={isImport}
           />
