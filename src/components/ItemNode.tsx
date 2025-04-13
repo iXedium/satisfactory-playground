@@ -190,6 +190,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleOptimizeMachines = () => {
+    // Removed detailed logging
+
     if (machine && selectedRecipeId && recipes && nominalRate > 0) {
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
@@ -197,29 +199,32 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         const neededAmount = amount + localExcess;
         const exactMachines = neededAmount / (nominalRate * localMachineMultiplier);
 
-        // Use floor to get the highest integer count that is <= 100% efficiency
-        // Ensure a minimum of 1 machine
-        const optimalMachines = Math.max(1, Math.floor(exactMachines));
+        // Use ceil to get the lowest integer count that is >= 100% efficiency
+        // This ensures the calculated efficiency is <= 100%
+        const optimalMachines = Math.max(1, Math.ceil(exactMachines)); 
+
+        // Removed calculation log
 
         setLocalMachineCount(optimalMachines);
         onMachineCountChange?.(optimalMachines);
+      } else {
+         // This case should technically not be reachable if the outer 'if' passed
+         console.warn('[Optimize Error] Recipe not found inside if block.'); // Keep this warn
       }
+    } else {
+      // Keep the failure log
+      console.warn('[Optimize Check Fail] Condition not met. Values:', { 
+          machine: !!machine, 
+          selectedRecipeId: !!selectedRecipeId, 
+          recipes: recipes && recipes.length > 0, 
+          nominalRatePositive: nominalRate > 0 
+      });
     }
   };
 
   if (!item) return null;
 
-  // Development mode test button
-  const showTestButton = process.env.NODE_ENV === 'development';
-  
-  const testExcessCascade = () => {
-    console.debug(`[EXCESS TEST] Testing excess cascade for node ${itemId}`);
-    const testExcess = localExcess + 5; // Add 5 to current excess
-    console.debug(`[EXCESS TEST] Changing excess from ${localExcess} to ${testExcess}`);
-    handleExcessChange(testExcess);
-  };
-
-  return (
+   return (
     <div
       style={{
         display: "flex",

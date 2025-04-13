@@ -83,7 +83,7 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
           e.stopPropagation();
           copyEfficiencyValue();
         }}
-        title={`Efficiency: ${(efficiency / 100).toFixed(4)}`}
+        title={`Efficiency: ${(efficiency / 100).toFixed(6)}`}
       >
         {efficiency.toFixed(2)}%
         {showTooltip && (

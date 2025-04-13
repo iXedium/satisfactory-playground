@@ -24,10 +24,9 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
+      minHeight: '100vh',
       width: '100%',
       position: 'relative',
-      overflow: 'hidden',
       ...containerStyle
     }}>
       <div style={{
