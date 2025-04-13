@@ -9,6 +9,7 @@ import Icon from '../../../components/Icon';
 import { findNodeById, findParentNode } from "../../../utils/treeUtils";
 import { useGroupedAccumulatedItems, GroupedItem } from "../hooks/useGroupedAccumulatedItems";
 import { useItemFilteringSorting } from "../hooks/useItemFilteringSorting";
+import AccumulatedViewControls from "./AccumulatedViewControls";
 
 interface RefactoredAccumulatedViewProps {
   onRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -87,8 +88,6 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
     getFilteredAndSortedItems,
   } = useItemFilteringSorting();
 
-  const [showMachines, setShowMachines] = useState(true);
-  const [compactView, setCompactView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -96,11 +95,11 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
     if (!dependenciesState.dependencyTrees || Object.keys(dependenciesState.dependencyTrees).length === 0) return;
     
     // Find the clicked node in any tree
-    const clickedNode = findNodeById(dependencies.dependencyTrees[Object.keys(dependencies.dependencyTrees)[0]], nodeId);
+    const clickedNode = findNodeById(dependenciesState.dependencyTrees[Object.keys(dependenciesState.dependencyTrees)[0]], nodeId);
     if (!clickedNode) return;
     
     // Find the parent that produces this item
-    const parentResult = findParentNode(dependencies.dependencyTrees[Object.keys(dependencies.dependencyTrees)[0]], nodeId);
+    const parentResult = findParentNode(dependenciesState.dependencyTrees[Object.keys(dependenciesState.dependencyTrees)[0]], nodeId);
     if (!parentResult) return;
     
     const parentNode = parentResult.node;
@@ -142,6 +141,21 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
 
   return (
     <div ref={containerRef} style={{ padding: "4px" }}>
+      <AccumulatedViewControls 
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        sortDirection={sortDirection}
+        onSortDirectionChange={setSortDirection}
+        showByproducts={showByproducts}
+        onShowByproductsChange={setShowByproducts}
+        showRawMaterials={showRawMaterials}
+        onShowRawMaterialsChange={setShowRawMaterials}
+        showIntermediates={showIntermediates}
+        onShowIntermediatesChange={setShowIntermediates}
+      />
+      
       {finalItemsToRender.map((item, index) => {
         // Use the actual nodeId from the dependency tree
         const nodeId = item.nodeIds[0];
@@ -169,8 +183,8 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
               itemId={item.itemId}
               amount={item.amount}
               isRoot={item.nodeIds.some(id => {
-                for (const treeId in dependencies.dependencyTrees) {
-                  if (id === dependencies.dependencyTrees[treeId].uniqueId) {
+                for (const treeId in dependenciesState.dependencyTrees) {
+                  if (id === dependenciesState.dependencyTrees[treeId].uniqueId) {
                     return true;
                   }
                 }
