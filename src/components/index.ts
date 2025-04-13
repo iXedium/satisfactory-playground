@@ -1,4 +1,4 @@
-export {default as RefactoredCommandBar} from './RefactoredCommandBar';
+export * from './CommandBar';
 export * from './ItemSelect';
 export * from './Icon';
 export * from './DropdownPortal';

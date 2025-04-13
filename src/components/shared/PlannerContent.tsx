@@ -1,10 +1,8 @@
 import React, { RefObject } from 'react';
 import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
-import { theme } from '../../styles/theme';
 import { DependencyNode } from '../../types';
-import RefactoredAccumulatedView from '../../features/factory-planner/components/RefactoredAccumulatedView';
+import { AccumulatedResourceView } from "../../features/factory-planner/components";
 import TreeViewContainer from './TreeViewContainer';
-import DependencyTree from '../../features/factory-planner/components/DependencyTree';
 
 interface PlannerContentProps {
   viewMode: 'tree' | 'accumulated';
@@ -91,7 +89,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
           handleNodeUpdate={handleNodeUpdate}
         />
       ) : (
-        <RefactoredAccumulatedView
+        <AccumulatedResourceView
           onRecipeChange={handleTreeRecipeChange}
           onExcessChange={handleExcessChange}
           excessMap={excessMap}

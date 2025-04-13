@@ -47,7 +47,7 @@ interface NodeMachineInfo {
   multiplier: number;
 }
 
-const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
+const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
   onRecipeChange,
   onExcessChange,
   excessMap,
@@ -374,4 +374,4 @@ const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
   );
 };
 
-export default RefactoredAccumulatedView; 
+export { AccumulatedResourceView }; 

@@ -50,7 +50,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
 - `Icon.tsx`: Displays item/recipe icons using the sprite sheet (`public/icons.webp`).
 - `ItemSelect.tsx`: A reusable dropdown component for selecting items.
 - `RecipeSelect.tsx`: A reusable dropdown component for selecting recipes.
-- `RefactoredCommandBar.tsx`: The main command bar interface for the application.
+- `CommandBar.tsx`: The main command bar interface for the application.
 - `ViewModeSwitch.tsx`: Component to switch between different application view modes.
 - `index.ts`: Bundles and exports components from `src/components/` (including re-exporting from `shared/`).
 
@@ -73,8 +73,8 @@ Contains code organized by application feature domain.
         - `DependencyTree.tsx`: Renders the main dependency tree structure.
         - `ItemNode.tsx`: Component representing a single item node within the tree.
         - `ListNode.tsx`: Component representing the list view node (alternative to tree view).
-        - `RefactoredAccumulatedView.tsx`: Displays the accumulated resource view.
-        - `RefactoredDependencyTester.tsx`: Component potentially used for testing or displaying dependency logic.
+        - `AccumulatedResourceView.tsx`: Displays the accumulated resource view.
+        - `FactoryPlanner.tsx`: Component potentially used for testing or displaying dependency logic.
         - `TreeNode.tsx`: Component representing a generic node in the tree view (might wrap `ItemNode`).
         - `index.ts`: Bundles and exports components from this directory.
     - `hooks/`: Contains React hooks specific to the factory planner logic.

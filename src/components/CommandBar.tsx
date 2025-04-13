@@ -1,8 +1,6 @@
-import React, { forwardRef, ForwardRefRenderFunction, useState, useRef, useEffect, useImperativeHandle } from "react";
+import React, { ForwardRefRenderFunction, useState, useRef, useEffect, forwardRef } from "react";
 import ReactDOM from "react-dom";
 import { Item, Recipe } from "../types";
-import ItemSelect from './ItemSelect'; 
-import RecipeSelect from './RecipeSelect'; 
 import ViewModeSwitch from './ViewModeSwitch'; 
 import StyledSelect from "./shared/StyledSelect";
 import { theme } from "../styles/theme";
@@ -49,7 +47,7 @@ const depthOptions = [
 /**
  * The refactored command bar component
  */
-const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
+const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
   {
     items,
     selectedItem,
@@ -532,4 +530,4 @@ const RefactoredCommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarP
   );
 };
 
-export default forwardRef(RefactoredCommandBar); 
+export default forwardRef(CommandBar); 

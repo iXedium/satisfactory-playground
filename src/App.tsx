@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import RefactoredDependencyTester from "./features/factory-planner/components/RefactoredDependencyTester";
+import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner";
 import "./styles/App.css";
 import { populateDexie } from "./data/dexieInit";
 import { injectThemeVariables } from './styles/theme';
@@ -106,7 +106,7 @@ const App: React.FC = () => {
   // Ready state - render the main application
   return (
     <div>
-      <RefactoredDependencyTester />
+      <FactoryPlanner />
     </div>
   );
 };

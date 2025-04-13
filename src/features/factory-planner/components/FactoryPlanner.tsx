@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { RefactoredCommandBar } from "../../../components"; 
+import CommandBar from "../../../components/CommandBar"; 
 import { useFactoryPlanner } from "../hooks/useFactoryPlanner";
 import FactoryPlannerLayout from "../../../components/shared/FactoryPlannerLayout";
 import PlannerContent from "../../../components/shared/PlannerContent";
@@ -8,7 +8,7 @@ import PlannerContent from "../../../components/shared/PlannerContent";
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const RefactoredDependencyTester: React.FC = () => {
+const FactoryPlanner: React.FC = () => {
   const {
     // State
     dependencies,
@@ -60,7 +60,7 @@ const RefactoredDependencyTester: React.FC = () => {
   return (
     <FactoryPlannerLayout
       commandBar={
-        <RefactoredCommandBar
+        <CommandBar
           ref={commandBarRef}
           items={items}
           selectedItem={selectedItem}
@@ -115,4 +115,4 @@ const RefactoredDependencyTester: React.FC = () => {
   );
 };
 
-export default RefactoredDependencyTester; 
+export default FactoryPlanner; 
