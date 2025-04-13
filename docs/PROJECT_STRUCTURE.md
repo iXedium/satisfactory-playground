@@ -2,6 +2,141 @@
 
 This document outlines the structure of the Satisfactory Playground project.
 
+## File Structure Schematic
+
+```
+.
+├── docs/
+│   ├── PROJECT_STRUCTURE.md
+│   └── import-export-redesign.md
+├── public/
+│   ├── data.json
+│   ├── icons.webp
+│   └── vite.svg
+├── src/
+│   ├── assets/
+│   │   └── react.svg
+│   ├── components/
+│   │   ├── shared/
+│   │   │   ├── ActionButtons.tsx
+│   │   │   ├── AccumulatedViewControls.tsx
+│   │   │   ├── CategorySection.tsx
+│   │   │   ├── ChainCreatorControls.tsx
+│   │   │   ├── DisplayOptions.tsx
+│   │   │   ├── EfficiencyIndicator.tsx
+│   │   │   ├── EfficiencySection.tsx
+│   │   │   ├── ExcessControls.tsx
+│   │   │   ├── FactoryPlannerLayout.tsx
+│   │   │   ├── ImportExport.tsx
+│   │   │   ├── ItemDetails.tsx
+│   │   │   ├── ItemNodeButtons.tsx
+│   │   │   ├── MachineControls.tsx
+│   │   │   ├── MachineDetails.tsx
+│   │   │   ├── PlannerActions.tsx
+│   │   │   ├── PlannerContent.tsx
+│   │   │   ├── RateDisplay.tsx
+│   │   │   ├── ResourceSummary.tsx
+│   │   │   ├── SearchSection.tsx
+│   │   │   ├── SettingsMenu.tsx
+│   │   │   ├── SortingControls.tsx
+│   │   │   ├── StyledCheckbox.tsx
+│   │   │   ├── StyledInput.tsx
+│   │   │   ├── StyledSelect.tsx
+│   │   │   ├── StyledSwitch.tsx
+│   │   │   ├── TreeNodeManager.tsx
+│   │   │   ├── TreeViewContainer.tsx
+│   │   │   ├── TreeViewManager.tsx
+│   │   │   ├── ViewModeToggle.tsx
+│   │   │   ├── ViewOptionsPanel.tsx
+│   │   │   ├── ViewTreeControls.tsx
+│   │   │   └── index.ts
+│   │   ├── DropdownPortal.tsx
+│   │   ├── Icon.tsx
+│   │   ├── ItemSelect.tsx
+│   │   ├── RecipeSelect.tsx
+│   │   ├── CommandBar.tsx
+│   │   ├── ViewModeSwitch.tsx
+│   │   └── index.ts
+│   ├── data/
+│   │   ├── dataLoader.ts
+│   │   ├── dbQueries.ts
+│   │   ├── dexieDB.ts
+│   │   ├── dexieInit.ts
+│   │   └── index.ts
+│   ├── features/
+│   │   └── factory-planner/
+│   │       ├── components/
+│   │       │   ├── AccumulatedResourceView.tsx
+│   │       │   ├── AccumulatedViewControls.tsx
+│   │       │   ├── DependencyTree.tsx
+│   │       │   ├── FactoryPlanner.tsx
+│   │       │   ├── ItemNode.tsx
+│   │       │   ├── ListNode.tsx
+│   │       │   ├── TreeNode.tsx
+│   │       │   └── index.ts
+│   │       ├── hooks/
+│   │       │   ├── useFactoryPlanner.ts
+│   │       │   ├── useGroupedAccumulatedItems.ts
+│   │       │   ├── useItemFilteringSorting.ts
+│   │       │   ├── usePlannerDataManagement.ts
+│   │       │   ├── usePlannerDebugTools.ts
+│   │       │   ├── usePlannerDisplayOptions.ts
+│   │       │   ├── usePlannerExcessHandling.ts
+│   │       │   ├── usePlannerImportExport.ts
+│   │       │   ├── usePlannerItemSelection.ts
+│   │       │   ├── usePlannerNodeInteractions.ts
+│   │       │   ├── usePlannerNodeState.ts
+│   │       │   ├── usePlannerPersistence.ts
+│   │       │   ├── usePlannerRecipeManagement.ts
+│   │       │   └── usePlannerTreeCalculation.ts
+│   │       └── store/
+│   │           ├── dependencySlice.ts
+│   │           ├── importExportLogic.ts
+│   │           ├── productionUpdateLogic.ts
+│   │           ├── recipeSelectionsSlice.ts
+│   │           ├── treeUiSlice.ts
+│   │           └── index.ts
+│   ├── hooks/
+│   │   └── (empty)
+│   ├── store/
+│   │   ├── dataSlice.ts
+│   │   └── index.ts
+│   ├── styles/
+│   │   ├── App.css
+│   │   ├── constants.ts
+│   │   ├── iconStyles.ts
+│   │   ├── itemSelectStyles.ts
+│   │   ├── recipeSelectStyles.ts
+│   │   └── theme.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── utils/
+│   │   ├── calculateAccumulatedFromTree.ts
+│   │   ├── calculateDependencyTree.ts
+│   │   ├── importNodeLogic.ts
+│   │   ├── nodeReferenceUtils.ts
+│   │   ├── treeCalculationCache.ts
+│   │   ├── treeDiffing.ts
+│   │   ├── treeUtils.ts
+│   │   └── index.ts
+│   ├── App.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   └── vite-env.d.ts
+├── .gitignore
+├── eslint.config.js
+├── index.html
+├── jest.config.js
+├── launch-app.bat
+├── package.json
+├── README.md
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── yarn.lock
+```
+
 ## `src/`
 
 The main source code directory.
@@ -17,6 +152,11 @@ Contains static assets primarily used during development or build time.
 Contains **globally reusable UI components** forming the application's UI toolkit. These components are generally presentational and not tied to specific application features.
 
 - **`src/components/shared/`**: Contains smaller, fundamental UI pieces often used to compose larger components within `src/components/`.
+    - `AccumulatedViewControls.tsx`: **NEW** - Renders controls (search, sort, filters) for the Accumulated Resource View.
+    - `ChainCreatorControls.tsx`: **NEW** - Renders item/recipe selectors and the "Add" button for creating new production chains.
+    - `PlannerActions.tsx`: **NEW** - Renders search input, settings menu button, and clear data button for the main toolbar.
+    - `SettingsMenu.tsx`: **NEW** - Renders the settings gear button and the dropdown menu with display options checkboxes.
+    - `ViewTreeControls.tsx`: **NEW** - Renders view mode switch, expand/collapse buttons, and depth selector for the main toolbar.
     - `ActionButtons.tsx`: Buttons for primary actions within a section.
     - `CategorySection.tsx`: Component for displaying item/recipe categories.
     - `ChainCreator.tsx`: UI for initiating a new production chain.
@@ -46,11 +186,11 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `ViewModeToggle.tsx`: Toggle button for switching view modes.
     - `ViewOptionsPanel.tsx`: Panel containing various view options.
     - `index.ts`: Bundles and exports components from this directory.
+- `CommandBar.tsx`: **REFACTORED** - The main command bar interface for the application. Now acts primarily as a layout container, assembling smaller shared components (`ViewTreeControls`, `PlannerActions`, `ChainCreatorControls`).
 - `DropdownPortal.tsx`: Utility component for rendering dropdowns in a portal.
 - `Icon.tsx`: Displays item/recipe icons using the sprite sheet (`public/icons.webp`).
 - `ItemSelect.tsx`: A reusable dropdown component for selecting items.
 - `RecipeSelect.tsx`: A reusable dropdown component for selecting recipes.
-- `CommandBar.tsx`: The main command bar interface for the application.
 - `ViewModeSwitch.tsx`: Component to switch between different application view modes.
 - `index.ts`: Bundles and exports components from `src/components/` (including re-exporting from `shared/`).
 
@@ -70,15 +210,28 @@ Contains code organized by application feature domain.
 
 - **`src/features/factory-planner/`**: Houses the core logic and UI for the **factory planning feature**.
     - `components/`: Contains React components **specifically related to the factory planner feature**.
+        - `AccumulatedResourceView.tsx`: **REFACTORED** - Displays the aggregated list of required resources. Now utilizes `useGroupedAccumulatedItems` and `useItemFilteringSorting` hooks for data processing and filtering/sorting logic, and renders `AccumulatedViewControls`.
         - `DependencyTree.tsx`: Renders the main dependency tree structure.
         - `ItemNode.tsx`: Component representing a single item node within the tree.
         - `ListNode.tsx`: Component representing the list view node (alternative to tree view).
-        - `AccumulatedResourceView.tsx`: Displays the accumulated resource view.
         - `FactoryPlanner.tsx`: Component potentially used for testing or displaying dependency logic.
         - `TreeNode.tsx`: Component representing a generic node in the tree view (might wrap `ItemNode`).
         - `index.ts`: Bundles and exports components from this directory.
     - `hooks/`: Contains React hooks specific to the factory planner logic.
-        - `useFactoryPlanner.ts`: The main hook encapsulating complex state logic for the factory planner feature.
+        - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state.
+        - `useGroupedAccumulatedItems.ts`: **NEW** - Hook responsible for processing `accumulatedDependencies` from Redux, fetching related item/recipe data, and grouping items for display in the `AccumulatedResourceView`.
+        - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
+        - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
+        - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
+        - `usePlannerDisplayOptions.ts`: **NEW** - Hook managing state and persistence for UI display options (view mode, show extensions, etc.).
+        - `usePlannerExcessHandling.ts`: **NEW** - Hook managing the complex logic for handling changes to node excess production, including dispatching updates and potentially managing UI refresh triggers.
+        - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees.
+        - `usePlannerItemSelection.ts`: **NEW** - Hook managing state related to selecting items/recipes for creating new production chains (item list, selections, recent items).
+        - `usePlannerNodeInteractions.ts`: **NEW** - Hook containing handlers for simple UI interactions with nodes (expand/collapse, machine count/multiplier changes, toggle extensions).
+        - `usePlannerNodeState.ts`: **NEW** - Hook managing local state overrides for individual nodes (excess map, machine maps, expanded nodes, extension overrides) and their persistence.
+        - `usePlannerPersistence.ts`: **NEW** - Hook responsible for the side effect of saving the main Redux state slices (`dependencies`, `recipeSelections`) to `localStorage`.
+        - `usePlannerRecipeManagement.ts`: **NEW** - Hook containing the handler for changing a recipe within an existing tree and triggering recalculation.
+        - `usePlannerTreeCalculation.ts`: **NEW** - Hook containing handlers for creating new production trees (`handleCalculate`, `handleCreateNewTree`) and generating tree IDs.
     - `store/`: Contains Redux Toolkit slices related to the factory planner state.
         - `dependencySlice.ts`: Manages the state of the dependency tree itself (nodes, connections, calculations). Likely the largest and most complex slice.
         - `recipeSelectionsSlice.ts`: Manages the state of selected recipes for nodes.
@@ -87,8 +240,7 @@ Contains code organized by application feature domain.
 
 ### `src/hooks/`
 
-Contains **globally reusable** custom React hooks (if any emerge that aren't feature-specific).
-*(Currently empty)*
+Contains **globally reusable** custom React hooks. *(Remains empty)*
 
 ### `src/store/`
 
@@ -119,10 +271,13 @@ Contains shared TypeScript type definitions and interfaces used across multiple 
 Contains general utility functions reusable across the application, often pure functions.
 
 - `calculateAccumulatedFromTree.ts`: Utility function to calculate accumulated resources based on a dependency tree.
-- `calculateDependencyTree.ts`: The core logic for calculating the production dependency tree based on inputs and recipes. Handles cycles, byproducts, etc.
+- `calculateDependencyTree.ts`: **REFACTORED** - The core logic for calculating the production dependency tree. Now delegates caching to `treeCalculationCache` and import node creation to `importNodeLogic`. Uses utilities from `treeUtils`.
+- `importNodeLogic.ts`: **NEW** - Contains helper functions specifically for creating import nodes (`createImportNode`) and managing their original children (`storeOriginalChildren`, `restoreOriginalChildren`).
 - `nodeReferenceUtils.ts`: Utility functions for working with node references, paths, or related data structures within the tree.
+- `treeCalculationCache.ts`: **NEW** - Manages the `Map`-based cache for memoizing `calculateDependencyTree` results.
 - `treeDiffing.ts`: Utility functions potentially used for comparing different versions of the dependency tree state.
-- `index.ts`: Bundles and exports utility functions from this directory.
+- `treeUtils.ts`: **NEW** - Consolidated helper functions for working with `DependencyNode` trees (e.g., `findNodeById`, `findParentNode`, `countNodes`, `getTreeDepth`).
+- `index.ts`: Bundles and exports utility functions from this directory. **UPDATED** to include exports from new util files.
 
 ### Root Files (`src/`)
 

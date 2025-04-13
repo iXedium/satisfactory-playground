@@ -16,3 +16,7 @@ export {
 } from './nodeReferenceUtils';
 export * from './treeDiffing'; 
 export * from './treeUtils';
+
+// Add exports for the new utility files
+export * from './treeCalculationCache';
+export * from './importNodeLogic';
