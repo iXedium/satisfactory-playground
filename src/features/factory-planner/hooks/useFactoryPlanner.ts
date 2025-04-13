@@ -297,7 +297,6 @@ export const useFactoryPlanner = () => {
       
       // Make sure the recipe is explicitly included in the root node
       tree.recipe = rootRecipe;
-      tree.selectedRecipeId = selectedRecipe;
       
       // Calculate accumulated values from the tree
       const accumulated = calculateAccumulatedFromTree(tree);
@@ -603,7 +602,7 @@ export const useFactoryPlanner = () => {
         amount: tree.amount,
         excess: tree.excess,
         hasRecipe: !!tree.recipe,
-        recipeId: tree.selectedRecipeId
+        recipeId: tree.recipe?.id
       });
       
       // Update the excess map for the tree's uniqueId as well to ensure consistency
@@ -639,7 +638,7 @@ export const useFactoryPlanner = () => {
           amount: node.amount,
           excess: node.excess,
           hasRecipe: !!node.recipe,
-          recipeId: node.selectedRecipeId,
+          recipeId: node.recipe?.id,
           hasChildren: node.children && node.children.length > 0
         });
         
@@ -890,26 +889,26 @@ export const useFactoryPlanner = () => {
   };
 
   // Create a new tree function
-  const handleCreateNewTree = (
+  const handleCreateNewTree = useCallback((
     itemId: string, 
     amount: number, 
     treeId: string = generateTreeId(itemId),
-    selectedRecipeId: string | null = null // Keep param but convert to recipe obj
+    recipeId: string | null = null 
   ) => {
-    console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, selectedRecipeId });
+    console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, recipeId });
     updateRecentItems(itemId);
     const calculate = async () => {
       try {
-        // Convert selectedRecipeId to recipe object if provided
-        const rootRecipe = selectedRecipeId ? await getRecipeById(selectedRecipeId) : null;
+        // Use the passed recipeId
+        const rootRecipe = recipeId ? await getRecipeById(recipeId) : null;
         
         const tree = await calculateDependencyTree(
           itemId,
           amount,
-          rootRecipe?.id ?? null, // Pass recipe ID if available
+          rootRecipe?.id ?? null,
           recipeSelections,
           0, [], '', excessMap, {},
-          dependencies.dependencyTrees // Pass existing trees
+          dependencies.dependencyTrees
         );
 
         if (!tree) {
@@ -917,7 +916,6 @@ export const useFactoryPlanner = () => {
           return;
         }
         
-        // If rootRecipe was provided, ensure it's set on the root node
         if (rootRecipe) {
           tree.recipe = rootRecipe;
         }
@@ -930,17 +928,14 @@ export const useFactoryPlanner = () => {
       }
     };
     calculate();
-  };
+  }, [dispatch, recipeSelections, excessMap, dependencies.dependencyTrees, updateRecentItems]);
 
   // Import a node function
-  const importNodeForTree = (nodeId: string) => {
+  const importNodeForTree = useCallback((nodeId: string) => {
     console.log(`Importing node ${nodeId}`);
-    
-    // Find the node in all trees
     let foundNode: DependencyNode | null = null;
     let foundTreeId = "";
     
-    // Find the node in all trees
     for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
       const node = findNodeById(tree, nodeId);
       if (node) {
@@ -961,10 +956,8 @@ export const useFactoryPlanner = () => {
       treeId: foundTreeId
     });
     
-    // Determine target tree ID
     let targetTreeId = "";
     
-    // Find a target tree that produces the same item and is not an import
     for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
       if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
         targetTreeId = treeId;
@@ -973,24 +966,16 @@ export const useFactoryPlanner = () => {
       }
     }
     
-    // If no existing tree found, create a new one
     if (targetTreeId === "") {
-      // Create a new root node for this item and add it to the tree
       const newTreeId = `${foundNode.id}-${Date.now()}`;
       console.log(`[IMPORT DEBUG] No existing tree found, creating new tree with ID: ${newTreeId}`);
-      
-      // Clone and create a new tree
-      handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.selectedRecipeId || null);
-      
-      // Set the target tree ID to the newly created tree
+      handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.recipe?.id || null);
       targetTreeId = newTreeId;
     }
     
     console.log(`[IMPORT DEBUG] Final target tree ID: ${targetTreeId}`);
-    
-    // Use the new import action
     handleImportNode(foundNode, targetTreeId, foundTreeId);
-  };
+  }, [dependencies.dependencyTrees, handleCreateNewTree, handleImportNode]);
 
   // Handle unimporting a node
   const handleUnimport = (nodeId: string) => {
