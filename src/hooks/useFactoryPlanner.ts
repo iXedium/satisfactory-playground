@@ -102,6 +102,27 @@ export const useFactoryPlanner = () => {
         setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
       }
       
+      // Load saved display options
+      const savedShowExtensions = localStorage.getItem('savedShowExtensions');
+      if (savedShowExtensions) {
+        setShowExtensions(JSON.parse(savedShowExtensions));
+      }
+      
+      const savedAccumulateExtensions = localStorage.getItem('savedAccumulateExtensions');
+      if (savedAccumulateExtensions) {
+        setAccumulateExtensions(JSON.parse(savedAccumulateExtensions));
+      }
+      
+      const savedShowMachines = localStorage.getItem('savedShowMachines');
+      if (savedShowMachines) {
+        setShowMachines(JSON.parse(savedShowMachines));
+      }
+      
+      const savedShowMachineMultiplier = localStorage.getItem('savedShowMachineMultiplier');
+      if (savedShowMachineMultiplier) {
+        setShowMachineMultiplier(JSON.parse(savedShowMachineMultiplier));
+      }
+
       // Load saved recent items
       const savedRecentItems = localStorage.getItem('savedRecentItems');
       if (savedRecentItems) {
@@ -188,6 +209,18 @@ export const useFactoryPlanner = () => {
       localStorage.removeItem('savedRecentItems');
     }
   }, [recentItems]);
+
+  // Save display options
+  useEffect(() => {
+    try {
+      localStorage.setItem('savedShowExtensions', JSON.stringify(showExtensions));
+      localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
+      localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
+      localStorage.setItem('savedShowMachineMultiplier', JSON.stringify(showMachineMultiplier));
+    } catch (error) {
+      console.error("Error saving display options:", error);
+    }
+  }, [showExtensions, accumulateExtensions, showMachines, showMachineMultiplier]);
 
   // Initial load of items from the database
   useEffect(() => {
@@ -916,6 +949,10 @@ export const useFactoryPlanner = () => {
     localStorage.removeItem('savedViewMode');
     localStorage.removeItem('savedExpandedNodes');
     localStorage.removeItem('savedNodeExtensionOverrides');
+    localStorage.removeItem('savedShowExtensions');
+    localStorage.removeItem('savedAccumulateExtensions');
+    localStorage.removeItem('savedShowMachines');
+    localStorage.removeItem('savedShowMachineMultiplier');
     // Keep recent items - don't remove from localStorage
     
     // Clear local state but keep recentItems
@@ -924,6 +961,10 @@ export const useFactoryPlanner = () => {
     setMachineMultiplierMap({});
     setExpandedNodes({});
     setNodeExtensionOverrides({});
+    setShowExtensions(false);
+    setAccumulateExtensions(true);
+    setShowMachines(true);
+    setShowMachineMultiplier(false);
     
     // Clear Redux state by loading empty data
     dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));

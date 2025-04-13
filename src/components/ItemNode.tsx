@@ -69,7 +69,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
-  const [localMachineMultiplier] = useState(machineMultiplier);
+  const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [efficiency, setEfficiency] = useState(100);
   const [nominalRate, setNominalRate] = useState(0);
@@ -92,6 +92,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       });
     }
   }, [selectedRecipeId]);
+
+  useEffect(() => {
+    setLocalMachineCount(machineCount);
+  }, [machineCount]);
+
+  useEffect(() => {
+    // Update local state when the multiplier prop changes
+    setLocalMachineMultiplier(machineMultiplier); 
+  }, [machineMultiplier]);
 
   // Calculate efficiency and nominal rate whenever relevant values change
   useEffect(() => {
@@ -181,14 +190,16 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleOptimizeMachines = () => {
-    if (machine && selectedRecipeId && recipes) {
+    if (machine && selectedRecipeId && recipes && nominalRate > 0) {
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
-        // Calculate optimal machine count for 100% efficiency
+        // Calculate the exact machine count needed for 100% efficiency (can be decimal)
         const neededAmount = amount + localExcess;
-        const optimalMachines = Math.ceil(
-          neededAmount / (nominalRate * localMachineMultiplier)
-        );
+        const exactMachines = neededAmount / (nominalRate * localMachineMultiplier);
+
+        // Use floor to get the highest integer count that is <= 100% efficiency
+        // Ensure a minimum of 1 machine
+        const optimalMachines = Math.max(1, Math.floor(exactMachines));
 
         setLocalMachineCount(optimalMachines);
         onMachineCountChange?.(optimalMachines);

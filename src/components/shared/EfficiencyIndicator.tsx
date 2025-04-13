@@ -83,7 +83,7 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
           e.stopPropagation();
           copyEfficiencyValue();
         }}
-        title="Click to copy decimal value"
+        title={`Efficiency: ${(efficiency / 100).toFixed(4)}`}
       >
         {efficiency.toFixed(2)}%
         {showTooltip && (
