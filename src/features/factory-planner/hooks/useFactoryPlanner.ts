@@ -9,7 +9,7 @@ import {
   loadSavedState, 
   setDependencies, 
   deleteTree, 
-  importNode,
+  importNodeAction,
   updateNodeProperties,
   unimportNode,
   updateTreeProduction
@@ -492,7 +492,7 @@ export const useFactoryPlanner = () => {
     }
     
     // Use the slice's action to maintain compatibility with existing code
-    dispatch(importNode({
+    dispatch(importNodeAction({
       nodeId: sourceNode.uniqueId,
       sourceTreeId,
       targetTreeId,
