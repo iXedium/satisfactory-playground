@@ -50,6 +50,7 @@ export const useFactoryPlanner = () => {
     setShowMachines,
     showMachineMultiplier,
     setShowMachineMultiplier,
+    clearStorage: clearDisplayOptionsStorage,
   } = usePlannerDisplayOptions();
   
   const {
@@ -63,6 +64,7 @@ export const useFactoryPlanner = () => {
     setExpandedNodes,
     nodeExtensionOverrides,
     setNodeExtensionOverrides,
+    clearStorage: clearNodeStateStorage,
   } = usePlannerNodeState();
   
   const {
@@ -75,6 +77,7 @@ export const useFactoryPlanner = () => {
     setIsAddItemCollapsed,
     recentItems,
     updateRecentItems,
+    clearStorage: clearItemSelectionStorage,
   } = usePlannerItemSelection();
 
   const {
@@ -126,21 +129,16 @@ export const useFactoryPlanner = () => {
     handleNodeUpdate,
     clearSavedData,
   } = usePlannerDataManagement({
-    setExcessMap,
-    setMachineCountMap,
-    setMachineMultiplierMap,
-    setExpandedNodes,
-    setNodeExtensionOverrides,
+    clearNodeStateStorage,
+    clearItemSelectionStorage,
+    clearDisplayOptionsStorage,
   });
-  
-  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
   
   const {
     handleExcessChange,
   } = usePlannerExcessHandling({
     dependencies,
     setExcessMap,
-    setForceUpdateCounter,
   });
   
   usePlannerDebugTools({
@@ -187,7 +185,6 @@ export const useFactoryPlanner = () => {
     nodeExtensionOverrides,
     isAddItemCollapsed,
     recentItems,
-    forceUpdateCounter,
 
     setSelectedItem,
     setSelectedRecipe,

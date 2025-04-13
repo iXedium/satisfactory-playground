@@ -1,4 +1,4 @@
-import { useState, useEffect, Dispatch, SetStateAction } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 
 export interface PlannerNodeState {
   excessMap: Record<string, number>;
@@ -11,6 +11,7 @@ export interface PlannerNodeState {
   setExpandedNodes: Dispatch<SetStateAction<Record<string, boolean>>>;
   nodeExtensionOverrides: Record<string, boolean>;
   setNodeExtensionOverrides: Dispatch<SetStateAction<Record<string, boolean>>>;
+  clearStorage: () => void;
 }
 
 export const usePlannerNodeState = (): PlannerNodeState => {
@@ -102,6 +103,16 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     }
   }, [expandedNodes, nodeExtensionOverrides]);
 
+  // Function to clear related localStorage items
+  const clearStorage = useCallback(() => {
+    localStorage.removeItem('savedExcessMap');
+    localStorage.removeItem('savedMachineCountMap');
+    localStorage.removeItem('savedMachineMultiplierMap');
+    localStorage.removeItem('savedExpandedNodes');
+    localStorage.removeItem('savedNodeExtensionOverrides');
+    console.log('[Persistence] Cleared node state from localStorage.');
+  }, []);
+
   return {
     excessMap,
     setExcessMap,
@@ -113,5 +124,6 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     setExpandedNodes,
     nodeExtensionOverrides,
     setNodeExtensionOverrides,
+    clearStorage,
   };
 }; 

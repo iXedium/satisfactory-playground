@@ -1,4 +1,4 @@
-import { useState, useEffect, Dispatch, SetStateAction } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 import { getComponents } from '../../../data';
 import { Item } from '../../../types';
 
@@ -12,6 +12,7 @@ export interface PlannerItemSelectionState {
   setIsAddItemCollapsed: Dispatch<SetStateAction<boolean>>;
   recentItems: string[];
   updateRecentItems: (itemId: string) => void;
+  clearStorage: () => void;
 }
 
 export const usePlannerItemSelection = (): PlannerItemSelectionState => {
@@ -52,13 +53,21 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
   }, [recentItems]);
 
   // Function to update recent items list
-  const updateRecentItems = (itemId: string) => {
+  const updateRecentItems = useCallback((itemId: string) => {
     setRecentItems(prev => {
       const filtered = prev.filter(id => id !== itemId);
       const updated = [itemId, ...filtered];
       return updated.slice(0, 10);
     });
-  };
+  }, []);
+
+  // Function to clear related localStorage items
+  const clearStorage = useCallback(() => {
+    localStorage.removeItem('savedRecentItems');
+    // Also clear the runtime state
+    setRecentItems([]); 
+    console.log('[Persistence] Cleared recent items from localStorage and state.');
+  }, []);
 
   return {
     items,
@@ -70,5 +79,6 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     setIsAddItemCollapsed,
     recentItems,
     updateRecentItems,
+    clearStorage,
   };
 }; 

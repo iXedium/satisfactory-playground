@@ -14,13 +14,11 @@ interface DependencySliceStateForExcess {
 interface PlannerExcessHandlingProps {
   dependencies: DependencySliceStateForExcess;
   setExcessMap: Dispatch<SetStateAction<Record<string, number>>>;
-  setForceUpdateCounter: Dispatch<SetStateAction<number>>;
 }
 
 export const usePlannerExcessHandling = ({
   dependencies,
   setExcessMap,
-  setForceUpdateCounter,
 }: PlannerExcessHandlingProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -32,10 +30,6 @@ export const usePlannerExcessHandling = ({
       console.log(`[SEQUENCE DEBUG] Step 2.1: Inside setExcessMap callback`);
       return { ...prevMap, [nodeId]: excess };
     });
-    
-    console.log(`[SEQUENCE DEBUG] Step 2.2: Waiting for state update to process`);
-    await new Promise(resolve => setTimeout(resolve, 0)); // Wait for next tick
-    console.log(`[SEQUENCE DEBUG] Step 2.3: State update processed`);
     
     console.log(`[SEQUENCE DEBUG] Step 3: Finding tree ID for node ${nodeId}`);
     
@@ -51,11 +45,6 @@ export const usePlannerExcessHandling = ({
       
       // Dispatch update based on the root node's uniqueId and the treeId
       dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess));
-      
-      console.log(`[SEQUENCE DEBUG] Step 7: Forcing UI refresh after state updates`);
-      setTimeout(() => {
-        setForceUpdateCounter(prev => prev + 1);
-      }, 50);
       
       return;
     }
@@ -85,13 +74,8 @@ export const usePlannerExcessHandling = ({
     
     // Dispatch update based on the specific node's uniqueId and its containing treeId
     dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
-    
-    console.log(`[SEQUENCE DEBUG] Step 7: Forcing UI refresh after state updates`);
-    setTimeout(() => {
-      setForceUpdateCounter(prev => prev + 1);
-    }, 50);
 
-  }, [dependencies.dependencyTrees, dispatch, setExcessMap, setForceUpdateCounter]);
+  }, [dependencies.dependencyTrees, dispatch, setExcessMap]);
 
   return {
     handleExcessChange,

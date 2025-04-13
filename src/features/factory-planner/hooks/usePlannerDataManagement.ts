@@ -10,20 +10,20 @@ import {
 } from '../store';
 
 interface PlannerDataManagementProps {
-  setExcessMap: Dispatch<SetStateAction<Record<string, number>>>;
-  setMachineCountMap: Dispatch<SetStateAction<Record<string, number>>>;
-  setMachineMultiplierMap: Dispatch<SetStateAction<Record<string, number>>>;
-  setExpandedNodes: Dispatch<SetStateAction<Record<string, boolean>>>;
-  setNodeExtensionOverrides: Dispatch<SetStateAction<Record<string, boolean>>>;
-  // Note: Does not need dependencies or recipeSelections state, only dispatch and setters
+  // Remove individual setters
+  // setExcessMap: Dispatch<SetStateAction<Record<string, number>>>;
+  // ...
+  // Add clearStorage functions from other hooks
+  clearNodeStateStorage: () => void;
+  clearItemSelectionStorage: () => void;
+  clearDisplayOptionsStorage: () => void;
 }
 
 export const usePlannerDataManagement = ({
-  setExcessMap,
-  setMachineCountMap,
-  setMachineMultiplierMap,
-  setExpandedNodes,
-  setNodeExtensionOverrides,
+  // Remove individual setters from destructuring
+  clearNodeStateStorage,
+  clearItemSelectionStorage,
+  clearDisplayOptionsStorage,
 }: PlannerDataManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -45,33 +45,26 @@ export const usePlannerDataManagement = ({
       return;
     }
     
-    // Clear local storage items managed by the specific hooks
-    localStorage.removeItem('savedDependencies'); // Managed by useFactoryPlanner
-    localStorage.removeItem('savedRecipeSelections'); // Managed by useFactoryPlanner
-    localStorage.removeItem('savedExcessMap'); // Managed by usePlannerNodeState
-    localStorage.removeItem('savedMachineCountMap'); // Managed by usePlannerNodeState
-    localStorage.removeItem('savedMachineMultiplierMap'); // Managed by usePlannerNodeState
-    localStorage.removeItem('savedExpandedNodes'); // Managed by usePlannerNodeState
-    localStorage.removeItem('savedNodeExtensionOverrides'); // Managed by usePlannerNodeState
-    // Recent items and display options have their own localStorage logic in their hooks
-    // We could potentially add clear functions to those hooks and call them here
-    // For now, we only clear the items explicitly managed elsewhere or here.
+    // Clear local storage items managed by Redux state persistence
+    localStorage.removeItem('savedDependencies'); 
+    localStorage.removeItem('savedRecipeSelections'); 
+    
+    // Call clearStorage functions from other hooks
+    clearNodeStateStorage();
+    clearItemSelectionStorage();
+    clearDisplayOptionsStorage();
 
-    // Reset local state via setters passed in props
-    setExcessMap({});
-    setMachineCountMap({});
-    setMachineMultiplierMap({});
-    setExpandedNodes({});
-    setNodeExtensionOverrides({});
+    // Reset local state via setters - NO LONGER NEEDED HERE
+    // setExcessMap({});
+    // ...
     
     // Clear relevant Redux state
     dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));
     dispatch(loadRecipeSelections({}));
 
-    // Consider clearing recentItems state? Requires passing its setter
-    // Consider clearing display options state? Requires passing its setters
+    console.log('[Data Management] All saved data cleared.');
 
-  }, [dispatch, setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides]);
+  }, [dispatch, clearNodeStateStorage, clearItemSelectionStorage, clearDisplayOptionsStorage]); // Update dependencies
 
   return {
     handleDeleteTree,

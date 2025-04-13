@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type ViewMode = "accumulated" | "tree";
 
-export interface PlannerDisplayOptions {
+export interface BasePlannerDisplayOptions {
   viewMode: ViewMode;
   setViewMode: React.Dispatch<React.SetStateAction<ViewMode>>;
   showExtensions: boolean;
@@ -13,6 +13,10 @@ export interface PlannerDisplayOptions {
   setShowMachines: React.Dispatch<React.SetStateAction<boolean>>;
   showMachineMultiplier: boolean;
   setShowMachineMultiplier: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
+  clearStorage: () => void;
 }
 
 export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
@@ -63,6 +67,18 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     }
   }, [viewMode, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier]);
 
+  // Function to clear related localStorage items
+  const clearStorage = useCallback(() => {
+    localStorage.removeItem('savedViewMode');
+    localStorage.removeItem('savedShowExtensions');
+    localStorage.removeItem('savedAccumulateExtensions');
+    localStorage.removeItem('savedShowMachines');
+    localStorage.removeItem('savedShowMachineMultiplier');
+    // Reset state to defaults? Or let reload handle it?
+    // For now, just clear storage.
+    console.log('[Persistence] Cleared display options from localStorage.');
+  }, []);
+
   return {
     viewMode,
     setViewMode,
@@ -74,5 +90,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     setShowMachines,
     showMachineMultiplier,
     setShowMachineMultiplier,
+    clearStorage,
   };
 }; 
