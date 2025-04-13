@@ -1,10 +1,12 @@
-import React, { forwardRef, ForwardRefRenderFunction, useState, useRef, useEffect } from "react";
+import React, { forwardRef, ForwardRefRenderFunction, useState, useRef, useEffect, useImperativeHandle } from "react";
 import ReactDOM from "react-dom";
-import { Item, Recipe } from "../data/dexieDB";
+import { Item, Recipe } from "../types";
+import ItemSelect from './ItemSelect'; 
+import RecipeSelect from './RecipeSelect'; 
+import ViewModeSwitch from './ViewModeSwitch'; 
 import StyledSelect from "./shared/StyledSelect";
-import ViewModeSwitch from "./ViewModeSwitch";
 import { theme } from "../styles/theme";
-import { getRecipesForItem } from "../data/dbQueries";
+import { getRecipesForItem } from "../data";
 import StyledCheckbox from "./shared/StyledCheckbox";
 import Icon from "./Icon";
 

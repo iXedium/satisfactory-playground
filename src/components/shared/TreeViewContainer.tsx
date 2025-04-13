@@ -1,7 +1,6 @@
 import React from 'react';
-import { DependencyNode } from '../../utils/calculateDependencyTree';
-import DependencyTree from '../DependencyTree';
-import { theme } from '../../styles/theme';
+import { DependencyNode } from '../../types';
+import DependencyTree from '../../features/factory-planner/components/DependencyTree';
 
 interface TreeViewContainerProps {
   dependencies: {
@@ -69,8 +68,6 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
               [nodeId]: expanded
             }));
           }}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
           showMachines={showMachines}
           showMachineMultiplier={showMachineMultiplier}
           isRoot={true}

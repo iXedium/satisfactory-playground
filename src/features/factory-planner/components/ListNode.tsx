@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
-import { RootState } from "../store";
+import { RootState } from "../../../store";
 import ItemNode from "./ItemNode";
-import Icon from "./Icon";
-import { theme } from "../styles/theme";
-import { Recipe, Item } from "../data/dexieDB";
-import { getItemById } from "../data/dbQueries";
-import { DependencyNode } from "../utils/calculateDependencyTree";
+import Icon from "../../../components/Icon";
+import { theme } from "../../../styles/theme";
+import { Recipe, Item } from "../../../types";
+import { getItemById } from "../../../data/dbQueries";
+import { DependencyNode } from "../../../types";
 
 interface ConsumptionDetail {
   itemId: string;
   amount: number;
   nodeId: string;
   itemName?: string;
+  byproduct?: boolean;
 }
 
 interface AccumulatedConsumption {
@@ -85,7 +86,6 @@ const ListNode: React.FC<ListNodeProps> = ({
   const [item, setItem] = useState<Item | null>(null);
   const [consumers, setConsumers] = useState<ConsumptionDetail[]>([]);
   const [accumulatedConsumers, setAccumulatedConsumers] = useState<AccumulatedConsumption[]>([]);
-  const recipes = useSelector((state: RootState) => state.recipeSelections.selections);
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const nodeRef = useRef<HTMLDivElement>(null);
   
@@ -121,7 +121,8 @@ const ListNode: React.FC<ListNodeProps> = ({
               itemId: node.id,
               amount: child.amount,
               nodeId: child.uniqueId,
-              itemName: item?.name
+              itemName: item?.name,
+              byproduct: child.isByproduct
             });
           }
           

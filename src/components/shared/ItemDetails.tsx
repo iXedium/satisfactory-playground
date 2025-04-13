@@ -1,9 +1,11 @@
 import React from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
-import Icon, { IconSize } from '../Icon';
+import Icon from '../Icon';
+import RecipeSelect from '../RecipeSelect';
+import { Item, Recipe } from '../../types';
+import { IconSize } from '../Icon';
 import StyledSelect from './StyledSelect';
-import { Item, Recipe } from '../../data/dexieDB';
 
 interface ItemDetailsProps {
   item: Item;

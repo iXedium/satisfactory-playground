@@ -1,8 +1,8 @@
 import React, { useRef } from "react";
-import RefactoredCommandBar from "./RefactoredCommandBar";
+import { RefactoredCommandBar } from "../../../components"; 
 import { useFactoryPlanner } from "../hooks/useFactoryPlanner";
-import PlannerContent from "./shared/PlannerContent";
-import FactoryPlannerLayout from "./shared/FactoryPlannerLayout";
+import FactoryPlannerLayout from "../../../components/shared/FactoryPlannerLayout";
+import PlannerContent from "../../../components/shared/PlannerContent";
 
 /**
  * Main component for the Factory Planner application

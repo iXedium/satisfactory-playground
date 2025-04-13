@@ -1,5 +1,5 @@
 import React from 'react';
-import { DependencyNode } from '../../utils/calculateDependencyTree';
+import { DependencyNode } from '../../types';
 import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
 import { calculateDependencyTree } from '../../utils/calculateDependencyTree';
 import { calculateAccumulatedFromTree } from '../../utils/calculateAccumulatedFromTree';
@@ -124,7 +124,7 @@ const TreeNodeManager: React.FC<TreeNodeManagerProps> = ({
     const tree = await calculateDependencyTree(
       dependencyTrees[treeId].id,
       dependencyTrees[treeId].amount,
-      dependencyTrees[treeId].selectedRecipeId || "",
+      dependencyTrees[treeId].recipe?.id || null,
       recipeSelections,
       0,
       affectedBranches,

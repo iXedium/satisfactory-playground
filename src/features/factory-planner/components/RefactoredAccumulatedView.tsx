@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { useSelector } from "react-redux";
-import { RootState } from "../store";
+import { RootState } from "../../../store";
 import ListNode from "./ListNode";
-import { Recipe, Item } from "../data/dexieDB";
-import { getRecipesForItem, getItemById } from "../data/dbQueries";
-import { DependencyNode } from "../utils/calculateDependencyTree";
-import { AccumulatedNode } from "../utils/calculateAccumulatedFromTree";
+import { Recipe, Item, DependencyNode } from "../../../types";
+import { getRecipesForItem, getItemById } from "../../../data";
+import { AccumulatedNode } from "../../../utils";
+import Icon from '../../../components/Icon';
 
 interface RefactoredAccumulatedViewProps {
   onRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -32,12 +32,12 @@ interface GroupedItem {
   itemId: string;
   amount: number;
   recipes: Recipe[];
-  selectedRecipeId: string;
+  recipeId: string;
   isByproduct: boolean;
-  nodeIds: string[]; // All node IDs that contribute to this item
-  name?: string; // Item name
-  depth: number; // Track the depth of the item in the tree
-  normalizedMachineCount: number; // Machine count normalized to multiplier = 1
+  nodeIds: string[];
+  name?: string;
+  depth: number;
+  normalizedMachineCount: number;
   isImport: boolean;
 }
 
@@ -151,12 +151,12 @@ const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
     // Find the group that contains the parent node
     const targetGroup = groupedItems.find(group => 
       group.itemId === parentNode.id && 
-      group.selectedRecipeId === parentNode.selectedRecipeId
+      group.recipeId === parentNode.recipe?.id
     );
     
     if (!targetGroup) return;
     
-    const targetKey = `${targetGroup.itemId}-${targetGroup.selectedRecipeId || "default"}`;
+    const targetKey = `${targetGroup.itemId}-${targetGroup.recipeId || "default"}`;
     const element = nodeRefs.current[targetKey];
     
     if (element) {
@@ -206,13 +206,13 @@ const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
             itemId,
             amount: 0,
             recipes: [],
-            selectedRecipeId: node.recipeId,
+            recipeId: node.recipeId,
             isByproduct: node.isByproduct || false,
             nodeIds: [],
             name: node.name,
             depth: node.depth || 0,
             normalizedMachineCount: 0,
-            isImport: false
+            isImport: node.isImport || false
           };
         }
         
@@ -314,7 +314,7 @@ const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
       {getFilteredAndSortedItems().map((item, index) => {
         // Use the actual nodeId from the dependency tree
         const nodeId = item.nodeIds[0];
-        const key = `${item.itemId}-${item.selectedRecipeId || "default"}`;
+        const key = `${item.itemId}-${item.recipeId || "default"}`;
         
         // Get the lowest multiplier from all machines in this group
         const nodeMultipliers = item.nodeIds.map(nid => machineMultiplierMap[nid] || 1);
@@ -348,7 +348,7 @@ const RefactoredAccumulatedView: React.FC<RefactoredAccumulatedViewProps> = ({
               isByproduct={item.isByproduct}
               isImport={item.isImport}
               recipes={recipesMap[item.itemId] || []}
-              selectedRecipeId={item.selectedRecipeId}
+              selectedRecipeId={item.recipeId || ''}
               onRecipeChange={(recipeId) => onRecipeChange(nodeId, recipeId)}
               excess={totalExcess}
               onExcessChange={(excess) => onExcessChange(nodeId, excess)}

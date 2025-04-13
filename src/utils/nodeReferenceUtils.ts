@@ -1,4 +1,5 @@
-import { DependencyNode } from './calculateDependencyTree';
+import { DependencyNode } from '../types'; // Use types index
+import { findNodeById } from './index'; // Import from the utils index
 
 /**
  * Utilities for working with node references in the import/export system
@@ -212,16 +213,16 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
   }
   
   // Ensure we preserve essential properties explicitly
-  // These properties might be lost in the deep copy or not exist in originalChildren
   const propertiesToPreserve = [
-    'selectedRecipeId',
+    'recipe',
     'availableRecipes',
     'excess'
   ] as const;
   
   propertiesToPreserve.forEach(prop => {
-    if (node[prop as keyof DependencyNode] !== undefined) {
-      updatedNode[prop as keyof DependencyNode] = node[prop as keyof DependencyNode];
+    // Need type assertion as TS struggles with dynamic key access here
+    if ((node as any)[prop] !== undefined) {
+      (updatedNode as any)[prop] = (node as any)[prop];
     }
   });
   
@@ -256,9 +257,9 @@ function preservePropertiesInChildren(children: DependencyNode[]) {
     type NodeWithOriginalRecipe = DependencyNode & { originalRecipeId?: string };
     const childWithRecipe = child as NodeWithOriginalRecipe;
     
-    if (childWithRecipe.originalRecipeId) {
-      child.selectedRecipeId = childWithRecipe.originalRecipeId;
-      console.log(`[UNIMPORT] Restored recipe ${childWithRecipe.originalRecipeId} for child ${child.id}`);
+    // Restore recipe object if available
+    if (child.recipe) {
+      console.log(`[UNIMPORT] Restored recipe object for child ${child.id}`);
     }
     
     // Ensure child has availableRecipes property for dropdown to work
@@ -316,37 +317,6 @@ export const wouldCreateCircularReference = (
 };
 
 /**
- * Find a node by ID in a dependency tree
- */
-export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
-  if (tree.uniqueId === nodeId) {
-    return tree;
-  }
-  
-  // Check children
-  if (tree.children) {
-    for (const child of tree.children) {
-      const found = findNodeById(child, nodeId);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  
-  // Also check originalChildren if present
-  if (tree.originalChildren) {
-    for (const child of tree.originalChildren) {
-      const found = findNodeById(child, nodeId);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  
-  return null;
-};
-
-/**
  * Find the target node that a node is importing from
  */
 export const findTargetNode = (
@@ -365,7 +335,7 @@ export const findTargetNode = (
     return targetTree;
   }
   
-  // For new system, find the specific node
+  // For new system, find the specific node using the imported function
   return findNodeById(targetTree, targetNodeId);
 };
 
@@ -408,4 +378,22 @@ export const traverseVisibleNodes = (
       traverseVisibleNodes(child, callback);
     }
   }
-}; 
+};
+
+// Remove or comment out the duplicate export
+/*
+export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
+  if (tree.uniqueId === nodeId) {
+    return tree;
+  }
+  if (tree.children) {
+    for (const child of tree.children) {
+      const found = findNodeById(child, nodeId);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return null;
+};
+*/ 

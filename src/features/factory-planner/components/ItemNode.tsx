@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Recipe, Item } from "../data/dexieDB";
-import { theme } from "../styles/theme";
-import { getItemById, getMachineForRecipe } from "../data/dbQueries";
-import { IconSize } from "./Icon";
-import ItemNodeButtons from "./shared/ItemNodeButtons";
-import ItemDetails from "./shared/ItemDetails";
-import MachineDetails from "./shared/MachineDetails";
-import EfficiencySection from "./shared/EfficiencySection";
+import { Recipe, Item } from "../../../types";
+import { theme } from "../../../styles/theme";
+import { getItemById, getMachineForRecipe } from "../../../data";
+import { IconSize } from "../../../components";
+import ItemNodeButtons from "../../../components/shared/ItemNodeButtons";
+import ItemDetails from "../../../components/shared/ItemDetails";
+import MachineDetails from "../../../components/shared/MachineDetails";
+import EfficiencySection from "../../../components/shared/EfficiencySection";
 
 interface ItemNodeProps {
   itemId: string;

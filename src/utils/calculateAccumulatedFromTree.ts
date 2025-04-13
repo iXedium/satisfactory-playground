@@ -1,49 +1,53 @@
-import { DependencyNode } from "./calculateDependencyTree";
+import { DependencyNode } from "../types";
 
 export interface AccumulatedNode {
   itemId: string;
   amount: number;
-  recipeId: string;
-  isByproduct: boolean;
-  isImport?: boolean;
-  isExtension?: boolean;
   name?: string;
+  isByproduct?: boolean;
+  isExtension?: boolean;
+  recipeId?: string;
   depth?: number;
+  isImport?: boolean;
 }
 
 export const calculateAccumulatedFromTree = (
-  tree: DependencyNode
+  tree: DependencyNode | null,
+  nodeExtensionOverrides?: Record<string, boolean>,
+  visibleNodesOnly: boolean = false
 ): Record<string, AccumulatedNode> => {
-  const results: Record<string, AccumulatedNode> = {};
-  
-  const processNode = (node: DependencyNode, depth: number = 0) => {
-    // Skip import nodes - they're already accounted for in their target trees
-    if (node.isImport) {
-      return;
+  const accumulated: Record<string, AccumulatedNode> = {};
+
+  if (!tree) {
+    return accumulated;
+  }
+
+  const traverse = (node: DependencyNode, depth: number = 0) => {
+    if (!node) return;
+
+    const isVisible = !visibleNodesOnly || node.childrenVisible !== false;
+    if (!isVisible) return;
+
+    const key = node.id;
+    if (!accumulated[key]) {
+      accumulated[key] = {
+        itemId: key,
+        amount: 0,
+        isByproduct: node.isByproduct || false,
+        isExtension: false,
+        recipeId: node.recipe?.id,
+        depth: depth,
+        isImport: node.isImport || false
+      };
     }
-    
-    // Process all non-import nodes including root nodes
-    const uniqueId = node.uniqueId;
-    
-    results[uniqueId] = {
-      itemId: node.id,
-      amount: node.amount,
-      recipeId: node.selectedRecipeId || "",
-      isByproduct: node.isByproduct || false,
-      isImport: node.isImport || false,
-      isExtension: false,
-      name: undefined,
-      depth: depth
-    };
-    
-    // Recursively process all children
-    if (node.children) {
-      node.children.forEach(child => {
-        processNode(child, depth + 1);
-      });
+    accumulated[key].amount += node.amount;
+    accumulated[key].depth = Math.min(accumulated[key].depth ?? Infinity, depth);
+
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child: DependencyNode) => traverse(child, depth + 1));
     }
   };
-  
-  processNode(tree);
-  return results;
+
+  traverse(tree);
+  return accumulated;
 };

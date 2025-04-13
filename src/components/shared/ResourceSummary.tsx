@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { theme } from '../../styles/theme';
+import { sizes } from '../../styles/constants';
+import { Item } from '../../types';
 import Icon from '../Icon';
-import { Item } from '../../data/dexieDB';
-import { getItemById } from '../../data/dbQueries';
+import { getItemById } from '../../data';
 
 export interface GroupedItem {
   itemId: string;

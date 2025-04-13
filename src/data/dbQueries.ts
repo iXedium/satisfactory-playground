@@ -1,4 +1,5 @@
-import { db, Recipe, Item } from "./dexieDB";
+import { db } from "./dexieDB";
+import { Recipe, Item } from "../types";
 
 // Retrieve all items in the "components" category.
 export const getComponents = async () => await db.items.where("category").equals("components").toArray();
@@ -91,19 +92,23 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
       const data = await response.json();
       
       // Find the machine in the items array
-      const machineData = data.items.find((item: ItemWithMachine) => 
-        item.id === producerId && item.machine
-      );
+      // Ensure the item found is treated as potentially having machine data
+      const machineItem = data.items.find((item: Item) => 
+        item.id === producerId
+      ) as ItemWithMachine | undefined;
       
-      if (!machineData || !machineData.machine) {
+      if (!machineItem) {
         return null;
       }
       
-      // Return the machine data with its ID and name
+      const machineDetails = machineItem.machine;
+      if (!machineDetails) return null; 
+      
+      // Return the machine data with its ID and name (from Item)
       return {
-        id: machineData.id,
-        name: machineData.name,
-        ...machineData.machine
+        id: machineItem.id, // id comes from Item base
+        name: machineItem.name, // name comes from Item base
+        ...machineDetails 
       };
     } catch (fetchError) {
       console.error("Error fetching or parsing data.json:", fetchError);

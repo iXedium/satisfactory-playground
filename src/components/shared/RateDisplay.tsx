@@ -45,7 +45,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
          <span
            style={{
              fontSize: sizes.fontSize.small,
-             color: theme.colors.textMuted,
+             color: theme.colors.textSecondary,
              marginTop: '-2px',
            }}
          >

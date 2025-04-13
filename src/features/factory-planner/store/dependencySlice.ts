@@ -1,15 +1,14 @@
 import { createSlice, PayloadAction, createAction, ActionReducerMapBuilder } from "@reduxjs/toolkit";
-import { DependencyNode } from "../utils/calculateDependencyTree";
-import { AccumulatedNode, calculateAccumulatedFromTree } from "../utils/calculateAccumulatedFromTree";
+import { DependencyNode } from "../../../types";
+import { AccumulatedNode, calculateAccumulatedFromTree, findNodeById } from "../../../utils";
 import { 
   clearImportReference, 
   getImportReference, 
   hasImportReference,
   setImportReference,
-  findNodeById
-} from "../utils/nodeReferenceUtils";
-import { getRecipeById, getRecipeByOutput } from "../data/dbQueries";
-import { AppDispatch } from "../store";
+} from "../../../utils/nodeReferenceUtils";
+import { getRecipeById, getRecipeByOutput } from "../../../data";
+import { AppDispatch } from "../../../store";
 
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
@@ -41,7 +40,7 @@ function findNodesImportingToTree(trees: Record<string, DependencyNode>, targetT
     
     // Check children
     if (node.children && node.children.length > 0) {
-      node.children.forEach(checkNode);
+      node.children.forEach((child: DependencyNode) => checkNode(child));
     }
   };
   
@@ -129,7 +128,7 @@ const dependencySlice = createSlice({
             
             // Check all children
             if (node.children) {
-              node.children.forEach(child => checkNode(child, currentTree));
+              node.children.forEach((child: DependencyNode) => checkNode(child, currentTree));
             }
           };
           
@@ -451,36 +450,39 @@ const dependencySlice = createSlice({
     
     updateNodeProperties: (
       state,
+      // Restore original payload structure
       action: PayloadAction<{
         nodeId: string;
-        updatedNode: Partial<DependencyNode>;
+        updatedNode: Partial<DependencyNode>; 
       }>
     ) => {
       const { nodeId, updatedNode } = action.payload;
+      let treeUpdated = false;
       
-      // Update the node in all trees
-      const updateNodeInTree = (tree: DependencyNode): boolean => {
-        if (tree.uniqueId === nodeId) {
-          // Apply the updates to this node
-          Object.assign(tree, updatedNode);
-          return true;
-        }
-
-        if (tree.children) {
-          for (const child of tree.children) {
-            if (updateNodeInTree(child)) {
-              return true;
+      for (const treeId in state.dependencyTrees) {
+        const tree = state.dependencyTrees[treeId];
+        const updateNodeInTree = (node: DependencyNode): boolean => {
+          if (node.uniqueId === nodeId) {
+            // If updatedNode contains selectedRecipeId, handle/remove it
+            if ('selectedRecipeId' in updatedNode) {
+               delete updatedNode.selectedRecipeId;
             }
+            // If updatedNode contains recipe object, use it
+            Object.assign(node, updatedNode);
+            treeUpdated = true;
+            return true;
           }
-        }
+          return node.children?.some(updateNodeInTree) || false;
+        };
         
-        return false;
-      };
-      
-      // Try to update the node in all trees
-      Object.values(state.dependencyTrees).forEach(tree => {
-        updateNodeInTree(tree);
-      });
+        if (updateNodeInTree(tree)) {
+          const accumulated = calculateAccumulatedFromTree(tree);
+          state.accumulatedDependencies = accumulated; 
+        }
+      }
+      if (!treeUpdated) {
+         console.warn(`[updateNodeProperties] Node ${nodeId} not found in any tree.`);
+      }
     },
     
     clearErrors: (state) => {

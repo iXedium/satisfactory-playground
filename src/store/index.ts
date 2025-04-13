@@ -1,8 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
-import dataReducer from "../features/dataSlice";
-import dependencyReducer from "../features/dependencySlice"; // ✅ Import new slice
-import recipeSelectionsReducer from '../features/recipeSelectionsSlice';
-import treeUiReducer from '../features/treeUiSlice'; // ✅ Already properly included
+import dataReducer from "./dataSlice";
+import dependencyReducer from "../features/factory-planner/store/dependencySlice"; // Updated path
+import recipeSelectionsReducer from '../features/factory-planner/store/recipeSelectionsSlice'; // Updated path
+import treeUiReducer from '../features/factory-planner/store/treeUiSlice'; // Updated path
 
 export const store = configureStore({
   reducer: {

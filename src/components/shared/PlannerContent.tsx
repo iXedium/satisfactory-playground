@@ -1,8 +1,10 @@
 import React, { RefObject } from 'react';
 import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
-import RefactoredAccumulatedView from '../RefactoredAccumulatedView';
+import { theme } from '../../styles/theme';
+import { DependencyNode } from '../../types';
+import RefactoredAccumulatedView from '../../features/factory-planner/components/RefactoredAccumulatedView';
 import TreeViewContainer from './TreeViewContainer';
-import { DependencyNode } from '../../utils/calculateDependencyTree';
+import DependencyTree from '../../features/factory-planner/components/DependencyTree';
 
 interface PlannerContentProps {
   viewMode: 'tree' | 'accumulated';

@@ -1,8 +1,11 @@
+import React from 'react';
 import { CSSProperties, memo } from 'react';
 import { useEffect, useState } from 'react';
-import { getIconForItem } from '../data/dbQueries';
+import { theme } from '../styles/theme';
+import { sizes } from '../styles/constants';
+import { getIconForItem } from '../data';
+import { Icon as IconType } from '../types';
 import { iconStyles } from '../styles/iconStyles';
-import { Icon as IconType } from '../data/dexieDB';
 
 // Original sprite dimensions
 const ORIGINAL_ICON_SIZE = 64;

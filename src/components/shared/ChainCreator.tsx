@@ -1,7 +1,9 @@
-import React from 'react';
-import { Item, Recipe } from '../../data/dexieDB';
-import { calculateDependencyTree } from '../../utils/calculateDependencyTree';
-import { calculateAccumulatedFromTree } from '../../utils/calculateAccumulatedFromTree';
+import React, { useState } from 'react';
+import { Item, Recipe } from '../../types';
+import ItemSelect from '../ItemSelect';
+import RecipeSelect from '../RecipeSelect';
+import { calculateDependencyTree } from '../../utils';
+import { calculateAccumulatedFromTree } from '../../utils';
 
 interface ChainCreatorProps {
   items: Item[];

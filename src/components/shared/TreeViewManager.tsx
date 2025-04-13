@@ -1,6 +1,8 @@
 import React from 'react';
-import { DependencyNode } from '../../utils/calculateDependencyTree';
-import DependencyTree from '../DependencyTree';
+import DependencyTree from '../../features/factory-planner/components/DependencyTree';
+import { DependencyNode } from '../../types';
+import { AccumulatedNode } from '../../utils';
+import { calculateDependencyTree } from '../../utils';
 import { theme } from '../../styles/theme';
 
 interface TreeViewManagerProps {
@@ -35,8 +37,6 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
   onMachineMultiplierChange,
   expandedNodes,
   onNodeExpandChange,
-  showExtensions,
-  accumulateExtensions,
   showMachines,
   showMachineMultiplier,
   onDeleteTree,
@@ -65,8 +65,6 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
           onMachineMultiplierChange={onMachineMultiplierChange}
           expandedNodes={expandedNodes}
           onNodeExpandChange={onNodeExpandChange}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
           showMachines={showMachines}
           showMachineMultiplier={showMachineMultiplier}
           isRoot={true}

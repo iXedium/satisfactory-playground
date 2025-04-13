@@ -1,28 +1,11 @@
-import { Recipe } from "../data/dexieDB";
-import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data/dbQueries";
+import { Recipe } from "../types";
+import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data";
 import { NodePath } from "./treeDiffing";
-import { isNodeImporting, ImportReference } from "./nodeReferenceUtils";
-
-export interface DependencyNode {
-  id: string;
-  amount: number;
-  uniqueId: string;
-  isRoot?: boolean;
-  selectedRecipeId?: string | null;
-  recipe?: Recipe;
-  children?: DependencyNode[];
-  availableRecipes?: Recipe[];
-  excess?: number;
-  childrenVisible?: boolean;
-  originalChildren?: DependencyNode[]; // Used to store original tree when importing
-  
-  // New import reference system
-  importReference?: ImportReference;
-  
-  // Legacy import system properties (will be deprecated)
-  isImport?: boolean;
-  importedFrom?: string;
-}
+import { isNodeImporting } from "./nodeReferenceUtils";
+import { DependencyNode } from "../types";
+// FindNodeById likely comes from calculateDependencyTree itself or should be imported correctly
+// Let's assume it should be defined locally for now, uncommenting the local version
+// import { findNodeById } from "./index"; // Comment out index import
 
 // Cache for memoizing tree calculations
 export const nodeCache = new Map<string, DependencyNode>();
@@ -204,11 +187,13 @@ export const calculateDependencyTree = async (
     .filter(([outputItem]) => outputItem !== itemId)
     .map(([outputItem, outputAmount]) => ({
       id: outputItem,
-      amount: -(outputAmount * cyclesNeeded),
+      amount: -(Number(outputAmount) * cyclesNeeded), // Ensure calculation uses number
       uniqueId: `${nodeId}-${outputItem}-${depth}`,
       isByproduct: true,
       children: [],
-      excess: 0
+      excess: 0,
+      selectedRecipeId: undefined, // Explicitly add optional field
+      availableRecipes: [] // Explicitly add optional field
     } as DependencyNode));
 
   const result: DependencyNode = {
@@ -216,7 +201,7 @@ export const calculateDependencyTree = async (
     amount,
     uniqueId: nodeId,
     isRoot: depth === 0,
-    selectedRecipeId: recipe.id,
+    recipe: recipe,
     availableRecipes,
     children: [...children, ...byproducts],
     excess: excessMap[itemId] || excessMap[nodeId] || 0
@@ -241,7 +226,9 @@ const createImportNode = async (
   legacyTargetTreeId?: string, // Only used for legacy import system
   nodeWithReference?: DependencyNode // Node with reference from findNodeWithReference
 ): Promise<DependencyNode> => {
-  // If we have an existing import node, preserve its import reference
+  // Fetch the actual recipe object if an ID is provided
+  const recipeObj = selectedRecipeId ? await getRecipeById(selectedRecipeId) : undefined;
+
   if (existingImportNode && existingImportNode.importReference) {
     return {
       ...existingImportNode,
@@ -249,18 +236,17 @@ const createImportNode = async (
       amount: amount,
       uniqueId: nodeId,
       excess: excess,
-      selectedRecipeId,
+      recipe: recipeObj,
       children: [], // Explicitly set empty children array
       isImport: true, // Support legacy system
       // Preserve existing originalChildren or create new ones
-      originalChildren: existingImportNode.originalChildren || await storeOriginalChildren(itemId, amount, excess, selectedRecipeId),
+      originalChildren: existingImportNode.originalChildren || await storeOriginalChildren(itemId, amount, excess, recipeObj),
       // Keep the original import reference
       importReference: existingImportNode.importReference
     };
   }
 
-  // For new import nodes, calculate and store original children
-  const originalChildren = await storeOriginalChildren(itemId, amount, excess, selectedRecipeId);
+  const originalChildren = await storeOriginalChildren(itemId, amount, excess, recipeObj);
   
   // New import node or legacy fallback
   const isLegacy = !!legacyTargetTreeId;
@@ -271,7 +257,7 @@ const createImportNode = async (
       amount: amount,
       uniqueId: nodeId,
       excess: excess,
-      selectedRecipeId,
+      recipe: recipeObj,
       children: [], // Explicitly set empty children array
       isImport: true, // Support legacy system
       importedFrom: legacyTargetTreeId, // Legacy support
@@ -289,7 +275,7 @@ const createImportNode = async (
       amount: amount,
       uniqueId: nodeId,
       excess: excess,
-      selectedRecipeId,
+      recipe: recipeObj,
       children: [], // Explicitly set empty children array
       isImport: true, // Support legacy system
       // Store original children for restoration later
@@ -307,7 +293,7 @@ const createImportNode = async (
     amount: amount,
     uniqueId: nodeId,
     excess: excess,
-    selectedRecipeId,
+    recipe: recipeObj,
     children: [], // Explicitly set empty children array
     isImport: true, // Support legacy system
     // Store original children for restoration later
@@ -317,24 +303,6 @@ const createImportNode = async (
       targetNodeId: ''
     }
   };
-};
-
-// Helper function to find a node by its unique ID
-export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
-  if (tree.uniqueId === nodeId) {
-    return tree;
-  }
-  
-  if (tree.children) {
-    for (const child of tree.children) {
-      const found = findNodeById(child, nodeId);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  
-  return null;
 };
 
 // Helper function to restore original children when unimporting
@@ -438,19 +406,13 @@ export async function storeOriginalChildren(
   itemId: string,
   amount: number,
   excess: number = 0, 
-  recipeId?: string
+  recipe?: Recipe
 ): Promise<DependencyNode[]> {
-  // Get recipe for this item
-  let recipe: Recipe | undefined;
-  
-  if (recipeId) {
-    recipe = await getRecipeById(recipeId);
-  } else {
-    recipe = await getRecipeByOutput(itemId);
-  }
-  
+  // Use the provided recipe object directly
   if (!recipe) {
-    return []; // No recipe means no children
+    // Fetch recipe if not provided (though createImportNode should provide it)
+    recipe = await getRecipeByOutput(itemId); 
+    if (!recipe) return [];
   }
   
   const outputAmount = recipe.out[itemId] ?? 1;
@@ -519,3 +481,64 @@ function findNodeInTree(node: DependencyNode, nodeId: string): DependencyNode | 
   return null;
 }
 
+// Comment out unused/incomplete functions
+/*
+const calculateInputAmount = (
+  inputItemId: string,
+  inputAmountPerCycle: number | undefined,
+  cyclesPerMinute: number,
+  producerCount: number,
+  machineMultiplier: number
+): number => {
+  if (inputAmountPerCycle === undefined) return 0;
+  const baseAmount = Number(inputAmountPerCycle) * cyclesPerMinute * producerCount * machineMultiplier;
+  return baseAmount;
+};
+*/
+
+/*
+const processRecipe = (
+  recipe: Recipe,
+  targetAmount: number,
+  producerCount: number,
+  machineMultiplier: number
+): NodeUpdate => { // NodeUpdate is unknown
+  const cyclesPerMinute = 60 / Number(recipe.time);
+  const outputAmount = Number(recipe.out[node.id] ?? 0); // 'node' is undefined
+
+  const effectiveAmount = Number(targetAmount);
+  const requiredCycles = effectiveAmount / (outputAmount * machineMultiplier);
+
+  Object.entries(recipe.out).forEach(([outputItemId, outputAmountPerCycle]) => {
+    if (outputItemId !== node.id) { // 'node' is undefined
+      const byproductAmount = Number(outputAmountPerCycle ?? 0) * requiredCycles; 
+      updates.byproducts[outputItemId] = (updates.byproducts[outputItemId] || 0) + byproductAmount; // 'updates' is undefined
+    }
+  });
+
+  if (parent) { // 'parent' is undefined
+    const parentRecipe = parent.recipe; // 'parent.recipe' might not exist
+    if (parentRecipe && parentRecipe.out[node.id] && !parentRecipe.in[node.id]) { // 'node' is undefined
+       // Missing code or closing brace?
+    }
+  }
+}; 
+*/
+
+// Restore local function definition
+export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
+  if (tree.uniqueId === nodeId) {
+    return tree;
+  }
+  
+  if (tree.children) {
+    for (const child of tree.children) {
+      const found = findNodeById(child, nodeId);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  
+  return null;
+};

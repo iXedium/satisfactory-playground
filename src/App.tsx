@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import RefactoredDependencyTester from "./components/RefactoredDependencyTester";
-import "./App.css";
+import RefactoredDependencyTester from "./features/factory-planner/components/RefactoredDependencyTester";
+import "./styles/App.css";
 import { populateDexie } from "./data/dexieInit";
 import { injectThemeVariables } from './styles/theme';
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
-import { DependencyNode } from '../../utils/calculateDependencyTree';
+import { DependencyNode } from '../../types';
+import { calculateAccumulatedFromTree } from '../../utils';
 
 interface ImportExportProps {
   dependencyTrees: Record<string, DependencyNode>;

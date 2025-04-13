@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ItemNode from './ItemNode';
-import { DependencyNode } from '../utils/calculateDependencyTree';
-import { theme } from '../styles/theme';
-import { toggleChildrenVisibility } from '../utils/nodeReferenceUtils';
+import { DependencyNode, Item, Recipe } from '../../../types';
+import { theme } from  '../../../styles/theme';
+import { toggleChildrenVisibility } from '../../../utils/nodeReferenceUtils';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -87,6 +87,36 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const shouldShowChildren = isExpanded && hasChildren && 
     (node.childrenVisible !== false); // If childrenVisible is undefined or true, show children
 
+  // Recursive rendering of child nodes
+  const renderChildren = () => {
+    if (!isExpanded || !node.children || node.childrenVisible === false) {
+      return null;
+    }
+
+    return node.children.map((child: DependencyNode, index: number) => (
+      <TreeNode
+        key={child.uniqueId || `${child.id}-${index}`}
+        node={child}
+        depth={depth + 1}
+        onRecipeChange={onRecipeChange}
+        onExcessChange={onExcessChange}
+        excessMap={excessMap}
+        machineCountMap={machineCountMap}
+        onMachineCountChange={onMachineCountChange}
+        machineMultiplierMap={machineMultiplierMap}
+        onMachineMultiplierChange={onMachineMultiplierChange}
+        expandedNodes={expandedNodes}
+        onNodeExpandChange={onNodeExpandChange}
+        showMachineSection={showMachineSection}
+        showMachineMultiplier={showMachineMultiplier}
+        isRoot={false}
+        onDelete={onDelete}
+        onImport={onImport}
+        onNodeUpdate={onNodeUpdate}
+      />
+    ));
+  };
+
   return (
     <div>
       <div
@@ -130,7 +160,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             isByproduct={node.isByproduct}
             isImport={node.isImport}
             recipes={node.availableRecipes}
-            selectedRecipeId={node.selectedRecipeId}
+            selectedRecipeId={node.recipe?.id ?? undefined}
             onRecipeChange={(recipeId) => onRecipeChange?.(node.uniqueId, recipeId)}
             style={{ 
               backgroundColor: 'transparent'
@@ -153,28 +183,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
       {shouldShowChildren && (
         <div>
-          {node.children?.map(child => (
-            <TreeNode
-              key={child.uniqueId}
-              node={child}
-              depth={depth + 1}
-              onRecipeChange={onRecipeChange}
-              onExcessChange={onExcessChange}
-              excessMap={excessMap}
-              machineCountMap={machineCountMap}
-              onMachineCountChange={onMachineCountChange}
-              machineMultiplierMap={machineMultiplierMap}
-              onMachineMultiplierChange={onMachineMultiplierChange}
-              expandedNodes={expandedNodes}
-              onNodeExpandChange={onNodeExpandChange}
-              showMachineSection={showMachineSection}
-              showMachineMultiplier={showMachineMultiplier}
-              isRoot={false}
-              onDelete={onDelete}
-              onImport={onImport}
-              onNodeUpdate={onNodeUpdate}
-            />
-          ))}
+          {renderChildren()}
         </div>
       )}
     </div>

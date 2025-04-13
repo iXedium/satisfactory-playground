@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { DependencyNode } from "../utils/calculateDependencyTree";
+import React, { useRef } from 'react';
+import { DependencyNode } from '../../../types';
 import TreeNode from './TreeNode';
 
 export interface DependencyTreeProps {
@@ -13,14 +13,12 @@ export interface DependencyTreeProps {
   onMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
   onNodeExpandChange: (nodeId: string, expanded: boolean) => void;
-  showExtensions: boolean;
-  accumulateExtensions: boolean;
   showMachines: boolean;
+  showMachineMultiplier?: boolean;
   isRoot: boolean;
   onDelete?: (treeId: string) => void;
   onImportNode?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
-  showMachineMultiplier?: boolean;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
@@ -34,14 +32,12 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   onMachineMultiplierChange,
   expandedNodes,
   onNodeExpandChange,
-  showExtensions,
-  accumulateExtensions,
   showMachines,
+  showMachineMultiplier = false,
   isRoot,
   onDelete,
   onImportNode,
-  onNodeUpdate,
-  showMachineMultiplier = false
+  onNodeUpdate
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 

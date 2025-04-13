@@ -3,8 +3,10 @@ import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import StyledSelect from './StyledSelect';
 import Icon from '../Icon';
-import { Item, Recipe } from '../../data/dexieDB';
-import { getRecipesForItem } from '../../data/dbQueries';
+import ItemSelect from '../ItemSelect';
+import RecipeSelect from '../RecipeSelect';
+import { Item, Recipe } from '../../types';
+import { getRecipesForItem } from '../../data';
 
 interface SearchSectionProps {
   items: Item[];

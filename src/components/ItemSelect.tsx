@@ -2,9 +2,10 @@ import React, { useEffect } from "react";
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
-import { Item } from "../data/dexieDB";
+import { Item } from "../types"; // Use types index
 import Icon from "./Icon"; // using the Icon component
 import { itemSelectStyles } from "../styles/itemSelectStyles"; // new import
+import { theme } from '../styles/theme';
 
 interface ItemSelectProps {
   items: Item[];

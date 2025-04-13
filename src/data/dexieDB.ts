@@ -1,11 +1,18 @@
 import Dexie from "dexie";
+// Import canonical types
+import { Item, Recipe, Icon } from "../types";
 
+// Remove local Item definition
+/*
 export interface Item {
   id: string;
   name: string;
   category: string;
 }
+*/
 
+// Remove local Recipe definition
+/*
 export interface Recipe {
   id: string;
   name: string;
@@ -14,15 +21,20 @@ export interface Recipe {
   in: Record<string, number>;
   out: Record<string, number>;
 }
+*/
 
+// Remove local Icon definition now that it's in types/index.ts
+/*
 export interface Icon {
   id: string;
   position: string;
   color: string;
 }
+*/
 
 class SatisfactoryDatabase extends Dexie {
-  items!: Dexie.Table<Item, string>;
+  // Use imported types
+  items!: Dexie.Table<Item, string>; 
   recipes!: Dexie.Table<Recipe, string>;
   icons!: Dexie.Table<Icon, string>;
 

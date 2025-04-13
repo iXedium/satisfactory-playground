@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Recipe } from "../data/dexieDB";
+import { Recipe } from '../types';
 import { theme } from '../styles/theme';
 import DropdownPortal from './DropdownPortal';
 import { recipeSelectStyles } from "../styles/recipeSelectStyles";
+// import { StyledSelect } from './shared'; // Workaround: StyledSelect not used directly here
 
 interface RecipeSelectProps {
   recipes: Recipe[];
