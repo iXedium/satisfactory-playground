@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
-import { getComponents, getRecipesForItem, getRecipeById, getRecipeByOutput } from '../../../data';
+import { getRecipesForItem, getRecipeById, getRecipeByOutput } from '../../../data';
 import { Item, DependencyNode, Recipe } from '../../../types';
 import { 
   loadSavedState, 
@@ -22,6 +22,9 @@ import { calculateDependencyTree, findNodeById } from '../../../utils';
 import { calculateAccumulatedFromTree } from '../../../utils';
 import { usePlannerDisplayOptions } from './usePlannerDisplayOptions';
 import { usePlannerNodeState } from './usePlannerNodeState';
+import { usePlannerItemSelection } from './usePlannerItemSelection';
+import { usePlannerTreeCalculation } from './usePlannerTreeCalculation';
+import { usePlannerImportExport } from './usePlannerImportExport';
 
 type ViewMode = "accumulated" | "tree";
 
@@ -56,13 +59,42 @@ export const useFactoryPlanner = () => {
     setNodeExtensionOverrides,
   } = usePlannerNodeState();
   
-  const [items, setItems] = useState<Item[]>([]);
-  const [selectedItem, setSelectedItem] = useState("");
-  const [selectedRecipe, setSelectedRecipe] = useState("");
-  const [isAddItemCollapsed, setIsAddItemCollapsed] = useState(false);
-  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+  const {
+    items,
+    selectedItem,
+    setSelectedItem,
+    selectedRecipe,
+    setSelectedRecipe,
+    isAddItemCollapsed,
+    setIsAddItemCollapsed,
+    recentItems,
+    updateRecentItems,
+  } = usePlannerItemSelection();
+
+  const {
+    handleCalculate,
+    handleCreateNewTree,
+  } = usePlannerTreeCalculation({
+    selectedItem,
+    selectedRecipe,
+    recipeSelections,
+    dependencies,
+    excessMap,
+    updateRecentItems,
+    setMachineCountMap,
+    setMachineMultiplierMap,
+    setExcessMap,
+  });
   
-  const [recentItems, setRecentItems] = useState<string[]>([]);
+  const {
+    handleImportNode,
+    handleUnimport,
+  } = usePlannerImportExport({
+    dependencies,
+    handleCreateNewTree,
+  });
+  
+  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
   
   useEffect(() => {
     try {
@@ -76,11 +108,6 @@ export const useFactoryPlanner = () => {
       if (savedRecipeSelections) {
         const parsed = JSON.parse(savedRecipeSelections);
         dispatch(loadRecipeSelections(parsed));
-      }
-      
-      const savedRecentItems = localStorage.getItem('savedRecentItems');
-      if (savedRecentItems) {
-        setRecentItems(JSON.parse(savedRecentItems));
       }
     } catch (error) {
       console.error("Error loading saved state:", error);
@@ -109,115 +136,6 @@ export const useFactoryPlanner = () => {
       }
     }
   }, [recipeSelections]);
-  
-  useEffect(() => {
-    try {
-      localStorage.setItem('savedRecentItems', JSON.stringify(recentItems));
-    } catch (error) {
-      console.error("Error saving recent items:", error);
-      localStorage.removeItem('savedRecentItems');
-    }
-  }, [recentItems]);
-
-  useEffect(() => {
-    getComponents().then(loadedItems => {
-      if (loadedItems) {
-        setItems(loadedItems);
-      }
-    });
-  }, []);
-
-  const updateRecentItems = (itemId: string) => {
-    setRecentItems(prev => {
-      const filtered = prev.filter(id => id !== itemId);
-      const updated = [itemId, ...filtered];
-      return updated.slice(0, 10);
-    });
-  };
-
-  const generateTreeId = (itemId: string): string => {
-    const timestamp = Date.now();
-    const randomSuffix = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
-    return `tree-${itemId}-${timestamp}-${randomSuffix}`;
-  };
-
-  const handleCalculate = async () => {
-    if (!selectedItem || !selectedRecipe) return;
-    
-    updateRecentItems(selectedItem);
-    
-    try {
-      const treeId = generateTreeId(selectedItem);
-      
-      const uniquePrefix = `${treeId}`;
-      
-      const rootRecipe = await getRecipeById(selectedRecipe);
-      if (!rootRecipe) {
-        console.error(`Could not find recipe ${selectedRecipe} for ${selectedItem}`);
-        return;
-      }
-      
-      console.log(`[CALC DEBUG] Retrieved recipe for ${selectedItem}:`, 
-        { id: rootRecipe.id, inputs: Object.keys(rootRecipe.in), outputs: Object.keys(rootRecipe.out) });
-      
-      const tree = await calculateDependencyTree(
-        selectedItem,
-        0,
-        selectedRecipe,
-        recipeSelections,
-        0,
-        [],
-        uniquePrefix,
-        {}
-      );
-      
-      if (!tree) {
-        console.error("Failed to calculate dependency tree");
-        return;
-      }
-      
-      tree.uniqueId = treeId;
-      
-      tree.recipe = rootRecipe;
-      
-      const accumulated = calculateAccumulatedFromTree(tree);
-      
-      dispatch(setDependencies({
-        treeId,
-        tree,
-        accumulated
-      }));
-      
-      dispatch(setRecipeSelection({
-        nodeId: selectedItem,
-        recipeId: selectedRecipe
-      }));
-      
-      const resetMachineValues = (node: DependencyNode) => {
-        setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-        setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-        setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
-        
-        if (node.children) {
-          node.children.forEach(resetMachineValues);
-        }
-      };
-      
-      resetMachineValues(tree);
-      
-      setTimeout(() => {
-        const treeViewElement = document.getElementById('tree-view');
-        if (treeViewElement) {
-          treeViewElement.style.opacity = '0.99';
-          setTimeout(() => {
-            if (treeViewElement) treeViewElement.style.opacity = '1';
-          }, 10);
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Error calculating dependency tree:", error);
-    }
-  };
 
   const handleTreeRecipeChange = async (nodeId: string, recipeId: string) => {
     console.log(`[Recipe Change] Node: ${nodeId}, New Recipe ID: ${recipeId}`);
@@ -291,90 +209,6 @@ export const useFactoryPlanner = () => {
       console.error('[Recipe Change] Error during tree recalculation:', error);
     }
   };
-
-  const handleImportNode = useCallback((
-    sourceNode: DependencyNode, 
-    targetTreeId: string, 
-    sourceTreeId: string
-  ) => {
-    if (!sourceNode || !targetTreeId || !sourceTreeId) {
-      console.error('[IMPORT ERROR] Missing required parameters for import', { sourceNode, targetTreeId, sourceTreeId });
-      return;
-    }
-    
-    console.log('[IMPORT DEBUG] Dispatching import action with parameters:', {
-      nodeId: sourceNode.uniqueId,
-      sourceTreeId,
-      targetTreeId,
-      sourceNodeId: sourceNode.id
-    });
-    
-    const targetTree = dependencies.dependencyTrees[targetTreeId];
-    if (!targetTree) {
-      console.warn(`[IMPORT WARNING] Target tree ${targetTreeId} not found in current state. This may be expected if the tree was just created.`);
-      console.log('[IMPORT DEBUG] Available tree IDs:', Object.keys(dependencies.dependencyTrees));
-    } else {
-      console.log(`[IMPORT DEBUG] Target tree found: ${targetTreeId} (${targetTree.id}), current amount: ${targetTree.amount}`);
-      
-      let totalImports = 0;
-      Object.values(dependencies.dependencyTrees).forEach(tree => {
-        const findImports = (node: DependencyNode): number => {
-          let amount = 0;
-          
-          if ((node.importReference && node.importReference.targetTreeId === targetTreeId) ||
-              (node.isImport && node.importedFrom === targetTreeId)) {
-            amount += node.amount || 0;
-          }
-          
-          if (node.children) {
-            node.children.forEach(child => {
-              amount += findImports(child);
-            });
-          }
-          
-          return amount;
-        };
-        
-        totalImports += findImports(tree);
-      });
-      
-      console.log(`[IMPORT DEBUG] Current total imports to ${targetTreeId}: ${totalImports}`);
-      console.log(`[IMPORT DEBUG] After adding this import (${sourceNode.amount || 0}), total should be: ${totalImports + (sourceNode.amount || 0)}`);
-    }
-    
-    dispatch(importNodeAction({
-      nodeId: sourceNode.uniqueId,
-      sourceTreeId,
-      targetTreeId,
-      shouldImport: true
-    }));
-  }, [dispatch, dependencies.dependencyTrees]);
-
-  const handleUnimportNode = useCallback((
-    sourceNode: DependencyNode,
-    sourceTreeId: string
-  ) => {
-    if (!sourceNode || !sourceTreeId) return;
-    
-    const isImportNode = !!(sourceNode.isImport || (sourceNode.importReference && Object.keys(sourceNode.importReference).length > 0));
-    
-    if (!isImportNode) {
-      console.warn('Not an import node, cannot unimport', sourceNode);
-      return;
-    }
-    
-    const targetTreeId = sourceNode.importedFrom || sourceNode.importReference?.targetTreeId;
-    if (!targetTreeId) {
-      console.error('Cannot unimport - missing target tree ID');
-      return;
-    }
-    
-    dispatch(unimportNode({
-      nodeId: sourceNode.uniqueId,
-      sourceTreeId,
-      targetTreeId
-    }));
-  }, [dispatch]);
 
   const handleExpandCollapseAll = (expand: boolean) => {
     const newExpandedNodes: Record<string, boolean> = {};
@@ -641,7 +475,6 @@ export const useFactoryPlanner = () => {
     localStorage.removeItem('savedMachineMultiplierMap');
     localStorage.removeItem('savedExpandedNodes');
     localStorage.removeItem('savedNodeExtensionOverrides');
-    localStorage.removeItem('savedRecentItems');
     
     setExcessMap({});
     setMachineCountMap({});
@@ -666,127 +499,6 @@ export const useFactoryPlanner = () => {
       updatedNode
     }));
   };
-
-  const handleCreateNewTree = useCallback((
-    itemId: string, 
-    amount: number, 
-    treeId: string = generateTreeId(itemId),
-    recipeId: string | null = null 
-  ) => {
-    console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, recipeId });
-    updateRecentItems(itemId);
-    const calculate = async () => {
-      try {
-        const rootRecipe = recipeId ? await getRecipeById(recipeId) : null;
-        
-        const tree = await calculateDependencyTree(
-          itemId,
-          amount,
-          rootRecipe?.id ?? null,
-          recipeSelections,
-          0, [], '', excessMap, {},
-          dependencies.dependencyTrees
-        );
-
-        if (!tree) {
-          console.error("Failed to calculate dependency tree for new item");
-          return;
-        }
-        
-        if (rootRecipe) {
-          tree.recipe = rootRecipe;
-        }
-
-        const accumulated = calculateAccumulatedFromTree(tree);
-        dispatch(setDependencies({ treeId, tree, accumulated }));
-        console.log(`[handleCreateNewTree] New tree ${treeId} created and dispatched.`);
-      } catch (error) {
-        console.error("Error calculating dependencies for new tree:", error);
-      }
-    };
-    calculate();
-  }, [dispatch, recipeSelections, excessMap, dependencies.dependencyTrees, updateRecentItems]);
-
-  const importNodeForTree = useCallback((nodeId: string) => {
-    console.log(`Importing node ${nodeId}`);
-    let foundNode: DependencyNode | null = null;
-    let foundTreeId = "";
-    
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      const node = findNodeById(tree, nodeId);
-      if (node) {
-        foundNode = node;
-        foundTreeId = treeId;
-        break;
-      }
-    }
-    
-    if (!foundNode || !foundTreeId) {
-      console.error("Could not find node to import");
-      return;
-    }
-    
-    console.log(`[IMPORT DEBUG] Found node to import:`, {
-      id: foundNode.id,
-      uniqueId: foundNode.uniqueId,
-      treeId: foundTreeId
-    });
-    
-    let targetTreeId = "";
-    
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
-        targetTreeId = treeId;
-        console.log(`[IMPORT DEBUG] Found existing target tree: ${targetTreeId} with id ${tree.id}`);
-        break;
-      }
-    }
-    
-    if (targetTreeId === "") {
-      const newTreeId = `${foundNode.id}-${Date.now()}`;
-      console.log(`[IMPORT DEBUG] No existing tree found, creating new tree with ID: ${newTreeId}`);
-      handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.recipe?.id || null);
-      targetTreeId = newTreeId;
-    }
-    
-    console.log(`[IMPORT DEBUG] Final target tree ID: ${targetTreeId}`);
-    handleImportNode(foundNode, targetTreeId, foundTreeId);
-  }, [dependencies.dependencyTrees, handleCreateNewTree, handleImportNode]);
-
-  const handleUnimport = (nodeId: string) => {
-    let sourceNode: DependencyNode | null = null;
-    let sourceTreeId = '';
-    
-    Object.entries(dependencies.dependencyTrees).forEach(([treeId, tree]) => {
-      const node = findNodeById(tree, nodeId);
-      if (node) {
-        sourceNode = node;
-        sourceTreeId = treeId;
-      }
-    });
-    
-    if (!sourceNode || !sourceTreeId) {
-      console.error('Node not found');
-      return;
-    }
-    
-    const isImportNode = !!(
-      (sourceNode as any).isImport || 
-      ((sourceNode as any).importReference && 
-      Object.keys((sourceNode as any).importReference).length > 0)
-    );
-    
-    if (!isImportNode) {
-      console.error('Not an import node');
-      return;
-    }
-    
-    handleUnimportNode(sourceNode, sourceTreeId);
-  };
-
-  const handleImportNodeById = useCallback((nodeId: string) => {
-    importNodeForTree(nodeId);
-  }, [importNodeForTree]);
 
   return {
     dependencies,
@@ -826,13 +538,12 @@ export const useFactoryPlanner = () => {
     handleMachineMultiplierChange,
     handleExpandCollapseAll,
     handleDeleteTree,
-    handleImportNode: handleImportNodeById,
+    handleImportNode,
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,
     handleUnimport,
     handleCreateNewTree,
-    importNodeForTree
   };
 };
 
