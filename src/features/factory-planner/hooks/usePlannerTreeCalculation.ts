@@ -60,8 +60,8 @@ export const usePlannerTreeCalculation = ({
         return;
       }
       
-      console.log(`[CALC DEBUG] Retrieved recipe for ${selectedItem}:`, 
-        { id: rootRecipe.id, inputs: Object.keys(rootRecipe.in), outputs: Object.keys(rootRecipe.out) });
+      // console.log(`[CALC DEBUG] Retrieved recipe for ${selectedItem}:`, 
+      //   { id: rootRecipe.id, inputs: Object.keys(rootRecipe.in), outputs: Object.keys(rootRecipe.out) });
       
       const tree = await calculateDependencyTree(
         selectedItem,
@@ -116,7 +116,7 @@ export const usePlannerTreeCalculation = ({
     treeId: string = generateTreeId(itemId),
     recipeId: string | null = null 
   ) => {
-    console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, recipeId });
+    // console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, recipeId });
     updateRecentItems(itemId);
     try {
       const rootRecipe = recipeId ? await getRecipeById(recipeId) : null;
@@ -155,7 +155,7 @@ export const usePlannerTreeCalculation = ({
       };
       resetMachineValues(tree);
 
-      console.log(`[handleCreateNewTree] New tree ${treeId} created and dispatched.`);
+      // console.log(`[handleCreateNewTree] New tree ${treeId} created and dispatched.`);
     } catch (error) {
       console.error("Error calculating dependencies for new tree:", error);
     }

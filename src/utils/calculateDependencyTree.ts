@@ -156,17 +156,20 @@ export const calculateDependencyTree = async (
   const byproducts = Object.entries(recipe.out)
     .filter(([outputItem]) => outputItem !== itemId)
     .map(
-      ([outputItem, outputAmount]) =>
-        ({
+      ([outputItem, outputAmount]) => {
+        const byproductAmount = -(Number(outputAmount) * cyclesNeeded);
+        console.log(`[BYPRODUCT DEBUG] calculateDependencyTree: Byproduct=${outputItem}, RecipeOutput=${outputAmount}, Cycles=${cyclesNeeded.toFixed(3)}, CalculatedAmount=${byproductAmount.toFixed(3)}`);
+        return {
           id: outputItem,
-          amount: -(Number(outputAmount) * cyclesNeeded), // Ensure calculation uses number
+          amount: byproductAmount, // Use the calculated variable
           uniqueId: `${nodeId}-${outputItem}-${depth}`,
           isByproduct: true,
           children: [],
           excess: 0,
           selectedRecipeId: undefined, // Explicitly add optional field
           availableRecipes: [], // Explicitly add optional field
-        } as DependencyNode)
+        } as DependencyNode;
+      }
     );
 
   const result: DependencyNode = {

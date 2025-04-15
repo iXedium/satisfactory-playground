@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { DependencyNode } from '../../../types';
+import { AccumulatedNode } from '@utils/calculateAccumulatedFromTree';
 
 // Define the expected shape of the dependencies state slice locally
 // Needs the full shape that is being serialized
 interface DependencySliceStateForPersistence {
   dependencyTrees: Record<string, DependencyNode>;
-  accumulatedDependencies: Record<string, any>; // Use any for now, or import AccumulatedNode
+  accumulatedDependencies: Record<string, AccumulatedNode>; // Use any for now, or import AccumulatedNode
   errors: unknown[];
 }
 
@@ -27,9 +28,10 @@ export const usePlannerPersistence = ({
       try {
         const serialized = JSON.stringify(dependencies);
         localStorage.setItem('savedDependencies', serialized);
-        console.log('[Persistence] Saved dependencies state.');
+        // console.log('[Persistence] Saved dependencies state.');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("Error saving dependencies:", error);
+        // console.error("Error saving dependencies:", error);
         localStorage.removeItem('savedDependencies'); // Clear on error
       }
     } 
@@ -45,9 +47,10 @@ export const usePlannerPersistence = ({
     if (recipeSelections && Object.keys(recipeSelections).length > 0) {
       try {
         localStorage.setItem('savedRecipeSelections', JSON.stringify(recipeSelections));
-        console.log('[Persistence] Saved recipe selections state.');
+        // console.log('[Persistence] Saved recipe selections state.');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("Error saving recipe selections:", error);
+        // console.error("Error saving recipe selections:", error);
         localStorage.removeItem('savedRecipeSelections'); // Clear on error
       }
     } 

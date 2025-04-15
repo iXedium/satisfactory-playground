@@ -71,26 +71,26 @@ const dependencySlice = createSlice({
         accumulated: Record<string, AccumulatedNode>;
       }>
     ) => {
-      console.debug(`[REDUX DEBUG] setDependencies called for tree: ${action.payload.treeId}`);
-      console.debug(`[REDUX DEBUG] Tree amount: ${action.payload.tree.amount}`);
-      console.debug(`[REDUX DEBUG] Accumulated nodes count: ${Object.keys(action.payload.accumulated).length}`);
+      // console.debug(`[REDUX DEBUG] setDependencies called for tree: ${action.payload.treeId}`);
+      // console.debug(`[REDUX DEBUG] Tree amount: ${action.payload.tree.amount}`);
+      // console.debug(`[REDUX DEBUG] Accumulated nodes count: ${Object.keys(action.payload.accumulated).length}`);
       
       // Check if this tree already exists
       const existingTree = state.dependencyTrees[action.payload.treeId];
       if (existingTree) {
-        console.debug(`[REDUX DEBUG] Updating existing tree: ${action.payload.treeId}`);
-        console.debug(`[REDUX DEBUG] Previous amount: ${existingTree.amount}, New amount: ${action.payload.tree.amount}`);
+        // console.debug(`[REDUX DEBUG] Updating existing tree: ${action.payload.treeId}`);
+        // console.debug(`[REDUX DEBUG] Previous amount: ${existingTree.amount}, New amount: ${action.payload.tree.amount}`);
         
         // Check if this is an imported tree with nodes importing from it
         const importingNodes = findNodesImportingToTree(state.dependencyTrees, action.payload.treeId);
         if (importingNodes.length > 0) {
-          console.debug(`[REDUX DEBUG] Tree ${action.payload.treeId} has ${importingNodes.length} nodes importing from it`);
-          importingNodes.forEach((node, idx) => {
-            console.debug(`[REDUX DEBUG] Node #${idx+1} importing from this tree: ${node.id} (${node.uniqueId}) with amount ${node.amount}`);
-          });
+          // console.debug(`[REDUX DEBUG] Tree ${action.payload.treeId} has ${importingNodes.length} nodes importing from it`);
+          // importingNodes.forEach((node, idx) => {
+          //   console.debug(`[REDUX DEBUG] Node #${idx+1} importing from this tree: ${node.id} (${node.uniqueId}) with amount ${node.amount}`);
+          // });
         }
       } else {
-        console.debug(`[REDUX DEBUG] Creating new tree: ${action.payload.treeId}`);
+        // console.debug(`[REDUX DEBUG] Creating new tree: ${action.payload.treeId}`);
       }
       
       // Create completely new references to ensure React detects changes
@@ -102,7 +102,18 @@ const dependencySlice = createSlice({
       // Always create a fresh object for accumulated dependencies
       state.accumulatedDependencies = action.payload.accumulated;
       
-      console.debug('[REDUX DEBUG] Redux state updated');
+      // Log byproduct amounts before storing
+      const checkNodesForByproduct = (node: DependencyNode) => {
+        if (node.isByproduct) {
+          console.log(`[BYPRODUCT DEBUG] setDependencies Reducer: Storing Byproduct Node=${node.id} (${node.uniqueId}), Amount=${node.amount}`);
+        }
+        if (node.children) {
+          node.children.forEach(checkNodesForByproduct);
+        }
+      };
+      checkNodesForByproduct(action.payload.tree);
+      
+      // console.debug('[REDUX DEBUG] Redux state updated');
     },
     
     deleteTree: (
@@ -151,7 +162,7 @@ const dependencySlice = createSlice({
       
       // For each affected node, clear the import reference
       affectedNodes.forEach(({ node }) => {
-        console.log(`Restoring node ${node.id} that was importing from deleted tree ${treeIdToDelete}`);
+        // console.log(`Restoring node ${node.id} that was importing from deleted tree ${treeIdToDelete}`);
         
         // Use our reference-based utility to properly clear import reference
         const clearedNode = clearImportReference(node);
@@ -222,7 +233,8 @@ const dependencySlice = createSlice({
         }
       }
       if (!treeUpdated) {
-         console.warn(`[updateNodeProperties] Node ${nodeId} not found in any tree.`);
+         // console.warn(`[updateNodeProperties] Node ${nodeId} not found in any tree.`);
+         console.warn(`Node ${nodeId} not found in any tree for update.`);
       }
     },
     

@@ -66,6 +66,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onDelete,
   onImport,
 }) => {
+  // Log received props for byproducts
+  if (isByproduct) {
+    console.log(`[BYPRODUCT DEBUG] ItemNode Render: Received props for ${itemId} - Amount=${amount}, IsByproduct=${isByproduct}`);
+  }
+  
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
@@ -74,10 +79,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [efficiency, setEfficiency] = useState(100);
   const [nominalRate, setNominalRate] = useState(0);
 
-  useEffect(() => {
-    console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`);
-    setLocalExcess(excess);
-  }, [excess, itemId]);
+  // useEffect(() => {
+  //   console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`);
+  //   setLocalExcess(excess);
+  // }, [excess, itemId]);
 
   useEffect(() => {
     getItemById(itemId).then((item) => setItem(item || null));
@@ -125,12 +130,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         const neededAmount = amount + localExcess;
         const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
         
-        console.debug(`[EXCESS DEBUG] ItemNode ${itemId} calculating efficiency:
-          amount: ${amount}
-          localExcess: ${localExcess}
-          totalMachineCapacity: ${totalMachineCapacity}
-          neededAmount: ${neededAmount}
-          efficiency: ${Math.round(newEfficiency * 100) / 100}%`);
+        // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} calculating efficiency:
+        //   amount: ${amount}
+        //   localExcess: ${localExcess}
+        //   totalMachineCapacity: ${totalMachineCapacity}
+        //   neededAmount: ${neededAmount}
+        //   efficiency: ${Math.round(newEfficiency * 100) / 100}%`);
         
         setEfficiency(Math.round(newEfficiency * 100) / 100);
       }
@@ -160,7 +165,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleExcessChange = (value: number) => {
-    console.debug(`[EXCESS DEBUG] ItemNode ${itemId} handleExcessChange called with: ${value}`);
+    // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} handleExcessChange called with: ${value}`);
     setLocalExcess(value);
     onExcessChange?.(value);
   };
@@ -209,16 +214,18 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         onMachineCountChange?.(optimalMachines);
       } else {
          // This case should technically not be reachable if the outer 'if' passed
-         console.warn('[Optimize Error] Recipe not found inside if block.'); // Keep this warn
+         // console.warn('[Optimize Error] Recipe not found inside if block.'); // Keep this warn
+         console.warn('[Optimize Error] Recipe not found inside if block.');
       }
     } else {
       // Keep the failure log
-      console.warn('[Optimize Check Fail] Condition not met. Values:', { 
-          machine: !!machine, 
-          selectedRecipeId: !!selectedRecipeId, 
-          recipes: recipes && recipes.length > 0, 
-          nominalRatePositive: nominalRate > 0 
-      });
+      // console.warn('[Optimize Check Fail] Condition not met. Values:', { 
+      //     machine: !!machine, 
+      //     selectedRecipeId: !!selectedRecipeId, 
+      //     recipes: recipes && recipes.length > 0, 
+      //     nominalRatePositive: nominalRate > 0 
+      // });
+      console.warn('[Optimize Check Fail] Condition not met.');
     }
   };
 
@@ -261,6 +268,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         <ItemDetails
           item={item}
           itemId={itemId}
+          amount={amount}
           size={size}
           recipes={recipes}
           selectedRecipeId={selectedRecipeId}

@@ -2,7 +2,6 @@ import React from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import Icon from '../Icon';
-import RecipeSelect from '../RecipeSelect';
 import { Item, Recipe } from '../../types';
 import { IconSize } from '../Icon';
 import StyledSelect from './StyledSelect';
@@ -10,6 +9,7 @@ import StyledSelect from './StyledSelect';
 interface ItemDetailsProps {
   item: Item;
   itemId: string;
+  amount: number;
   size?: IconSize;
   recipes?: Recipe[];
   selectedRecipeId?: string;
@@ -26,6 +26,7 @@ interface ItemDetailsProps {
 const ItemDetails: React.FC<ItemDetailsProps> = ({
   item,
   itemId,
+  amount,
   size = 'large',
   recipes = [],
   selectedRecipeId,
@@ -38,6 +39,11 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   contentStyle,
   getItemColor = () => theme.colors.primary,
 }) => {
+  // Log received amount for byproducts
+  if (isByproduct) {
+    console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Received amount for ${item?.name} - Amount=${amount}`);
+  }
+  
   // Section container styles
   const sectionStyle: React.CSSProperties = {
     backgroundColor: theme.colors.dark,
@@ -91,7 +97,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Item name and nominal rate */}
+        {/* Item name and actual amount */}
         <div
           style={{
             display: "flex",
@@ -103,12 +109,21 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
           }}
         >
           <span>{item.name}</span>
+          {(console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Rendering amount for ${item.name} (Byproduct: ${isByproduct}) - Amount=${amount}`), null)}
+          <span style={{
+            fontSize: sizes.fontSize.standard,
+            opacity: 1,
+            color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text
+          }}>
+            {amount.toFixed(2)}
+          </span>
           {nominalRate > 0 && !isByproduct && !isImport && (
-            <span style={{ 
-              fontSize: sizes.fontSize.standard, 
-              opacity: 0.8 
+            <span style={{
+              fontSize: sizes.fontSize.standard,
+              opacity: 0.6,
+              marginLeft: sizes.spacing.small
             }}>
-              {nominalRate.toFixed(2)}
+              ({nominalRate.toFixed(2)})
             </span>
           )}
         </div>

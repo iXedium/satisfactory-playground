@@ -1,5 +1,4 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-
 export interface PlannerNodeState {
   excessMap: Record<string, number>;
   setExcessMap: Dispatch<SetStateAction<Record<string, number>>>;
@@ -44,8 +43,9 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       if (savedNodeExtensionOverrides) {
         setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error loading saved node state:", error);
+      // console.error("Error loading saved node state:", error);
     }
   }, []);
 
@@ -54,8 +54,9 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     if (Object.keys(excessMap).length > 0) {
       try {
         localStorage.setItem('savedExcessMap', JSON.stringify(excessMap));
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("Error saving excess map:", error);
+        // console.error("Error saving excess map:", error);
         localStorage.removeItem('savedExcessMap');
       }
     }
@@ -75,8 +76,9 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       } else {
         localStorage.removeItem('savedMachineMultiplierMap'); // Clean up if empty
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error("Error saving machine maps:", error);
+      // console.error("Error saving machine maps:", error);
       localStorage.removeItem('savedMachineCountMap');
       localStorage.removeItem('savedMachineMultiplierMap');
     }
@@ -96,8 +98,9 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       } else {
          localStorage.removeItem('savedNodeExtensionOverrides');
       }
-    } catch (error) {
-      console.error("Error saving node UI preferences:", error);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+      // console.error("Error saving node UI preferences:", error);
       localStorage.removeItem('savedExpandedNodes');
       localStorage.removeItem('savedNodeExtensionOverrides');
     }
@@ -110,7 +113,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     localStorage.removeItem('savedMachineMultiplierMap');
     localStorage.removeItem('savedExpandedNodes');
     localStorage.removeItem('savedNodeExtensionOverrides');
-    console.log('[Persistence] Cleared node state from localStorage.');
+    // console.log('[Persistence] Cleared node state from localStorage.');
   }, []);
 
   return {

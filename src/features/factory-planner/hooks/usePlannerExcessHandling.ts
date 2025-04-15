@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
@@ -23,22 +24,22 @@ export const usePlannerExcessHandling = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    console.log(`[SEQUENCE DEBUG] Step 1: handleExcessChange called for ${nodeId} with excess ${excess}`);
+    // console.log(`[SEQUENCE DEBUG] Step 1: handleExcessChange called for ${nodeId} with excess ${excess}`);
     
-    console.log(`[SEQUENCE DEBUG] Step 2: Setting excess map state`);
+    // console.log(`[SEQUENCE DEBUG] Step 2: Setting excess map state`);
     setExcessMap(prevMap => {
-      console.log(`[SEQUENCE DEBUG] Step 2.1: Inside setExcessMap callback`);
+      // console.log(`[SEQUENCE DEBUG] Step 2.1: Inside setExcessMap callback`);
       return { ...prevMap, [nodeId]: excess };
     });
     
-    console.log(`[SEQUENCE DEBUG] Step 3: Finding tree ID for node ${nodeId}`);
+    // console.log(`[SEQUENCE DEBUG] Step 3: Finding tree ID for node ${nodeId}`);
     
     // Check if the nodeId is actually a treeId (root node case)
     if (dependencies.dependencyTrees[nodeId]) {
       const tree = dependencies.dependencyTrees[nodeId];
-      console.log(`[SEQUENCE DEBUG] The node ID is actually a tree ID. Using root node's uniqueId: ${tree.uniqueId}`);
+      // console.log(`[SEQUENCE DEBUG] The node ID is actually a tree ID. Using root node's uniqueId: ${tree.uniqueId}`);
       
-      console.log(`[SEQUENCE DEBUG] Root node details:`, { /* ... logging */ });
+      // console.log(`[SEQUENCE DEBUG] Root node details:`, { /* ... logging */ });
       
       // Ensure excess map is also updated for the actual uniqueId of the root node
       setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
@@ -58,19 +59,19 @@ export const usePlannerExcessHandling = ({
       if (node) {
         foundTreeId = treeId;
         foundNode = node; // Store the found node
-        console.log(`[SEQUENCE DEBUG] Found node details:`, { /* ... logging */ });
+        // console.log(`[SEQUENCE DEBUG] Found node details:`, { /* ... logging */ });
         break;
       }
     }
 
     if (!foundTreeId) {
-      console.error(`[Excess Change ERROR] Node ${nodeId} not found in any tree`);
+      // console.error(`[Excess Change ERROR] Node ${nodeId} not found in any tree`);
       return;
     }
       
-    console.log(`[SEQUENCE DEBUG] Step 4: Found tree ID: ${foundTreeId}`);
+    // console.log(`[SEQUENCE DEBUG] Step 4: Found tree ID: ${foundTreeId}`);
     
-    console.log(`[SEQUENCE DEBUG] Step 5: Using node ID: ${nodeId} in tree: ${foundTreeId}`);
+    // console.log(`[SEQUENCE DEBUG] Step 5: Using node ID: ${nodeId} in tree: ${foundTreeId}`);
     
     // Dispatch update based on the specific node's uniqueId and its containing treeId
     dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
