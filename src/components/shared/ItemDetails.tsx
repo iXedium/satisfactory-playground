@@ -110,13 +110,6 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
         >
           <span>{item.name}</span>
           {(console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Rendering amount for ${item.name} (Byproduct: ${isByproduct}) - Amount=${amount}`), null)}
-          <span style={{
-            fontSize: sizes.fontSize.standard,
-            opacity: 1,
-            color: isByproduct ? theme.colors.nodeByproduct : theme.colors.text
-          }}>
-            {amount.toFixed(2)}
-          </span>
           {nominalRate > 0 && !isByproduct && !isImport && (
             <span style={{
               fontSize: sizes.fontSize.standard,
