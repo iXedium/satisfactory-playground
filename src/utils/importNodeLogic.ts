@@ -24,6 +24,9 @@ declare var calculateDependencyTree: (
 ) => Promise<DependencyNode>;
 */
 
+// Import the type for the creation function
+import { CreateTreeFunction } from '../features/factory-planner/hooks/usePlannerTreeCalculation';
+
 // Helper function to create consistent import nodes
 export const createImportNode = async (
   existingImportNode: DependencyNode | null,
@@ -212,93 +215,86 @@ export const restoreOriginalChildren = (
  */
 export async function convertToImportTree(
   node: DependencyNode,
-  // Use initialTrees, which will be mutated locally
   initialTrees: Record<string, DependencyNode>,
-  // Function signature matching handleCreateNewTree, returning the new tree object or null
-  createTreeFn: (
-    itemId: string,
-    amount: number,
-    treeId?: string,
-    recipeId?: string | null,
-    isAutoImportRoot?: boolean,
-    // Add pendingCreations map to signature
-    pendingCreations?: Record<string, Promise<DependencyNode | null>>
-  ) => Promise<DependencyNode | null>,
-  // Add pendingCreations map to signature
-  pendingCreations: Record<string, Promise<DependencyNode | null>>
+  // Use the imported CreateTreeFunction type
+  createTreeFn: CreateTreeFunction, 
+  // Keep pendingCreations as a separate argument
+  pendingCreations: Record<string, Promise<DependencyNode | null>> 
 ): Promise<DependencyNode> {
   
-  console.log(`[convertToImportTree ENTRY] Node: ${node.uniqueId || node.id}. Current known tree IDs: [${Object.keys(initialTrees).join(', ')}]`);
+  // console.log(`[convertToImportTree ENTRY] Node: ${node.uniqueId || node.id}. Current known tree IDs: [${Object.keys(initialTrees).join(', ')}]`); // Removed Log
 
   if (node.children && node.children.length > 0) {
-    // Use Promise.all to handle potential async operations within the loop
     node.children = await Promise.all(node.children.map(async (child) => {
-      // --- Revised Logic --- 
-      // 1. Recurse first on the original child structure, passing the mutable maps
       let processedChild = await convertToImportTree(child, initialTrees, createTreeFn, pendingCreations);
 
-      // 2. Now, check if this processed child should become an import node.
       if (!processedChild.isImport && !processedChild.importReference && !processedChild.isByproduct) {
         const itemIdToImport = processedChild.id;
+        
+        // --- Capture original depth before potential conversion --- 
+        const originalChildDepth = processedChild.depth;
+        // --- LOG: Check captured depth ---
+        console.log(`[convertToImportTree] Child ${processedChild.uniqueId} (Item: ${itemIdToImport}) needs conversion. Captured original depth: ${originalChildDepth}`);
+        // --------------------------------
+        
         let targetTreeId: string | null = null;
         let createdNewTree = false;
 
-        // --- Check pending creations first --- 
         if (pendingCreations[itemIdToImport]) {
-          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found pending creation for ${itemIdToImport}. Awaiting...`);
+          // console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found pending creation for ${itemIdToImport}. Awaiting...`); // Removed Log
           const resolvedPendingTree = await pendingCreations[itemIdToImport];
           if (resolvedPendingTree) {
-              console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved (Tree ID: ${resolvedPendingTree.uniqueId}). Checking initialTrees again.`);
-              // Tree should now be in initialTrees, find its ID
+              // console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved (Tree ID: ${resolvedPendingTree.uniqueId}). Checking initialTrees again.`); // Removed Log
               targetTreeId = resolvedPendingTree.uniqueId;
               if (!initialTrees[targetTreeId]) {
-                 console.warn(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation resolved, but tree ${targetTreeId} not found in initialTrees map! Map keys: [${Object.keys(initialTrees).join(', ')}]`);
-                 // Fallback: try searching initialTrees map directly just in case
+                 // console.warn(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation resolved, but tree ${targetTreeId} not found in initialTrees map! Map keys: [${Object.keys(initialTrees).join(', ')}]`); // Removed Log
                  targetTreeId = Object.keys(initialTrees).find(id => initialTrees[id].id === itemIdToImport && !initialTrees[id].isImport && !initialTrees[id].importReference) || null;
               }
           } else {
-             console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved to null/failure.`);
+             // console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved to null/failure.`); // Removed Log
           }
         }
-        // ------------------------------------
-
-        // --- If not found via pending, check initialTrees --- 
+        
         if (!targetTreeId) {
           targetTreeId = Object.keys(initialTrees).find(id => initialTrees[id].id === itemIdToImport && !initialTrees[id].isImport && !initialTrees[id].importReference) || null;
         }
-        // ------------------------------------
 
         if (targetTreeId) {
-          // Existing tree found (either directly or via pending)
-          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found existing target tree ${targetTreeId} for ${itemIdToImport}. Converting to import.`);
-          processedChild = setImportReference(processedChild, targetTreeId, targetTreeId); // Point to root
+          // console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found existing target tree ${targetTreeId} for ${itemIdToImport}. Converting to import.`); // Removed Log
+          processedChild = setImportReference(processedChild, targetTreeId, targetTreeId);
         } else {
-          // No existing tree found yet, initiate creation
-          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: No existing tree for ${itemIdToImport}. Calling createTreeFn...`);
-          // Store the promise in pendingCreations *before* awaiting
-          const creationPromise = createTreeFn(itemIdToImport, 0, undefined, undefined, true, pendingCreations);
+          // console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: No existing tree for ${itemIdToImport}. Calling createTreeFn...`); // Removed Log
+          // No existing tree, call createTreeFn
+          console.log(`[convertToImportTree] Calling createTreeFn for ${itemIdToImport} with originalDepth: ${originalChildDepth}`); // Log before call
+          const creationPromise = createTreeFn(
+            itemIdToImport, 
+            0, 
+            undefined, 
+            undefined, 
+            true, 
+            originalChildDepth // Pass the captured original depth
+          );
+          // ---------------------------------------------
           pendingCreations[itemIdToImport] = creationPromise;
-          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Added promise for ${itemIdToImport} to pendingCreations.`);
           
           const newTree = await creationPromise;
-          createdNewTree = true; // Mark that we attempted creation
+          createdNewTree = true;
           
           if (newTree) {
-            // Add the newly created tree to our mutable map (should already be processed)
             initialTrees[newTree.uniqueId] = newTree;
-            console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn successful (newTreeId: ${newTree.uniqueId}). Added to map. New map keys: [${Object.keys(initialTrees).join(', ')}]. Converting to import.`);
-            processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId); // Point to new root
+            // console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn successful (newTreeId: ${newTree.uniqueId}). Added to map. New map keys: [${Object.keys(initialTrees).join(', ')}]. Converting to import.`); // Removed Log
+            processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId);
           } else {
-            console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn failed for ${itemIdToImport}`);
+            // console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn failed for ${itemIdToImport}`); // Removed Log
           }
         }
       }
 
-      return processedChild; // Return the potentially converted and recursively processed child
+      return processedChild;
     }));
   }
 
-  return node; // Return the potentially modified node
+  return node;
 } 
 
 

@@ -11,6 +11,9 @@ import ViewTreeControls from "./shared/ViewTreeControls";
 import PlannerActions from "./shared/PlannerActions";
 import { useFactoryPlanner } from "../features/factory-planner/hooks/useFactoryPlanner";
 
+// Import sort types (or define locally)
+type TreeSortKey = 'default' | 'amount' | 'name'; 
+type SortDirection = 'asc' | 'desc';
 type ViewMode = "accumulated" | "tree";
 
 interface CommandBarProps {
@@ -37,8 +40,14 @@ interface CommandBarProps {
   recentItems?: string[];
   updateRecentItems?: (itemId: string) => void;
   removeRecentItem: (itemId: string) => void;
-  addAsImported: boolean;
-  onAddAsImportedChange: (value: boolean) => void;
+  autoImport: boolean;
+  onAutoImportChange: (value: boolean) => void;
+  // --- Add Sort Props ---
+  treeSortKey: TreeSortKey;
+  onTreeSortKeyChange: (key: TreeSortKey) => void;
+  treeSortDirection: SortDirection;
+  onTreeSortDirectionChange: (direction: SortDirection) => void;
+  // ---------------------
 }
 
 /**
@@ -69,8 +78,14 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     recentItems = [],
     updateRecentItems,
     removeRecentItem,
-    addAsImported,
-    onAddAsImportedChange
+    autoImport,
+    onAutoImportChange,
+    // --- Destructure Sort Props ---
+    treeSortKey,
+    onTreeSortKeyChange,
+    treeSortDirection,
+    onTreeSortDirectionChange,
+    // -----------------------------
   },
   ref
 ) => {
@@ -113,6 +128,10 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
            viewMode={viewMode}
            onViewModeChange={onViewModeChange}
            onExpandCollapseAll={onExpandCollapseAll}
+           treeSortKey={treeSortKey}
+           onTreeSortKeyChange={onTreeSortKeyChange}
+           treeSortDirection={treeSortDirection}
+           onTreeSortDirectionChange={onTreeSortDirectionChange}
         />
         
         {/* --- Render PlannerActions --- */}
@@ -128,8 +147,8 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onShowMachinesChange={onShowMachinesChange}
           showMachineMultiplier={showMachineMultiplier}
           onShowMachineMultiplierChange={onShowMachineMultiplierChange}
-          addAsImported={addAsImported}
-          onAddAsImportedChange={onAddAsImportedChange}
+          autoImport={autoImport}
+          onAutoImportChange={onAutoImportChange}
         />
       </div>
 

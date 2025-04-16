@@ -120,10 +120,12 @@ export const calculateDependencyTree = async (
   }
 
   if (!recipe) {
+    // Return node even if no recipe (e.g., raw resource)
     return {
       id: itemId,
       amount,
       uniqueId: nodeId,
+      depth: depth, // Assign depth here too
       availableRecipes,
       children: [],
       excess: excessMap[itemId] || excessMap[nodeId] || 0,
@@ -176,6 +178,7 @@ export const calculateDependencyTree = async (
     id: itemId,
     amount,
     uniqueId: nodeId,
+    depth: depth, // Assign depth here
     isRoot: depth === 0,
     recipe: recipe,
     availableRecipes,

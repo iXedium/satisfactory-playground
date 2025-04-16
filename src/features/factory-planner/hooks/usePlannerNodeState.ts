@@ -35,17 +35,19 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       if (savedMachineMultiplierMap) {
         setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
       }
-      const savedExpandedNodes = localStorage.getItem('savedExpandedNodes');
+      const savedExpandedNodes = localStorage.getItem('plannerExpandedNodes');
       if (savedExpandedNodes) {
         setExpandedNodes(JSON.parse(savedExpandedNodes));
+      } else {
+        setExpandedNodes({}); // Initialize if nothing is saved
       }
-      const savedNodeExtensionOverrides = localStorage.getItem('savedNodeExtensionOverrides');
-      if (savedNodeExtensionOverrides) {
-        setNodeExtensionOverrides(JSON.parse(savedNodeExtensionOverrides));
+      const savedOverrides = localStorage.getItem('plannerNodeExtensionOverrides');
+      if (savedOverrides) {
+        setNodeExtensionOverrides(JSON.parse(savedOverrides));
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      // console.error("Error loading saved node state:", error);
+      console.error("Error loading node state:", error);
     }
   }, []);
 
@@ -87,22 +89,10 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   // Save expanded nodes and overrides to localStorage
   useEffect(() => {
     try {
-      if (Object.keys(expandedNodes).length > 0) {
-         localStorage.setItem('savedExpandedNodes', JSON.stringify(expandedNodes));
-      } else {
-         localStorage.removeItem('savedExpandedNodes');
-      }
-     
-      if (Object.keys(nodeExtensionOverrides).length > 0) {
-        localStorage.setItem('savedNodeExtensionOverrides', JSON.stringify(nodeExtensionOverrides));
-      } else {
-         localStorage.removeItem('savedNodeExtensionOverrides');
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-      // console.error("Error saving node UI preferences:", error);
-      localStorage.removeItem('savedExpandedNodes');
-      localStorage.removeItem('savedNodeExtensionOverrides');
+      localStorage.setItem('plannerExpandedNodes', JSON.stringify(expandedNodes));
+      localStorage.setItem('plannerNodeExtensionOverrides', JSON.stringify(nodeExtensionOverrides));
+    } catch (error) {
+      console.error("Error saving node state:", error);
     }
   }, [expandedNodes, nodeExtensionOverrides]);
 
@@ -111,9 +101,9 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     localStorage.removeItem('savedExcessMap');
     localStorage.removeItem('savedMachineCountMap');
     localStorage.removeItem('savedMachineMultiplierMap');
-    localStorage.removeItem('savedExpandedNodes');
-    localStorage.removeItem('savedNodeExtensionOverrides');
-    // console.log('[Persistence] Cleared node state from localStorage.');
+    localStorage.removeItem('plannerExpandedNodes');
+    localStorage.removeItem('plannerNodeExtensionOverrides');
+    console.log('[Persistence] Cleared node state from localStorage.');
   }, []);
 
   return {

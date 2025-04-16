@@ -28,7 +28,11 @@ const FactoryPlanner: React.FC = () => {
     isAddItemCollapsed,
     recentItems,
     removeRecentItem,
-    addAsImported,
+    autoImport,
+    setAutoImport,
+    treeSortKey,
+    treeSortDirection,
+    itemsMap,
 
     // Setters
     setSelectedItem,
@@ -41,7 +45,8 @@ const FactoryPlanner: React.FC = () => {
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
     updateRecentItems,
-    setAddAsImported,
+    setTreeSortKey,
+    setTreeSortDirection,
 
     // Handlers
     handleCalculate,
@@ -88,8 +93,12 @@ const FactoryPlanner: React.FC = () => {
           recentItems={recentItems}
           updateRecentItems={updateRecentItems}
           removeRecentItem={removeRecentItem}
-          addAsImported={addAsImported}
-          onAddAsImportedChange={setAddAsImported}
+          autoImport={autoImport}
+          onAutoImportChange={setAutoImport}
+          treeSortKey={treeSortKey}
+          onTreeSortKeyChange={setTreeSortKey}
+          treeSortDirection={treeSortDirection}
+          onTreeSortDirectionChange={setTreeSortDirection}
         />
       }
       content={
@@ -115,6 +124,9 @@ const FactoryPlanner: React.FC = () => {
           handleNodeUpdate={handleNodeUpdate}
           nodeExtensionOverrides={nodeExtensionOverrides}
           handleToggleNodeExtensions={handleToggleNodeExtensions}
+          itemsMap={itemsMap}
+          treeSortKey={treeSortKey}
+          treeSortDirection={treeSortDirection}
         />
       }
     />

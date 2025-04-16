@@ -22,7 +22,7 @@ interface UseItemFilteringSortingReturn {
 
 export const useItemFilteringSorting = (): UseItemFilteringSortingReturn => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [sortBy, setSortBy] = useState<SortKey>("depth");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showByproducts, setShowByproducts] = useState(true);
   const [showRawMaterials, setShowRawMaterials] = useState(true);

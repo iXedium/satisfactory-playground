@@ -3,15 +3,21 @@ import ViewModeSwitch from '../ViewModeSwitch'; // Adjust path as needed
 import StyledSelect from './StyledSelect';
 import { theme } from '../../styles/theme';
 
+// Types moved from useFactoryPlanner for clarity
+type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
+type SortDirection = 'asc' | 'desc';
 type ViewMode = "accumulated" | "tree";
 
 interface ViewTreeControlsProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onExpandCollapseAll: (expand: boolean) => void;
-  // Add depth state/handler if needed later
-  // selectedDepth: string | number;
-  // onDepthChange: (depth: string | number) => void;
+  // --- Tree View Sort Props ---
+  treeSortKey: TreeSortKey;
+  onTreeSortKeyChange: (key: TreeSortKey) => void;
+  treeSortDirection: SortDirection;
+  onTreeSortDirectionChange: (direction: SortDirection) => void;
+  // -----------------------------
 }
 
 const depthOptions = [
@@ -23,16 +29,29 @@ const depthOptions = [
   { id: "5", name: "5" },
 ];
 
+const sortOptions = [
+  { id: "originalDepth", name: "Hierarchy" },
+  { id: "amount", name: "Rate" },
+  { id: "nominalRate", name: "Nominal Rate" },
+  { id: "name", name: "Name" },
+];
+
 const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
   viewMode,
   onViewModeChange,
   onExpandCollapseAll,
-  // selectedDepth = "all", // Default value
-  // onDepthChange,
+  treeSortKey,
+  onTreeSortKeyChange,
+  treeSortDirection,
+  onTreeSortDirectionChange,
 }) => {
 
   // Handler for depth change (placeholder)
   const handleDepthChange = () => {};
+
+  const toggleSortDirection = () => {
+    onTreeSortDirectionChange(treeSortDirection === 'asc' ? 'desc' : 'asc');
+  };
 
   // Styles - kept local for now
   const sectionStyle: React.CSSProperties = {
@@ -69,31 +88,53 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
         />
       </div>
 
-      {/* Tree Controls Section */}
-      <div style={sectionStyle}>
-        <button 
-          style={iconButtonStyle}
-          onClick={() => onExpandCollapseAll(true)}
-          title="Expand All"
-        >
-          <span>+</span>
-        </button>
-        <button 
-          style={iconButtonStyle}
-          onClick={() => onExpandCollapseAll(false)}
-          title="Collapse All"
-        >
-          <span>-</span>
-        </button>
-        
-        <StyledSelect
-          options={depthOptions}
-          value={"all"} // Use prop selectedDepth later
-          onChange={handleDepthChange}
-          variant="compact"
-          style={{ width: "60px" }}
-        />
-      </div>
+      {/* Tree Controls Section - Only shown in Tree View Mode */}
+      {viewMode === 'tree' && (
+        <div style={sectionStyle}>
+          {/* Expand/Collapse Buttons */}
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(true)}
+            title="Expand All"
+          >
+            <span>+</span>
+          </button>
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(false)}
+            title="Collapse All"
+          >
+            <span>-</span>
+          </button>
+          
+          {/* Depth Select (unused for now) */}
+          {/* <StyledSelect
+            options={depthOptions}
+            value={"all"} // Use prop selectedDepth later
+            onChange={handleDepthChange}
+            variant="compact"
+            style={{ width: "60px" }}
+          /> */}
+
+          {/* Sort Controls */}
+          <StyledSelect
+            options={sortOptions}
+            value={treeSortKey}
+            // The value passed by StyledSelect should be TreeSortKey
+            onChange={(value) => onTreeSortKeyChange(value as TreeSortKey)}
+            variant="compact"
+            style={{ width: "90px" }}
+          />
+          <button
+            style={iconButtonStyle}
+            onClick={toggleSortDirection}
+            title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
+          >
+            {/* Simple Arrow Indicator */}
+            {treeSortDirection === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
+      )}
     </>
   );
 };

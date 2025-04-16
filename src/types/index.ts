@@ -38,6 +38,8 @@ export interface DependencyNode {
   excess?: number; // Amount of excess production requested for this node
   machineCount?: number; // Number of machines allocated
   machineMultiplier?: number; // Clock speed/multiplier for machines
+  depth?: number; // Node's depth within its own tree
+  originalDepth?: number; // Original depth in the parent tree before becoming an import root
 }
 
 /** Stores calculated dependency state */

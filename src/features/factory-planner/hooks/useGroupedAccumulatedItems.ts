@@ -114,7 +114,7 @@ export const useGroupedAccumulatedItems = ({
             isByproduct: node.isByproduct || false,
             nodeIds: [],
             name: node.name, // Use name from accumulated node initially
-            depth: node.depth || 0,
+            depth: node.depth ?? Infinity, // Initialize depth to Infinity
             normalizedMachineCount: 0,
             isImport: node.isImport || false,
           };
@@ -122,6 +122,8 @@ export const useGroupedAccumulatedItems = ({
         
         grouped[groupKey].amount += node.amount;
         grouped[groupKey].nodeIds.push(nodeId);
+        
+        grouped[groupKey].depth = Math.min(grouped[groupKey].depth, node.depth ?? Infinity);
         
         const machineCount = machineCountMap[nodeId] || 0;
         const multiplier = machineMultiplierMap[nodeId] || 1;
@@ -152,6 +154,7 @@ export const useGroupedAccumulatedItems = ({
            ...group,
            name: newItemsMap[group.itemId]?.name || group.name || group.itemId, // Use fetched name
            recipes: newRecipesMap[group.itemId] || [], // Assign fetched recipes
+           depth: group.depth === Infinity ? 0 : group.depth 
         }));
         
         setItemsMap(newItemsMap);

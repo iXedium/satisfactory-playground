@@ -45,14 +45,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onImport,
   onNodeUpdate
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Default internal state to false (collapsed) initially
+  const [isExpanded, setIsExpanded] = useState(false); 
   const hasChildren = node.children && node.children.length > 0;
   
-  // Update isExpanded when expandedNodes changes
+  // Update isExpanded when expandedNodes changes, defaulting to false if not present
   useEffect(() => {
-    if (node.uniqueId in expandedNodes) {
-      setIsExpanded(expandedNodes[node.uniqueId]);
-    }
+    // Check if the key exists and explicitly use the value from the map,
+    // otherwise default to false (collapsed).
+    const expandedStateFromMap = expandedNodes[node.uniqueId];
+    setIsExpanded(expandedStateFromMap === undefined ? false : expandedStateFromMap);
   }, [expandedNodes, node.uniqueId]);
   
   const handleToggle = () => {

@@ -13,8 +13,8 @@ interface SettingsMenuProps {
   showMachineMultiplier: boolean;
   onShowMachineMultiplierChange: (show: boolean) => void;
   // Add creation options
-  addAsImported: boolean;
-  onAddAsImportedChange: (value: boolean) => void;
+  autoImport: boolean;
+  onAutoImportChange: (value: boolean) => void;
   // children?: React.ReactNode; // Remove children prop
 }
 
@@ -28,8 +28,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   showMachineMultiplier,
   onShowMachineMultiplierChange,
   // children, // Remove children destructuring
-  addAsImported, // Destructure new props
-  onAddAsImportedChange, // Destructure new props
+  autoImport, // Renamed
+  onAutoImportChange, // Renamed
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -186,12 +186,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             <div style={checkboxContainerStyle}>
               <div style={compactCheckboxStyle}>
                 <StyledCheckbox 
-                  checked={addAsImported} 
+                  checked={autoImport} // Renamed prop
                   // StyledCheckbox onChange returns boolean directly
-                  onChange={onAddAsImportedChange}
+                  onChange={onAutoImportChange} // Renamed prop
                   label=""
                 />
-                <span>Add New Chains As Imported</span>
+                <span>Auto Import Chains</span> {/* Updated Label */}
               </div>
             </div>
           </div>

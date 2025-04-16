@@ -16,8 +16,8 @@ export interface BasePlannerDisplayOptions {
 }
 
 export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
-  addAsImported: boolean;
-  setAddAsImported: React.Dispatch<React.SetStateAction<boolean>>;
+  autoImport: boolean;
+  setAutoImport: React.Dispatch<React.SetStateAction<boolean>>;
   clearStorage: () => void;
 }
 
@@ -27,7 +27,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
-  const [addAsImported, setAddAsImported] = useState(false);
+  const [autoImport, setAutoImport] = useState(false);
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -52,9 +52,9 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       if (savedShowMachineMultiplier) {
         setShowMachineMultiplier(JSON.parse(savedShowMachineMultiplier));
       }
-      const savedAddAsImported = localStorage.getItem('plannerAddAsImported');
-      if (savedAddAsImported) {
-        setAddAsImported(JSON.parse(savedAddAsImported));
+      const savedAutoImport = localStorage.getItem('plannerAutoImport');
+      if (savedAutoImport) {
+        setAutoImport(JSON.parse(savedAutoImport));
       }
     } catch (error) {
       console.error("Error loading saved display options:", error);
@@ -69,11 +69,11 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
       localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
       localStorage.setItem('savedShowMachineMultiplier', JSON.stringify(showMachineMultiplier));
-      localStorage.setItem('plannerAddAsImported', JSON.stringify(addAsImported));
+      localStorage.setItem('plannerAutoImport', JSON.stringify(autoImport));
     } catch (error) {
       console.error("Error saving display options:", error);
     }
-  }, [viewMode, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, addAsImported]);
+  }, [viewMode, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
@@ -82,10 +82,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
     localStorage.removeItem('savedShowMachineMultiplier');
-    localStorage.removeItem('plannerAddAsImported');
-    // Reset state to defaults? Or let reload handle it?
-    // For now, just clear storage.
-    console.log('[Persistence] Cleared display options from localStorage.');
+    console.log('[Persistence] Cleared display options from localStorage (excluding autoImport).');
   }, []);
 
   return {
@@ -99,8 +96,8 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     setShowMachines,
     showMachineMultiplier,
     setShowMachineMultiplier,
-    addAsImported,
-    setAddAsImported,
+    autoImport,
+    setAutoImport,
     clearStorage,
   };
 }; 

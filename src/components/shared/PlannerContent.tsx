@@ -4,6 +4,10 @@ import { DependencyNode } from '../../types';
 import { AccumulatedResourceView } from "../../features/factory-planner/components";
 import TreeViewContainer from './TreeViewContainer';
 
+// Import sort types (or define locally)
+type TreeSortKey = 'default' | 'amount' | 'name'; 
+type SortDirection = 'asc' | 'desc';
+
 interface PlannerContentProps {
   viewMode: 'tree' | 'accumulated';
   treeViewRef: RefObject<HTMLDivElement | null>;
@@ -30,6 +34,9 @@ interface PlannerContentProps {
   nodeExtensionOverrides: Record<string, boolean>;
   handleToggleNodeExtensions: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
+  itemsMap: Record<string, Item>;
+  treeSortKey: TreeSortKey;
+  treeSortDirection: SortDirection;
 }
 
 /**
@@ -57,7 +64,10 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
   handleNodeUpdate,
   nodeExtensionOverrides,
   handleToggleNodeExtensions,
-  containerStyle
+  containerStyle,
+  itemsMap,
+  treeSortKey,
+  treeSortDirection,
 }) => {
   return (
     <div 
@@ -87,6 +97,9 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
           handleDeleteTree={handleDeleteTree}
           handleImportNode={handleImportNode}
           handleNodeUpdate={handleNodeUpdate}
+          itemsMap={itemsMap}
+          treeSortKey={treeSortKey}
+          treeSortDirection={treeSortDirection}
         />
       ) : (
         <AccumulatedResourceView

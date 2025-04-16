@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
 import { getRecipesForItem, getRecipeById, getRecipeByOutput } from '../../../data';
@@ -34,6 +34,10 @@ import { usePlannerPersistence } from './usePlannerPersistence';
 
 type ViewMode = "accumulated" | "tree";
 
+// Define types for Tree View sorting
+type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
+type SortDirection = 'asc' | 'desc';
+
 export const useFactoryPlanner = () => {
   const dispatch = useDispatch<AppDispatch>();
   const dependencies = useSelector((state: RootState) => state.dependencies);
@@ -51,8 +55,8 @@ export const useFactoryPlanner = () => {
     showMachineMultiplier,
     setShowMachineMultiplier,
     clearStorage: clearDisplayOptionsStorage,
-    addAsImported,
-    setAddAsImported,
+    autoImport,
+    setAutoImport,
   } = usePlannerDisplayOptions();
   
   const {
@@ -83,6 +87,21 @@ export const useFactoryPlanner = () => {
     removeRecentItem,
   } = usePlannerItemSelection();
 
+  // --- State for Tree View Sorting ---
+  const [treeSortKey, setTreeSortKey] = useState<TreeSortKey>('originalDepth');
+  const [treeSortDirection, setTreeSortDirection] = useState<SortDirection>('asc');
+  // -----------------------------------
+
+  // --- Create an Item Map for sorting by name --- 
+  const itemsMap = useMemo(() => {
+    const map: Record<string, Item> = {};
+    items.forEach(item => {
+      map[item.id] = item;
+    });
+    return map;
+  }, [items]);
+  // ---------------------------------------------
+
   const {
     handleCalculate,
     handleCreateNewTree,
@@ -96,7 +115,7 @@ export const useFactoryPlanner = () => {
     setMachineCountMap,
     setMachineMultiplierMap,
     setExcessMap,
-    addAsImported,
+    autoImport,
   });
   
   const {
@@ -189,7 +208,10 @@ export const useFactoryPlanner = () => {
     nodeExtensionOverrides,
     isAddItemCollapsed,
     recentItems,
-    addAsImported,
+    autoImport,
+    itemsMap,
+    treeSortKey,
+    treeSortDirection,
 
     setSelectedItem,
     setSelectedRecipe,
@@ -202,7 +224,9 @@ export const useFactoryPlanner = () => {
     setIsAddItemCollapsed,
     updateRecentItems,
     removeRecentItem,
-    setAddAsImported,
+    setAutoImport,
+    setTreeSortKey,
+    setTreeSortDirection,
 
     handleCalculate,
     handleExcessChange,

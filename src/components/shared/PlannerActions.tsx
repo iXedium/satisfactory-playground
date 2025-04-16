@@ -16,8 +16,8 @@ interface PlannerActionsProps {
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
   onShowMachineMultiplierChange: (show: boolean) => void;
-  addAsImported: boolean;
-  onAddAsImportedChange: (value: boolean) => void;
+  autoImport: boolean;
+  onAutoImportChange: (value: boolean) => void;
 }
 
 const PlannerActions: React.FC<PlannerActionsProps> = ({
@@ -32,8 +32,8 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onShowMachinesChange,
   showMachineMultiplier,
   onShowMachineMultiplierChange,
-  addAsImported,
-  onAddAsImportedChange,
+  autoImport,
+  onAutoImportChange,
 }) => {
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Remove unused state
 
@@ -91,8 +91,8 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         onShowMachinesChange={onShowMachinesChange}
         showMachineMultiplier={showMachineMultiplier}
         onShowMachineMultiplierChange={onShowMachineMultiplierChange}
-        addAsImported={addAsImported}
-        onAddAsImportedChange={onAddAsImportedChange}
+        autoImport={autoImport}
+        onAutoImportChange={onAutoImportChange}
       >
         {/* Remove children previously passed */}
         {/* 
