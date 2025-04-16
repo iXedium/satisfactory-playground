@@ -12,9 +12,10 @@ const ORIGINAL_ICON_SIZE = 64;
 const ORIGINAL_SHEET_WIDTH = 896;  // 14 * 64
 const ORIGINAL_SHEET_HEIGHT = 960; // 15 * 64
 
-export type IconSize = "tiny" | "small" | "medium" | "large";
+export type IconSize = "xsmall" | "tiny" | "small" | "medium" | "large";
 
 const sizeMap: Record<IconSize, number> = {
+  xsmall: 12,  // New extra small size
   tiny: 16,    // Quarter size
   small: 32,   // Half size
   medium: 48,  // Three-quarters size
