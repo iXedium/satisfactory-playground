@@ -2,13 +2,16 @@
 import { DependencyNode } from "../types";
 import { findNodeById } from "./index";
 import { getItemById } from "../data"; // Import DB query for names
+// Import helper to get import reference safely
+import { getImportReference } from "./nodeReferenceUtils";
 
 export interface ConsumerInfo {
-  consumerNodeId: string; // uniqueId of the node consuming the item (e.g., the Iron Rod node needing Iron Ingots)
-  consumerParentId: string; // id of the item the consumer node is producing (e.g., Screw node)
-  consumerParentName: string; // name of the item the consumer node is producing (e.g., "Screw")
+  consumerNodeId: string; // uniqueId of the import node representing the consumption
+  consumerParentId: string; // id of the item the actual consumer node is producing
+  consumerParentName: string; // name of the item the actual consumer node is producing
   consumingTreeId: string; // treeId where the consumption happens
-  consumedAmount: number; // Amount the consumer node requires
+  consumedAmount: number; // Amount consumed (always positive in this version)
+  isSupplier?: boolean;    // Kept for interface consistency, but will be false
 }
 
 // Helper to get item name asynchronously
@@ -23,94 +26,84 @@ async function getItemName(itemId: string): Promise<string> {
 }
 
 /**
- * Finds all nodes across all trees that consume the output of a given source node.
+ * Finds all nodes across all trees that consume the output of a given source node
+ * by identifying nodes that import directly from it.
  * @param sourceNodeId The uniqueId of the node whose output consumption we want to find.
- * @param sourceTreeId The treeId containing the sourceNode.
+ * @param sourceTreeId The treeId containing the sourceNode (used for initial lookup).
  * @param allTrees The complete record of all dependency trees.
  * @returns An array of ConsumerInfo objects.
  */
-// Make the function async to await names
 export const findNodeConsumers = async (
   sourceNodeId: string,
   sourceTreeId: string,
   allTrees: Record<string, DependencyNode>
 ): Promise<ConsumerInfo[]> => {
+  console.log(`[CONSUMPTION v3] Starting findNodeConsumers for sourceNodeId: ${sourceNodeId}`);
   const consumers: ConsumerInfo[] = [];
-  const sourceTree = allTrees[sourceTreeId];
-  // EARLY EXIT 1: Is sourceTree found?
+  const sourceTree = allTrees[sourceTreeId]; // Still needed to potentially find source node info
+
   if (!sourceTree) {
-    // console.log(`[DEBUG CONSUMPTION EXIT] Source tree ${sourceTreeId} not found.`);
-    return consumers;
+      console.warn(`[CONSUMPTION v3] Source tree ${sourceTreeId} not found.`);
+      return consumers;
   }
-
-  // Use findNodeById which should handle nested structures
-  const sourceNode = findNodeById(sourceTree, sourceNodeId);
-
-  // EARLY EXIT 2: Is sourceNode found AND not a byproduct?
-  if (!sourceNode || sourceNode.isByproduct) {
-    // console.log(`[DEBUG CONSUMPTION EXIT] Source node ${sourceNodeId} not found or is byproduct. Found: ${!!sourceNode}, IsByproduct: ${sourceNode?.isByproduct}`);
-    return consumers;
+  const sourceNode = findNodeById(sourceTree, sourceNodeId); // Find source node
+  if (!sourceNode) {
+      console.warn(`[CONSUMPTION v3] Source node ${sourceNodeId} not found in tree ${sourceTreeId}.`);
+      return consumers;
   }
+  console.log(`[CONSUMPTION v3] Source node found: ${sourceNode.uniqueId} (Item: ${sourceNode.id})`);
 
-  const producedItemId = sourceNode.id;
-//   console.log(`[DEBUG CONSUMPTION START] Found source node ${sourceNodeId} (Item: ${producedItemId}). Starting search...`); // Log before traversal starts
+  const nodeNamesToFetch: Record<string, string> = {};
 
-  // Keep track of consumer parent names to fetch them efficiently
-  const consumerParentNames: Record<string, string> = {};
+  // Iterate through ALL trees to find potential consumers
+  Object.entries(allTrees).forEach(([consumingTreeId, tree]) => {
+    // Recursive function to traverse THIS tree
+    const traverseTree = (parentNode: DependencyNode) => {
+      if (parentNode.children && parentNode.children.length > 0) {
+        parentNode.children.forEach(childNode => {
+          const importRef = getImportReference(childNode);
 
-  // Recursive function to traverse a tree and find consumers
-  const traverseTree = (node: DependencyNode, treeId: string) => {
-    if (node.children && node.children.length > 0) {
-      node.children.forEach(child => {
-        // -- DEBUG LOG --
-        // console.log(`[DEBUG CONSUMPTION] Checking Child: ${child.id} (Byproduct: ${!!child.isByproduct}) against ProducedItem: ${producedItemId} by Parent: ${node.id}`);
-        // -- END DEBUG LOG --
-        
-        // Check if the child requires the item produced by sourceNode AND is not a byproduct itself
-        if (child.id === producedItemId && !child.isByproduct) {
-          // The PARENT node (`node`) is the one consuming the item to produce itself
-          consumers.push({
-            consumerNodeId: child.uniqueId, // The node representing the requirement
-            consumerParentId: node.id,      // The item being produced by the consumer
-            consumerParentName: node.id,    // Placeholder, will be replaced later
-            consumingTreeId: treeId,        // Tree where consumption occurs
-            consumedAmount: child.amount,   // The amount required by the child
-          });
-          // Store parent ID for name fetching
-          if (!consumerParentNames[node.id]) {
-              consumerParentNames[node.id] = ''; // Mark for fetching
+          // --- Check: Does this child import FROM our sourceNodeId? ---
+          if (importRef && importRef.targetNodeId === sourceNodeId) {
+            console.log(`[CONSUMPTION v3 FOUND] Consumer Link: Node ${parentNode.uniqueId} (in tree ${consumingTreeId}) imports from ${sourceNodeId} via child ${childNode.uniqueId}. Amount: ${childNode.amount}`);
+            consumers.push({
+              consumerNodeId: childNode.uniqueId,      // The import node itself represents the link
+              consumerParentId: parentNode.id,        // The item being produced by the actual consumer
+              consumerParentName: parentNode.id,      // Placeholder name for consumer parent
+              consumingTreeId: consumingTreeId,       // Tree where consumption occurs
+              consumedAmount: childNode.amount,     // Positive amount consumed
+              isSupplier: false                     // Explicitly false
+            });
+            // Mark consumer parent for name fetching
+            if (!nodeNamesToFetch[parentNode.id]) {
+              nodeNamesToFetch[parentNode.id] = '';
+            }
           }
-        }
-        // Continue traversal down this branch
-        // Avoid infinite loops with imports, but check children of imports in their own trees later
-        if (!child.isImport && !child.importReference) { 
-            traverseTree(child, treeId);
-        }
-      });
-    }
-  };
 
-  // Iterate through all trees
-  Object.entries(allTrees).forEach(([treeId, tree]) => {
-    traverseTree(tree, treeId);
+          // Continue traversal down this branch ONLY IF IT IS NOT an import node itself
+          // because an import node's children are irrelevant to the current tree's consumption.
+          if (!importRef) {
+            traverseTree(childNode);
+          }
+        });
+      }
+    };
+    // Start traversal for the current tree
+    traverseTree(tree);
   });
 
   // Fetch names for all unique consumer parents
-  const parentIdsToFetch = Object.keys(consumerParentNames);
+  const parentIdsToFetch = Object.keys(nodeNamesToFetch);
   await Promise.all(parentIdsToFetch.map(async (parentId) => {
-      consumerParentNames[parentId] = await getItemName(parentId);
+      nodeNamesToFetch[parentId] = await getItemName(parentId);
   }));
 
   // Replace placeholder names in the results
   consumers.forEach(consumer => {
-      consumer.consumerParentName = consumerParentNames[consumer.consumerParentId] || consumer.consumerParentId;
+      consumer.consumerParentName = nodeNamesToFetch[consumer.consumerParentId] || consumer.consumerParentId;
   });
 
-  // Remove the potentially incorrect filter - the traversal logic should prevent self-consumption
-  // const filteredConsumers = consumers.filter(c => c.consumerParentId !== sourceNode.id);
-  // return filteredConsumers;
-
-  // Return the unfiltered list
+  console.log(`[CONSUMPTION v3] Final consumers found for ${sourceNodeId}:`, JSON.stringify(consumers));
   return consumers;
 };
 

@@ -248,11 +248,8 @@ export const usePlannerTreeCalculation = ({
           const originalTree = dependencies.dependencyTrees[treeId]; // State BEFORE calculation
           
           if (originalTree && convertedTree) {
-              // If the byproduct status changed OR if the node itself was potentially replaced
-              // (e.g., during byproduct-to-normal conversion which recalculates the node),
-              // dispatch an update to synchronize the state.
               if (originalTree.isByproduct !== convertedTree.isByproduct) {
-                console.log(`[Reconcile] Detected byproduct status change for ${treeId} (${convertedTree.id}): ${originalTree.isByproduct} -> ${convertedTree.isByproduct}. Dispatching full update.`); // Keep this log
+                console.log(`[Reconcile] Detected byproduct status change for ${treeId} (${convertedTree.id}): ${originalTree.isByproduct} -> ${convertedTree.isByproduct}. Dispatching full update.`); // KEEP this specific log
                 
                 // --- UPDATED RECONCILIATION ACTION --- 
                 // Dispatch setDependencies to update the entire tree structure,
@@ -276,9 +273,7 @@ export const usePlannerTreeCalculation = ({
                 // --- END UPDATED ACTION --- 
                 
               } else if (originalTree.recipe?.id !== convertedTree.recipe?.id) {
-                  // Handle cases where only the recipe changed (e.g., manual user selection reconciled)
-                  // We might only need to update properties here if the structure isn't expected to drastically change.
-                  console.log(`[Reconcile] Detected recipe change for ${treeId} (${convertedTree.id}): ${originalTree.recipe?.id} -> ${convertedTree.recipe?.id}. Dispatching properties update.`);
+                  console.log(`[Reconcile] Detected recipe change for ${treeId} (${convertedTree.id}): ${originalTree.recipe?.id} -> ${convertedTree.recipe?.id}. Dispatching properties update.`); // Keep this specific log
                   dispatch(updateNodeProperties({ 
                       nodeId: treeId, 
                       updatedNode: { 
@@ -288,7 +283,7 @@ export const usePlannerTreeCalculation = ({
                   }));
               }
           } else if (originalTree && !convertedTree) {
-             console.warn(`[Reconcile] Tree ${treeId} existed originally but is missing from workingInitialTrees after conversion.`);
+             console.warn(`[Reconcile] Tree ${treeId} existed originally but is missing from workingInitialTrees after conversion.`); // Keep this warning
           } else if (!originalTree && convertedTree) {
              // This is expected for newly created trees, no action needed here
           }

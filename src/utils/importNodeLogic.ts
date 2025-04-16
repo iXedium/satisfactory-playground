@@ -210,179 +210,121 @@ export const restoreOriginalChildren = (
 
 /**
  * Utility function to convert an existing byproduct root node to a normal node
- * within the working tree map if it's demanded by a non-byproduct child.
+ * by replacing it with a fully recalculated node.
  * Modifies the workingInitialTrees map directly.
  *
  * @param targetTreeId - The uniqueId of the potential byproduct root tree.
  * @param workingInitialTrees - The map of tree roots being processed.
  * @param demandingChildNode - The child node triggering the potential conversion (for logging).
  * @param createTreeFn - The function to create a new, fully calculated tree node.
- * @returns boolean - True if a conversion occurred, false otherwise.
+ * @returns Promise<boolean> - True if a conversion occurred, false otherwise.
  */
 const convertByproductRootToNormal = async (
   targetTreeId: string,
   workingInitialTrees: Record<string, DependencyNode>,
   demandingChildNode: DependencyNode,
-  createTreeFn: CreateTreeFunction
+  createTreeFn: CreateTreeFunction // Use the imported type
 ): Promise<boolean> => {
   const targetTreeNode = workingInitialTrees[targetTreeId];
 
-  // Ensure the target node exists and is actually a byproduct
   if (!targetTreeNode) {
-    console.error(`[convertByproductRootToNormal] Target node ${targetTreeId} not found in workingInitialTrees!`);
-    return false; // Cannot convert if node doesn't exist
-  }
-
-  if (!targetTreeNode.isByproduct) {
-    // Target is already not a byproduct, no conversion needed.
+    console.error(`[convertByproductRootToNormal] Target node ${targetTreeId} not found!`); // Keep error
     return false;
   }
 
-  // Perform the conversion: Replace the byproduct stub with a fully calculated normal node
-  console.log(`[convertByproductRootToNormal] Replacing byproduct root ${targetTreeId} (${targetTreeNode.id}) with a normal node because demanding child ${demandingChildNode.uniqueId} (${demandingChildNode.id}) is not a byproduct.`);
+  if (!targetTreeNode.isByproduct) {
+    return false;
+  }
+
+  console.log(`[convertByproductRootToNormal] Replacing byproduct root ${targetTreeId} (${targetTreeNode.id})...`); // Keep log
   try {
-    // Call createTreeFn to generate the full node structure
-    // Pass targetTreeId to preserve the ID, amount=0 (will be recalc later), no specific recipe (use default),
-    // isAutoImportRoot=false, isSourceNodeByproduct=false
     const normalNode = await createTreeFn(
-      targetTreeNode.id,      // The item ID
-      0,                      // Initial amount (will be updated by later calcs)
-      targetTreeId,           // <<< Preserve the uniqueId
-      null,                   // Use default recipe initially
-      false,                  // Not an auto-import root itself
-      targetTreeNode.originalDepth, // Preserve original depth if available
-      false                   // <<< Ensure isByproduct is false
+      targetTreeNode.id, 0, targetTreeId, null, false, targetTreeNode.originalDepth, false
     );
 
     if (normalNode) {
-      // Replace the old node in the map with the new fully calculated one
       workingInitialTrees[targetTreeId] = normalNode;
-      console.log(`[convertByproductRootToNormal] Successfully replaced ${targetTreeId} with normal node.`);
-      return true; // Conversion successful
+      console.log(`[convertByproductRootToNormal] Successfully replaced ${targetTreeId} with normal node.`); // Keep log
+      return true;
     } else {
-      console.error(`[convertByproductRootToNormal] createTreeFn failed for ${targetTreeId} (${targetTreeNode.id}).`);
-      return false; // Conversion failed
+      console.error(`[convertByproductRootToNormal] createTreeFn failed for ${targetTreeId}.`); // Keep error
+      return false;
     }
   } catch (error) {
-    console.error(`[convertByproductRootToNormal] Error during createTreeFn call for ${targetTreeId}:`, error);
-    return false; // Conversion failed due to error
+    console.error(`[convertByproductRootToNormal] Error during createTreeFn call for ${targetTreeId}:`, error); // Keep error
+    return false;
   }
 };
 
 /**
  * Recursively traverses a dependency tree and converts child nodes to import nodes
  * if the 'Add as Imported' setting is enabled.
- * It will try to link to existing root trees or create new ones if necessary.
  */
 export async function convertToImportTree(
-  node: DependencyNode | null, // Allow null input
-  workingInitialTrees: Record<string, DependencyNode>, // Pass the map to track changes
-  createTreeFn: CreateTreeFunction, 
-  pendingCreations: Record<string, Promise<DependencyNode | null>> 
-): Promise<DependencyNode | null> { 
-  // console.log(`[convertToImportTree ENTER] Processing node: ${node?.uniqueId || node?.id}`); // REMOVED
-
+  node: DependencyNode | null,
+  workingInitialTrees: Record<string, DependencyNode>,
+  createTreeFn: CreateTreeFunction,
+  pendingCreations: Record<string, Promise<DependencyNode | null>>
+): Promise<DependencyNode | null> {
   if (!node) {
-    // console.warn('[convertToImportTree] Received null node, returning null.'); // REMOVED
     return null;
   }
 
   if (node.children && node.children.length > 0) {
-    // console.log(`[convertToImportTree CHILD_MAP_START] Node ${node.uniqueId} starting Promise.all...`); // REMOVED
     const processedChildrenResults = await Promise.all(node.children.map(async (child) => {
-      // const childId = child?.uniqueId || child?.id; // REMOVED
-      // console.log(`[convertToImportTree CHILD_START] Node ${node.uniqueId} starting processing for child: ${childId}`); // REMOVED
-      
       let processedChild = await convertToImportTree(
-        child, 
-        workingInitialTrees, // Pass the mutable map down
-        createTreeFn, 
-        pendingCreations
+        child, workingInitialTrees, createTreeFn, pendingCreations
       );
-      
-      // console.log(`[convertToImportTree CHILD_POST_RECURSION] Node ${node.uniqueId} finished recursive call...`); // REMOVED
 
       if (!processedChild) {
-        // console.error(`[convertToImportTree ERROR] Recursive call failed...`); // REMOVED - Replaced by more specific error below if pending fails
-        return null; 
+        return null;
       }
 
-      // console.log(`[convertToImportTree] Inspecting processedChild (${childId}): ...`); // REMOVED
-
-      if (!processedChild.isImport && !processedChild.importReference) { 
+      if (!processedChild.isImport && !processedChild.importReference) {
         const itemIdToImport = processedChild.id;
         const originalChildDepth = processedChild.depth;
-        const isChildByproduct = !!processedChild.isByproduct; // Keep this determination
-        // console.log(`[convertToImportTree] Child ${processedChild.uniqueId} needs conversion check...`); // REMOVED
-        
+        const isChildByproduct = !!processedChild.isByproduct;
         let targetTreeId: string | null = null;
-        let createdNewTree = false; // Keep flag
 
-        // Keep logic for handling pending creations and errors
         if (itemIdToImport in pendingCreations) {
           const resolvedPendingTree = await pendingCreations[itemIdToImport];
           if (resolvedPendingTree) {
               targetTreeId = resolvedPendingTree.uniqueId;
-              // Keep warning if tree not found in map
               if (!workingInitialTrees[targetTreeId]) {
-                 console.warn(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation resolved, but tree ${targetTreeId} not found in initialTrees map! Map keys: [${Object.keys(workingInitialTrees).join(', ')}]`);
-                 // Fallback find might still be useful
+                 console.warn(`[convertToImportTree] Pending creation resolved, but tree ${targetTreeId} not found!`); // Keep warning
                  targetTreeId = Object.keys(workingInitialTrees).find(id => workingInitialTrees[id].id === itemIdToImport && !workingInitialTrees[id].isImport && !workingInitialTrees[id].importReference) || null;
               }
           } else {
-             console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved to null/failure.`); // KEEP Error
+             console.error(`[convertToImportTree] Pending creation for ${itemIdToImport} resolved to null.`); // Keep error
           }
         }
         
         if (!targetTreeId) {
-          // Keep logic to find existing tree
           targetTreeId = Object.keys(workingInitialTrees).find(id => workingInitialTrees[id].id === itemIdToImport && !workingInitialTrees[id].isImport && !workingInitialTrees[id].importReference) || null;
         }
 
         if (targetTreeId) {
-          // Check if the target is a byproduct root that needs conversion BEFORE setting import reference
           if (!isChildByproduct) {
-              // Pass createTreeFn down
               await convertByproductRootToNormal(targetTreeId, workingInitialTrees, processedChild, createTreeFn);
           }
-          
-          // Set import reference regardless of conversion result
           processedChild = setImportReference(processedChild, targetTreeId, targetTreeId);
+
         } else {
-          // No existing tree, call createTreeFn
-          // console.log(`[convertToImportTree] Calling createTreeFn for ${itemIdToImport}...`); // REMOVED
           const creationPromise = createTreeFn(
-            itemIdToImport, 
-            0, 
-            undefined, 
-            undefined, 
-            true, // isAutoImportRoot
-            originalChildDepth, 
-            isChildByproduct // Pass the byproduct flag
+            itemIdToImport, 0, undefined, undefined, true, originalChildDepth, isChildByproduct
           );
-          // ---------------------------------------------
           pendingCreations[itemIdToImport] = creationPromise;
-          
           const newTree = await creationPromise;
-          createdNewTree = true;
-          
           if (newTree) {
-            workingInitialTrees[newTree.uniqueId] = newTree; 
+            workingInitialTrees[newTree.uniqueId] = newTree;
             processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId);
-          } 
+          }
         }
       }
-      
-      // console.log(`[convertToImportTree CHILD_END] Node ${node.uniqueId} finished processing for child: ${childId}`); // REMOVED
       return processedChild;
     }));
-    
     node.children = processedChildrenResults.filter((child): child is DependencyNode => child !== null);
-    
-    // console.log(`[convertToImportTree CHILD_MAP_END] Node ${node.uniqueId} finished Promise.all.`); // REMOVED
   }
-  
-  // console.log(`[convertToImportTree EXIT] Finished processing node: ${node?.uniqueId || node?.id}`); // REMOVED
   return node;
 } 
 
