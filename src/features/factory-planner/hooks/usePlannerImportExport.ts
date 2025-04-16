@@ -1,15 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store';
-import { DependencyNode, NodesState } from '../../../types';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../store';
+import { DependencyNode } from '../../../types';
+import { DependencyState } from '../store/dependencySlice';
 import { 
   importNodeAction, 
   unimportNode 
 } from '../store';
 import { findNodeById } from '../../../utils';
+import { hasImportReference } from '../../../utils/nodeReferenceUtils';
 
 interface PlannerImportExportProps {
-  dependencies: NodesState;
+  dependencies: DependencyState;
   handleCreateNewTree: (
     itemId: string, 
     amount: number, 
@@ -92,7 +95,7 @@ export const usePlannerImportExport = ({
     let foundTreeId = "";
     
     for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      const node = findNodeById(tree, nodeId);
+      const node = findNodeById(tree as DependencyNode, nodeId);
       if (node) {
         foundNode = node;
         foundTreeId = treeId;
@@ -112,8 +115,9 @@ export const usePlannerImportExport = ({
     });
     
     let targetTreeId = "";
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport) {
+    for (const [treeId, treeEntry] of Object.entries(dependencies.dependencyTrees)) {
+      const tree = treeEntry as DependencyNode;
+      if (treeId !== foundTreeId && tree.id === foundNode.id && !tree.isImport && !hasImportReference(tree)) {
         targetTreeId = treeId;
         console.log(`[IMPORT DEBUG] Found existing target tree: ${targetTreeId} with id ${tree.id}`);
         break;
@@ -146,7 +150,7 @@ export const usePlannerImportExport = ({
     let sourceTreeId = '';
     
     Object.entries(dependencies.dependencyTrees).forEach(([treeId, tree]) => {
-      const node = findNodeById(tree, nodeId);
+      const node = findNodeById(tree as DependencyNode, nodeId);
       if (node) {
         sourceNode = node;
         sourceTreeId = treeId;

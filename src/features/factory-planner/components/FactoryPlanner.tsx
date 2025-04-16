@@ -27,6 +27,7 @@ const FactoryPlanner: React.FC = () => {
     nodeExtensionOverrides,
     isAddItemCollapsed,
     recentItems,
+    removeRecentItem,
 
     // Setters
     setSelectedItem,
@@ -84,6 +85,7 @@ const FactoryPlanner: React.FC = () => {
           onClearSavedData={clearSavedData}
           recentItems={recentItems}
           updateRecentItems={updateRecentItems}
+          removeRecentItem={removeRecentItem}
         />
       }
       content={

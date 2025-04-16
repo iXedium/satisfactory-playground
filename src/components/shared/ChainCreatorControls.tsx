@@ -12,10 +12,10 @@ interface ChainCreatorControlsProps {
   selectedRecipe: string;
   onRecipeSelect: (recipeId: string) => void;
   onCalculate: () => void;
-  recentItems?: string[];
-  updateRecentItems?: (itemId: string) => void;
+  recentItems: string[];
+  onRemoveRecentItem?: (itemId: string) => void;
   isCollapsed: boolean;
-  onToggleCollapse: () => void;
+  // onToggleCollapse: () => void; // Remove unused prop
 }
 
 const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
@@ -25,12 +25,13 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
   selectedRecipe,
   onRecipeSelect,
   onCalculate,
-  recentItems = [],
-  updateRecentItems,
+  recentItems,
+  onRemoveRecentItem,
   isCollapsed,
-  onToggleCollapse,
+  // onToggleCollapse, // Remove unused prop from destructuring
 }) => {
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
+  const [localSelectedItem, setLocalSelectedItem] = useState<string>(selectedItem);
 
   // Update filtered recipes when selected item changes
   useEffect(() => {
@@ -53,11 +54,9 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
     }
   }, [selectedItem, onRecipeSelect, items]);
 
-  // Handle item selection with recent items update
+  // Handle item selection
   const handleItemSelect = (itemId: string) => {
-    if (updateRecentItems) {
-      updateRecentItems(itemId);
-    }
+    setLocalSelectedItem(itemId);
     onItemSelect(itemId);
   };
   
@@ -89,25 +88,26 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
     <div style={containerStyle}>
       {/* Item Selector */}
       <StyledSelect
-        value={selectedItem}
+        value={localSelectedItem}
         onChange={handleItemSelect}
         options={items}
-        placeholder="Select an Item"
-        style={{ minWidth: '150px', maxWidth: '250px', flex: '1 1 auto' }}
+        recentItems={recentItems}
+        onRemoveRecentItem={onRemoveRecentItem}
+        placeholder="Select Item"
+        style={{ flex: 1, minWidth: '180px' }}
         renderOption={(option, isInDropdown) => (
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '8px',
             padding: '4px 8px',
-            backgroundColor: isInDropdown && option.id === selectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+            backgroundColor: isInDropdown && option.id === localSelectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
             borderRadius: theme.border.radius,
           }}>
             <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
-            {option.name}
+            <span>{option.name}</span>
           </div>
         )}
-        recentItems={recentItems}
       />
       
       {/* Recipe Selector */}

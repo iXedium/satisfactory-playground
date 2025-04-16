@@ -12,6 +12,7 @@ export interface PlannerItemSelectionState {
   setIsAddItemCollapsed: Dispatch<SetStateAction<boolean>>;
   recentItems: string[];
   updateRecentItems: (itemId: string) => void;
+  removeRecentItem: (itemId: string) => void;
   clearStorage: () => void;
 }
 
@@ -63,10 +64,27 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
-    localStorage.removeItem('savedRecentItems');
-    // Also clear the runtime state
-    setRecentItems([]); 
-    console.log('[Persistence] Cleared recent items from localStorage and state.');
+    localStorage.removeItem('plannerSelectedItem');
+    localStorage.removeItem('plannerSelectedRecipe');
+    localStorage.removeItem('plannerRecentItems');
+    // Reset state if needed
+    setSelectedItem('');
+    setSelectedRecipe('');
+    setRecentItems([]);
+    // console.log('[Persistence] Cleared item selection state from localStorage.');
+  }, []);
+
+  const removeRecentItem = useCallback((itemIdToRemove: string) => {
+    setRecentItems(prevItems => {
+      const newItems = prevItems.filter(id => id !== itemIdToRemove);
+      try {
+        localStorage.setItem('plannerRecentItems', JSON.stringify(newItems));
+      } catch (error) {
+        console.error("Error saving recent items after removal:", error);
+        // Optionally revert state change? 
+      }
+      return newItems;
+    });
   }, []);
 
   return {
@@ -79,6 +97,7 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     setIsAddItemCollapsed,
     recentItems,
     updateRecentItems,
+    removeRecentItem,
     clearStorage,
   };
 }; 

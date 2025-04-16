@@ -12,6 +12,9 @@ interface ItemSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  style?: React.CSSProperties;
+  recentItems?: string[];
+  onRemoveRecentItem?: (itemId: string) => void;
 }
 
 // Using MUI's createFilterOptions with fuzzy search.
@@ -24,7 +27,10 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
   items,
   value,
   onChange,
-  placeholder = "Select an Item"
+  placeholder = "Select an Item",
+  style,
+  recentItems = [],
+  onRemoveRecentItem,
 }) => {
   // Add effect to set default selection when items load
   useEffect(() => {
@@ -40,11 +46,13 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
   // Render nothing until items are loaded.
   if (items.length === 0) return null;
 
+  const options = items.map(item => ({ id: item.id, name: item.name }));
+
   return (
     <Autocomplete
       // disable clearability
       disableClearable
-      options={items}
+      options={options}
       value={selectedOption || undefined}
       inputValue={inputValue}
       filterOptions={filterOptions}

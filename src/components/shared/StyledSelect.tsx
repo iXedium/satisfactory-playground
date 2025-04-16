@@ -13,6 +13,7 @@ interface StyledSelectProps {
   variant?: 'default' | 'compact';
   disabled?: boolean;
   recentItems?: string[];
+  onRemoveRecentItem?: (itemId: string) => void;
 }
 
 const SelectContainer = styled('div')({
@@ -97,7 +98,8 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
   renderOption,
   variant = 'default',
   disabled = false,
-  recentItems = []
+  recentItems = [],
+  onRemoveRecentItem
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,7 +108,8 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find(opt => opt.id === value);
+  // Safeguard: Ensure options is an array before using .find()
+  const selectedOption = Array.isArray(options) ? options.find(opt => opt.id === value) : undefined;
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -120,14 +123,20 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
   }, [searchTerm]);
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option => 
-    option.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Safeguard: Ensure options is an array before using .filter()
+  const filteredOptions = Array.isArray(options) 
+    ? options.filter(option => 
+        option.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) 
+    : [];
 
   // Generate a list of recent options based on recentItems
-  const recentOptions = recentItems
-    .map(itemId => options.find(opt => opt.id === itemId))
-    .filter((item): item is { id: string; name: string } => !!item);
+  // Safeguard: Ensure options is an array before using .find()
+  const recentOptions = Array.isArray(options) 
+    ? recentItems
+        .map(itemId => options.find(opt => opt.id === itemId))
+        .filter((item): item is { id: string; name: string } => !!item)
+    : [];
 
   // Filter out recent items from the main filtered list to avoid duplicates
   const nonRecentFilteredOptions = recentOptions.length > 0 
@@ -265,6 +274,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
           />
           <div ref={listRef} style={{ overflow: 'auto', minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
             {/* Show recent items at the top if search is empty */}
+            {/* Safeguard: Check recentOptions array */}
             {recentOptions.length > 0 && searchTerm === '' && (
               <>
                 {recentOptions.map((option, index) => (
@@ -279,7 +289,22 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                     }}
                     $highlighted={index === highlightedIndex}
                   >
-                    {renderOption ? renderOption(option, true) : option.name}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      {renderOption ? renderOption(option, true) : option.name}
+                      {(console.log(`[DEBUG RECENT BTN] Rendering recent item ${option.id}. Has onRemoveRecentItem: ${!!onRemoveRecentItem}`), null)} {/* Debug Log */}
+                      {onRemoveRecentItem && (
+                        <button
+                          style={removeButtonStyle}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveRecentItem(option.id);
+                          }}
+                          title={`Remove ${option.name} from recent`}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
                   </DropdownItem>
                 ))}
                 
@@ -287,6 +312,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                   Recent Items
                 </SectionDivider>
                 
+                {/* Safeguard: Check nonRecentFilteredOptions array */}
                 {nonRecentFilteredOptions.map((option, index) => (
                   <DropdownItem
                     key={option.id}
@@ -299,13 +325,16 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                     }}
                     $highlighted={index + recentOptions.length + 1 === highlightedIndex}
                   >
-                    {renderOption ? renderOption(option, true) : option.name}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      {renderOption ? renderOption(option, true) : option.name}
+                    </div>
                   </DropdownItem>
                 ))}
               </>
             )}
             
             {/* Show filtered list when searching or no recent items */}
+            {/* Safeguard: Check filteredOptions array */}
             {(searchTerm !== '' || recentOptions.length === 0) && 
               filteredOptions.map((option, index) => (
                 <DropdownItem
@@ -319,7 +348,9 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                   }}
                   $highlighted={index === highlightedIndex}
                 >
-                  {renderOption ? renderOption(option, true) : option.name}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    {renderOption ? renderOption(option, true) : option.name}
+                  </div>
                 </DropdownItem>
               ))
             }
@@ -328,6 +359,24 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
       </DropdownPortal>
     </SelectContainer>
   );
+};
+
+// Add styles for the remove button
+const removeButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: theme.colors.textSecondary,
+  cursor: 'pointer',
+  fontSize: '16px',
+  lineHeight: '1',
+  padding: '0 4px',
+  marginLeft: '8px',
+  borderRadius: '50%',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  opacity: 0.7,
+  transition: 'opacity 0.2s, color 0.2s',
 };
 
 export default StyledSelect; 

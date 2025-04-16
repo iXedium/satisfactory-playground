@@ -9,6 +9,7 @@ import ChainCreatorControls from "./shared/ChainCreatorControls";
 import SettingsMenu from "./shared/SettingsMenu";
 import ViewTreeControls from "./shared/ViewTreeControls";
 import PlannerActions from "./shared/PlannerActions";
+import { useFactoryPlanner } from "../features/factory-planner/hooks/useFactoryPlanner";
 
 type ViewMode = "accumulated" | "tree";
 
@@ -35,6 +36,7 @@ interface CommandBarProps {
   onClearSavedData: () => void;
   recentItems?: string[];
   updateRecentItems?: (itemId: string) => void;
+  removeRecentItem: (itemId: string) => void;
 }
 
 /**
@@ -63,12 +65,13 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onAddItemCollapsedChange,
     onClearSavedData,
     recentItems = [],
-    updateRecentItems
+    updateRecentItems,
+    removeRecentItem
   },
   ref
 ) => {
   const toggleItemSection = () => {
-    onAddItemCollapsedChange(!isAddItemCollapsed);
+    onAddItemCollapsed(!isAddItemCollapsed);
   };
 
   // Styles
@@ -133,9 +136,8 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
         onRecipeSelect={onRecipeSelect}
         onCalculate={onCalculate}
         recentItems={recentItems}
-        updateRecentItems={updateRecentItems}
         isCollapsed={isAddItemCollapsed}
-        onToggleCollapse={toggleItemSection}
+        onRemoveRecentItem={removeRecentItem}
       />
 
       {/* Toggle button for collapsing/expanding item section */}

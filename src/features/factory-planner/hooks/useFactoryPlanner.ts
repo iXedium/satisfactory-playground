@@ -78,6 +78,7 @@ export const useFactoryPlanner = () => {
     recentItems,
     updateRecentItems,
     clearStorage: clearItemSelectionStorage,
+    removeRecentItem,
   } = usePlannerItemSelection();
 
   const {
@@ -196,6 +197,7 @@ export const useFactoryPlanner = () => {
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
     updateRecentItems,
+    removeRecentItem,
 
     handleCalculate,
     handleExcessChange,
