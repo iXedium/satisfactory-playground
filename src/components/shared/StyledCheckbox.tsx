@@ -3,7 +3,7 @@ import { theme } from "../../styles/theme";
 
 interface StyledCheckboxProps {
   checked?: boolean;
-  onChange?: () => void;
+  onChange?: (newValue: boolean) => void;
   label?: string;
   disabled?: boolean;
 }
@@ -50,7 +50,7 @@ const StyledCheckbox: React.FC<StyledCheckboxProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (onChange && !disabled) {
-      onChange();
+      onChange(!checked);
     }
   };
 

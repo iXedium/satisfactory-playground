@@ -28,6 +28,7 @@ const FactoryPlanner: React.FC = () => {
     isAddItemCollapsed,
     recentItems,
     removeRecentItem,
+    addAsImported,
 
     // Setters
     setSelectedItem,
@@ -40,6 +41,7 @@ const FactoryPlanner: React.FC = () => {
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
     updateRecentItems,
+    setAddAsImported,
 
     // Handlers
     handleCalculate,
@@ -86,6 +88,8 @@ const FactoryPlanner: React.FC = () => {
           recentItems={recentItems}
           updateRecentItems={updateRecentItems}
           removeRecentItem={removeRecentItem}
+          addAsImported={addAsImported}
+          onAddAsImportedChange={setAddAsImported}
         />
       }
       content={

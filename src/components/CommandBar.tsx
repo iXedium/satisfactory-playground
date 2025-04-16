@@ -37,6 +37,8 @@ interface CommandBarProps {
   recentItems?: string[];
   updateRecentItems?: (itemId: string) => void;
   removeRecentItem: (itemId: string) => void;
+  addAsImported: boolean;
+  onAddAsImportedChange: (value: boolean) => void;
 }
 
 /**
@@ -66,7 +68,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onClearSavedData,
     recentItems = [],
     updateRecentItems,
-    removeRecentItem
+    removeRecentItem,
+    addAsImported,
+    onAddAsImportedChange
   },
   ref
 ) => {
@@ -124,6 +128,8 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onShowMachinesChange={onShowMachinesChange}
           showMachineMultiplier={showMachineMultiplier}
           onShowMachineMultiplierChange={onShowMachineMultiplierChange}
+          addAsImported={addAsImported}
+          onAddAsImportedChange={onAddAsImportedChange}
         />
       </div>
 

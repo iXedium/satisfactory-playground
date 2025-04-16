@@ -1,6 +1,8 @@
-import React from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useState } from 'react';
 import { theme } from '../../styles/theme';
 import SettingsMenu from './SettingsMenu'; // Keep settings separate or move here?
+import StyledSwitch from '../../components/shared/StyledSwitch';
 
 interface PlannerActionsProps {
   onSearchChange: (searchTerm: string) => void; // Example handler
@@ -14,6 +16,8 @@ interface PlannerActionsProps {
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
   onShowMachineMultiplierChange: (show: boolean) => void;
+  addAsImported: boolean;
+  onAddAsImportedChange: (value: boolean) => void;
 }
 
 const PlannerActions: React.FC<PlannerActionsProps> = ({
@@ -28,7 +32,10 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onShowMachinesChange,
   showMachineMultiplier,
   onShowMachineMultiplierChange,
+  addAsImported,
+  onAddAsImportedChange,
 }) => {
+  // const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Remove unused state
 
   // Styles - kept local for now
   const lastSectionStyle: React.CSSProperties = { 
@@ -50,21 +57,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
     width: '180px',
   };
 
-  const buttonStyle: React.CSSProperties = {
-    padding: '4px 8px',
-    backgroundColor: theme.colors.surface,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius,
-    color: theme.colors.text,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '13px',
-    marginLeft: 'auto', // Push clear button further right if needed
-  };
-
-   const iconButtonStyle: React.CSSProperties = {
+  const iconButtonStyle: React.CSSProperties = {
     padding: "4px",
     backgroundColor: theme.colors.surface,
     border: `1px solid ${theme.colors.border}`,
@@ -98,7 +91,20 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         onShowMachinesChange={onShowMachinesChange}
         showMachineMultiplier={showMachineMultiplier}
         onShowMachineMultiplierChange={onShowMachineMultiplierChange}
-      />
+        addAsImported={addAsImported}
+        onAddAsImportedChange={onAddAsImportedChange}
+      >
+        {/* Remove children previously passed */}
+        {/* 
+        <div>
+          <StyledSwitch
+            label="Add New Chains As Imported"
+            checked={addAsImported}
+            onChange={(e) => onAddAsImportedChange(e.target.checked)}
+          />
+        </div>
+        */}
+      </SettingsMenu>
       
       {onClearSavedData && (
         <button 

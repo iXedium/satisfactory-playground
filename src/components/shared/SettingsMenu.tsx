@@ -12,7 +12,10 @@ interface SettingsMenuProps {
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
   onShowMachineMultiplierChange: (show: boolean) => void;
-  // Add compactView if needed later
+  // Add creation options
+  addAsImported: boolean;
+  onAddAsImportedChange: (value: boolean) => void;
+  // children?: React.ReactNode; // Remove children prop
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
@@ -24,6 +27,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   onShowMachinesChange,
   showMachineMultiplier,
   onShowMachineMultiplierChange,
+  // children, // Remove children destructuring
+  addAsImported, // Destructure new props
+  onAddAsImportedChange, // Destructure new props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -170,6 +176,24 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               />
               <span>Compact View</span>
             </div> */}
+          </div>
+          {/* Remove children rendering */}
+          {/* {children && <div style={{ marginTop: '12px', borderTop: `1px solid ${theme.colors.dropdown.border}`, paddingTop: '12px' }}>{children}</div>} */}
+
+          {/* Add New Section for Creation Options */} 
+          <div style={{ marginTop: '12px', borderTop: `1px solid ${theme.colors.dropdown.border}`, paddingTop: '12px' }}>
+            <h4 style={{ margin: '0 0 8px 0', color: theme.colors.text, fontSize: '14px' }}>Creation Options</h4>
+            <div style={checkboxContainerStyle}>
+              <div style={compactCheckboxStyle}>
+                <StyledCheckbox 
+                  checked={addAsImported} 
+                  // StyledCheckbox onChange returns boolean directly
+                  onChange={onAddAsImportedChange}
+                  label=""
+                />
+                <span>Add New Chains As Imported</span>
+              </div>
+            </div>
           </div>
         </div>,
         document.body

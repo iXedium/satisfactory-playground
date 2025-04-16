@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { DependencyNode, Recipe } from "../types";
 import { getRecipeById, getRecipeByOutput } from "../data";
+import { setImportReference } from "./nodeReferenceUtils"; // Import setImportReference
 // We need to import calculateDependencyTree to avoid circular dependency
 // This might indicate a need for further refactoring later.
 // For now, we use a dynamic import or pass it as an argument if needed.
@@ -7,21 +9,20 @@ import { getRecipeById, getRecipeByOutput } from "../data";
 // Alternatively, we could make storeOriginalChildren NOT rely on calculateDependencyTree
 // if we can replicate its necessary logic without the full recursive call.
 
-// Placeholder for calculateDependencyTree if dynamic import/pass-in isn't used
-// This will likely cause type errors if not resolved properly
+/* --- Remove unused placeholder --- 
 declare var calculateDependencyTree: (
   itemId: string,
   amount: number,
   rootRecipeId: string | null,
   recipeMap?: Record<string, string>,
   depth?: number,
-  affectedBranches?: any[], // Use appropriate type if available
+  affectedBranches?: any[],
   parentId?: string,
   excessMap?: Record<string, number>,
   importMap?: Record<string, any>,
   dependencyTrees?: Record<string, DependencyNode>
 ) => Promise<DependencyNode>;
-
+*/
 
 // Helper function to create consistent import nodes
 export const createImportNode = async (
@@ -160,7 +161,7 @@ export const restoreOriginalChildren = (
   
   // Calculate the total amount originally produced by the stored children
   // This represents the amount needed by the parent node when it *wasn't* imported.
-  let originalParentAmount = 0;
+  // let originalParentAmount = 0; // Removed unused variable
   // This requires knowing the original parent's recipe, which we don't have here.
   // We cannot reliably scale based on original children amounts alone.
   // Alternative: Scale based on the *ratio* of the original child amounts.
@@ -203,3 +204,101 @@ export const restoreOriginalChildren = (
   
   return updatedChildren;
 }; 
+
+/**
+ * Recursively traverses a dependency tree and converts child nodes to import nodes
+ * if the 'Add as Imported' setting is enabled.
+ * It will try to link to existing root trees or create new ones if necessary.
+ */
+export async function convertToImportTree(
+  node: DependencyNode,
+  // Use initialTrees, which will be mutated locally
+  initialTrees: Record<string, DependencyNode>,
+  // Function signature matching handleCreateNewTree, returning the new tree object or null
+  createTreeFn: (
+    itemId: string,
+    amount: number,
+    treeId?: string,
+    recipeId?: string | null,
+    isAutoImportRoot?: boolean,
+    // Add pendingCreations map to signature
+    pendingCreations?: Record<string, Promise<DependencyNode | null>>
+  ) => Promise<DependencyNode | null>,
+  // Add pendingCreations map to signature
+  pendingCreations: Record<string, Promise<DependencyNode | null>>
+): Promise<DependencyNode> {
+  
+  console.log(`[convertToImportTree ENTRY] Node: ${node.uniqueId || node.id}. Current known tree IDs: [${Object.keys(initialTrees).join(', ')}]`);
+
+  if (node.children && node.children.length > 0) {
+    // Use Promise.all to handle potential async operations within the loop
+    node.children = await Promise.all(node.children.map(async (child) => {
+      // --- Revised Logic --- 
+      // 1. Recurse first on the original child structure, passing the mutable maps
+      let processedChild = await convertToImportTree(child, initialTrees, createTreeFn, pendingCreations);
+
+      // 2. Now, check if this processed child should become an import node.
+      if (!processedChild.isImport && !processedChild.importReference && !processedChild.isByproduct) {
+        const itemIdToImport = processedChild.id;
+        let targetTreeId: string | null = null;
+        let createdNewTree = false;
+
+        // --- Check pending creations first --- 
+        if (pendingCreations[itemIdToImport]) {
+          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found pending creation for ${itemIdToImport}. Awaiting...`);
+          const resolvedPendingTree = await pendingCreations[itemIdToImport];
+          if (resolvedPendingTree) {
+              console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved (Tree ID: ${resolvedPendingTree.uniqueId}). Checking initialTrees again.`);
+              // Tree should now be in initialTrees, find its ID
+              targetTreeId = resolvedPendingTree.uniqueId;
+              if (!initialTrees[targetTreeId]) {
+                 console.warn(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation resolved, but tree ${targetTreeId} not found in initialTrees map! Map keys: [${Object.keys(initialTrees).join(', ')}]`);
+                 // Fallback: try searching initialTrees map directly just in case
+                 targetTreeId = Object.keys(initialTrees).find(id => initialTrees[id].id === itemIdToImport && !initialTrees[id].isImport && !initialTrees[id].importReference) || null;
+              }
+          } else {
+             console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: Pending creation for ${itemIdToImport} resolved to null/failure.`);
+          }
+        }
+        // ------------------------------------
+
+        // --- If not found via pending, check initialTrees --- 
+        if (!targetTreeId) {
+          targetTreeId = Object.keys(initialTrees).find(id => initialTrees[id].id === itemIdToImport && !initialTrees[id].isImport && !initialTrees[id].importReference) || null;
+        }
+        // ------------------------------------
+
+        if (targetTreeId) {
+          // Existing tree found (either directly or via pending)
+          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Found existing target tree ${targetTreeId} for ${itemIdToImport}. Converting to import.`);
+          processedChild = setImportReference(processedChild, targetTreeId, targetTreeId); // Point to root
+        } else {
+          // No existing tree found yet, initiate creation
+          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: No existing tree for ${itemIdToImport}. Calling createTreeFn...`);
+          // Store the promise in pendingCreations *before* awaiting
+          const creationPromise = createTreeFn(itemIdToImport, 0, undefined, undefined, true, pendingCreations);
+          pendingCreations[itemIdToImport] = creationPromise;
+          console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: Added promise for ${itemIdToImport} to pendingCreations.`);
+          
+          const newTree = await creationPromise;
+          createdNewTree = true; // Mark that we attempted creation
+          
+          if (newTree) {
+            // Add the newly created tree to our mutable map (should already be processed)
+            initialTrees[newTree.uniqueId] = newTree;
+            console.log(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn successful (newTreeId: ${newTree.uniqueId}). Added to map. New map keys: [${Object.keys(initialTrees).join(', ')}]. Converting to import.`);
+            processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId); // Point to new root
+          } else {
+            console.error(`[convertToImportTree] Node ${processedChild.uniqueId}: createTreeFn failed for ${itemIdToImport}`);
+          }
+        }
+      }
+
+      return processedChild; // Return the potentially converted and recursively processed child
+    }));
+  }
+
+  return node; // Return the potentially modified node
+} 
+
+

@@ -51,6 +51,8 @@ export const useFactoryPlanner = () => {
     showMachineMultiplier,
     setShowMachineMultiplier,
     clearStorage: clearDisplayOptionsStorage,
+    addAsImported,
+    setAddAsImported,
   } = usePlannerDisplayOptions();
   
   const {
@@ -94,6 +96,7 @@ export const useFactoryPlanner = () => {
     setMachineCountMap,
     setMachineMultiplierMap,
     setExcessMap,
+    addAsImported,
   });
   
   const {
@@ -186,6 +189,7 @@ export const useFactoryPlanner = () => {
     nodeExtensionOverrides,
     isAddItemCollapsed,
     recentItems,
+    addAsImported,
 
     setSelectedItem,
     setSelectedRecipe,
@@ -198,6 +202,7 @@ export const useFactoryPlanner = () => {
     setIsAddItemCollapsed,
     updateRecentItems,
     removeRecentItem,
+    setAddAsImported,
 
     handleCalculate,
     handleExcessChange,
