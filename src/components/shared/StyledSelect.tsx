@@ -291,7 +291,7 @@ const StyledSelect: React.FC<StyledSelectProps> = ({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                       {renderOption ? renderOption(option, true) : option.name}
-                      {(console.log(`[DEBUG RECENT BTN] Rendering recent item ${option.id}. Has onRemoveRecentItem: ${!!onRemoveRecentItem}`), null)} {/* Debug Log */}
+                      {/* {(console.log(`[DEBUG RECENT BTN] Rendering recent item ${option.id}. Has onRemoveRecentItem: ${!!onRemoveRecentItem}`), null)} */}
                       {onRemoveRecentItem && (
                         <button
                           style={removeButtonStyle}

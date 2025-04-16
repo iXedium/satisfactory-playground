@@ -11,6 +11,8 @@ import EfficiencySection from "../../../components/shared/EfficiencySection";
 interface ItemNodeProps {
   itemId: string;
   amount: number;
+  uniqueId: string;
+  treeId: string;
   isRoot?: boolean;
   isByproduct?: boolean;
   isImport?: boolean;
@@ -45,6 +47,8 @@ interface Machine {
 const ItemNode: React.FC<ItemNodeProps> = ({
   itemId,
   amount,
+  uniqueId,
+  treeId,
   isRoot = false,
   isByproduct = false,
   isImport = false,
@@ -68,7 +72,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 }) => {
   // Log received props for byproducts
   if (isByproduct) {
-    console.log(`[BYPRODUCT DEBUG] ItemNode Render: Received props for ${itemId} - Amount=${amount}, IsByproduct=${isByproduct}`);
+    //console.log(`[BYPRODUCT DEBUG] ItemNode Render: Received props for ${itemId} - Amount=${amount}, IsByproduct=${isByproduct}`);
   }
   
   const [item, setItem] = useState<Item | null>(null);
@@ -302,6 +306,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           isByproduct={isByproduct}
           isImport={isImport}
           excess={localExcess}
+          nodeId={uniqueId}
+          treeId={treeId}
+          itemName={item.name}
           onExcessChange={onExcessChange ? handleExcessChange : undefined}
           onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
           onResetExcess={onExcessChange ? handleResetExcess : undefined}

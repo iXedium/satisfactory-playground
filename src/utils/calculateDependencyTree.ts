@@ -158,7 +158,7 @@ export const calculateDependencyTree = async (
     .map(
       ([outputItem, outputAmount]) => {
         const byproductAmount = -(Number(outputAmount) * cyclesNeeded);
-        console.log(`[BYPRODUCT DEBUG] calculateDependencyTree: Byproduct=${outputItem}, RecipeOutput=${outputAmount}, Cycles=${cyclesNeeded.toFixed(3)}, CalculatedAmount=${byproductAmount.toFixed(3)}`);
+        // console.log(`[BYPRODUCT DEBUG] calculateDependencyTree: Byproduct=${outputItem}, RecipeOutput=${outputAmount}, Cycles=${cyclesNeeded.toFixed(3)}, CalculatedAmount=${byproductAmount.toFixed(3)}`);
         return {
           id: outputItem,
           amount: byproductAmount, // Use the calculated variable

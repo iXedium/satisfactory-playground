@@ -105,7 +105,7 @@ const dependencySlice = createSlice({
       // Log byproduct amounts before storing
       const checkNodesForByproduct = (node: DependencyNode) => {
         if (node.isByproduct) {
-          console.log(`[BYPRODUCT DEBUG] setDependencies Reducer: Storing Byproduct Node=${node.id} (${node.uniqueId}), Amount=${node.amount}`);
+          //console.log(`[BYPRODUCT DEBUG] setDependencies Reducer: Storing Byproduct Node=${node.id} (${node.uniqueId}), Amount=${node.amount}`);
         }
         if (node.children) {
           node.children.forEach(checkNodesForByproduct);

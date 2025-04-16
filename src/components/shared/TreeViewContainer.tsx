@@ -54,6 +54,7 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
         <DependencyTree
           key={treeId}
           tree={tree}
+          treeId={treeId}
           onRecipeChange={handleTreeRecipeChange}
           onExcessChange={handleExcessChange}
           excessMap={excessMap}

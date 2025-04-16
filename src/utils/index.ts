@@ -14,8 +14,9 @@ export {
   toggleChildrenVisibility, 
   traverseVisibleNodes 
 } from './nodeReferenceUtils';
-export * from './treeDiffing'; 
+export * from './treeDiffing';
 export * from './treeUtils';
+export * from './consumptionUtils';
 
 // Add exports for the new utility files
 export * from './treeCalculationCache';

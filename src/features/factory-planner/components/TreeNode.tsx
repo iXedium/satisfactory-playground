@@ -7,6 +7,7 @@ import { toggleChildrenVisibility } from '../../../utils/nodeReferenceUtils';
 interface TreeNodeProps {
   node: DependencyNode;
   depth: number;
+  treeId: string;
   onRecipeChange?: (nodeId: string, recipeId: string) => void;
   onExcessChange?: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
@@ -27,6 +28,7 @@ interface TreeNodeProps {
 const TreeNode: React.FC<TreeNodeProps> = ({ 
   node, 
   depth, 
+  treeId,
   onRecipeChange,
   onExcessChange,
   excessMap,
@@ -98,6 +100,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         key={child.uniqueId || `${child.id}-${index}`}
         node={child}
         depth={depth + 1}
+        treeId={treeId}
         onRecipeChange={onRecipeChange}
         onExcessChange={onExcessChange}
         excessMap={excessMap}
@@ -156,6 +159,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <ItemNode
             itemId={node.id}
             amount={node.amount}
+            uniqueId={node.uniqueId}
+            treeId={treeId}
             isRoot={node.isRoot}
             isByproduct={node.isByproduct}
             isImport={node.isImport}

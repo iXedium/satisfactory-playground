@@ -164,7 +164,7 @@ function calculateChildProductionNeeds(
       const childNode = node.children?.find(c => c.id === outputItemId && c.isByproduct);
       if (childNode) {
         const childAmount = -(Number(outputRecipeAmount) * cyclesNeeded); // Negative amount for byproduct
-        console.log(`[BYPRODUCT DEBUG] calculateChildProductionNeeds: Byproduct Child ${childNode.id} gets amount: ${childAmount.toFixed(3)} (Cycles: ${cyclesNeeded.toFixed(3)})`);
+        // console.log(`[BYPRODUCT DEBUG] calculateChildProductionNeeds: Byproduct Child ${childNode.id} gets amount: ${childAmount.toFixed(3)} (Cycles: ${cyclesNeeded.toFixed(3)})`);
         logNodeBrief(childNode, 'AFFECTED CHILD BYPRODUCT TARGET');
         childUpdates.push({
           nodeId: childNode.uniqueId,

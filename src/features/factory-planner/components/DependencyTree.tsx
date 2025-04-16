@@ -4,6 +4,7 @@ import TreeNode from './TreeNode';
 
 export interface DependencyTreeProps {
   tree: DependencyNode;
+  treeId: string;
   onRecipeChange: (nodeId: string, recipeId: string) => void;
   onExcessChange: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
@@ -23,6 +24,7 @@ export interface DependencyTreeProps {
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
   tree,
+  treeId,
   onRecipeChange,
   onExcessChange,
   excessMap,
@@ -52,6 +54,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
       <TreeNode
         node={tree}
         depth={0}
+        treeId={treeId}
         onRecipeChange={onRecipeChange}
         onExcessChange={onExcessChange}
         excessMap={excessMap}

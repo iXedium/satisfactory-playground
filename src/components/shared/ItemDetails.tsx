@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, MouseEvent, useEffect } from 'react';
 import ReactDOM from 'react-dom'; // Import ReactDOM for portals
 import { theme } from '../../styles/theme';
@@ -49,7 +50,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   
   // Log received amount for byproducts
   if (isByproduct) {
-    console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Received amount for ${item?.name} - Amount=${amount}`);
+    //console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Received amount for ${item?.name} - Amount=${amount}`);
   }
   
   // Section container styles
@@ -175,7 +176,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
             }}
           >
             <span>{item.name}</span>
-            {(console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Rendering amount for ${item.name} (Byproduct: ${isByproduct}) - Amount=${amount}`), null)}
+            {/* {(console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Rendering amount for ${item.name} (Byproduct: ${isByproduct}) - Amount=${amount}`), null)} */}
             {nominalRate > 0 && !isByproduct && !isImport && (
               <span style={{
                 fontSize: sizes.fontSize.standard,
