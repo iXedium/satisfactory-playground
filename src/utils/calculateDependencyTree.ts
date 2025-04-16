@@ -125,7 +125,7 @@ export const calculateDependencyTree = async (
       id: itemId,
       amount,
       uniqueId: nodeId,
-      depth: depth, // Assign depth here too
+      depth: depth, // Correct depth assignment
       availableRecipes,
       children: [],
       excess: excessMap[itemId] || excessMap[nodeId] || 0,
@@ -160,17 +160,21 @@ export const calculateDependencyTree = async (
     .map(
       ([outputItem, outputAmount]) => {
         const byproductAmount = -(Number(outputAmount) * cyclesNeeded);
-        // console.log(`[BYPRODUCT DEBUG] calculateDependencyTree: Byproduct=${outputItem}, RecipeOutput=${outputAmount}, Cycles=${cyclesNeeded.toFixed(3)}, CalculatedAmount=${byproductAmount.toFixed(3)}`);
-        return {
+        // Create the byproduct node object
+        const byproductNode: DependencyNode = {
           id: outputItem,
-          amount: byproductAmount, // Use the calculated variable
-          uniqueId: `${nodeId}-${outputItem}-${depth}`,
+          amount: byproductAmount, 
+          uniqueId: `${nodeId}-${outputItem}-${depth}`, // ID uses parent depth
+          depth: depth, // Byproduct exists at the SAME depth as its parent
           isByproduct: true,
           children: [],
           excess: 0,
-          selectedRecipeId: undefined, // Explicitly add optional field
-          availableRecipes: [], // Explicitly add optional field
-        } as DependencyNode;
+          recipe: undefined, // Byproducts don't have a recipe themselves
+          availableRecipes: [], 
+          isRoot: false, // Byproducts are never roots initially
+          // Ensure other optional fields are handled if needed by type definition
+        };
+        return byproductNode;
       }
     );
 
@@ -178,7 +182,7 @@ export const calculateDependencyTree = async (
     id: itemId,
     amount,
     uniqueId: nodeId,
-    depth: depth, // Assign depth here
+    depth: depth, 
     isRoot: depth === 0,
     recipe: recipe,
     availableRecipes,
