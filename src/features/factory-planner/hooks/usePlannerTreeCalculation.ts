@@ -114,10 +114,13 @@ export const usePlannerTreeCalculation = ({
     itemId: string, 
     amount: number, 
     treeId: string = generateTreeId(itemId),
-    recipeId: string | null = null 
+    recipeId: string | null = null,
+    isAutoImportRoot = false
   ) => {
     // console.log('[handleCreateNewTree] Creating new tree', { itemId, amount, treeId, recipeId });
-    updateRecentItems(itemId);
+    if (!isAutoImportRoot) {
+      updateRecentItems(itemId);
+    }
     try {
       const rootRecipe = recipeId ? await getRecipeById(recipeId) : null;
       

@@ -14,7 +14,8 @@ interface PlannerImportExportProps {
     itemId: string, 
     amount: number, 
     treeId?: string, 
-    recipeId?: string | null
+    recipeId?: string | null,
+    isAutoImportRoot?: boolean
   ) => Promise<void>; // Assuming async based on usage
 }
 
@@ -123,7 +124,7 @@ export const usePlannerImportExport = ({
       const newTreeId = `${foundNode.id}-${Date.now()}`; // Simple ID generation for now
       console.log(`[IMPORT DEBUG] No existing tree found, creating new tree with ID: ${newTreeId}`);
       try {
-        await handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.recipe?.id || null);
+        await handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.recipe?.id || null, true);
         // Wait a moment for state update? This is tricky.
         await new Promise(res => setTimeout(res, 50)); 
         targetTreeId = newTreeId;

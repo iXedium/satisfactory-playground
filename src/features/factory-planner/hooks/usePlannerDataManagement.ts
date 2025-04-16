@@ -51,7 +51,7 @@ export const usePlannerDataManagement = ({
     
     // Call clearStorage functions from other hooks
     clearNodeStateStorage();
-    clearItemSelectionStorage();
+    // clearItemSelectionStorage(); // Keep recent items
     clearDisplayOptionsStorage();
 
     // Reset local state via setters - NO LONGER NEEDED HERE
@@ -62,9 +62,9 @@ export const usePlannerDataManagement = ({
     dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));
     dispatch(loadRecipeSelections({}));
 
-    console.log('[Data Management] All saved data cleared.');
+    console.log('[Data Management] All saved data cleared (except recent items).');
 
-  }, [dispatch, clearNodeStateStorage, clearItemSelectionStorage, clearDisplayOptionsStorage]); // Update dependencies
+  }, [dispatch, clearNodeStateStorage, /* remove clearItemSelectionStorage */ clearDisplayOptionsStorage]); // Update dependencies
 
   return {
     handleDeleteTree,

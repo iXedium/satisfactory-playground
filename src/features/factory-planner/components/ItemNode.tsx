@@ -79,10 +79,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [efficiency, setEfficiency] = useState(100);
   const [nominalRate, setNominalRate] = useState(0);
 
-  // useEffect(() => {
-  //   console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`);
-  //   setLocalExcess(excess);
-  // }, [excess, itemId]);
+  // Restore useEffect to sync localExcess with excess prop
+  useEffect(() => {
+    // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`); // Keep commented for now
+    setLocalExcess(excess);
+  }, [excess]); // Only depend on excess prop
 
   useEffect(() => {
     getItemById(itemId).then((item) => setItem(item || null));
