@@ -102,18 +102,18 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
   });
   
   // Log the final sorted order
-  // console.log(`[TreeView Sort] Sorted by ${treeSortKey} (${treeSortDirection}):`, treesArray.map(t => { 
-  //   const output = t.recipe?.out?.[t.id] ?? 0;
-  //   const time = t.recipe?.time ?? 0;
-  //   const rate = time > 0 ? (output / time) * 60 : 0;
-  //   return { 
-  //     id: t.uniqueId, 
-  //     name: itemsMap[t.id]?.name, 
-  //     originalDepth: t.originalDepth,
-  //     amount: t.amount,
-  //     nominalRate: rate
-  //   };
-  // })) ;
+  console.log(`[TreeView Sort] Sorted by ${treeSortKey} (${treeSortDirection}):`, treesArray.map(t => { 
+    const output = t.recipe?.out?.[t.id] ?? 0;
+    const time = t.recipe?.time ?? 0;
+    const rate = time > 0 ? (output / time) * 60 : 0;
+    return { 
+      id: t.uniqueId, 
+      name: itemsMap[t.id]?.name, 
+      originalDepth: t.originalDepth,
+      amount: t.amount,
+      nominalRate: rate
+    };
+  })) ;
   // ---------------------------------------
 
   return (

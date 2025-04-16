@@ -5,8 +5,7 @@ import { getRecipeById, getRecipeByOutput } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
   setDependencies, 
-  setRecipeSelection, 
-  updateNodeProperties
+  setRecipeSelection 
 } from '../store';
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
 import { convertToImportTree } from '../../../utils';
@@ -32,14 +31,14 @@ interface PlannerTreeCalculationProps {
 }
 
 // Define the type for the createTreeFn used by convertToImportTree
+// It now includes originalDepth
 export type CreateTreeFunction = (
   itemId: string, 
   amount: number, 
   treeId?: string, 
   recipeId?: string | null, 
-  isAutoImportRoot?: boolean,
-  originalDepth?: number,
-  isSourceNodeByproduct?: boolean // Renamed from isByproductRoot
+  isAutoImportRoot?: boolean, 
+  originalDepth?: number // Added originalDepth
 ) => Promise<DependencyNode | null>;
 
 export const usePlannerTreeCalculation = ({
@@ -68,48 +67,53 @@ export const usePlannerTreeCalculation = ({
     treeId?: string, 
     recipeId?: string | null, 
     isAutoImportRoot?: boolean,
-    originalDepth?: number,
-    isSourceNodeByproduct?: boolean // Renamed parameter
+    originalDepth?: number // Accept originalDepth
   ): Promise<DependencyNode | null> => {
+    console.log(`[handleCreateNewTree] Called for ${itemId}. Received originalDepth: ${originalDepth}`);
     const actualTreeId = treeId || generateTreeId(itemId);
-
     const recipe = recipeId ? await getRecipeById(recipeId) : await getRecipeByOutput(itemId);
     if (!recipe) {
-      return {
+      console.warn(`Could not find recipe for ${itemId} (recipeId: ${recipeId})`);
+      const basicNode: DependencyNode = {
         id: itemId,
         amount: amount,
         uniqueId: actualTreeId,
         children: [],
-        isRoot: true, // It's becoming a root
-        depth: 0, 
-        originalDepth: originalDepth ?? 0,
-        isByproduct: isSourceNodeByproduct ?? false, // Assign from flag
+        isRoot: isAutoImportRoot,
+        depth: 0,
+        originalDepth: originalDepth ?? 0
       };
+      console.log(`[handleCreateNewTree] Basic node ${basicNode.uniqueId} assigned originalDepth: ${basicNode.originalDepth}`);
+      return basicNode;
     }
 
     try {
+      // Calculate the tree structure first
       const tree = await calculateDependencyTree(
         itemId,
-        amount, // Amount might be 0 initially from convertToImportTree
+        amount,
         recipe.id,
-        recipeSelections, // Pass recipeSelections
-        0, // Start calculation depth at 0
-        [], actualTreeId, {}, {},
-        dependencies.dependencyTrees // Pass existing trees for context
+        recipeSelections,
+        0, // Start calculation depth at 0 for the new tree
+        [],
+        actualTreeId,
+        {},
+        {},
+        dependencies.dependencyTrees
       );
 
       if (!tree) {
+        console.error(`Failed to calculate dependency tree for ${itemId}`);
         return null;
       }
 
       // Assign properties to the root node
       tree.uniqueId = actualTreeId;
       tree.recipe = recipe;
-      tree.isRoot = true; // Mark as root
-      tree.depth = 0; 
-      tree.originalDepth = originalDepth ?? 0; 
-      tree.isByproduct = isSourceNodeByproduct ?? false; // Assign based on source
-      console.log(`[handleCreateNewTree] Calculated tree ${tree.uniqueId}. Assigned isByproduct: ${tree.isByproduct}`);
+      tree.isRoot = isAutoImportRoot;
+      tree.depth = 0; // It's a root, so depth is 0 in its own tree
+      tree.originalDepth = originalDepth ?? 0;
+      console.log(`[handleCreateNewTree] Calculated tree ${tree.uniqueId} assigned originalDepth: ${tree.originalDepth}`);
 
       return tree;
 
@@ -117,6 +121,7 @@ export const usePlannerTreeCalculation = ({
       console.error(`Error creating new tree for ${itemId}:`, error);
       return null;
     }
+    // Removed dependencies no longer used directly (excessMap, setters for machine/excess)
   }, [dispatch, recipeSelections, dependencies.dependencyTrees, generateTreeId]);
 
   const handleCalculate = useCallback(async () => {
@@ -133,7 +138,7 @@ export const usePlannerTreeCalculation = ({
         return;
       }
       
-      const tree = await calculateDependencyTree(
+      let tree = await calculateDependencyTree(
         selectedItem,
         0,
         selectedRecipe,
@@ -151,39 +156,30 @@ export const usePlannerTreeCalculation = ({
       tree.depth = 0;
       tree.originalDepth = 0; // Main tree originalDepth is also 0
 
-      let finalTree: DependencyNode | null = tree;
-      let workingInitialTrees: Record<string, DependencyNode> = {};
-
       if (autoImport) {
-        workingInitialTrees = { ...dependencies.dependencyTrees }; 
+        const initialTrees = { ...dependencies.dependencyTrees };
         const pendingCreations: Record<string, Promise<DependencyNode | null>> = {};
 
+        // Use the exported type for the function signature
         const createAndConvertTreeFn: CreateTreeFunction = async (
           itemId: string, 
           amount: number, 
           treeId?: string, 
           recipeId?: string | null, 
           isAutoImportRoot?: boolean,
-          originalDepth?: number,
-          isSourceNodeByproduct?: boolean // Renamed param
+          originalDepth?: number // Added originalDepth here
         ) => {
+          // Pass originalDepth to handleCreateNewTree
           const newTree = await handleCreateNewTree(
-            itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth, isSourceNodeByproduct
+            itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth
           );
-          
-          if (newTree) {
-            workingInitialTrees[newTree.uniqueId] = newTree;
-            const mutableNewTree = JSON.parse(JSON.stringify(newTree));
-            
-            const processedNewTree = await convertToImportTree(
-              mutableNewTree, 
-              workingInitialTrees,
-              createAndConvertTreeFn, 
-              pendingCreations
-            );
 
-            if (processedNewTree) { 
-              workingInitialTrees[processedNewTree.uniqueId] = processedNewTree;
+          if (newTree) {
+            const mutableNewTree = JSON.parse(JSON.stringify(newTree));
+            // Pass the correctly typed createAndConvertTreeFn to convertToImportTree
+            const processedNewTree = await convertToImportTree(mutableNewTree, initialTrees, createAndConvertTreeFn, pendingCreations);
+
+            if (processedNewTree) {
               const accumulated = calculateAccumulatedFromTree(processedNewTree);
               dispatch(setDependencies({ treeId: processedNewTree.uniqueId, tree: processedNewTree, accumulated }));
               
@@ -198,98 +194,47 @@ export const usePlannerTreeCalculation = ({
               resetMachineValues(processedNewTree);
               
               if (processedNewTree.isRoot) {
-                setExpandedNodes(prev => ({ ...prev, [processedNewTree.uniqueId]: false }));
+                console.log(`[ExpandedNodes] Setting auto-imported root ${processedNewTree.uniqueId} to collapsed (false).`);
+                setExpandedNodes(prev => {
+                  const newState = { ...prev, [processedNewTree.uniqueId]: false };
+                  console.log(`[ExpandedNodes] State AFTER setting ${processedNewTree.uniqueId} to false:`, newState);
+                  return newState;
+                });
               }
             }
-            return processedNewTree; 
+            return processedNewTree;
           } else {
             return null;
           }
         };
 
-        finalTree = await convertToImportTree(
-          tree, 
-          workingInitialTrees,
-          createAndConvertTreeFn, 
-          pendingCreations
-        );
-
-        if (!finalTree) {
-          console.error("[handleCalculate] Main convertToImportTree call returned null! Aborting further processing.");
-          return;
-        }
+        // Pass the correctly typed function to convertToImportTree
+        tree = await convertToImportTree(tree, initialTrees, createAndConvertTreeFn, pendingCreations);
       }
       
-      if (!finalTree) {
-         console.error("[handleCalculate] finalTree became null unexpectedly after autoImport block.");
-         return;
-      }
+      const accumulated = calculateAccumulatedFromTree(tree);
       
-      const accumulatedMain = calculateAccumulatedFromTree(finalTree);
-      dispatch(setDependencies({ treeId: finalTree.uniqueId, tree: finalTree, accumulated: accumulatedMain }));
+      dispatch(setDependencies({ treeId, tree, accumulated }));
       dispatch(setRecipeSelection({ nodeId: selectedItem, recipeId: selectedRecipe }));
       
-      const resetMachineValuesMain = (node: DependencyNode) => {
+      const resetMachineValues = (node: DependencyNode) => {
         setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
         setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
         setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
         
         if (node.children) {
-          node.children.forEach(resetMachineValuesMain);
+          node.children.forEach(resetMachineValues);
         }
       };
-      resetMachineValuesMain(finalTree);
+      resetMachineValues(tree);
       
-      setExpandedNodes(prev => ({ ...prev, [finalTree.uniqueId]: true }));
-      
-      if (autoImport) { 
-        Object.keys(workingInitialTrees).forEach(treeId => {
-          const convertedTree = workingInitialTrees[treeId];
-          const originalTree = dependencies.dependencyTrees[treeId]; // State BEFORE calculation
-          
-          if (originalTree && convertedTree) {
-              if (originalTree.isByproduct !== convertedTree.isByproduct) {
-                console.log(`[Reconcile] Detected byproduct status change for ${treeId} (${convertedTree.id}): ${originalTree.isByproduct} -> ${convertedTree.isByproduct}. Dispatching full update.`); // KEEP this specific log
-                
-                // --- UPDATED RECONCILIATION ACTION --- 
-                // Dispatch setDependencies to update the entire tree structure,
-                // as the conversion recalculates recipe, children, etc.
-                const accumulated = calculateAccumulatedFromTree(convertedTree);
-                dispatch(setDependencies({ treeId: convertedTree.uniqueId, tree: convertedTree, accumulated }));
-                
-                // We might also need to reset machine/excess counts for the newly converted node
-                // and potentially its new children if the structure changed significantly.
-                // Consider doing this similar to how it's done for newly created trees.
-                const resetMachineValues = (node: DependencyNode) => {
-                    setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-                    setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-                    setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
-                    if (node.children) {
-                      node.children.forEach(resetMachineValues);
-                    }
-                };
-                resetMachineValues(convertedTree);
-                setExpandedNodes(prev => ({ ...prev, [convertedTree.uniqueId]: true })); // Expand the converted node
-                // --- END UPDATED ACTION --- 
-                
-              } else if (originalTree.recipe?.id !== convertedTree.recipe?.id) {
-                  console.log(`[Reconcile] Detected recipe change for ${treeId} (${convertedTree.id}): ${originalTree.recipe?.id} -> ${convertedTree.recipe?.id}. Dispatching properties update.`); // Keep this specific log
-                  dispatch(updateNodeProperties({ 
-                      nodeId: treeId, 
-                      updatedNode: { 
-                          recipe: convertedTree.recipe 
-                          // Potentially update other relevant properties if needed
-                      } 
-                  }));
-              }
-          } else if (originalTree && !convertedTree) {
-             console.warn(`[Reconcile] Tree ${treeId} existed originally but is missing from workingInitialTrees after conversion.`); // Keep this warning
-          } else if (!originalTree && convertedTree) {
-             // This is expected for newly created trees, no action needed here
-          }
-        });
-      }
-      
+      console.log(`[ExpandedNodes] Setting main root ${tree.uniqueId} (originalDepth: ${tree.originalDepth}) to expanded (true).`);
+      setExpandedNodes(prev => {
+         const newState = { ...prev, [tree.uniqueId]: true };
+         console.log(`[ExpandedNodes] State AFTER setting ${tree.uniqueId} to true:`, newState);
+         return newState;
+      });
+
       setTimeout(() => {
         const treeViewElement = document.getElementById('tree-view');
         if (treeViewElement) {
