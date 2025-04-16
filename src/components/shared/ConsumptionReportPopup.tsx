@@ -7,9 +7,11 @@ import Icon from '../Icon';
 interface ConsumptionReportPopupProps {
   consumers: ConsumerInfo[];
   sourceItemName: string; // Add source item name for title
+  totalDemand: number; // Add total demand for percentage calculation
+  sourceNodeExcess: number; // Add source node's excess
 }
 
-const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consumers, sourceItemName }) => {
+const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consumers, sourceItemName, totalDemand, sourceNodeExcess }) => {
 
   const sectionStyle: React.CSSProperties = {
     backgroundColor: theme.colors.darker, 
@@ -45,9 +47,37 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
     padding: `${sizes.spacing.xsmall} 0`, // Add vertical padding
   };
 
+  const nameStyle: React.CSSProperties = {
+    marginRight: 'auto', // Push name to left, amount/percentage group to right
+    flexShrink: 0, 
+  };
+
   const amountStyle: React.CSSProperties = {
-    marginLeft: 'auto', 
     color: theme.colors.textSecondary, 
+    textAlign: 'right',
+    minWidth: '50px', // Adjust width for amount only
+  };
+
+  const percentageStyle: React.CSSProperties = {
+    color: theme.colors.textSecondary,
+    fontSize: sizes.fontSize.small, 
+    minWidth: '35px', // Adjust width for percentage only
+    textAlign: 'right',
+    marginRight: sizes.spacing.small, // Add small space between percentage and amount
+  };
+  
+  // New style for the amount/percentage group
+  const valueGroupStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'baseline', // Align text baseline
+    marginLeft: 'auto', // Push this group to the right
+  };
+
+  // Helper to calculate percentage safely
+  const calculatePercentage = (part: number, total: number): string => {
+      if (total <= 0) return '(0%)'; // Avoid division by zero
+      const percentage = (part / total) * 100;
+      return `(${percentage.toFixed(0)}%)`; // Rounded percentage
   };
 
   return (
@@ -64,13 +94,28 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
         consumers.map((consumer, index) => (
           <div key={`${consumer.consumingTreeId}-${consumer.consumerNodeId}-${index}`} style={itemLineStyle}>
             {/* Optionally add icon of the consuming parent */}
-            {/* <Icon itemId={consumer.consumerParentId} size="xsmall" /> */}
-            <span>{consumer.consumerParentName}</span>
-            {/* Optionally show tree ID if multiple trees exist? */}
-            {/* <span style={{ fontSize: '10px', color: theme.colors.textSecondary, marginLeft: '4px' }}>({consumer.consumingTreeId.substring(0, 6)})</span> */}
-            <span style={amountStyle}>{consumer.consumedAmount.toFixed(2)}</span>
+            <Icon itemId={consumer.consumerParentId} size="xsmall" />
+            <span style={nameStyle}>{consumer.consumerParentName}</span>
+            {/* Group percentage and amount */}
+            <div style={valueGroupStyle}>
+              <span style={percentageStyle}>{calculatePercentage(consumer.consumedAmount, totalDemand)}</span>
+              <span style={amountStyle}>{consumer.consumedAmount.toFixed(2)}</span>
+            </div>
           </div>
         ))
+      )}
+      
+      {/* Display Excess Demand if applicable */}
+      {sourceNodeExcess > 0.01 && ( // Use a small threshold to avoid displaying tiny rounding errors
+        <div key="excess-demand" style={{...itemLineStyle, marginTop: sizes.spacing.small, borderTop: `1px dashed ${theme.colors.border}` , paddingTop: sizes.spacing.small}}>
+            <Icon itemId={sourceItemName} size="tiny" showWrapper={false}  /> {/* Icon of the source item */}
+            <span style={nameStyle}>Excess:</span>
+            {/* Group percentage and amount */}
+            <div style={valueGroupStyle}>
+              <span style={percentageStyle}>{calculatePercentage(sourceNodeExcess, totalDemand)}</span>
+              <span style={amountStyle}>{sourceNodeExcess.toFixed(2)}</span>
+            </div>
+        </div>
       )}
     </div>
   );

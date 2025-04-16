@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { DependencyNode } from "../types";
 import { findNodeById } from "./index";
 import { getItemById } from "../data"; // Import DB query for names
@@ -16,7 +17,7 @@ async function getItemName(itemId: string): Promise<string> {
         const item = await getItemById(itemId);
         return item?.name ?? itemId.replace(/item:/g, '').replace(/_/g, ' '); // Fallback name
     } catch (error) {
-        console.error(`Error fetching name for item ${itemId}:`, error);
+        // console.error(`Error fetching name for item ${itemId}:`, error);
         return itemId.replace(/item:/g, '').replace(/_/g, ' '); // Fallback name on error
     }
 }
@@ -38,7 +39,7 @@ export const findNodeConsumers = async (
   const sourceTree = allTrees[sourceTreeId];
   // EARLY EXIT 1: Is sourceTree found?
   if (!sourceTree) {
-    console.log(`[DEBUG CONSUMPTION EXIT] Source tree ${sourceTreeId} not found.`);
+    // console.log(`[DEBUG CONSUMPTION EXIT] Source tree ${sourceTreeId} not found.`);
     return consumers;
   }
 
@@ -47,12 +48,12 @@ export const findNodeConsumers = async (
 
   // EARLY EXIT 2: Is sourceNode found AND not a byproduct?
   if (!sourceNode || sourceNode.isByproduct) {
-    console.log(`[DEBUG CONSUMPTION EXIT] Source node ${sourceNodeId} not found or is byproduct. Found: ${!!sourceNode}, IsByproduct: ${sourceNode?.isByproduct}`);
+    // console.log(`[DEBUG CONSUMPTION EXIT] Source node ${sourceNodeId} not found or is byproduct. Found: ${!!sourceNode}, IsByproduct: ${sourceNode?.isByproduct}`);
     return consumers;
   }
 
   const producedItemId = sourceNode.id;
-  console.log(`[DEBUG CONSUMPTION START] Found source node ${sourceNodeId} (Item: ${producedItemId}). Starting search...`); // Log before traversal starts
+//   console.log(`[DEBUG CONSUMPTION START] Found source node ${sourceNodeId} (Item: ${producedItemId}). Starting search...`); // Log before traversal starts
 
   // Keep track of consumer parent names to fetch them efficiently
   const consumerParentNames: Record<string, string> = {};
@@ -62,7 +63,7 @@ export const findNodeConsumers = async (
     if (node.children && node.children.length > 0) {
       node.children.forEach(child => {
         // -- DEBUG LOG --
-        console.log(`[DEBUG CONSUMPTION] Checking Child: ${child.id} (Byproduct: ${!!child.isByproduct}) against ProducedItem: ${producedItemId} by Parent: ${node.id}`);
+        // console.log(`[DEBUG CONSUMPTION] Checking Child: ${child.id} (Byproduct: ${!!child.isByproduct}) against ProducedItem: ${producedItemId} by Parent: ${node.id}`);
         // -- END DEBUG LOG --
         
         // Check if the child requires the item produced by sourceNode AND is not a byproduct itself

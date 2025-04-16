@@ -50,6 +50,9 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   const hoverTimeoutRef = useRef<number | null>(null);
   const rateDisplayRef = useRef<HTMLDivElement>(null);
   
+  // Calculate total demand for percentage calculation
+  const totalDemand = amount + excess;
+  
   const handleRateMouseEnter = async (event: MouseEvent<HTMLDivElement>) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -194,7 +197,12 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
             zIndex: 10000
           }} 
         >
-          <ConsumptionReportPopup consumers={consumptionData} sourceItemName={itemName} />
+          <ConsumptionReportPopup 
+            consumers={consumptionData} 
+            sourceItemName={itemName} 
+            totalDemand={totalDemand}
+            sourceNodeExcess={excess}
+          />
         </div>,
         document.body
       )}
