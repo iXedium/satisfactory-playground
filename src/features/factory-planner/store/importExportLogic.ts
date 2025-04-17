@@ -3,7 +3,8 @@ import { WritableDraft } from 'immer'; // Needed for Immer types in reducers
 import { DependencyNode } from '../../../types';
 import { 
   clearImportReference, 
-  setImportReference 
+  setImportReference,
+  getImportReference
 } from '../../../utils/nodeReferenceUtils';
 import { findNodeById } from '../../../utils';
 import { createAsyncThunk } from '@reduxjs/toolkit';
@@ -44,6 +45,9 @@ export const unimportNode = createAction<{
   targetTreeId: string;
   sourceTreeId: string;
 }>('dependency/unimportNode');
+
+// Add removeNodeAction
+export const removeNodeAction = createAction<string>('dependency/removeNode'); // Payload is nodeIdToDestroy
 
 // Helper function to find and replace a node in a tree by its uniqueId (mutable - use with Immer)
 export const findAndReplaceNode = (tree: WritableDraft<DependencyNode>, nodeId: string, replacement: WritableDraft<DependencyNode>): boolean => {
@@ -547,6 +551,145 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
   }
 );
 
+// --- Thunk for Destroying a Node and its Dependencies ---
+export const destroyNodeRecursiveThunk = createAsyncThunk<
+  void,
+  string, // Argument: nodeIdToDestroy
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/destroyNodeRecursive',
+  async (nodeIdToDestroy, { getState, dispatch }) => {
+    console.log(`[Thunk/Destroy] Request to destroy node: ${nodeIdToDestroy}`);
+    const state = getState();
+    const nodeToDestroy = state.dependencies.dependencyTrees[nodeIdToDestroy];
+
+    if (!nodeToDestroy) {
+      console.log(`[Thunk/Destroy] Node ${nodeIdToDestroy} not found (already destroyed?). Skipping.`);
+      return;
+    }
+
+    // Store children *before* removing the node
+    const childrenToCleanup = [...(nodeToDestroy.children || [])];
+
+    // Dispatch synchronous action to remove the node from state
+    console.log(`[Thunk/Destroy] Dispatching removeNodeAction for ${nodeIdToDestroy}.`);
+    dispatch(removeNodeAction(nodeIdToDestroy));
+    // TODO: Consider cleaning up accumulatedDependencies entry as well?
+
+    // Trigger dependency checks for its former children
+    console.log(`[Thunk/Destroy] Triggering dependency checks for ${childrenToCleanup.length} former children.`);
+    for (const childNode of childrenToCleanup) {
+      // Ensure childNode has a valid uniqueId before dispatching check
+      if (childNode && childNode.uniqueId) {
+         await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: childNode.uniqueId, disconnectedConsumerId: nodeIdToDestroy }));
+      } else {
+         console.warn(`[Thunk/Destroy] Invalid child node structure found while cleaning up ${nodeIdToDestroy}. Skipping check.`);
+      }
+    }
+    console.log(`[Thunk/Destroy] Finished destroying node: ${nodeIdToDestroy}`);
+  }
+);
+
+// --- Thunk for Checking Dependency Need After Disconnect ---
+interface RequestDependencyCheckArgs {
+    nodeIdToCheck: string;
+    disconnectedConsumerId: string;
+}
+export const requestDependencyCheckThunk = createAsyncThunk<
+  void,
+  RequestDependencyCheckArgs,
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/requestDependencyCheck',
+  async ({ nodeIdToCheck, disconnectedConsumerId }, { getState, dispatch }) => {
+    console.log(`[Thunk/Check] Request to check necessity of node ${nodeIdToCheck} (disconnected: ${disconnectedConsumerId})`);
+    const state = getState();
+    const nodeToCheck = state.dependencies.dependencyTrees[nodeIdToCheck];
+
+    if (!nodeToCheck || !nodeToCheck.isRoot) { // Only check root nodes
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck} not found or not a root. Skipping check.`);
+      return;
+    }
+
+    let isStillNeeded = false;
+
+    // 1. Check for manual excess
+    if ((nodeToCheck.excess || 0) > 0) {
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck} has excess > 0. Still needed.`);
+      isStillNeeded = true;
+    }
+
+    // 2. Check for other importers
+    if (!isStillNeeded) {
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck}: Checking for other importers...`);
+      for (const tree of Object.values(state.dependencies.dependencyTrees)) {
+         // Avoid checking the node against itself or trees being deleted?
+         // If tree.uniqueId === nodeIdToCheck? Might be relevant if check gets complex.
+        const findImporter = (node: DependencyNode): boolean => {
+          if (node.uniqueId === disconnectedConsumerId) return false; // Skip the one that just disconnected
+
+          const importRef = getImportReference(node);
+          if (importRef?.targetTreeId === nodeIdToCheck) {
+             console.log(`[Thunk/Check] Node ${nodeIdToCheck} is still imported by ${node.uniqueId} in tree ${tree.uniqueId}. Still needed.`);
+            return true; // Found another importer
+          }
+          if (node.children) {
+            for (const child of node.children) {
+              if (findImporter(child)) return true;
+            }
+          }
+          return false;
+        };
+        if (findImporter(tree)) {
+          isStillNeeded = true;
+          break; // Stop searching once one importer is found
+        }
+      }
+    }
+
+    if (isStillNeeded) {
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck} is still needed. Recalculating amount...`);
+      // Node is still needed, recalculate its required amount
+      let newRequiredAmount = 0;
+      // Add manual excess first
+      newRequiredAmount += nodeToCheck.excess || 0;
+      // Find all current importers and sum their demands
+       for (const tree of Object.values(state.dependencies.dependencyTrees)) {
+            const findDemand = (node: DependencyNode): number => {
+                let demand = 0;
+                const importRef = getImportReference(node);
+                if (importRef?.targetTreeId === nodeIdToCheck) {
+                    demand += node.amount || 0;
+                }
+                if (node.children) {
+                    for (const child of node.children) {
+                        demand += findDemand(child);
+                    }
+                }
+                return demand;
+            };
+            newRequiredAmount += findDemand(tree);
+       }
+
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck}: New required amount: ${newRequiredAmount}. Current amount: ${nodeToCheck.amount}`);
+      if (nodeToCheck.amount !== newRequiredAmount) {
+          console.log(`[Thunk/Check] Node ${nodeIdToCheck}: Amount changed. Dispatching update and re-checking type.`);
+          dispatch(updateNodeProperties({ nodeId: nodeIdToCheck, updatedNode: { amount: newRequiredAmount } }));
+          // Re-check node type as amount change might trigger conversion
+          await dispatch(checkAndConvertNodeTypeThunk(nodeIdToCheck));
+      } else {
+           console.log(`[Thunk/Check] Node ${nodeIdToCheck}: Amount unchanged. No update needed.`);
+      }
+
+    } else {
+      console.log(`[Thunk/Check] Node ${nodeIdToCheck} is no longer needed. Triggering destruction.`);
+      // Node is not needed anymore, destroy it
+      await dispatch(destroyNodeRecursiveThunk(nodeIdToCheck));
+    }
+     console.log(`[Thunk/Check] Finished check for node ${nodeIdToCheck}.`);
+  }
+);
+
 // --- Thunk for Checking and Converting Node Type --- 
 export const checkAndConvertNodeTypeThunk = createAsyncThunk<
   void, 
@@ -566,10 +709,10 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
 
     // --- Scenario 1: Convert Byproduct to Normal --- 
     if (targetNode.isByproduct && targetNode.amount > 0) { 
-      console.log(`[Thunk] Converting byproduct root ${targetTreeId} (amount: ${targetNode.amount}) to production node.`);
+      console.log(`[Thunk/Convert] Converting BYPRODUCT root ${targetTreeId} (amount: ${targetNode.amount}) to NORMAL.`);
       const defaultRecipe = await getRecipeByOutput(targetNode.id);
       if (!defaultRecipe) {
-        console.error(`[Thunk] No default recipe found for item ${targetNode.id}. Cannot convert byproduct.`);
+        console.error(`[Thunk/Convert] No default recipe found for item ${targetNode.id}. Cannot convert byproduct.`);
         return; 
       }
       
@@ -586,34 +729,57 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
           children: newChildren,
         };
         dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: updatedNodeData }));
-        console.log(`[Thunk] Dispatched updateNodeProperties for ${targetTreeId} (Byproduct -> Normal)`);
+        console.log(`[Thunk/Convert] Dispatched updateNodeProperties for ${targetTreeId} (Byproduct -> Normal)`);
 
-        // TODO: Trigger subsequent recalculations if necessary? 
-        // The change in children might affect downstream imports/accumulations.
+        // If children were added, they might need their own amounts calculated/imports set up
+        // This might require recalculating the whole tree or triggering updates on children.
+        // For now, we rely on the subsequent accumulation updates.
 
       } catch(error) {
-        console.error(`[Thunk] Error recalculating children for ${targetTreeId}:`, error);
+        console.error(`[Thunk/Convert] Error recalculating children for ${targetTreeId}:`, error);
       }
     } 
     // --- Scenario 2: Convert Normal to Byproduct --- 
     else if (!targetNode.isByproduct && targetNode.amount < 0) {
-      console.log(`[Thunk] Converting production root ${targetTreeId} (amount: ${targetNode.amount}) to byproduct node.`);
-      
-      // Simplification: Just update the node status. 
-      // Assume dependent calculations (like accumulation, import target amounts) 
-      // will handle the fact that this node no longer requires inputs.
+      console.log(`[Thunk/Convert] Converting NORMAL root ${targetTreeId} (amount: ${targetNode.amount}) to BYPRODUCT.`);
+
+      // Store original children *before* clearing them
+      const originalChildren = [...(targetNode.children || [])];
+
       const updatedNodeData: Partial<DependencyNode> = {
         isByproduct: true,
         recipe: undefined,
-        children: [], // Clear children
+        children: [], // Clear children for byproduct
       };
       dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: updatedNodeData }));
-      console.log(`[Thunk] Dispatched updateNodeProperties for ${targetTreeId} (Normal -> Byproduct)`);
+      console.log(`[Thunk/Convert] Dispatched updateNodeProperties for ${targetTreeId} (Normal -> Byproduct)`);
 
-      // TODO: Verify if further propagation/recalculation is needed. 
-      // For example, if this node's former children were importing, 
-      // those target amounts need reduction. This might require another thunk/action.
+      // Trigger dependency checks for former children
+      console.log(`[Thunk/Convert] Triggering dependency checks for ${originalChildren.length} former children.`);
+      for (const childNode of originalChildren) {
+          // Check if the child exists before dispatching (it might have been removed concurrently)
+          // Ensure childNode and uniqueId are valid before accessing/dispatching
+          if (childNode && childNode.uniqueId) {
+             // --- FIX: Check the target ROOT node, not the import node itself --- 
+             let nodeIdToActuallyCheck = childNode.uniqueId;
+             const importRef = getImportReference(childNode);
+             if (importRef?.targetTreeId) {
+                 nodeIdToActuallyCheck = importRef.targetTreeId;
+                 console.log(`[Thunk/Convert] Child ${childNode.uniqueId} is an import. Checking target root ${nodeIdToActuallyCheck} instead.`);
+             }
+             // -------------------------------------------------------------------
 
+             // Check if the node to check *still exists* in the state before dispatching
+             const nodeState = getState().dependencies.dependencyTrees[nodeIdToActuallyCheck];
+             if (nodeState) {
+                  await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: targetTreeId }));
+             } else {
+                  console.log(`[Thunk/Convert] Node to check (${nodeIdToActuallyCheck}) already removed. Skipping check.`);
+             }
+          } else {
+             console.warn(`[Thunk/Convert] Invalid child node structure found while cleaning up ${targetTreeId}. Skipping check.`);
+          }
+      }
     } 
     // --- Scenario 3: No Conversion Needed --- 
     else {

@@ -11,7 +11,8 @@ import {
   importNodeAction,
   unimportNode,
   handleNodeImportReducer,
-  handleNodeUnimportReducer
+  handleNodeUnimportReducer,
+  removeNodeAction
 } from './importExportLogic';
 import {
   productionSliceExtraReducers,
@@ -246,7 +247,27 @@ const dependencySlice = createSlice({
     // Add cases for the imported actions to use the imported reducer logic
     builder
       .addCase(importNodeAction, handleNodeImportReducer)
-      .addCase(unimportNode, handleNodeUnimportReducer);
+      .addCase(unimportNode, handleNodeUnimportReducer)
+      .addCase(removeNodeAction, (state, action: PayloadAction<string>) => {
+        const nodeIdToRemove = action.payload;
+        if (state.dependencyTrees[nodeIdToRemove]) {
+            console.log(`[Reducer/removeNode] Removing root node ${nodeIdToRemove}`);
+            delete state.dependencyTrees[nodeIdToRemove];
+
+            // Clean up accumulated dependencies associated with the removed tree
+            // Recalculate all for simplicity (can be optimized later)
+             console.log(`[Reducer/removeNode] Recalculating all accumulated dependencies after removal.`);
+             state.accumulatedDependencies = {};
+             Object.values(state.dependencyTrees).forEach((tree) => {
+                 const treeAccumulated = calculateAccumulatedFromTree(tree);
+                 Object.assign(state.accumulatedDependencies, treeAccumulated);
+             });
+             // TODO: A more efficient cleanup of accumulatedDependencies is needed.
+
+        } else {
+            console.warn(`[Reducer/removeNode] Node ${nodeIdToRemove} not found in state.dependencyTrees.`);
+        }
+    });
       
     // Add cases for production update actions by calling the imported function
     productionSliceExtraReducers(builder);
