@@ -126,10 +126,6 @@ export const setImportReference = (
   // Set the new reference with the base tree ID
   const baseTreeId = extractBaseTreeId(treeId);
   
-  // Add debug logging to help diagnose import reference issues
-  console.log(`[IMPORT DEBUG] Original targetTreeId: ${treeId}`);
-  console.log(`[IMPORT DEBUG] Extracted baseTreeId: ${baseTreeId}`);
-  
   updatedNode.importReference = {
     targetTreeId: baseTreeId,
     targetNodeId: nodeId

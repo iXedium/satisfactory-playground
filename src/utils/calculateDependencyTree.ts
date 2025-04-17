@@ -154,18 +154,18 @@ export const calculateDependencyTree = async (
     )
   );
 
-  // Add byproducts but do NOT process them
-  const byproducts = Object.entries(recipe.out)
+  // Calculate byproducts initially
+  const calculatedByproducts = Object.entries(recipe.out)
     .filter(([outputItem]) => outputItem !== itemId)
     .map(
       ([outputItem, outputAmount]) => {
         const byproductAmount = -(Number(outputAmount) * cyclesNeeded);
-        // console.log(`[BYPRODUCT DEBUG] calculateDependencyTree: Byproduct=${outputItem}, RecipeOutput=${outputAmount}, Cycles=${cyclesNeeded.toFixed(3)}, CalculatedAmount=${byproductAmount.toFixed(3)}`);
         return {
           id: outputItem,
-          amount: byproductAmount, // Use the calculated variable
-          uniqueId: `${nodeId}-${outputItem}-${depth}`,
+          amount: byproductAmount,
+          uniqueId: `${nodeId}-${outputItem}-${depth}`, // Depth should likely be depth+1? No, byproducts are siblings.
           isByproduct: true,
+          depth: depth + 1, // Byproducts are effectively 'children' in terms of hierarchy level
           children: [],
           excess: 0,
           selectedRecipeId: undefined, // Explicitly add optional field
@@ -173,6 +173,30 @@ export const calculateDependencyTree = async (
         } as DependencyNode;
       }
     );
+
+  // --- Reconcile Byproducts with Normal Children ---
+  const finalChildren: DependencyNode[] = [...children];
+  const remainingByproducts: DependencyNode[] = [];
+
+  calculatedByproducts.forEach(byproduct => {
+    const correspondingChildIndex = finalChildren.findIndex(child => child.id === byproduct.id && !child.isByproduct); // Ensure it's a normal child
+
+    if (correspondingChildIndex !== -1) {
+      // Found a normal child for the same item: merge amounts
+      const normalChild = finalChildren[correspondingChildIndex];
+      console.debug(`[BYPRODUCT MERGE] Merging byproduct ${byproduct.id} (${byproduct.amount}) into normal child ${normalChild.id} (${normalChild.amount})`);
+      // Ensure amounts are numbers before adding
+      const currentAmount = Number(normalChild.amount) || 0;
+      const byproductAmount = Number(byproduct.amount) || 0;
+      normalChild.amount = currentAmount + byproductAmount;
+      // Update the child in the array (though modifying in place works too)
+      finalChildren[correspondingChildIndex] = normalChild;
+    } else {
+      // No corresponding normal child found, keep the byproduct
+      remainingByproducts.push(byproduct);
+    }
+  });
+  // --- End Reconciliation ---
 
   const result: DependencyNode = {
     id: itemId,
@@ -182,7 +206,8 @@ export const calculateDependencyTree = async (
     isRoot: depth === 0,
     recipe: recipe,
     availableRecipes,
-    children: [...children, ...byproducts],
+    // Combine the modified children list and the remaining byproducts
+    children: [...finalChildren, ...remainingByproducts],
     excess: excessMap[itemId] || excessMap[nodeId] || 0,
   };
 

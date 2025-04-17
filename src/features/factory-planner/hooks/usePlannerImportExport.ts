@@ -6,7 +6,8 @@ import { DependencyNode } from '../../../types';
 import { DependencyState } from '../store/dependencySlice';
 import { 
   importNodeAction, 
-  unimportNode 
+  unimportNode, 
+  checkAndConvertNodeTypeThunk
 } from '../store';
 import { findNodeById } from '../../../utils';
 import { hasImportReference } from '../../../utils/nodeReferenceUtils';
@@ -59,6 +60,19 @@ export const usePlannerImportExport = ({
       targetTreeId,
       shouldImport: true
     }));
+
+    // --- Trigger Node Type Check for ALL roots --- 
+    setTimeout(() => {
+      console.log(`[handleImportNodeInternal] Triggering node type check for ALL roots after import involving target ${targetTreeId}`);
+      const currentState = dependencies; // Use closure state
+      Object.values(currentState.dependencyTrees).forEach(tree => {
+          if (tree.isRoot) {
+              dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
+          }
+      });
+    }, 10); 
+    // ---------------------------------------------
+
   }, [dispatch, dependencies.dependencyTrees]);
 
   // Original handleUnimportNode logic (now internal)
@@ -86,7 +100,20 @@ export const usePlannerImportExport = ({
       sourceTreeId,
       targetTreeId
     }));
-  }, [dispatch]);
+
+    // --- Trigger Node Type Check for ALL roots --- 
+    setTimeout(() => {
+      console.log(`[handleUnimportNodeInternal] Triggering node type check for ALL roots after unimport involving target ${targetTreeId}`);
+      const currentState = dependencies; // Use closure state
+      Object.values(currentState.dependencyTrees).forEach(tree => {
+          if (tree.isRoot) {
+              dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
+          }
+      });
+    }, 10);
+    // ---------------------------------------------
+
+  }, [dispatch, dependencies.dependencyTrees]);
 
   // Original importNodeForTree logic (now internal)
   const importNodeForTreeInternal = useCallback(async (nodeId: string) => {

@@ -43,7 +43,7 @@ export const calculateAccumulatedFromTree = (
     accumulated[key].amount += node.amount;
     accumulated[key].depth = Math.min(accumulated[key].depth ?? Infinity, depth);
 
-    if (node.children && node.children.length > 0) {
+    if (!node.isByproduct && node.children && node.children.length > 0) {
       node.children.forEach((child: DependencyNode) => traverse(child, depth + 1));
     }
   };

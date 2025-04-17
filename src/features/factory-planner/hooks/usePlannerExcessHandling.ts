@@ -3,7 +3,7 @@ import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
 import { DependencyNode } from '../../../types';
-import { updateTreeProduction } from '../store';
+import { updateTreeProduction, checkAndConvertNodeTypeThunk } from '../store';
 import { findNodeById } from '../../../utils';
 
 // Define the expected shape of the dependencies state slice locally
@@ -24,57 +24,47 @@ export const usePlannerExcessHandling = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    // console.log(`[SEQUENCE DEBUG] Step 1: handleExcessChange called for ${nodeId} with excess ${excess}`);
+    // Update local map immediately
+    setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
     
-    // console.log(`[SEQUENCE DEBUG] Step 2: Setting excess map state`);
-    setExcessMap(prevMap => {
-      // console.log(`[SEQUENCE DEBUG] Step 2.1: Inside setExcessMap callback`);
-      return { ...prevMap, [nodeId]: excess };
-    });
-    
-    // console.log(`[SEQUENCE DEBUG] Step 3: Finding tree ID for node ${nodeId}`);
-    
-    // Check if the nodeId is actually a treeId (root node case)
-    if (dependencies.dependencyTrees[nodeId]) {
+    let treeIdToUpdate = null;
+    let rootNodeUniqueId = null; // Store the uniqueId of the root
+
+    // Determine the treeId and rootNode's uniqueId
+    if (dependencies.dependencyTrees[nodeId]) { 
       const tree = dependencies.dependencyTrees[nodeId];
-      // console.log(`[SEQUENCE DEBUG] The node ID is actually a tree ID. Using root node's uniqueId: ${tree.uniqueId}`);
-      
-      // console.log(`[SEQUENCE DEBUG] Root node details:`, { /* ... logging */ });
-      
-      // Ensure excess map is also updated for the actual uniqueId of the root node
+      treeIdToUpdate = nodeId;
+      rootNodeUniqueId = tree.uniqueId;
       setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
-      
-      // Dispatch update based on the root node's uniqueId and the treeId
       dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess));
-      
-      return;
-    }
-    
-    // Standard case: find the tree containing this non-root node
-    let foundTreeId = '';
-    let foundNode = null;
-
-    for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-      const node = findNodeById(tree, nodeId);
-      if (node) {
-        foundTreeId = treeId;
-        foundNode = node; // Store the found node
-        // console.log(`[SEQUENCE DEBUG] Found node details:`, { /* ... logging */ });
-        break;
+    } else {
+      let foundTreeId = '';
+      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          foundTreeId = treeId;
+          treeIdToUpdate = treeId; 
+          rootNodeUniqueId = tree.uniqueId;
+          break;
+        }
       }
+      if (!foundTreeId) return;
+      dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
     }
 
-    if (!foundTreeId) {
-      // console.error(`[Excess Change ERROR] Node ${nodeId} not found in any tree`);
-      return;
-    }
-      
-    // console.log(`[SEQUENCE DEBUG] Step 4: Found tree ID: ${foundTreeId}`);
-    
-    // console.log(`[SEQUENCE DEBUG] Step 5: Using node ID: ${nodeId} in tree: ${foundTreeId}`);
-    
-    // Dispatch update based on the specific node's uniqueId and its containing treeId
-    dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
+    // --- Trigger Node Type Conversion Check for ALL roots --- 
+    // Use setTimeout to check after the state has likely updated
+    setTimeout(() => {
+        console.log(`[handleExcessChange] Triggering node type check for ALL roots after update related to node ${nodeId}`);
+        const currentState = dependencies; // Use the state captured by the hook closure
+        Object.values(currentState.dependencyTrees).forEach(tree => {
+            if (tree.isRoot) { // Only check root nodes
+                // console.log(`[handleExcessChange] Checking root: ${tree.uniqueId}`);
+                dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
+            }
+        });
+    }, 10); // Small delay
+    // ------------------------------------------------------
 
   }, [dependencies.dependencyTrees, dispatch, setExcessMap]);
 

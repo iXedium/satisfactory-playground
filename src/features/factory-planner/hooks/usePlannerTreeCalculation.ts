@@ -8,8 +8,8 @@ import {
   setRecipeSelection 
 } from '../store';
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
-import { convertToImportTree } from '../../../utils';
 import { usePlannerNodeState } from './usePlannerNodeState';
+import { calculateAndAutoImportThunk } from '../store/importExportLogic';
 
 interface DependencySliceStateForCalc {
   dependencyTrees: Record<string, DependencyNode>;
@@ -31,15 +31,99 @@ interface PlannerTreeCalculationProps {
 }
 
 // Define the type for the createTreeFn used by convertToImportTree
-// It now includes originalDepth
+// Added isInitiallyByproductRoot
 export type CreateTreeFunction = (
   itemId: string, 
   amount: number, 
   treeId?: string, 
   recipeId?: string | null, 
   isAutoImportRoot?: boolean, 
-  originalDepth?: number // Added originalDepth
+  originalDepth?: number, 
+  isInitiallyByproductRoot?: boolean // Added flag
 ) => Promise<DependencyNode | null>;
+
+// --- Extracted Tree Creation Logic --- 
+// This version doesn't dispatch or use hook state directly
+const createNewTreeStructure = async (
+  itemId: string, 
+  amount: number, 
+  treeId: string, // Require treeId to be generated beforehand
+  recipeId: string | null, 
+  isAutoImportRoot: boolean | undefined,
+  originalDepth: number | undefined,
+  isInitiallyByproductRoot: boolean | undefined,
+  recipeSelections: Record<string, string>, // Pass needed state/data
+  allTrees: Record<string, DependencyNode>
+): Promise<DependencyNode | null> => {
+  console.log(`[createNewTreeStructure] Called for ${itemId}. OriginalDepth: ${originalDepth}, IsByproductRoot: ${isInitiallyByproductRoot}`);
+  
+  if (isInitiallyByproductRoot) {
+    console.log(`[createNewTreeStructure] Creating initial BYPRODUCT root for ${itemId}.`);
+    const byproductRootNode: DependencyNode = {
+      id: itemId,
+      amount: amount, 
+      uniqueId: treeId,
+      children: [], 
+      recipe: undefined, 
+      isRoot: true, 
+      isByproduct: true, 
+      depth: 0, 
+      originalDepth: originalDepth ?? 0
+    };
+    console.log(`[createNewTreeStructure] Byproduct root ${byproductRootNode.uniqueId} assigned originalDepth: ${byproductRootNode.originalDepth}`);
+    return byproductRootNode;
+  }
+
+  const recipe = recipeId ? await getRecipeById(recipeId) : await getRecipeByOutput(itemId);
+  if (!recipe) {
+    const basicNode: DependencyNode = { 
+      id: itemId,
+      amount: amount,
+      uniqueId: treeId,
+      children: [],
+      isRoot: isAutoImportRoot,
+      isByproduct: false, 
+      depth: 0, 
+      originalDepth: originalDepth ?? 0
+    };
+    console.log(`[createNewTreeStructure] Basic node ${basicNode.uniqueId} assigned originalDepth: ${basicNode.originalDepth}`);
+    return basicNode;
+  }
+
+  try {
+    const tree = await calculateDependencyTree(
+      itemId,
+      amount,
+      recipe.id,
+      recipeSelections,
+      0, 
+      [],
+      treeId,
+      {},
+      {},
+      allTrees
+    );
+
+    if (!tree) {
+      console.error(`Failed to calculate dependency tree for ${itemId}`);
+      return null;
+    }
+
+    tree.uniqueId = treeId;
+    tree.recipe = recipe;
+    tree.isRoot = true; 
+    tree.isByproduct = false; 
+    tree.depth = 0; 
+    tree.originalDepth = originalDepth ?? 0;
+    console.log(`[createNewTreeStructure] Calculated tree ${tree.uniqueId} assigned originalDepth: ${tree.originalDepth}`);
+    return tree;
+
+  } catch (error) {
+    console.error(`Error creating new tree structure for ${itemId}:`, error);
+    return null;
+  }
+};
+// ------------------------------------
 
 export const usePlannerTreeCalculation = ({
   selectedItem,
@@ -51,7 +135,7 @@ export const usePlannerTreeCalculation = ({
   setMachineMultiplierMap,
   setExcessMap,
   autoImport,
-}: Omit<PlannerTreeCalculationProps, 'excessMap'>) => {
+}: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
   const dispatch = useDispatch<AppDispatch>();
   const { setExpandedNodes } = usePlannerNodeState();
 
@@ -61,193 +145,151 @@ export const usePlannerTreeCalculation = ({
     return `tree-${itemId}-${timestamp}-${randomSuffix}`;
   }, []);
 
+  // handleCreateNewTree now becomes a simpler wrapper for dispatching
+  // It's primarily used for MANUAL creation, not auto-import internal calls
   const handleCreateNewTree = useCallback(async (
     itemId: string, 
     amount: number, 
-    treeId?: string, 
+    treeIdParam?: string, 
     recipeId?: string | null, 
     isAutoImportRoot?: boolean,
-    originalDepth?: number // Accept originalDepth
-  ): Promise<DependencyNode | null> => {
-    console.log(`[handleCreateNewTree] Called for ${itemId}. Received originalDepth: ${originalDepth}`);
-    const actualTreeId = treeId || generateTreeId(itemId);
-    const recipe = recipeId ? await getRecipeById(recipeId) : await getRecipeByOutput(itemId);
-    if (!recipe) {
-      console.warn(`Could not find recipe for ${itemId} (recipeId: ${recipeId})`);
-      const basicNode: DependencyNode = {
-        id: itemId,
-        amount: amount,
-        uniqueId: actualTreeId,
-        children: [],
-        isRoot: isAutoImportRoot,
-        depth: 0,
-        originalDepth: originalDepth ?? 0
+    originalDepth?: number,
+    isInitiallyByproductRoot?: boolean
+  ): Promise<void> => { // Returns void now, just dispatches
+    const treeId = treeIdParam || generateTreeId(itemId);
+    const newTree = await createNewTreeStructure(
+      itemId, amount, treeId, recipeId ?? null, isAutoImportRoot, originalDepth, 
+      isInitiallyByproductRoot, recipeSelections, dependencies.dependencyTrees
+    );
+    if (newTree) {
+      const accumulated = calculateAccumulatedFromTree(newTree);
+      dispatch(setDependencies({ treeId, tree: newTree, accumulated }));
+      // Set default state for manually created tree
+      const resetValues = (node: DependencyNode) => {
+        setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
+        setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
+        setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
+        if (node.children) {
+          node.children.forEach(resetValues);
+        }
       };
-      console.log(`[handleCreateNewTree] Basic node ${basicNode.uniqueId} assigned originalDepth: ${basicNode.originalDepth}`);
-      return basicNode;
+      resetValues(newTree);
+      setExpandedNodes(prev => ({ ...prev, [treeId]: true })); // Expand manual trees
     }
-
-    try {
-      // Calculate the tree structure first
-      const tree = await calculateDependencyTree(
-        itemId,
-        amount,
-        recipe.id,
-        recipeSelections,
-        0, // Start calculation depth at 0 for the new tree
-        [],
-        actualTreeId,
-        {},
-        {},
-        dependencies.dependencyTrees
-      );
-
-      if (!tree) {
-        console.error(`Failed to calculate dependency tree for ${itemId}`);
-        return null;
-      }
-
-      // Assign properties to the root node
-      tree.uniqueId = actualTreeId;
-      tree.recipe = recipe;
-      tree.isRoot = isAutoImportRoot;
-      tree.depth = 0; // It's a root, so depth is 0 in its own tree
-      tree.originalDepth = originalDepth ?? 0;
-      console.log(`[handleCreateNewTree] Calculated tree ${tree.uniqueId} assigned originalDepth: ${tree.originalDepth}`);
-
-      return tree;
-
-    } catch (error) {
-      console.error(`Error creating new tree for ${itemId}:`, error);
-      return null;
-    }
-    // Removed dependencies no longer used directly (excessMap, setters for machine/excess)
-  }, [dispatch, recipeSelections, dependencies.dependencyTrees, generateTreeId]);
+  }, [dispatch, recipeSelections, dependencies.dependencyTrees, generateTreeId, setMachineCountMap, setMachineMultiplierMap, setExcessMap, setExpandedNodes]);
 
   const handleCalculate = useCallback(async () => {
     if (!selectedItem || !selectedRecipe) return;
     
     updateRecentItems(selectedItem);
     
-    try {
-      const treeId = generateTreeId(selectedItem);
-      const uniquePrefix = `${treeId}`;
-      const rootRecipe = await getRecipeById(selectedRecipe);
-      if (!rootRecipe) {
-        console.error(`Could not find recipe ${selectedRecipe} for ${selectedItem}`);
-        return;
-      }
-      
-      let tree = await calculateDependencyTree(
-        selectedItem,
-        0,
-        selectedRecipe,
-        recipeSelections,
-        0, [], uniquePrefix, {}
-      );
-      
-      if (!tree) {
-        console.error("Failed to calculate dependency tree");
-        return;
-      }
-      
-      tree.uniqueId = treeId;
-      tree.recipe = rootRecipe;
-      tree.depth = 0;
-      tree.originalDepth = 0; // Main tree originalDepth is also 0
+    if (autoImport) {
+      console.log("[handleCalculate] AutoImport enabled. Dispatching thunk...");
+      try {
+        // --- Pass a correctly typed lambda for createNewTreeStructure --- 
+        const createStructureArg = async (
+          itemId: string, amount: number, treeId?: string, recipeId?: string | null, 
+          isAutoImportRoot?: boolean, originalDepth?: number, isInitiallyByproductRoot?: boolean
+        ): Promise<DependencyNode | null> => {
+            // Ensure treeId is generated if missing before calling the main logic
+            const actualTreeId = treeId || generateTreeId(itemId);
+            return createNewTreeStructure(
+              itemId, amount, actualTreeId, recipeId ?? null, // Ensure null if undefined
+              isAutoImportRoot, originalDepth, isInitiallyByproductRoot, 
+              recipeSelections, dependencies.dependencyTrees
+            );
+        };
 
-      if (autoImport) {
-        const initialTrees = { ...dependencies.dependencyTrees };
-        const pendingCreations: Record<string, Promise<DependencyNode | null>> = {};
-
-        // Use the exported type for the function signature
-        const createAndConvertTreeFn: CreateTreeFunction = async (
-          itemId: string, 
-          amount: number, 
-          treeId?: string, 
-          recipeId?: string | null, 
-          isAutoImportRoot?: boolean,
-          originalDepth?: number // Added originalDepth here
-        ) => {
-          // Pass originalDepth to handleCreateNewTree
-          const newTree = await handleCreateNewTree(
-            itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth
-          );
-
-          if (newTree) {
-            const mutableNewTree = JSON.parse(JSON.stringify(newTree));
-            // Pass the correctly typed createAndConvertTreeFn to convertToImportTree
-            const processedNewTree = await convertToImportTree(mutableNewTree, initialTrees, createAndConvertTreeFn, pendingCreations);
-
-            if (processedNewTree) {
-              const accumulated = calculateAccumulatedFromTree(processedNewTree);
-              dispatch(setDependencies({ treeId: processedNewTree.uniqueId, tree: processedNewTree, accumulated }));
-              
-              const resetMachineValues = (node: DependencyNode) => {
+        const result = await dispatch(calculateAndAutoImportThunk({
+          selectedItem,
+          selectedRecipeId: selectedRecipe,
+          recipeSelections,
+          generateTreeId,
+          createNewTreeStructure: createStructureArg // Pass the defined lambda
+        })).unwrap();
+        
+        console.log("[handleCalculate] Thunk finished. Result:", result);
+        // --- Update React State based on Thunk Result --- 
+        const allNewIds = [result.mainTreeId, ...result.newRootIds].filter(Boolean) as string[];
+        
+        // Reset machine/excess maps for all involved trees
+        allNewIds.forEach(id => {
+          const tree = dependencies.dependencyTrees[id]; // Get potentially updated tree
+          if (tree) {
+             const resetValues = (node: DependencyNode) => {
                 setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
                 setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
                 setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
-                if (node.children) {
-                  node.children.forEach(resetMachineValues);
-                }
+                if (node.children) node.children.forEach(resetValues);
               };
-              resetMachineValues(processedNewTree);
-              
-              if (processedNewTree.isRoot) {
-                console.log(`[ExpandedNodes] Setting auto-imported root ${processedNewTree.uniqueId} to collapsed (false).`);
-                setExpandedNodes(prev => {
-                  const newState = { ...prev, [processedNewTree.uniqueId]: false };
-                  console.log(`[ExpandedNodes] State AFTER setting ${processedNewTree.uniqueId} to false:`, newState);
-                  return newState;
-                });
-              }
-            }
-            return processedNewTree;
-          } else {
-            return null;
+              resetValues(tree);
           }
-        };
-
-        // Pass the correctly typed function to convertToImportTree
-        tree = await convertToImportTree(tree, initialTrees, createAndConvertTreeFn, pendingCreations);
-      }
-      
-      const accumulated = calculateAccumulatedFromTree(tree);
-      
-      dispatch(setDependencies({ treeId, tree, accumulated }));
-      dispatch(setRecipeSelection({ nodeId: selectedItem, recipeId: selectedRecipe }));
-      
-      const resetMachineValues = (node: DependencyNode) => {
-        setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-        setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-        setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
+        });
         
-        if (node.children) {
-          node.children.forEach(resetMachineValues);
+        // Set expanded state
+        setExpandedNodes(prev => {
+          const newState = { ...prev };
+          // Collapse new roots
+          result.newRootIds.forEach(id => { newState[id] = false; });
+          // Expand main root
+          if (result.mainTreeId) {
+            newState[result.mainTreeId] = true;
+          }
+          console.log("[handleCalculate] Final expandedNodes state:", newState);
+          return newState;
+        });
+        
+      } catch (error) {
+        console.error("Error dispatching or processing calculateAndAutoImportThunk:", error);
+      }
+    } else {
+      // --- Non-Auto-Import Logic (Simpler) --- 
+      console.log("[handleCalculate] AutoImport disabled. Performing standard calculation...");
+      try {
+        const treeId = generateTreeId(selectedItem);
+        const tree = await calculateDependencyTree(
+          selectedItem, 0, selectedRecipe, recipeSelections, 0, [], 
+          treeId, {}, {}, dependencies.dependencyTrees
+        );
+        if (tree) {
+          tree.uniqueId = treeId;
+          tree.recipe = await getRecipeById(selectedRecipe) ?? undefined;
+          tree.depth = 0;
+          tree.originalDepth = 0;
+          
+          const accumulated = calculateAccumulatedFromTree(tree);
+          dispatch(setDependencies({ treeId, tree, accumulated }));
+          dispatch(setRecipeSelection({ nodeId: selectedItem, recipeId: selectedRecipe }));
+          
+          const resetValues = (node: DependencyNode) => {
+            setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
+            setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
+            setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
+            if (node.children) {
+              node.children.forEach(resetValues);
+            }
+          };
+          resetValues(tree);
+          setExpandedNodes(prev => ({ ...prev, [treeId]: true }));
+        } else {
+          console.error("Failed to calculate non-auto-import tree");
         }
-      };
-      resetMachineValues(tree);
-      
-      console.log(`[ExpandedNodes] Setting main root ${tree.uniqueId} (originalDepth: ${tree.originalDepth}) to expanded (true).`);
-      setExpandedNodes(prev => {
-         const newState = { ...prev, [tree.uniqueId]: true };
-         console.log(`[ExpandedNodes] State AFTER setting ${tree.uniqueId} to true:`, newState);
-         return newState;
-      });
-
-      setTimeout(() => {
-        const treeViewElement = document.getElementById('tree-view');
-        if (treeViewElement) {
-          treeViewElement.style.opacity = '0.99';
-          setTimeout(() => {
-            if (treeViewElement) treeViewElement.style.opacity = '1';
-          }, 10);
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Error calculating dependency tree:", error);
+      } catch (error) {
+        console.error("Error calculating non-auto-import tree:", error);
+      }
     }
-  }, [selectedItem, selectedRecipe, recipeSelections, updateRecentItems, generateTreeId, dispatch, setMachineCountMap, setMachineMultiplierMap, setExcessMap, autoImport, handleCreateNewTree, dependencies.dependencyTrees, setExpandedNodes]);
+
+    // --- UI Refresh Hack (Keep?) ---
+    setTimeout(() => {
+      const treeViewElement = document.getElementById('tree-view');
+      if (treeViewElement) {
+        treeViewElement.style.opacity = '0.99';
+        setTimeout(() => {
+          if (treeViewElement) treeViewElement.style.opacity = '1';
+        }, 10);
+      }
+    }, 100);
+  }, [selectedItem, selectedRecipe, recipeSelections, updateRecentItems, generateTreeId, dispatch, setMachineCountMap, setMachineMultiplierMap, setExcessMap, autoImport, dependencies.dependencyTrees, setExpandedNodes]);
 
   return {
     handleCalculate,
