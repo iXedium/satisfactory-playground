@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAction } from "@reduxjs/toolkit";
-import { DependencyNode } from "../../../types";
+import { DependencyNode, Recipe } from "../../../types";
 import { AccumulatedNode, calculateAccumulatedFromTree, findNodeById } from "../../../utils";
 import { 
   clearImportReference, 
@@ -212,6 +212,11 @@ const dependencySlice = createSlice({
       const { nodeId, updatedNode } = action.payload;
       let treeUpdated = false;
       
+      // Add debug logging for recipe updates
+      if (updatedNode.recipe) {
+        console.log(`[Reducer/updateNodeProperties] Updating node ${nodeId} with recipe`);
+      }
+      
       for (const treeId in state.dependencyTrees) {
         const tree = state.dependencyTrees[treeId];
         const updateNodeInTree = (node: DependencyNode): boolean => {
@@ -220,8 +225,23 @@ const dependencySlice = createSlice({
             if ('selectedRecipeId' in updatedNode) {
                delete updatedNode.selectedRecipeId;
             }
-            // If updatedNode contains recipe object, use it
-            Object.assign(node, updatedNode);
+            
+            // Special handling for recipe updates to ensure they fully propagate
+            if (updatedNode.recipe) {
+              // Make sure we're setting a complete recipe object with required properties
+              node.recipe = { ...updatedNode.recipe };
+              
+              console.log(`[Reducer/updateNodeProperties] Set recipe on node ${nodeId}`);
+              
+              // Remove recipe from the updatedNode to prevent double-application
+              const { recipe, ...restOfUpdates } = updatedNode;
+              // Apply the rest of the updates
+              Object.assign(node, restOfUpdates);
+            } else {
+              // Normal update for non-recipe properties
+              Object.assign(node, updatedNode);
+            }
+            
             treeUpdated = true;
             return true;
           }

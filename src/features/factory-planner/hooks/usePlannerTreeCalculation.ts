@@ -44,7 +44,7 @@ export type CreateTreeFunction = (
 
 // --- Extracted Tree Creation Logic --- 
 // This version doesn't dispatch or use hook state directly
-const createNewTreeStructure = async (
+export const createNewTreeStructure = async (
   itemId: string, 
   amount: number, 
   treeId: string, // Require treeId to be generated beforehand

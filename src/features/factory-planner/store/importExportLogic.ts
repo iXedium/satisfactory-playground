@@ -1,17 +1,18 @@
 import { createAction, PayloadAction } from '@reduxjs/toolkit';
 import { WritableDraft } from 'immer'; // Needed for Immer types in reducers
-import { DependencyNode } from '../../../types';
+import { DependencyNode, Recipe } from '../../../types';
 import { 
   clearImportReference, 
   setImportReference,
   getImportReference
 } from '../../../utils/nodeReferenceUtils';
-import { findNodeById } from '../../../utils';
+import { findNodeById } from '../../../utils/treeUtils';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { AppDispatch, RootState } from '../../../store';
 import { 
-  getRecipeByOutput 
-} from "../../../data";
+  getRecipeByOutput, 
+  getRecipesForItem
+} from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
 import { updateNodeProperties, setDependencies } from './dependencySlice';
 import { 
@@ -24,6 +25,10 @@ import {
   AccumulatedNode 
 } from "../../../utils/calculateAccumulatedFromTree";
 import { DeferredByproductInfo } from '../../../utils/importNodeLogic';
+
+// Store the last known recipes for nodes that were converted to byproduct
+// This will be used to restore the recipe when converting back to normal
+const nodeRecipeCache: Record<string, Recipe> = {};
 
 // --- Define the expected Slice State Shape locally --- 
 interface ImportExportDependencyState {
@@ -615,13 +620,13 @@ export const requestDependencyCheckThunk = createAsyncThunk<
 
     // 1. Check for manual excess
     if ((nodeToCheck.excess || 0) > 0) {
-      console.log(`[Thunk/Check] Node ${nodeIdToCheck} has excess > 0. Still needed.`);
+      console.log(`[Thunk/Check] Node ${nodeToCheck} has excess > 0. Still needed.`);
       isStillNeeded = true;
     }
 
     // 2. Check for other importers
     if (!isStillNeeded) {
-      console.log(`[Thunk/Check] Node ${nodeIdToCheck}: Checking for other importers...`);
+      console.log(`[Thunk/Check] Node ${nodeToCheck}: Checking for other importers...`);
       for (const tree of Object.values(state.dependencies.dependencyTrees)) {
          // Avoid checking the node against itself or trees being deleted?
          // If tree.uniqueId === nodeIdToCheck? Might be relevant if check gets complex.
@@ -692,7 +697,7 @@ export const requestDependencyCheckThunk = createAsyncThunk<
 
 // --- Thunk for Checking and Converting Node Type --- 
 export const checkAndConvertNodeTypeThunk = createAsyncThunk<
-  void, 
+  string | undefined, // Return the ID of the node if converted B->N, else undefined
   string, // Argument: targetTreeId
   { dispatch: AppDispatch; state: RootState }
 >(
@@ -704,44 +709,107 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
 
     if (!targetNode || !targetNode.isRoot) {
       // console.log(`[Thunk] Node ${targetTreeId} not found or not a root node.`);
-      return; // Only operate on existing root nodes
+      return undefined; // Return undefined if no action taken
     }
 
     // --- Scenario 1: Convert Byproduct to Normal --- 
     if (targetNode.isByproduct && targetNode.amount > 0) { 
-      console.log(`[Thunk/Convert] Converting BYPRODUCT root ${targetTreeId} (amount: ${targetNode.amount}) to NORMAL.`);
-      const defaultRecipe = await getRecipeByOutput(targetNode.id);
-      if (!defaultRecipe) {
-        console.error(`[Thunk/Convert] No default recipe found for item ${targetNode.id}. Cannot convert byproduct.`);
-        return; 
+      console.log(`[Thunk/Convert B->N] Converting BYPRODUCT root ${targetTreeId} (amount: ${targetNode.amount}) to NORMAL.`);
+      
+      // Try to use cached recipe first, fall back to default recipe if needed
+      let recipeToUse = nodeRecipeCache[targetTreeId];
+      
+      if (!recipeToUse) {
+        // Fall back to default recipe if no cached recipe available
+        const defaultRecipe = await getRecipeByOutput(targetNode.id);
+        if (defaultRecipe) {
+          recipeToUse = defaultRecipe;
+          console.log(`[Thunk/Convert B->N] Using default recipe for ${targetTreeId} (no cache found): ${defaultRecipe.id}`);
+        }
+      } else {
+        console.log(`[Thunk/Convert B->N] Using cached recipe for ${targetTreeId}: ${recipeToUse.id}`);
+        // Remove from cache after using
+        delete nodeRecipeCache[targetTreeId];
       }
       
-      try {
-        const recipeSelections = state.recipeSelections.selections;
-        const newChildren = await calculateDependencyTree(
-          targetNode.id, targetNode.amount, defaultRecipe.id, recipeSelections, 1, [], 
-          targetNode.uniqueId, {}, {}, state.dependencies.dependencyTrees
-        ).then(node => node.children || []);
-        
-        const updatedNodeData: Partial<DependencyNode> = {
-          isByproduct: false,
-          recipe: defaultRecipe,
-          children: newChildren,
-        };
-        dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: updatedNodeData }));
-        console.log(`[Thunk/Convert] Dispatched updateNodeProperties for ${targetTreeId} (Byproduct -> Normal)`);
-
-        // If children were added, they might need their own amounts calculated/imports set up
-        // This might require recalculating the whole tree or triggering updates on children.
-        // For now, we rely on the subsequent accumulation updates.
-
-      } catch(error) {
-        console.error(`[Thunk/Convert] Error recalculating children for ${targetTreeId}:`, error);
+      if (!recipeToUse) {
+        console.error(`[Thunk/Convert B->N] No recipe (cached or default) found for item ${targetNode.id}. Cannot convert byproduct.`);
+        return undefined; // Return undefined on failure
       }
+      
+      // Validate that the recipe has an ID to avoid Redux state issues
+      if (!recipeToUse.id) {
+        console.error(`[Thunk/Convert B->N] Recipe for ${targetTreeId} has no ID property. Cannot convert byproduct.`);
+        return undefined;
+      }
+      
+      // --- STEP 1: Update node properties (isByproduct, recipe) --- 
+      console.log(`[Thunk/Convert B->N] Applying state change (recipe, isByproduct) for ${targetTreeId}.`);
+      const initialUpdateData: Partial<DependencyNode> = {
+        isByproduct: false,
+        recipe: recipeToUse,
+      };
+      await dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: initialUpdateData }));
+      console.log(`[Thunk/Convert B->N] Dispatched initial update for ${targetTreeId}.`);
+      
+      // --- STEP 2: Calculate and set children --- 
+      try {
+        console.log(`[Thunk/Convert B->N] Calculating new children for ${targetTreeId} using recipe ${recipeToUse.id}`);
+        const stateAfterUpdate = getState(); // Get the state *after* recipe update
+        const recipeSelections = stateAfterUpdate.recipeSelections.selections;
+        const dependencyTrees = stateAfterUpdate.dependencies.dependencyTrees;
+        
+        // Get the updated node state to use the correct amount for calculation
+        const updatedNodeState = stateAfterUpdate.dependencies.dependencyTrees[targetTreeId];
+        if (!updatedNodeState) {
+           console.error(`[Thunk/Convert B->N] Node ${targetTreeId} not found in state after initial update. Cannot calculate children.`);
+           throw new Error(`Node ${targetTreeId} disappeared after initial update.`);
+        }
+
+        // Calculate *only* the children based on the recipe
+        const calculatedNode = await calculateDependencyTree(
+          updatedNodeState.id, 
+          updatedNodeState.amount, // Use the node's *current* amount after potential update
+          recipeToUse.id, // Pass the correct recipe ID
+          recipeSelections, 
+          0, // Depth calculation might need adjustment if this isn't root
+          [], // No affected branches needed for this specific recalculation
+          "", // No parent ID for root node calculation
+          {}, // Excess map might not be needed here, assuming root node calculation
+          {}, // Empty import map
+          dependencyTrees // Pass existing trees for context
+        );
+        
+        const newChildren = calculatedNode.children || [];
+        console.log(`[Thunk/Convert B->N] Calculated ${newChildren.length} children.`);
+        
+        // Dispatch another update to set the children
+        await dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: { children: newChildren } }));
+        console.log(`[Thunk/Convert B->N] Dispatched children update for ${targetTreeId}.`);
+        
+        // --- STEP 3: Trigger auto-import for the new children --- 
+        console.log(`[Thunk/Convert B->N] Dispatching autoImportNodeChildrenThunk for parent ${targetTreeId}.`);
+        await dispatch(autoImportNodeChildrenThunk(targetTreeId));
+        console.log(`[Thunk/Convert B->N] Finished auto-import dispatch for ${targetTreeId}.`);
+        
+      } catch (error) {
+        console.error(`[Thunk/Convert B->N] Error during children calculation/update or auto-import dispatch for ${targetTreeId}:`, error);
+        // Continue even if children update/import failed - we still converted the node
+      }
+      
+      // Return the ID of the converted node
+      return targetTreeId; 
+      // --- End Revised Recalculation ---
     } 
     // --- Scenario 2: Convert Normal to Byproduct --- 
     else if (!targetNode.isByproduct && targetNode.amount < 0) {
       console.log(`[Thunk/Convert] Converting NORMAL root ${targetTreeId} (amount: ${targetNode.amount}) to BYPRODUCT.`);
+
+      // Store the recipe in the cache before clearing it
+      if (targetNode.recipe) {
+        console.log(`[Thunk/Convert] Caching recipe ${targetNode.recipe.id} for ${targetTreeId} for potential future B->N conversion.`);
+        nodeRecipeCache[targetTreeId] = targetNode.recipe;
+      }
 
       // Store original children *before* clearing them
       const originalChildren = [...(targetNode.children || [])];
@@ -780,10 +848,13 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
              console.warn(`[Thunk/Convert] Invalid child node structure found while cleaning up ${targetTreeId}. Skipping check.`);
           }
       }
+      // No specific return value needed here, as the side effect is the check dispatch
+      return undefined; // Return undefined as no B->N conversion happened
     } 
     // --- Scenario 3: No Conversion Needed --- 
     else {
       // console.log(`[Thunk] Node ${targetTreeId} type does not need conversion (isByproduct: ${targetNode.isByproduct}, amount: ${targetNode.amount}).`);
+      return undefined; // Return undefined if no conversion occurred
     }
   }
 );
@@ -965,4 +1036,172 @@ export const handleNodeUnimportReducer = (
       shouldImport: false
     }
   });
-}; 
+};
+
+// --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN --- 
+export const autoImportNodeChildrenThunk = createAsyncThunk<
+  void,
+  string, // parentNodeId
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/autoImportNodeChildren',
+  async (parentNodeId, { getState, dispatch }) => {
+    console.log(`[Thunk/AutoImportChildren] Starting auto-import process for children of ${parentNodeId}`);
+    const state = getState();
+    const parentNode = state.dependencies.dependencyTrees[parentNodeId];
+
+    if (!parentNode) {
+      console.error(`[Thunk/AutoImportChildren] Parent node ${parentNodeId} not found.`);
+      return;
+    }
+
+    if (!parentNode.children || parentNode.children.length === 0) {
+      console.log(`[Thunk/AutoImportChildren] Parent node ${parentNodeId} has no children to process.`);
+      return;
+    }
+
+    const childrenToProcess = [...parentNode.children]; // Work on a copy
+    let childrenModified = false;
+
+    // Need a local way to generate IDs if new roots are needed
+    const generateTreeId = (itemId: string) => {
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 10000000);
+      return `tree-${itemId}-${timestamp}-${randomSuffix}`;
+    };
+
+    for (const child of childrenToProcess) {
+      // Skip if already an import or has a reference
+      if (child.isImport || child.importReference) {
+        continue;
+      }
+      
+      // Skip byproducts - they shouldn't become imports this way
+      if (child.isByproduct) {
+          continue;
+      }
+
+      console.log(`[Thunk/AutoImportChildren] Processing child ${child.uniqueId} (Item: ${child.id})`);
+      let targetRoot: DependencyNode | null = null;
+      let targetTreeId: string | null = null;
+
+      // 1. Find Existing Root (Prefer Normal)
+      const existingNormalRoot = Object.values(getState().dependencies.dependencyTrees).find(
+        t => t.isRoot && t.id === child.id && !t.isByproduct
+      );
+      if (existingNormalRoot) {
+        targetRoot = existingNormalRoot;
+        targetTreeId = existingNormalRoot.uniqueId;
+        console.log(`[Thunk/AutoImportChildren] Found existing NORMAL root ${targetTreeId} for item ${child.id}`);
+      } else {
+         // Optionally: Check for existing BYPRODUCT root if no normal found?
+         // const existingByproductRoot = Object.values(getState().dependencies.dependencyTrees).find(
+         //   t => t.isRoot && t.id === child.id && t.isByproduct
+         // );
+         // if (existingByproductRoot) { ... }
+         // For now, let's prioritize creating a new normal root if no normal exists.
+      }
+
+      // 2. Create New Root if None Found
+      if (!targetRoot) {
+        console.log(`[Thunk/AutoImportChildren] No existing root found for ${child.id}. Creating new NORMAL root.`);
+        const newRootId = generateTreeId(child.id);
+        try {
+           // Create a minimal root structure
+           const defaultRecipe = await getRecipeByOutput(child.id);
+           // Ensure the recipe object is included if found
+           const newRootNode: DependencyNode = {
+              id: child.id,
+              uniqueId: newRootId,
+              amount: 0, 
+              isRoot: true,
+              recipe: defaultRecipe, // Set the recipe here
+              children: [], 
+              depth: 0, 
+              availableRecipes: defaultRecipe ? [defaultRecipe] : await getRecipesForItem(child.id), // Set available recipes too
+              // other necessary fields like availableRecipes might be needed
+           };
+           
+           // Calculate accumulated for the new minimal tree
+           const accumulated = calculateAccumulatedFromTree(newRootNode);
+           
+           // Dispatch setDependencies to add the new root AND WAIT
+           await dispatch(setDependencies({ treeId: newRootId, tree: newRootNode, accumulated }));
+           console.log(`[Thunk/AutoImportChildren] Dispatched setDependencies for new root ${newRootId}`);
+           
+           // Verify the new root exists in the state before proceeding
+           const stateAfterRootCreation = getState();
+           if (!stateAfterRootCreation.dependencies.dependencyTrees[newRootId]) {
+               console.error(`[Thunk/AutoImportChildren] New root ${newRootId} not found in state after dispatch. Aborting link.`);
+               continue; // Skip linking this child
+           }
+           console.log(`[Thunk/AutoImportChildren] Verified new root ${newRootId} exists in state.`);
+
+           // Target the newly created root ID
+           targetTreeId = newRootId;
+
+        } catch (error) {
+           console.error(`[Thunk/AutoImportChildren] Failed to create new root for ${child.id}:`, error);
+           continue; // Skip this child if root creation failed
+        }
+      }
+
+      // 3. Set Import Reference on the Child
+      if (targetTreeId) {
+        console.log(`[Thunk/AutoImportChildren] Setting import reference and flagging child ${child.uniqueId} as import, target: ${targetTreeId}`);
+        // We need to target the *specific child* within the parent's tree
+        await dispatch(updateNodeProperties({
+          nodeId: child.uniqueId, 
+          updatedNode: { 
+            importReference: { targetTreeId: targetTreeId, targetNodeId: targetTreeId }, 
+            isImport: true, 
+            children: [], 
+            recipe: undefined 
+          }
+        }));
+        childrenModified = true;
+        
+        // --- STEP 4: Recalculate and Update Target Root Amount --- 
+        console.log(`[Thunk/AutoImportChildren] Recalculating amount for target root ${targetTreeId}`);
+        const stateAfterImportLink = getState();
+        let newRequiredAmount = 0;
+        
+        // Calculate total demand from all importers
+        for (const tree of Object.values(stateAfterImportLink.dependencies.dependencyTrees)) {
+           const findDemand = (node: DependencyNode): number => {
+               let demand = 0;
+               const importRef = getImportReference(node);
+               if (importRef?.targetTreeId === targetTreeId) {
+                   // Use the amount of the node that is *importing*
+                   demand += node.amount || 0; 
+               }
+               if (node.children) {
+                   for (const child of node.children) {
+                       demand += findDemand(child);
+                   }
+               }
+               return demand;
+           };
+           newRequiredAmount += findDemand(tree);
+        }
+        
+        console.log(`[Thunk/AutoImportChildren] Calculated new required amount for ${targetTreeId}: ${newRequiredAmount}`);
+        
+        // Dispatch update for the target root node's amount
+        await dispatch(updateNodeProperties({
+           nodeId: targetTreeId, // Target the root node
+           updatedNode: { amount: newRequiredAmount }
+        }));
+        console.log(`[Thunk/AutoImportChildren] Dispatched amount update for target root ${targetTreeId}`);
+        // --- End Amount Update --- 
+      }
+    }
+    
+    if (childrenModified) {
+        console.log(`[Thunk/AutoImportChildren] Finished processing children for ${parentNodeId}. Some children were converted to imports.`);
+        // Optional: Could re-calculate accumulated for the parent tree if needed
+    } else {
+        console.log(`[Thunk/AutoImportChildren] Finished processing children for ${parentNodeId}. No changes needed.`);
+    }
+  }
+); 
