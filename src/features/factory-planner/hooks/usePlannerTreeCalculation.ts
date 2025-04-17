@@ -209,10 +209,12 @@ export const usePlannerTreeCalculation = ({
         })).unwrap();
         
         console.log("[handleCalculate] Thunk finished. Result:", result);
-        // --- Update React State based on Thunk Result --- 
+        
+        // --- REMOVE EXPLICIT RESET LOGIC for auto-import --- 
+        /*
         const allNewIds = [result.mainTreeId, ...result.newRootIds].filter(Boolean) as string[];
         
-        // Reset machine/excess maps for all involved trees
+        // Reset machine/excess maps for all involved trees // <<< THIS WAS THE BUG
         allNewIds.forEach(id => {
           const tree = dependencies.dependencyTrees[id]; // Get potentially updated tree
           if (tree) {
@@ -225,13 +227,20 @@ export const usePlannerTreeCalculation = ({
               resetValues(tree);
           }
         });
+        */
+        // --- END REMOVED BLOCK ---
         
-        // Set expanded state
+        // Set expanded state (Keep this part)
         setExpandedNodes(prev => {
           const newState = { ...prev };
-          // Collapse new roots
-          result.newRootIds.forEach(id => { newState[id] = false; });
-          // Expand main root
+          // Collapse new roots that might have been created
+          result.newRootIds.forEach(id => { 
+              // Only collapse if it wasn't the main tree added
+              if (id !== result.mainTreeId) { 
+                  newState[id] = false; 
+              }
+          });
+          // Expand the main root that was just added
           if (result.mainTreeId) {
             newState[result.mainTreeId] = true;
           }

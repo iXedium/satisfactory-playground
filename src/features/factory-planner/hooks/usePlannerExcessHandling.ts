@@ -45,6 +45,7 @@ export const usePlannerExcessHandling = ({
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
+    console.log(`[usePlannerExcessHandling] handleExcessChange called for Node: ${nodeId}, New Excess: ${excess}`);
     // Update local map immediately
     setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
     
@@ -74,8 +75,8 @@ export const usePlannerExcessHandling = ({
     }
 
     // --- Trigger Node Type Conversion Check and Potential Recalculation --- 
-    setTimeout(async () => {
-        console.log(`[handleExcessChange] Scheduling node type checks after update related to node ${nodeId}`);
+    const timeoutId = setTimeout(async () => {
+        console.log(`[handleExcessChange] STARTING delayed checks (Timeout ID: ${timeoutId}) for Node: ${nodeId} / Excess: ${excess}`);
         const stateBeforeChecks = { ...dependencies.dependencyTrees }; // Use current dependencies prop
         const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
 
@@ -166,6 +167,7 @@ export const usePlannerExcessHandling = ({
              console.log('[handleExcessChange] No B->N conversions detected after checks.');
         }
     }, 10); // Initial delay
+    console.log(`[usePlannerExcessHandling] Scheduled delayed checks with Timeout ID: ${timeoutId}`);
     // ------------------------------------------------------
 
   }, [dependencies, dispatch, setExcessMap, recipeSelections, generateTreeId, createNewTreeStructure]);

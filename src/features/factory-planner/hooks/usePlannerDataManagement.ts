@@ -8,6 +8,7 @@ import {
   loadSavedState, 
   loadRecipeSelections 
 } from '../store';
+import { destroyNodeRecursiveThunk } from '../store/importExportLogic';
 
 interface PlannerDataManagementProps {
   // Remove individual setters
@@ -28,9 +29,8 @@ export const usePlannerDataManagement = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const handleDeleteTree = useCallback((treeId: string) => {
-    dispatch(deleteTree({ treeId }));
-    // Consider if node state (excessMap, etc.) related to this treeId should be cleared here.
-    // This would require iterating through the maps and is more complex.
+    console.log(`[usePlannerDataManagement] Dispatching destroyNodeRecursiveThunk for treeId: ${treeId}`);
+    dispatch(destroyNodeRecursiveThunk(treeId));
   }, [dispatch]);
 
   const handleNodeUpdate = useCallback((nodeId: string, updatedNode: Partial<DependencyNode>) => {

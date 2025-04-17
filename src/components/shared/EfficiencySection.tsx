@@ -59,14 +59,14 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
       hoverTimeoutRef.current = null;
     }
 
-    if (isByproduct || isImport) return; 
-    
     const targetElement = event.currentTarget;
     if (!targetElement) return;
     const rect = targetElement.getBoundingClientRect();
 
-    const consumers = await findNodeConsumers(nodeId, treeId, allTrees);
+    console.log(`[EfficiencySection] Fetching consumers for node: ${nodeId}`);
+    const consumers = await findNodeConsumers(nodeId, allTrees);
     setConsumptionData(consumers);
+    console.log(`[EfficiencySection] Consumption data for ${nodeId}:`, consumers);
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;

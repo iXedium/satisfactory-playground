@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import { ConsumerInfo } from '../../utils/consumptionUtils'; // Import the type
@@ -73,10 +73,21 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
     marginLeft: 'auto', // Push this group to the right
   };
 
-  // Helper to calculate percentage safely
-  const calculatePercentage = (part: number, total: number): string => {
-      if (total <= 0) return '(0%)'; // Avoid division by zero
-      const percentage = (part / total) * 100;
+  // Helper to calculate percentage relative to the net amount (totalDemand)
+  const calculatePercentage = (part: number): string => {
+      // Handle zero or near-zero totalDemand
+      if (Math.abs(totalDemand) < 1e-9) { 
+          // If the part is also zero, it's 0%. If part is non-zero and total is zero,
+          // percentage is infinite, which isn't meaningful. Show '--%' or similar.
+          return Math.abs(part) < 1e-9 ? '(0%)' : '(--%)'; 
+      }
+      
+      // Calculate percentage relative to totalDemand, keep the sign
+      const percentage = (part / totalDemand) * 100;
+      
+      // Handle potential NaN/Infinity (should be less likely now but keep safeguard)
+      if (!isFinite(percentage)) return '(--%)'; 
+      
       return `(${percentage.toFixed(0)}%)`; // Rounded percentage
   };
 
@@ -98,7 +109,8 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
             <span style={nameStyle}>{consumer.consumerParentName}</span>
             {/* Group percentage and amount */}
             <div style={valueGroupStyle}>
-              <span style={percentageStyle}>{calculatePercentage(consumer.consumedAmount, totalDemand)}</span>
+              {/* Pass only the part to calculatePercentage */}
+              <span style={percentageStyle}>{calculatePercentage(consumer.consumedAmount)}</span>
               <span style={amountStyle}>{consumer.consumedAmount.toFixed(2)}</span>
             </div>
           </div>
@@ -112,7 +124,8 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
             <span style={nameStyle}>Excess:</span>
             {/* Group percentage and amount */}
             <div style={valueGroupStyle}>
-              <span style={percentageStyle}>{calculatePercentage(sourceNodeExcess, totalDemand)}</span>
+              {/* Pass only the part to calculatePercentage */}
+              <span style={percentageStyle}>{calculatePercentage(sourceNodeExcess)}</span>
               <span style={amountStyle}>{sourceNodeExcess.toFixed(2)}</span>
             </div>
         </div>

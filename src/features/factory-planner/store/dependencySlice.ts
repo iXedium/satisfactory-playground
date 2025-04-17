@@ -67,54 +67,27 @@ const dependencySlice = createSlice({
     setDependencies: (
       state,
       action: PayloadAction<{
-        treeId: string;  // Unique identifier for the tree
+        treeId: string;
         tree: DependencyNode;
-        accumulated: Record<string, AccumulatedNode>;
+        // Remove accumulated from payload, we will calculate it here
       }>
     ) => {
-      // console.debug(`[REDUX DEBUG] setDependencies called for tree: ${action.payload.treeId}`);
-      // console.debug(`[REDUX DEBUG] Tree amount: ${action.payload.tree.amount}`);
-      // console.debug(`[REDUX DEBUG] Accumulated nodes count: ${Object.keys(action.payload.accumulated).length}`);
+      const { treeId, tree } = action.payload;
+      console.log(`[Reducer/setDependencies] Setting/Updating tree: ${treeId}`);
       
-      // Check if this tree already exists
-      const existingTree = state.dependencyTrees[action.payload.treeId];
-      if (existingTree) {
-        // console.debug(`[REDUX DEBUG] Updating existing tree: ${action.payload.treeId}`);
-        // console.debug(`[REDUX DEBUG] Previous amount: ${existingTree.amount}, New amount: ${action.payload.tree.amount}`);
-        
-        // Check if this is an imported tree with nodes importing from it
-        const importingNodes = findNodesImportingToTree(state.dependencyTrees, action.payload.treeId);
-        if (importingNodes.length > 0) {
-          // console.debug(`[REDUX DEBUG] Tree ${action.payload.treeId} has ${importingNodes.length} nodes importing from it`);
-          // importingNodes.forEach((node, idx) => {
-          //   console.debug(`[REDUX DEBUG] Node #${idx+1} importing from this tree: ${node.id} (${node.uniqueId}) with amount ${node.amount}`);
-          // });
-        }
-      } else {
-        // console.debug(`[REDUX DEBUG] Creating new tree: ${action.payload.treeId}`);
-      }
+      // Direct mutation for the specific tree using Immer
+      state.dependencyTrees[treeId] = tree;
       
-      // Create completely new references to ensure React detects changes
-      state.dependencyTrees = {
-        ...state.dependencyTrees,
-        [action.payload.treeId]: action.payload.tree 
-      };
-      
-      // Always create a fresh object for accumulated dependencies
-      state.accumulatedDependencies = action.payload.accumulated;
-      
-      // Log byproduct amounts before storing
-      const checkNodesForByproduct = (node: DependencyNode) => {
-        if (node.isByproduct) {
-          //console.log(`[BYPRODUCT DEBUG] setDependencies Reducer: Storing Byproduct Node=${node.id} (${node.uniqueId}), Amount=${node.amount}`);
-        }
-        if (node.children) {
-          node.children.forEach(checkNodesForByproduct);
-        }
-      };
-      checkNodesForByproduct(action.payload.tree);
-      
-      // console.debug('[REDUX DEBUG] Redux state updated');
+      // Recalculate the *entire* accumulated state after adding/updating a tree
+      console.log(`[Reducer/setDependencies] Recalculating ALL accumulated dependencies.`);
+      const newAccumulated: Record<string, AccumulatedNode> = {};
+      Object.values(state.dependencyTrees).forEach(currentTree => {
+          const treeAccumulated = calculateAccumulatedFromTree(currentTree);
+          // Merge accumulations (handle potential overlaps if needed, though unlikely with roots)
+          Object.assign(newAccumulated, treeAccumulated);
+      });
+      state.accumulatedDependencies = newAccumulated;
+      console.log(`[Reducer/setDependencies] Finished recalculating accumulated dependencies.`);
     },
     
     deleteTree: (
@@ -341,10 +314,11 @@ export const loadNodeRecipe =
       return;
     }
     
-    // Assuming the type error here is incorrect, use node.recipe?.id
-    const recipeId = node.recipe?.id; 
-    if (!recipeId) {
-      console.error(`[RECIPE LOADER] Node ${nodeId} has no recipe information.`);
+    // FIX: Accessing recipe.id here caused issues, use node.recipe directly if needed
+    // const recipeId = node.recipe?.id; // Removed this potentially problematic line
+    // Instead, check if recipe exists directly
+    if (!node.recipe) { // Check if recipe object is missing
+      console.error(`[RECIPE LOADER] Node ${nodeId} has no recipe information. Attempting default.`);
       try {
         console.log(`[RECIPE LOADER] Attempting to get default recipe for item ${node.id}`);
         const recipe = await getRecipeByOutput(node.id);
@@ -358,19 +332,23 @@ export const loadNodeRecipe =
       } catch (error) {
         console.error(`[RECIPE LOADER] Error getting default recipe:`, error);
       }
-      return;
+      return; // Return if no recipe and default fetch failed/didn't happen
     }
     
-    try {
-      console.log(`[RECIPE LOADER] Loading recipe ${recipeId} for node ${nodeId}`);
-      const recipe = await getRecipeById(recipeId);
-      if (recipe) {
-        console.log(`[RECIPE LOADER] Successfully loaded recipe ${recipe.id}`);
-        dispatch(updateNodeProperties({ nodeId, updatedNode: { recipe } }));
-      } else {
-        console.error(`[RECIPE LOADER] Failed to load recipe ${recipeId}`);
-      }
-    } catch (error) {
-      console.error(`[RECIPE LOADER] Error loading recipe:`, error);
-    }
+    // If we reach here, node.recipe exists, but maybe we still need to load it fully?
+    // This part seems less likely to be reached now, but kept for structure.
+    // Let's assume if node.recipe exists, it's the correct one for now.
+    // const recipeId = node.recipe.id;
+    // try {
+    //   console.log(`[RECIPE LOADER] Loading recipe ${recipeId} for node ${nodeId}`);
+    //   const recipe = await getRecipeById(recipeId); // This might be redundant if recipe object is already attached
+    //   if (recipe) {
+    //     console.log(`[RECIPE LOADER] Successfully loaded recipe ${recipe.id}`);
+    //     dispatch(updateNodeProperties({ nodeId, updatedNode: { recipe } }));
+    //   } else {
+    //     console.error(`[RECIPE LOADER] Failed to load recipe ${recipeId}`);
+    //   }
+    // } catch (error) {
+    //   console.error(`[RECIPE LOADER] Error loading recipe:`, error);
+    // }
   };
