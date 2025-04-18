@@ -1,7 +1,7 @@
 import React, { useState, useRef, MouseEvent, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../../store';
+import { RootState } from '../../store';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import EfficiencyIndicator from './EfficiencyIndicator';
@@ -9,6 +9,7 @@ import RateDisplay from './RateDisplay';
 import ExcessControls from './ExcessControls';
 import { findNodeConsumers, ConsumerInfo } from '../../utils/consumptionUtils';
 import ConsumptionReportPopup from './ConsumptionReportPopup';
+import { findNodeById } from '../../utils/treeUtils';
 
 interface EfficiencySectionProps {
   efficiency: number;
@@ -44,29 +45,62 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   contentStyle,
 }) => {
   const allTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
+  
+  // Find the specific node using treeId and nodeId
+  const node = useSelector((state: RootState) => {
+    const tree = state.dependencies.dependencyTrees[treeId];
+    if (!tree) return null;
+    return findNodeById(tree, nodeId);
+  });
+
   const [isHoveringRate, setIsHoveringRate] = useState(false);
   const [consumptionData, setConsumptionData] = useState<ConsumerInfo[]>([]);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+  const [totalDemand, setTotalDemand] = useState<number>(0);
   const hoverTimeoutRef = useRef<number | null>(null);
   const rateDisplayRef = useRef<HTMLDivElement>(null);
   
-  // Calculate total demand for percentage calculation
-  const totalDemand = amount + excess;
-  
-  const handleRateMouseEnter = async (event: MouseEvent<HTMLDivElement>) => {
+  const clearHoverTimeout = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
+    }
+  };
+
+  const handleRateMouseEnter = async (event: MouseEvent<HTMLDivElement>) => {
+    clearHoverTimeout();
+
+    if (!node) {
+      console.warn(`[EfficiencySection] Node not found for ID: ${nodeId} in tree: ${treeId}`);
+      return; // Don't proceed if node not found
+    }
+    
+    // Determine the ID to fetch consumers for
+    let idToFetch: string | null = null;
+    if (node.isRoot) {
+      idToFetch = node.uniqueId;
+    } else if (node.importReference?.targetTreeId) {
+      idToFetch = node.importReference.targetTreeId;
+    } 
+    // If it's neither root nor import, idToFetch remains null
+
+    if (!idToFetch) {
+      console.log(`[EfficiencySection] Node ${nodeId} is neither root nor import. Skipping consumer fetch.`);
+      setConsumptionData([]); // Show empty consumption
+      setTotalDemand(0);
+      return; 
     }
 
     const targetElement = event.currentTarget;
     if (!targetElement) return;
     const rect = targetElement.getBoundingClientRect();
 
-    console.log(`[EfficiencySection] Fetching consumers for node: ${nodeId}`);
-    const consumers = await findNodeConsumers(nodeId, allTrees);
+    console.log(`[EfficiencySection] Fetching consumers for node/target: ${idToFetch}`);
+    const consumers = await findNodeConsumers(idToFetch, allTrees); // Use idToFetch
+    const demand = consumers.reduce((sum, c) => sum + c.consumedAmount, 0);
     setConsumptionData(consumers);
-    console.log(`[EfficiencySection] Consumption data for ${nodeId}:`, consumers);
+    setTotalDemand(demand);
+    console.log(`[EfficiencySection] Consumption data for ${idToFetch}:`, consumers);
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -93,7 +127,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
       setIsHoveringRate(false);
       setConsumptionData([]);
       setPopupPosition(null);
-    }, 150);
+      setTotalDemand(0);
+    }, 300);
   };
   
   useEffect(() => {
@@ -196,12 +231,14 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
             left: `${popupPosition.left}px`, 
             zIndex: 10000
           }} 
+          onMouseEnter={clearHoverTimeout} 
+          onMouseLeave={handleRateMouseLeave}
         >
           <ConsumptionReportPopup 
             consumers={consumptionData} 
-            sourceItemName={itemName} 
+            sourceItemName={node?.id || itemName}
             totalDemand={totalDemand}
-            sourceNodeExcess={excess}
+            sourceNodeExcess={node?.excess || excess}
           />
         </div>,
         document.body

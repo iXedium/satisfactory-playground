@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createSlice, PayloadAction, createAction } from "@reduxjs/toolkit";
 import { DependencyNode, Recipe } from "../../../types";
 import { AccumulatedNode, calculateAccumulatedFromTree, findNodeById } from "../../../utils";
@@ -221,10 +222,19 @@ const dependencySlice = createSlice({
           return node.children?.some(updateNodeInTree) || false;
         };
         
+        // Remove the problematic accumulated recalculation here
+        /*
         if (updateNodeInTree(tree)) {
           const accumulated = calculateAccumulatedFromTree(tree);
           state.accumulatedDependencies = accumulated; 
         }
+        */
+       // Just run the update function
+       if (updateNodeInTree(tree)) {
+         // Optionally break if we know nodes are unique across trees?
+         // For safety, let it continue checking other trees in case of duplication (though unlikely)
+         // break;
+       }
       }
       if (!treeUpdated) {
          // console.warn(`[updateNodeProperties] Node ${nodeId} not found in any tree.`);

@@ -9,8 +9,8 @@ This document provides documentation for the core state management logic of the 
 - **Purpose:** Contains Redux Toolkit thunks and potentially action creators related to complex state operations involving multiple dependency trees, such as auto-importing, node type conversions (Normal <-> Byproduct), node destruction with dependency checks, and recalculating tree structures.
 - **Key Functions/Thunks:**
   - `calculateAndAutoImportThunk`: (Refactored V2) Calculates the basic structure for a newly added item, dispatches `setDependencies` to add it to the state, and then triggers `autoImportNodeChildrenThunk` to handle linking its children and `recalculateAndUpdateRootAmountThunk` to set its initial amount based on excess.
-  - `checkAndConvertNodeTypeThunk`: Checks if a root node needs to convert between Normal and Byproduct based on its amount and performs the conversion, including recipe caching, recalculating children, and triggering `autoImportNodeChildrenThunk`.
-  - `destroyNodeRecursiveThunk`: Handles the deletion of a root node and triggers dependency checks for its former children.
+  - `checkAndConvertNodeTypeThunk`: Checks if a root node needs to convert between Normal and Byproduct based on its amount and performs the conversion, including recipe caching, recalculating children, and triggering `autoImportNodeChildrenThunk`. *(Next target for potential simplification/refinement - Task 4)*.
+  - `destroyNodeRecursiveThunk`: Handles the deletion of a root node (dispatching `removeNodeAction` internally) and triggers dependency checks (`requestDependencyCheckThunk`) for its former children. This is the primary entry point for node removal.
   - `requestDependencyCheckThunk`: Checks if a specific root node is still needed by any importers or has excess demand after a potential consumer disconnects. Triggers `recalculateAndUpdateRootAmountThunk` or `destroyNodeRecursiveThunk`.
   - `autoImportNodeChildrenThunk`: Processes the children of a given parent node.
     - For **Normal** children: Checks for existing Normal root. If none, checks for existing Byproduct root and triggers B->N conversion via `checkAndConvertNodeTypeThunk` if found. If no root exists, creates a new Normal root (calculating its children and recursively calling itself). Finally dispatches `setNodeAsImportThunk` to link the child.
@@ -41,7 +41,7 @@ This document provides documentation for the core state management logic of the 
 
 - **Purpose:** Provides hook consolidating data management actions like deleting trees, updating nodes, and clearing saved data.
 - **Key Logic:**
-  - `handleDeleteTree`: Dispatches the `destroyNodeRecursiveThunk` to properly remove a tree and trigger dependency cleanup.
+  - `handleDeleteTree`: Dispatches the `destroyNodeRecursiveThunk` to properly remove a tree and trigger dependency cleanup. *(Ensures Task 3: Generalize Deletion Logic)*.
   - `handleNodeUpdate`: Dispatches `updateNodeProperties` for general node updates.
   - `clearSavedData`: Handles clearing relevant local storage items and resetting Redux state.
 
