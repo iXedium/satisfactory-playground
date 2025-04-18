@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { DependencyNode } from '../../../types';
 import TreeNode from './TreeNode';
+import { TreeSortKey, SortDirection } from '../hooks/useFactoryPlanner';
 
 export interface DependencyTreeProps {
   tree: DependencyNode;
@@ -20,6 +21,8 @@ export interface DependencyTreeProps {
   onDelete?: (treeId: string) => void;
   onImportNode?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
+  treeSortKey: TreeSortKey;
+  treeSortDirection: SortDirection;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
@@ -39,7 +42,9 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   isRoot,
   onDelete,
   onImportNode,
-  onNodeUpdate
+  onNodeUpdate,
+  treeSortKey,
+  treeSortDirection
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +75,8 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         onImport={onImportNode}
         onNodeUpdate={onNodeUpdate}
         showMachineMultiplier={showMachineMultiplier}
+        treeSortKey={treeSortKey}
+        treeSortDirection={treeSortDirection}
       />
     </div>
   );

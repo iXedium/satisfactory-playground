@@ -157,8 +157,7 @@ export const usePlannerTreeCalculation = ({
       isInitiallyByproductRoot, recipeSelections, dependencies.dependencyTrees
     );
     if (newTree) {
-      const accumulated = calculateAccumulatedFromTree(newTree);
-      dispatch(setDependencies({ treeId, tree: newTree, accumulated }));
+      dispatch(setDependencies({ treeId, tree: newTree }));
       // Set default state for manually created tree
       const resetValues = (node: DependencyNode) => {
         setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
@@ -197,9 +196,7 @@ export const usePlannerTreeCalculation = ({
         const result = await dispatch(calculateAndAutoImportThunk({
           selectedItem,
           selectedRecipeId: selectedRecipe,
-          recipeSelections,
           generateTreeId,
-          createNewTreeStructure: createStructureArg // Pass the defined lambda
         })).unwrap();
         
         
@@ -238,7 +235,7 @@ export const usePlannerTreeCalculation = ({
           tree.originalDepth = 0;
           
           const accumulated = calculateAccumulatedFromTree(tree);
-          dispatch(setDependencies({ treeId, tree, accumulated }));
+          dispatch(setDependencies({ treeId, tree }));
           dispatch(setRecipeSelection({ nodeId: selectedItem, recipeId: selectedRecipe }));
           
           const resetValues = (node: DependencyNode) => {

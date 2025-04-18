@@ -2,22 +2,21 @@ import React from 'react';
 import ViewModeSwitch from '../ViewModeSwitch'; // Adjust path as needed
 import StyledSelect from './StyledSelect';
 import { theme } from '../../styles/theme';
+import Icon from '../Icon';
+// Import shared types
+import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 
-// Types moved from useFactoryPlanner for clarity
-type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
-type SortDirection = 'asc' | 'desc';
 type ViewMode = "accumulated" | "tree";
 
 interface ViewTreeControlsProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onExpandCollapseAll: (expand: boolean) => void;
-  // --- Tree View Sort Props ---
+  // Use imported types
   treeSortKey: TreeSortKey;
   onTreeSortKeyChange: (key: TreeSortKey) => void;
   treeSortDirection: SortDirection;
   onTreeSortDirectionChange: (direction: SortDirection) => void;
-  // -----------------------------
 }
 
 const depthOptions = [
@@ -29,11 +28,12 @@ const depthOptions = [
   { id: "5", name: "5" },
 ];
 
-const sortOptions = [
-  { id: "originalDepth", name: "Hierarchy" },
-  { id: "amount", name: "Rate" },
-  { id: "nominalRate", name: "Nominal Rate" },
-  { id: "name", name: "Name" },
+// Update options to match imported type
+const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
+  { id: 'originalDepth', name: 'Hierarchy' },
+  { id: 'name', name: 'Name' },
+  { id: 'amount', name: 'Amount' },
+  { id: 'nominalRate', name: 'Rate' }, // Use correct key
 ];
 
 const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
@@ -77,6 +77,10 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
     fontSize: '14px',
   };
 
+  const selectStyle: React.CSSProperties = {
+    width: '90px',
+  };
+
   return (
     <>
       {/* View Mode Toggle Section */}
@@ -118,20 +122,20 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
 
           {/* Sort Controls */}
           <StyledSelect
-            options={sortOptions}
+            options={sortByKeyOptions}
             value={treeSortKey}
-            // The value passed by StyledSelect should be TreeSortKey
-            onChange={(value) => onTreeSortKeyChange(value as TreeSortKey)}
+            onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
             variant="compact"
-            style={{ width: "90px" }}
+            style={selectStyle}
           />
+          
+          {/* Restore Sort Direction Toggle Button */}
           <button
             style={iconButtonStyle}
-            onClick={toggleSortDirection}
+            onClick={toggleSortDirection} // Use the toggle handler
             title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
           >
-            {/* Simple Arrow Indicator */}
-            {treeSortDirection === 'asc' ? '↑' : '↓'}
+            {treeSortDirection === 'asc' ? '↑' : '↓'} 
           </button>
         </div>
       )}

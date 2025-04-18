@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { DependencyNode, Item } from '../../types';
 import DependencyTree from '../../features/factory-planner/components/DependencyTree';
-
-// Import sort types (or define locally)
-type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate'; 
-type SortDirection = 'asc' | 'desc';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 
 interface TreeViewContainerProps {
   dependencies: {
@@ -19,14 +18,16 @@ interface TreeViewContainerProps {
   machineMultiplierMap: Record<string, number>;
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
-  setExpandedNodes: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
+  setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   showExtensions: boolean;
   accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
-  handleNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
+  handleNodeUpdate: (nodeId: string, updatedNode: Partial<any>) => void;
+  nodeExtensionOverrides?: Record<string, boolean>;
+  handleToggleNodeExtensions?: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
   // --- Add Sort Props & Item Map --- 
   itemsMap: Record<string, Item>; 
@@ -38,31 +39,9 @@ interface TreeViewContainerProps {
 /**
  * Container component for rendering the tree view of dependency trees
  */
-const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
-  dependencies,
-  handleTreeRecipeChange,
-  handleExcessChange,
-  excessMap,
-  machineCountMap,
-  handleMachineCountChange,
-  machineMultiplierMap,
-  handleMachineMultiplierChange,
-  expandedNodes,
-  setExpandedNodes,
-  showExtensions,
-  accumulateExtensions,
-  showMachines,
-  showMachineMultiplier,
-  handleDeleteTree,
-  handleImportNode,
-  handleNodeUpdate,
-  containerStyle,
-  // --- Destructure Sort Props & Item Map ---
-  itemsMap,
-  treeSortKey,
-  treeSortDirection,
-  // ---------------------------------------
-}) => {
+const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeViewContainerProps> = (
+  { dependencies, handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection },
+  ref) => {
 
   // --- Get trees array --- 
   const treesArray = Object.values(dependencies.dependencyTrees);
@@ -104,7 +83,7 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
   
 
   return (
-    <div style={containerStyle}>
+    <div style={containerStyle} ref={ref}>
       {treesArray.map((tree) => {
         const treeId = tree.uniqueId;
         return (
@@ -132,6 +111,8 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
             onDelete={() => handleDeleteTree(treeId)}
             onImportNode={handleImportNode}
             onNodeUpdate={handleNodeUpdate}
+            treeSortKey={treeSortKey}
+            treeSortDirection={treeSortDirection}
           />
         );
       })}
@@ -139,4 +120,4 @@ const TreeViewContainer: React.FC<TreeViewContainerProps> = ({
   );
 };
 
-export default TreeViewContainer; 
+export default React.forwardRef(TreeViewContainer); 

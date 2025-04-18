@@ -34,9 +34,9 @@ import { usePlannerPersistence } from './usePlannerPersistence';
 
 type ViewMode = "accumulated" | "tree";
 
-// Define types for Tree View sorting
-type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
-type SortDirection = 'asc' | 'desc';
+// Define types for Tree View sorting and EXPORT them
+export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
+export type SortDirection = 'asc' | 'desc';
 
 export const useFactoryPlanner = () => {
   const dispatch = useDispatch<AppDispatch>();

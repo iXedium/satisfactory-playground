@@ -3,18 +3,16 @@ import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
 import { DependencyNode } from '../../types';
 import { AccumulatedResourceView } from "../../features/factory-planner/components";
 import TreeViewContainer from './TreeViewContainer';
+import { DependencyState } from '../../features/factory-planner/store/dependencySlice';
+import { Item } from '../../types';
+import { SortDirection, TreeSortKey } from '../../features/factory-planner/hooks/useFactoryPlanner';
 
-// Import sort types (or define locally)
-type TreeSortKey = 'default' | 'amount' | 'name'; 
-type SortDirection = 'asc' | 'desc';
+type ViewMode = "accumulated" | "tree";
 
 interface PlannerContentProps {
-  viewMode: 'tree' | 'accumulated';
+  viewMode: ViewMode;
   treeViewRef: RefObject<HTMLDivElement | null>;
-  dependencies: {
-    dependencyTrees: Record<string, DependencyNode>;
-    accumulatedDependencies: Record<string, AccumulatedNode>;
-  };
+  dependencies: DependencyState;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
   handleExcessChange: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;

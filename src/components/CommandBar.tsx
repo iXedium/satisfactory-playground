@@ -1,14 +1,24 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { ForwardRefRenderFunction, forwardRef } from "react";
-import { Item } from "../types";
+import React, { ForwardRefRenderFunction, useState, useRef, useEffect, forwardRef } from "react";
+import { Item, Recipe } from "../types";
+import ViewModeSwitch from './ViewModeSwitch'; 
+import StyledSelect from "./shared/StyledSelect";
 import { theme } from "../styles/theme";
+import StyledCheckbox from "./shared/StyledCheckbox";
+import Icon from "./Icon";
 import ChainCreatorControls from "./shared/ChainCreatorControls";
+import SettingsMenu from "./shared/SettingsMenu";
 import ViewTreeControls from "./shared/ViewTreeControls";
 import PlannerActions from "./shared/PlannerActions";
+// Import the exported types
+import { 
+  TreeSortKey, 
+  SortDirection 
+} from "../features/factory-planner/hooks/useFactoryPlanner";
 
-// Import sort types (or define locally)
-type TreeSortKey = 'default' | 'amount' | 'name'; 
-type SortDirection = 'asc' | 'desc';
+// Remove local type definitions
+// type TreeSortKey = 'default' | 'amount' | 'name'; 
+// type SortDirection = 'asc' | 'desc';
 type ViewMode = "accumulated" | "tree";
 
 interface CommandBarProps {
@@ -37,12 +47,12 @@ interface CommandBarProps {
   removeRecentItem: (itemId: string) => void;
   autoImport: boolean;
   onAutoImportChange: (value: boolean) => void;
-  // --- Add Sort Props ---
+  // --- Use imported types for Sort Props ---
   treeSortKey: TreeSortKey;
   onTreeSortKeyChange: (key: TreeSortKey) => void;
   treeSortDirection: SortDirection;
   onTreeSortDirectionChange: (direction: SortDirection) => void;
-  // ---------------------
+  // -----------------------------------------
 }
 
 /**

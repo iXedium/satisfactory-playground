@@ -3,6 +3,7 @@ import ItemNode from './ItemNode';
 import { DependencyNode, Item, Recipe } from '../../../types';
 import { theme } from  '../../../styles/theme';
 import { toggleChildrenVisibility } from '../../../utils/nodeReferenceUtils';
+import { TreeSortKey, SortDirection } from '../hooks/useFactoryPlanner';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -23,6 +24,8 @@ interface TreeNodeProps {
   onDelete?: (treeId: string) => void;
   onImport?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
+  treeSortKey: TreeSortKey;
+  treeSortDirection: SortDirection;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -43,7 +46,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   isRoot = false,
   onDelete,
   onImport,
-  onNodeUpdate
+  onNodeUpdate,
+  treeSortKey,
+  treeSortDirection
 }) => {
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false); 
@@ -91,13 +96,31 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const shouldShowChildren = isExpanded && hasChildren && 
     (node.childrenVisible !== false); // If childrenVisible is undefined or true, show children
 
+  // Sort children before rendering
+  const sortedChildren = [...(node.children || [])].sort((a, b) => {
+    // Implement sorting logic based on treeSortKey and treeSortDirection
+    let compareResult = 0;
+    if (treeSortKey === 'name') {
+      compareResult = (a.id || '').localeCompare(b.id || ''); // Assuming item name is in id for now
+    } else if (treeSortKey === 'amount') {
+      compareResult = a.amount - b.amount;
+    } else if (treeSortKey === 'nominalRate') {
+      // Need nominal rate data here - requires more prop drilling or lookup
+      // Placeholder: sort by amount for now
+      compareResult = a.amount - b.amount; 
+    } else { // Default to originalDepth (or depth if originalDepth isn't available)
+      compareResult = (a.originalDepth ?? a.depth ?? 0) - (b.originalDepth ?? b.depth ?? 0);
+    }
+    return treeSortDirection === 'asc' ? compareResult : -compareResult;
+  });
+
   // Recursive rendering of child nodes
   const renderChildren = () => {
     if (!isExpanded || !node.children || node.childrenVisible === false) {
       return null;
     }
 
-    return node.children.map((child: DependencyNode, index: number) => (
+    return sortedChildren.map((child: DependencyNode, index: number) => (
       <TreeNode
         key={child.uniqueId || `${child.id}-${index}`}
         node={child}
@@ -118,6 +141,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         onDelete={onDelete}
         onImport={onImport}
         onNodeUpdate={onNodeUpdate}
+        treeSortKey={treeSortKey}
+        treeSortDirection={treeSortDirection}
       />
     ));
   };
