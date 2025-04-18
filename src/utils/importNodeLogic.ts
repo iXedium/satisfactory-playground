@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { DependencyNode, Recipe } from "../types";
 import { getRecipeById, getRecipeByOutput } from "../data";
 import { setImportReference } from "./nodeReferenceUtils"; // Import setImportReference
@@ -155,19 +154,15 @@ export const restoreOriginalChildren = (
   currentAmount: number, // The amount the restored node now needs to produce
   originalChildren: DependencyNode[] // The stored original children
 ): DependencyNode[] => {
-  console.log(`[RESTORE DEBUG] Restoring original children for node: ${nodeId}`);
   
   if (!originalChildren || originalChildren.length === 0) {
-    console.log(`[RESTORE DEBUG] No original children found to restore`);
     return [];
   }
   
-  console.log(`[RESTORE DEBUG] Current amount for propagation: ${currentAmount}`);
   
   // Create a deep clone to avoid mutating the stored original data
   const updatedChildren = JSON.parse(JSON.stringify(originalChildren)) as DependencyNode[];
   
-  console.log(`[RESTORE DEBUG] Original children before updating amounts:`, updatedChildren.map(c => ({id: c.id, amount: c.amount})));
   
   // Calculate the total amount originally produced by the stored children
   // This represents the amount needed by the parent node when it *wasn't* imported.
@@ -207,10 +202,8 @@ export const restoreOriginalChildren = (
     // For now, assume they become leaf nodes or are recalculated separately.
     child.children = []; 
 
-    console.log(`[RESTORE DEBUG] Updated child ${child.id} (${child.uniqueId}) amount: ${originalAmount} -> ${newAmount}`);
   });
   
-  console.log(`[RESTORE DEBUG] Updated children after propagating amounts:`, updatedChildren.map(c => ({id: c.id, amount: c.amount, uniqueId: c.uniqueId })));
   
   return updatedChildren;
 }; 
@@ -242,7 +235,6 @@ export async function convertToImportTree(
 
         // --- DEFER BYPRODUCT LOGIC ---
         if (processedChild.isByproduct) {
-          console.log(`[convertToImportTree] Deferring byproduct child ${processedChild.uniqueId} (Item: ${itemIdToImport}) at depth ${originalChildDepth}.`);
           const deferredList = deferredByproducts.get(itemIdToImport) || [];
           deferredList.push({ 
             sourceNode: processedChild, // Store the node itself
@@ -255,7 +247,6 @@ export async function convertToImportTree(
         // --- END DEFER BYPRODUCT LOGIC ---
 
         // --- NORMAL NODE IMPORT LOGIC ---
-        console.log(`[convertToImportTree] Normal child ${processedChild.uniqueId} (Item: ${itemIdToImport}, isByproduct: false) needs conversion. Original depth: ${originalChildDepth}`);
         
         let targetTreeId: string | null = null;
         
@@ -279,10 +270,8 @@ export async function convertToImportTree(
 
         // Link or create NORMAL root
         if (targetTreeId) {
-          console.log(`[convertToImportTree] Linking normal child ${processedChild.uniqueId} to existing target ${targetTreeId}.`);
           processedChild = setImportReference(processedChild, targetTreeId, targetTreeId);
         } else {
-          console.log(`[convertToImportTree] Calling createTreeFn for NORMAL item ${itemIdToImport} at depth ${originalChildDepth}.`);
           const creationPromise = createTreeFn(
             itemIdToImport, 
             0, 
@@ -298,7 +287,6 @@ export async function convertToImportTree(
           
           if (newTree) {
             initialTrees[newTree.uniqueId] = newTree; // Add to map for subsequent lookups
-            console.log(`[convertToImportTree] Created NORMAL root ${newTree.uniqueId}. Linking child ${processedChild.uniqueId}.`);
             processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId);
           } else {
             console.error(`[convertToImportTree] createTreeFn failed for NORMAL item ${itemIdToImport}`);

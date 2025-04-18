@@ -1,36 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
 import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner";
 import "./styles/App.css";
-import { populateDexie } from "./data/dexieInit";
-import { injectThemeVariables } from './styles/theme';
+import { useInitialization, InitializationProvider } from "./contexts/InitializationContext";
 
 const App: React.FC = () => {
-  const [dbStatus, setDbStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { isLoading, isError, errorMessage } = useInitialization();
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Inject theme variables
-        injectThemeVariables();
-        
-        // Initialize database
-        await populateDexie();
-        setDbStatus('ready');
-      } catch (error) {
-        console.error("Failed to initialize application:", error);
-        setDbStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : "Unknown error initializing the application");
-      }
-    };
-
-    initializeApp();
-  }, []);
-
-  // Add global wheel event handler to prevent browser zoom on inputs
   useEffect(() => {
     const preventZoomOnInputs = (e: WheelEvent) => {
-      // Check if the event target is an input element and Ctrl key is pressed
       if (
         e.ctrlKey && 
         (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
@@ -39,17 +17,14 @@ const App: React.FC = () => {
       }
     };
 
-    // Add the event listener with the capture phase to intercept before browser zoom
     window.addEventListener('wheel', preventZoomOnInputs, { passive: false });
 
-    // Clean up
     return () => {
       window.removeEventListener('wheel', preventZoomOnInputs);
     };
   }, []);
 
-  // Loading state
-  if (dbStatus === 'loading') {
+  if (isLoading) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -62,13 +37,12 @@ const App: React.FC = () => {
         background: '#1e1e1e'
       }}>
         <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Loading Satisfactory Calculator</div>
-        <div style={{ fontSize: '16px' }}>Initializing database...</div>
+        <div style={{ fontSize: '16px' }}>Initializing application...</div>
       </div>
     );
   }
 
-  // Error state
-  if (dbStatus === 'error') {
+  if (isError) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -82,7 +56,7 @@ const App: React.FC = () => {
       }}>
         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff6b6b' }}>Error Loading Application</div>
         <div style={{ fontSize: '16px', maxWidth: '600px', textAlign: 'center' }}>
-          {errorMessage || "There was a problem initializing the application."}
+          {errorMessage || "An unknown error occurred."}
         </div>
         <button 
           onClick={() => window.location.reload()}
@@ -103,7 +77,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Ready state - render the main application
   return (
     <div>
       <FactoryPlanner />
@@ -111,4 +84,10 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const AppWithProvider: React.FC = () => (
+  <InitializationProvider>
+    <App />
+  </InitializationProvider>
+);
+
+export default AppWithProvider;

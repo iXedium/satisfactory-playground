@@ -33,7 +33,6 @@ export const usePlannerRecipeManagement = ({
   }));
 
   const handleTreeRecipeChange = useCallback(async (nodeId: string, recipeId: string) => {
-    console.log(`[Recipe Change] Node: ${nodeId}, New Recipe ID: ${recipeId}`);
     const currentTrees = dependencies.dependencyTrees;
     
     let treeId = '';
@@ -64,7 +63,6 @@ export const usePlannerRecipeManagement = ({
     dispatch(setRecipeSelection({ nodeId, recipeId }));
 
     const drivingAmount = excessMap[nodeId] || 0;
-    console.log(`[Recipe Change] Recalculating children for node ${nodeId} (Driving Amount: ${drivingAmount}) with new recipe ${recipeId}...`);
     let newChildren: DependencyNode[] = [];
     try {
         const tempRecalculatedNode = await calculateDependencyTree(
@@ -80,9 +78,6 @@ export const usePlannerRecipeManagement = ({
             currentTrees            
         );
         newChildren = tempRecalculatedNode.children || [];
-        console.log(`[Recipe Change] Calculated ${newChildren.length} new children:`, 
-          newChildren.map(c => ({ id: c.id, amount: c.amount }))
-        );
     } catch (error) {
         console.error('[Recipe Change] Error recalculating children:', error);
         return;
@@ -104,9 +99,8 @@ export const usePlannerRecipeManagement = ({
         } catch (error) {
             console.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
         }
-    } else {
-        console.log(`[Recipe Change] AutoImport disabled. Skipping auto-import for new children.`);
-    }
+      }
+      
 
     for (const oldTargetId of oldImportTargetIds) {
         try {
@@ -119,7 +113,6 @@ export const usePlannerRecipeManagement = ({
         }
     }
 
-    console.log('[Recipe Change] Finished handling recipe change.');
 
   }, [dependencies, recipeSelections, dispatch, autoImportEnabled, excessMap]);
 

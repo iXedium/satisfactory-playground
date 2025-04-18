@@ -1,4 +1,4 @@
-import React, { useState, useRef, MouseEvent, useEffect } from 'react';
+import React, { useState, useRef, MouseEvent } from 'react';
 import ReactDOM from 'react-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
@@ -85,7 +85,6 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     // If it's neither root nor import, idToFetch remains null
 
     if (!idToFetch) {
-      console.log(`[EfficiencySection] Node ${nodeId} is neither root nor import. Skipping consumer fetch.`);
       setConsumptionData([]); // Show empty consumption
       setTotalDemand(0);
       return; 
@@ -95,12 +94,10 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     if (!targetElement) return;
     const rect = targetElement.getBoundingClientRect();
 
-    console.log(`[EfficiencySection] Fetching consumers for node/target: ${idToFetch}`);
     const consumers = await findNodeConsumers(idToFetch, allTrees); // Use idToFetch
     const demand = consumers.reduce((sum, c) => sum + c.consumedAmount, 0);
     setConsumptionData(consumers);
     setTotalDemand(demand);
-    console.log(`[EfficiencySection] Consumption data for ${idToFetch}:`, consumers);
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -123,21 +120,16 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   };
 
   const handleRateMouseLeave = () => {
-    hoverTimeoutRef.current = window.setTimeout(() => {
+    // Remove timeout for immediate hide
+    // hoverTimeoutRef.current = window.setTimeout(() => { 
       setIsHoveringRate(false);
-      setConsumptionData([]);
+      setConsumptionData([]); // Reset data immediately
       setPopupPosition(null);
       setTotalDemand(0);
-    }, 300);
+    // }, 300); 
   };
   
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Remove useEffect for timeout cleanup as it's no longer used
 
   // Section container styles
   const sectionStyle: React.CSSProperties = {
@@ -231,8 +223,6 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
             left: `${popupPosition.left}px`, 
             zIndex: 10000
           }} 
-          onMouseEnter={clearHoverTimeout} 
-          onMouseLeave={handleRateMouseLeave}
         >
           <ConsumptionReportPopup 
             consumers={consumptionData} 

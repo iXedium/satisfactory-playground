@@ -71,7 +71,6 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     setSelectedItem('');
     setSelectedRecipe('');
     setRecentItems([]);
-    // console.log('[Persistence] Cleared item selection state from localStorage.');
   }, []);
 
   const removeRecentItem = useCallback((itemIdToRemove: string) => {

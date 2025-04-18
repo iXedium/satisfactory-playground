@@ -72,7 +72,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 }) => {
   // Log received props for byproducts
   if (isByproduct) {
-    //console.log(`[BYPRODUCT DEBUG] ItemNode Render: Received props for ${itemId} - Amount=${amount}, IsByproduct=${isByproduct}`);
+    //
   }
   
   const [item, setItem] = useState<Item | null>(null);

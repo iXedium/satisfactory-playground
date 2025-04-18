@@ -165,14 +165,12 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
   if (node.originalChildren && node.originalChildren.length > 0) {
     // Replace children with original structure - exactly as it was saved
     updatedNode.children = JSON.parse(JSON.stringify(node.originalChildren));
-    console.log("[UNIMPORT] Restored original children structure with", updatedNode.children.length, "children");
     
     // Ensure all original properties are preserved in children
     preserveOriginalChildrenStructure(updatedNode.children);
   } else {
     // If no original children available, create a recovery fallback
     // This ensures tests and UI work even when original children structure is missing
-    console.log("[UNIMPORT RECOVERY] No original children available, creating recovery fallback");
     
     // Create appropriate fallback based on node type
     const nodeId = node.id.toLowerCase();
@@ -187,7 +185,6 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
         excess: 0,
         availableRecipes: []
       }];
-      console.log("[UNIMPORT RECOVERY] Created ore child for ingot node");
     } 
     else if (nodeId.includes('rod') || nodeId.includes('plate') || nodeId.includes('screw')) {
       // For products made from ingots
@@ -199,12 +196,10 @@ export const clearImportReference = (node: DependencyNode): DependencyNode => {
         excess: 0,
         availableRecipes: []
       }];
-      console.log("[UNIMPORT RECOVERY] Created ingot child for manufactured item");
     }
     else {
       // Default fallback with empty children array
       updatedNode.children = [];
-      console.log("[UNIMPORT RECOVERY] Created empty children array as fallback");
     }
   }
   
@@ -253,15 +248,10 @@ function preservePropertiesInChildren(children: DependencyNode[]) {
     type NodeWithOriginalRecipe = DependencyNode & { originalRecipeId?: string };
     const childWithRecipe = child as NodeWithOriginalRecipe;
     
-    // Restore recipe object if available
-    if (child.recipe) {
-      console.log(`[UNIMPORT] Restored recipe object for child ${child.id}`);
-    }
     
     // Ensure child has availableRecipes property for dropdown to work
     if (!child.availableRecipes) {
       child.availableRecipes = [];
-      console.log(`[UNIMPORT] Initialized availableRecipes for child ${child.id}`);
     }
     
     // Recursively process nested children
@@ -375,21 +365,3 @@ export const traverseVisibleNodes = (
     }
   }
 };
-
-// Remove or comment out the duplicate export
-/*
-export const findNodeById = (tree: DependencyNode, nodeId: string): DependencyNode | null => {
-  if (tree.uniqueId === nodeId) {
-    return tree;
-  }
-  if (tree.children) {
-    for (const child of tree.children) {
-      const found = findNodeById(child, nodeId);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  return null;
-};
-*/ 

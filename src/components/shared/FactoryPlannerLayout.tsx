@@ -1,9 +1,10 @@
 import React, { ReactNode } from 'react';
-import { theme } from '../../styles/theme';
+// Removed theme import as background is no longer set here
 
 interface FactoryPlannerLayoutProps {
   commandBar: ReactNode;
   content: ReactNode;
+  commandBarHeight: number; // Add prop for height
   containerStyle?: React.CSSProperties;
   commandBarContainerStyle?: React.CSSProperties;
   contentContainerStyle?: React.CSSProperties;
@@ -16,6 +17,7 @@ interface FactoryPlannerLayoutProps {
 const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
   commandBar,
   content,
+  commandBarHeight, // Destructure prop
   containerStyle,
   commandBarContainerStyle,
   contentContainerStyle
@@ -24,25 +26,30 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      minHeight: '100vh',
+      // minHeight: '100vh', // Body handles height/scroll now
       width: '100%',
       position: 'relative',
       ...containerStyle
     }}>
+      {/* Command Bar Container - Fixed Position */}
       <div style={{
-        position: 'sticky',
+        position: 'fixed', // Change from sticky
         top: 0,
-        zIndex: 10,
-        backgroundColor: theme.colors.background,
+        left: 0,
+        width: '100%',
+        zIndex: 100, // Increase z-index as per suggestion
+        // backgroundColor: theme.colors.background, // Removed, handled by CommandBar
         ...commandBarContainerStyle
       }}>
         {commandBar}
       </div>
       
+      {/* Content Container - Dynamic Margin Top */}
       <div style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '8px',
+        // flex: 1, // Removed
+        // overflow: 'auto', // Removed, body handles scroll
+        padding: '8px', // Keep padding for content spacing
+        marginTop: `${commandBarHeight}px`, // Use dynamic height
         ...contentContainerStyle
       }}>
         {content}

@@ -49,9 +49,9 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   const hoveredElementRef = useRef<HTMLDivElement | null>(null); // Ref for the element being hovered
   
   // Log received amount for byproducts
-  if (isByproduct) {
-    //console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Received amount for ${item?.name} - Amount=${amount}`);
-  }
+  // if (isByproduct) {
+    //
+  // }
   
   // Section container styles
   const sectionStyle: React.CSSProperties = {
@@ -120,12 +120,25 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
 
   const handleMouseLeave = () => {
     hoveredElementRef.current = null; // Clear the hovered element ref
-    // Delay hiding the popup slightly
-    hoverTimeoutRef.current = window.setTimeout(() => {
+    
+    // Remove timeout for immediate hide
+    // hoverTimeoutRef.current = window.setTimeout(() => {
       setHoveredRecipe(null);
       setPopupPosition(null);
-    }, 150); // 150ms delay - Keep delay for leaving the trigger element
+    // }, 150); 
   };
+
+  // Remove useEffect for timeout cleanup
+  /*
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    };
+  }, []);
+  */
 
   return (
     <>
@@ -176,7 +189,8 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
             }}
           >
             <span>{item.name}</span>
-            {/* {(console.log(`[BYPRODUCT DEBUG] ItemDetails Render: Rendering amount for ${item.name} (Byproduct: ${isByproduct}) - Amount=${amount}`), null)} */}
+            {/* Commented out inline log */}
+            {/* {( - Amount=${amount}`), null)} */}
             {nominalRate > 0 && !isByproduct && !isImport && (
               <span style={{
                 fontSize: sizes.fontSize.standard,
@@ -218,6 +232,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
                         ? 'rgba(255, 122, 0, 0.1)' 
                         : 'transparent',
                       borderRadius: theme.border.radius,
+                      width: '100%',
                     }}
                   >
                     <span style={{ fontWeight: 'bold' }}>{option.name}</span>
@@ -238,6 +253,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
             left: `${popupPosition.left}px`, 
             zIndex: 10000 // Set z-index higher than the dropdown's 9999
           }} 
+          // Remove mouse enter/leave from popup itself (wasn't there, but good practice)
         >
           <RecipeDetailsPopup recipe={hoveredRecipe} primaryOutputItemId={itemId} />
         </div>,

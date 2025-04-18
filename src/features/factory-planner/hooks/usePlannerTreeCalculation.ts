@@ -55,10 +55,8 @@ export const createNewTreeStructure = async (
   recipeSelections: Record<string, string>, // Pass needed state/data
   allTrees: Record<string, DependencyNode>
 ): Promise<DependencyNode | null> => {
-  console.log(`[createNewTreeStructure] Called for ${itemId}. OriginalDepth: ${originalDepth}, IsByproductRoot: ${isInitiallyByproductRoot}`);
   
   if (isInitiallyByproductRoot) {
-    console.log(`[createNewTreeStructure] Creating initial BYPRODUCT root for ${itemId}.`);
     const byproductRootNode: DependencyNode = {
       id: itemId,
       amount: amount, 
@@ -70,7 +68,6 @@ export const createNewTreeStructure = async (
       depth: 0, 
       originalDepth: originalDepth ?? 0
     };
-    console.log(`[createNewTreeStructure] Byproduct root ${byproductRootNode.uniqueId} assigned originalDepth: ${byproductRootNode.originalDepth}`);
     return byproductRootNode;
   }
 
@@ -86,7 +83,6 @@ export const createNewTreeStructure = async (
       depth: 0, 
       originalDepth: originalDepth ?? 0
     };
-    console.log(`[createNewTreeStructure] Basic node ${basicNode.uniqueId} assigned originalDepth: ${basicNode.originalDepth}`);
     return basicNode;
   }
 
@@ -115,7 +111,6 @@ export const createNewTreeStructure = async (
     tree.isByproduct = false; 
     tree.depth = 0; 
     tree.originalDepth = originalDepth ?? 0;
-    console.log(`[createNewTreeStructure] Calculated tree ${tree.uniqueId} assigned originalDepth: ${tree.originalDepth}`);
     return tree;
 
   } catch (error) {
@@ -184,7 +179,6 @@ export const usePlannerTreeCalculation = ({
     updateRecentItems(selectedItem);
     
     if (autoImport) {
-      console.log("[handleCalculate] AutoImport enabled. Dispatching thunk...");
       try {
         // --- Pass a correctly typed lambda for createNewTreeStructure --- 
         const createStructureArg = async (
@@ -208,27 +202,6 @@ export const usePlannerTreeCalculation = ({
           createNewTreeStructure: createStructureArg // Pass the defined lambda
         })).unwrap();
         
-        console.log("[handleCalculate] Thunk finished. Result:", result);
-        
-        // --- REMOVE EXPLICIT RESET LOGIC for auto-import --- 
-        /*
-        const allNewIds = [result.mainTreeId, ...result.newRootIds].filter(Boolean) as string[];
-        
-        // Reset machine/excess maps for all involved trees // <<< THIS WAS THE BUG
-        allNewIds.forEach(id => {
-          const tree = dependencies.dependencyTrees[id]; // Get potentially updated tree
-          if (tree) {
-             const resetValues = (node: DependencyNode) => {
-                setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-                setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
-                setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
-                if (node.children) node.children.forEach(resetValues);
-              };
-              resetValues(tree);
-          }
-        });
-        */
-        // --- END REMOVED BLOCK ---
         
         // Set expanded state (Keep this part)
         setExpandedNodes(prev => {
@@ -244,7 +217,6 @@ export const usePlannerTreeCalculation = ({
           if (result.mainTreeId) {
             newState[result.mainTreeId] = true;
           }
-          console.log("[handleCalculate] Final expandedNodes state:", newState);
           return newState;
         });
         
@@ -253,7 +225,6 @@ export const usePlannerTreeCalculation = ({
       }
     } else {
       // --- Non-Auto-Import Logic (Simpler) --- 
-      console.log("[handleCalculate] AutoImport disabled. Performing standard calculation...");
       try {
         const treeId = generateTreeId(selectedItem);
         const tree = await calculateDependencyTree(

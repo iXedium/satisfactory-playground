@@ -1,15 +1,10 @@
-import React, { ForwardRefRenderFunction, useState, useRef, useEffect, forwardRef } from "react";
-import { Item, Recipe } from "../types";
-import ViewModeSwitch from './ViewModeSwitch'; 
-import StyledSelect from "./shared/StyledSelect";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { ForwardRefRenderFunction, forwardRef } from "react";
+import { Item } from "../types";
 import { theme } from "../styles/theme";
-import StyledCheckbox from "./shared/StyledCheckbox";
-import Icon from "./Icon";
 import ChainCreatorControls from "./shared/ChainCreatorControls";
-import SettingsMenu from "./shared/SettingsMenu";
 import ViewTreeControls from "./shared/ViewTreeControls";
 import PlannerActions from "./shared/PlannerActions";
-import { useFactoryPlanner } from "../features/factory-planner/hooks/useFactoryPlanner";
 
 // Import sort types (or define locally)
 type TreeSortKey = 'default' | 'amount' | 'name'; 
@@ -90,7 +85,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
   ref
 ) => {
   const toggleItemSection = () => {
-    onAddItemCollapsed(!isAddItemCollapsed);
+    onAddItemCollapsedChange(!isAddItemCollapsed);
   };
 
   // Styles
@@ -117,7 +112,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
 
   // Placeholder search handler to pass down
   const handleSearchChange = (term: string) => {
-    console.log("Search term:", term); // Implement actual search logic
+    //  // Implement actual search logic
   };
 
   return (
@@ -152,18 +147,20 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
         />
       </div>
 
-      {/* Chain Creator Controls */}
-      <ChainCreatorControls 
-        items={items}
-        selectedItem={selectedItem}
-        onItemSelect={onItemSelect}
-        selectedRecipe={selectedRecipe}
-        onRecipeSelect={onRecipeSelect}
-        onCalculate={onCalculate}
-        recentItems={recentItems}
-        isCollapsed={isAddItemCollapsed}
-        onRemoveRecentItem={removeRecentItem}
-      />
+      {/* Chain Creator Controls - Conditionally Rendered */}
+      {!isAddItemCollapsed && (
+        <ChainCreatorControls 
+          items={items}
+          selectedItem={selectedItem}
+          onItemSelect={onItemSelect}
+          selectedRecipe={selectedRecipe}
+          onRecipeSelect={onRecipeSelect}
+          onCalculate={onCalculate}
+          recentItems={recentItems}
+          isCollapsed={isAddItemCollapsed}
+          onRemoveRecentItem={removeRecentItem}
+        />
+      )}
 
       {/* Toggle button for collapsing/expanding item section */}
       <div 

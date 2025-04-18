@@ -45,7 +45,6 @@ export const usePlannerExcessHandling = ({
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    console.log(`[usePlannerExcessHandling] handleExcessChange called for Node: ${nodeId}, New Excess: ${excess}`);
     // Update local map immediately
     setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
     
@@ -76,7 +75,6 @@ export const usePlannerExcessHandling = ({
 
     // --- Trigger Node Type Conversion Check and Potential Recalculation --- 
     const timeoutId = setTimeout(async () => {
-        console.log(`[handleExcessChange] STARTING delayed checks (Timeout ID: ${timeoutId}) for Node: ${nodeId} / Excess: ${excess}`);
         const stateBeforeChecks = { ...dependencies.dependencyTrees }; // Use current dependencies prop
         const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
 
@@ -87,7 +85,6 @@ export const usePlannerExcessHandling = ({
 
         // Wait for all checks to settle and get their results
         const results = await Promise.allSettled(checkPromises);
-        console.log('[handleExcessChange] Node type checks settled.');
 
         const convertedNodeIds: string[] = [];
         results.forEach((result, index) => {
@@ -98,7 +95,6 @@ export const usePlannerExcessHandling = ({
                     const convertedId = fulfilledAction.payload;
                     if (convertedId) { // Ensure it's not undefined
                        convertedNodeIds.push(convertedId);
-                       console.log(`[handleExcessChange] Detected B->N conversion for ${convertedId} via thunk result payload.`);
                     }
                 }
             } else if (result.status === 'rejected') {
@@ -108,7 +104,6 @@ export const usePlannerExcessHandling = ({
 
         // If any nodes converted B->N, trigger recalculation for them
         if (convertedNodeIds.length > 0) {
-            console.log(`[handleExcessChange] Detected ${convertedNodeIds.length} B->N conversions. Recalculation is now handled directly in the thunk.`);
             
             // No need to trigger recalculation here anymore - the thunk handles it synchronously
             /*
@@ -116,18 +111,9 @@ export const usePlannerExcessHandling = ({
             await new Promise(resolve => setTimeout(resolve, 100)); 
 
             const latestTreesState = dependencies.dependencyTrees;
-            console.log(`[handleExcessChange] Got latest state after delay. Starting recalculation.`);
 
             for (const convertedNodeId of convertedNodeIds) {
                  const nodeAfter = latestTreesState ? latestTreesState[convertedNodeId] : undefined;
-                 if (nodeAfter) {
-                    console.log(`[handleExcessChange] Node state for ${convertedNodeId}:`, 
-                                JSON.stringify({
-                                    id: nodeAfter.id,
-                                    hasRecipe: !!nodeAfter.recipe,
-                                    recipeId: nodeAfter.recipe?.id,
-                                    isByproduct: nodeAfter.isByproduct
-                                }));
                     
                     const recipeId = nodeAfter.recipe?.id;
                     if (recipeId) {
@@ -145,7 +131,6 @@ export const usePlannerExcessHandling = ({
                               );
                           };
 
-                        console.log(`[handleExcessChange] Dispatching calculateAndAutoImportThunk for converted node ${convertedNodeId}`);
                         dispatch(calculateAndAutoImportThunk({
                             selectedItem: nodeAfter.id,
                             selectedRecipeId: recipeId,
@@ -163,11 +148,8 @@ export const usePlannerExcessHandling = ({
                  }
             }
             */
-        } else {
-             console.log('[handleExcessChange] No B->N conversions detected after checks.');
-        }
+        } 
     }, 10); // Initial delay
-    console.log(`[usePlannerExcessHandling] Scheduled delayed checks with Timeout ID: ${timeoutId}`);
     // ------------------------------------------------------
 
   }, [dependencies, dispatch, setExcessMap, recipeSelections, generateTreeId, createNewTreeStructure]);

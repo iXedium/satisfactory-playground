@@ -28,7 +28,6 @@ export const usePlannerPersistence = ({
       try {
         const serialized = JSON.stringify(dependencies);
         localStorage.setItem('savedDependencies', serialized);
-        // console.log('[Persistence] Saved dependencies state.');
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // console.error("Error saving dependencies:", error);
@@ -47,7 +46,6 @@ export const usePlannerPersistence = ({
     if (recipeSelections && Object.keys(recipeSelections).length > 0) {
       try {
         localStorage.setItem('savedRecipeSelections', JSON.stringify(recipeSelections));
-        // console.log('[Persistence] Saved recipe selections state.');
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // console.error("Error saving recipe selections:", error);

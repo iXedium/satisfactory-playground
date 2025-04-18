@@ -42,10 +42,8 @@ export const updateImportedProduction = createAction<{
 // Debugging Helper (Consider moving to a shared utils file later)
 function logNodeBrief(node: DependencyNode | null | undefined, context: string) {
   if (!node) {
-    // console.log(`[${context}] Node is null or undefined`);
     return;
   }
-  // console.log(`[${context}] Node: ${node.id} (${node.uniqueId}), Amount: ${node.amount}, Excess: ${node.excess || 0}, Recipe: ${node.recipe?.id || 'None'}, IsImport: ${hasImportReference(node)}, Target: ${getImportReference(node)?.targetTreeId || 'N/A'}`);
 }
 
 function getAllNodeIds(tree: DependencyNode): string[] {
@@ -73,7 +71,6 @@ function calculateImportTargetUpdate(
   trees: Record<string, DependencyNode>,
   targetTreeId: string
 ): AffectedNodeUpdate | null {
-  // console.log(`[AFFECTED HELPER] Calculating aggregate demand for Target Tree: ${targetTreeId}`);
   let totalImportAmount = 0;
   Object.entries(trees).forEach(([currentTreeId, currentTree]) => {
     let contribution = 0;
@@ -83,11 +80,9 @@ function calculateImportTargetUpdate(
       if (nImportRef && nImportRef.targetTreeId === targetTreeId) {
          const currentAmount = n.amount || 0;
          localContribution += currentAmount;
-         // console.log(`  [AFFECTED AGGREGATE] Tree ${currentTreeId}, Node ${n.id} (${n.uniqueId}) contributes ${currentAmount}`);
       } else if (n.isImport && n.importedFrom === targetTreeId) { // Legacy support
          const currentAmount = n.amount || 0;
          localContribution += currentAmount;
-         // console.log(`  [AFFECTED AGGREGATE] Tree ${currentTreeId}, Node ${n.id} (${n.uniqueId}) contributes ${currentAmount} (Legacy)`);
       }
       if (n.children) {
         n.children.forEach(child => { localContribution += findImportNodes(child); });
@@ -96,11 +91,8 @@ function calculateImportTargetUpdate(
     };
     contribution = findImportNodes(currentTree);
     totalImportAmount += contribution;
-    if (contribution > 0) {
-         // console.log(`  [AFFECTED AGGREGATE] Subtotal from Tree ${currentTreeId}: ${contribution}`);
-    }
+    
   });
-  // console.log(`[AFFECTED AGGREGATE] Total calculated demand for Target Tree ${targetTreeId}: ${totalImportAmount}`);
 
   const targetTreeNode = trees[targetTreeId];
   if (targetTreeNode) {
@@ -124,25 +116,20 @@ function calculateChildProductionNeeds(
   totalProduction: number
 ): AffectedNodeUpdate[] {
   const childUpdates: AffectedNodeUpdate[] = [];
-  // console.log(`[AFFECTED HELPER] Calculating child needs for Node ${node.id}. Total Production: ${totalProduction}`);
   
   if (!node.children || node.children.length === 0) {
-     // console.log(`[AFFECTED] Node has no children to update`);
      return childUpdates; // Return empty array
   }
   
   if (node.recipe) {
-    // console.log(`[AFFECTED] Using recipe ${node.recipe.id}`);
     const outputAmount = node.recipe.out[node.id] || 1;
     const cyclesNeeded = totalProduction / outputAmount;
-    // console.log(`[AFFECTED PROPAGATION] Output: ${outputAmount}, Cycles: ${cyclesNeeded}`);
 
     // Calculate needs for INPUT children
     Object.entries(node.recipe.in).forEach(([inputItemId, inputRecipeAmount]) => {
       const childNode = node.children?.find(c => c.id === inputItemId && !c.isByproduct);
       if (childNode) {
         const childAmount = (inputRecipeAmount || 0) * cyclesNeeded;
-        // console.log(`[AFFECTED PROPAGATION] Input Child ${childNode.id} needs: ${childAmount}`);
         logNodeBrief(childNode, 'AFFECTED CHILD INPUT TARGET');
         childUpdates.push({
           nodeId: childNode.uniqueId,
@@ -164,7 +151,6 @@ function calculateChildProductionNeeds(
       const childNode = node.children?.find(c => c.id === outputItemId && c.isByproduct);
       if (childNode) {
         const childAmount = -(Number(outputRecipeAmount) * cyclesNeeded); // Negative amount for byproduct
-        // console.log(`[BYPRODUCT DEBUG] calculateChildProductionNeeds: Byproduct Child ${childNode.id} gets amount: ${childAmount.toFixed(3)} (Cycles: ${cyclesNeeded.toFixed(3)})`);
         logNodeBrief(childNode, 'AFFECTED CHILD BYPRODUCT TARGET');
         childUpdates.push({
           nodeId: childNode.uniqueId,
@@ -179,8 +165,6 @@ function calculateChildProductionNeeds(
     });
 
   } else {
-    // console.error(`[AFFECTED] Node ${node.id} has no recipe object, cannot calculate precise child amounts.`);
-    // console.log(`[AFFECTED] Propagating parent's total production (${totalProduction}) to children. Recipe load needed.`);
     node.children.forEach(child => {
       childUpdates.push({
         nodeId: child.uniqueId,
@@ -202,7 +186,6 @@ function calculateAffectedNodes(
   productionType: 'excess' | 'forced' | 'imported',
   amount: number
 ): AffectedNodeUpdate[] { // Ensure return type matches
-  // console.log(`--- calculateAffectedNodes START for Node ${nodeId} in Tree ${treeId} (Type: ${productionType}, AmountFromTrigger: ${amount}) ---`);
   let results: AffectedNodeUpdate[] = []; // Initialize as empty array
   
   const tree = trees[treeId];
@@ -213,13 +196,9 @@ function calculateAffectedNodes(
   
   const node = findNodeById(tree, nodeId);
   if (!node) {
-    // console.error(`[AFFECTED] Node ${nodeId} not found in tree ${treeId}`);
-    // console.log(`[AFFECTED] Available nodes in tree:`, getAllNodeIds(tree));
-    // console.log(`--- calculateAffectedNodes END for Node ${nodeId} (Node not found) ---`);
     return results;
   }
   
-  // console.log(`[AFFECTED] Processing node details:`);
   logNodeBrief(node, 'AFFECTED');
   
   if (hasImportReference(node)) {
@@ -239,8 +218,6 @@ function calculateAffectedNodes(
     results = calculateChildProductionNeeds(node, treeId, totalProduction);
   } 
 
-  // console.log(`[AFFECTED] Returning ${results.length} affected nodes:`, results.map(r => `${r.nodeId} (${r.productionType}: ${r.amount})`));
-  // console.log(`--- calculateAffectedNodes END for Node ${nodeId} ---`);
   return results;
 }
 
@@ -290,7 +267,6 @@ export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<Pr
 export const updateTreeProduction = 
   (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string) => 
   async (dispatch: AppDispatch, getState: () => { dependencies: ProductionDependencyState }) => {
-    // console.log(`>>> updateTreeProduction START - Node: ${nodeId}, Tree: ${treeId}, Type: ${productionType}, Amount: ${amount}, TargetTree: ${targetTreeId || 'N/A'}`);
     
     const initialState = getState();
     const initialTree = initialState.dependencies.dependencyTrees[treeId];
@@ -302,14 +278,11 @@ export const updateTreeProduction =
     const nodeToUpdate = findNodeById(initialTree, nodeId);
     if (!nodeToUpdate) {
       // console.error(`[FATAL] Node ${nodeId} not found in tree ${treeId}`);
-      // console.log(`[DEBUG] Available nodes in tree:`, getAllNodeIds(initialTree));
       return;
     }
     
-    // console.log(`[Thunk] Will update node ${nodeToUpdate.id} (${nodeToUpdate.uniqueId})`);
     
     if (productionType === 'imported' && targetTreeId) {
-      // console.log(`[Thunk] Dispatching updateImportedProduction for import node ${nodeId}`);
       dispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
       await Promise.resolve(); // Ensure state update completes
       
@@ -323,7 +296,6 @@ export const updateTreeProduction =
       );
       
       for (const node of affectedNodesAfterImport) {
-        // console.log(`  [Thunk] Dispatching recursive updateTreeProduction for affected node: ${node.nodeId}`);
         await dispatch(updateTreeProduction(
           node.nodeId,
           node.treeId,
@@ -333,17 +305,14 @@ export const updateTreeProduction =
         ));
       }
       
-      // console.log(`<<< updateTreeProduction END - Node: ${nodeId} (Import Path)`);
       return;
     }
     
     // Update non-import nodes
     if (productionType === 'excess') {
-      // console.log(`[Thunk] Dispatching updateExcessProduction for node ${nodeId}`);
       dispatch(updateExcessProduction({ nodeId, treeId, amount }));
     } 
     else if (productionType === 'forced') {
-      // console.log(`[Thunk] Dispatching updateForcedProduction for node ${nodeId}`);
       dispatch(updateForcedProduction({ nodeId, treeId, amount }));
     } 
     
@@ -357,9 +326,7 @@ export const updateTreeProduction =
       amount
     );
     
-    // console.log(`[Thunk] Processing ${affectedNodesAfterUpdate.length} affected nodes from calculation.`);
     for (const node of affectedNodesAfterUpdate) {
-      // console.log(`  [Thunk] Dispatching recursive updateTreeProduction for affected node: ${node.nodeId}`);
       await dispatch(updateTreeProduction(
         node.nodeId,
         node.treeId,
@@ -368,6 +335,4 @@ export const updateTreeProduction =
         node.targetTreeId
       ));
     }
-    
-    // console.log(`<<< updateTreeProduction END - Node: ${nodeId}`);
   }; 

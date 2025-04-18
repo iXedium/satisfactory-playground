@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
@@ -29,7 +30,6 @@ export const usePlannerDataManagement = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const handleDeleteTree = useCallback((treeId: string) => {
-    console.log(`[usePlannerDataManagement] Dispatching destroyNodeRecursiveThunk for treeId: ${treeId}`);
     dispatch(destroyNodeRecursiveThunk(treeId));
   }, [dispatch]);
 
@@ -61,8 +61,6 @@ export const usePlannerDataManagement = ({
     // Clear relevant Redux state
     dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));
     dispatch(loadRecipeSelections({}));
-
-    console.log('[Data Management] All saved data cleared (except recent items).');
 
   }, [dispatch, clearNodeStateStorage, /* remove clearItemSelectionStorage */ clearDisplayOptionsStorage]); // Update dependencies
 

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, MouseEvent } from 'react';
+import ReactDOM from 'react-dom';
 import { Item, Recipe } from '../../types';
 import StyledSelect from './StyledSelect';
 import Icon from '../Icon';
 import { theme } from '../../styles/theme';
 import { getRecipesForItem } from '../../data';
+import RecipeDetailsPopup from './RecipeDetailsPopup';
 
 interface ChainCreatorControlsProps {
   items: Item[];
@@ -15,7 +17,6 @@ interface ChainCreatorControlsProps {
   recentItems: string[];
   onRemoveRecentItem?: (itemId: string) => void;
   isCollapsed: boolean;
-  // onToggleCollapse: () => void; // Remove unused prop
 }
 
 const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
@@ -28,18 +29,20 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
   recentItems,
   onRemoveRecentItem,
   isCollapsed,
-  // onToggleCollapse, // Remove unused prop from destructuring
 }) => {
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [localSelectedItem, setLocalSelectedItem] = useState<string>(selectedItem);
+  
+  const [hoveredRecipe, setHoveredRecipe] = useState<Recipe | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const hoveredElementRef = useRef<HTMLDivElement | null>(null);
 
-  // Update filtered recipes when selected item changes
   useEffect(() => {
     if (selectedItem) {
       getRecipesForItem(selectedItem)
         .then(recipes => {
           setFilteredRecipes(recipes);
-          // Select default recipe (match name or first)
           if (recipes.length > 0) {
             const selectedItemObj = items.find(i => i.id === selectedItem);
             const matchingRecipe = recipes.find(r => r.name === selectedItemObj?.name);
@@ -49,18 +52,48 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
         .catch(console.error);
     } else {
       setFilteredRecipes([]);
-      // Optionally clear recipe selection when item is cleared
-      // onRecipeSelect(''); 
     }
   }, [selectedItem, onRecipeSelect, items]);
 
-  // Handle item selection
   const handleItemSelect = (itemId: string) => {
     setLocalSelectedItem(itemId);
     onItemSelect(itemId);
   };
   
-  // Styles - kept local for now
+  const handleRecipeMouseEnter = (event: MouseEvent<HTMLDivElement>, recipe: Recipe) => {
+    hoveredElementRef.current = event.currentTarget;
+    setHoveredRecipe(recipe);
+    setPopupPosition(null);
+  };
+
+  useEffect(() => {
+    if (hoveredRecipe && hoveredElementRef.current) {
+      const targetElement = hoveredElementRef.current;
+      const rect = targetElement.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const estimatedPopupWidth = 200;
+      const estimatedPopupHeight = 150;
+      let top = rect.bottom + window.scrollY + 5;
+      let left = rect.left + window.scrollX + 5;
+      if (left + estimatedPopupWidth > viewportWidth) {
+        left = rect.left + window.scrollX - estimatedPopupWidth - 5;
+      }
+      if (top + estimatedPopupHeight > viewportHeight) {
+        top = rect.top + window.scrollY - estimatedPopupHeight - 5;
+      }
+      if (left < 0) left = 5;
+      if (top < 0) top = 5;
+      setPopupPosition({ top, left });
+    }
+  }, [hoveredRecipe]);
+
+  const handleRecipeMouseLeave = () => {
+    hoveredElementRef.current = null;
+    setHoveredRecipe(null);
+    setPopupPosition(null);
+  };
+
   const containerStyle: React.CSSProperties = {
       display: isCollapsed ? 'none' : 'flex',
       flexWrap: 'wrap',
@@ -85,74 +118,92 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
   };
 
   return (
-    <div style={containerStyle}>
-      {/* Item Selector */}
-      <StyledSelect
-        value={localSelectedItem}
-        onChange={handleItemSelect}
-        options={items}
-        recentItems={recentItems}
-        onRemoveRecentItem={onRemoveRecentItem}
-        placeholder="Select Item"
-        style={{ flex: 1, minWidth: '180px' }}
-        renderOption={(option, isInDropdown) => (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            padding: '4px 8px',
-            backgroundColor: isInDropdown && option.id === localSelectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
-            borderRadius: theme.border.radius,
-          }}>
-            <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
-            <span>{option.name}</span>
-          </div>
-        )}
-      />
-      
-      {/* Recipe Selector */}
-      <StyledSelect
-        value={selectedRecipe}
-        onChange={onRecipeSelect}
-        options={filteredRecipes}
-        placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
-        style={{ 
-          minWidth: '150px', 
-          maxWidth: '250px', 
-          flex: '1 1 auto',
-          opacity: selectedItem ? 1 : 0.7
-        }}
-        disabled={!selectedItem || filteredRecipes.length === 0}
-        renderOption={(option, isInDropdown) => (
-          <div 
-            style={{ 
+    <>
+      <div style={containerStyle}>
+        <StyledSelect
+          value={localSelectedItem}
+          onChange={handleItemSelect}
+          options={items}
+          recentItems={recentItems}
+          onRemoveRecentItem={onRemoveRecentItem}
+          placeholder="Select Item"
+          style={{ flex: 1, minWidth: '180px' }}
+          renderOption={(option, isInDropdown) => (
+            <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
               gap: '8px',
               padding: '4px 8px',
-              backgroundColor: isInDropdown && option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+              backgroundColor: isInDropdown && option.id === localSelectedItem ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
               borderRadius: theme.border.radius,
-            }}
-          >
-            <span style={{ fontWeight: 'bold' }}>{option.name}</span>
-          </div>
-        )}
-      />
+            }}>
+              <Icon itemId={option.id} size="small" showWrapper={false} style={{ backgroundColor: theme.colors.dark }} />
+              <span>{option.name}</span>
+            </div>
+          )}
+        />
+        
+        <StyledSelect
+          value={selectedRecipe}
+          onChange={onRecipeSelect}
+          options={filteredRecipes}
+          placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
+          style={{ 
+            minWidth: '150px', 
+            maxWidth: '250px', 
+            flex: '1 1 auto',
+            opacity: selectedItem ? 1 : 0.7
+          }}
+          disabled={!selectedItem || filteredRecipes.length === 0}
+          renderOption={(option, isInDropdown) => (
+            <div 
+              key={option.id}
+              onMouseEnter={(e) => handleRecipeMouseEnter(e, option as Recipe)}
+              onMouseLeave={handleRecipeMouseLeave}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                padding: '4px 8px',
+                backgroundColor: isInDropdown && option.id === selectedRecipe ? 'rgba(255, 122, 0, 0.1)' : 'transparent',
+                borderRadius: theme.border.radius,
+                width: '100%',
+              }}
+            >
+              <span style={{ fontWeight: 'bold' }}>{option.name}</span>
+            </div>
+          )}
+        />
+        
+        <button 
+          onClick={onCalculate}
+          style={{
+            ...buttonStyle,
+            opacity: (selectedItem && selectedRecipe) ? 1 : 0.7,
+          }}
+          disabled={!selectedItem || !selectedRecipe}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
+          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.primary)}
+        >
+          Add
+        </button>
+      </div>
       
-      {/* Add Button */}
-      <button 
-        onClick={onCalculate}
-        style={{
-          ...buttonStyle,
-          opacity: (selectedItem && selectedRecipe) ? 1 : 0.7,
-        }}
-        disabled={!selectedItem || !selectedRecipe}
-        onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.buttonHover)}
-        onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = theme.colors.primary)}
-      >
-        Add
-      </button>
-    </div>
+      {hoveredRecipe && popupPosition && ReactDOM.createPortal(
+        <div 
+          ref={popupRef}
+          style={{ 
+            position: 'absolute', 
+            top: `${popupPosition.top}px`, 
+            left: `${popupPosition.left}px`, 
+            zIndex: 10000 
+          }} 
+        >
+          <RecipeDetailsPopup recipe={hoveredRecipe} primaryOutputItemId={localSelectedItem} /> 
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 

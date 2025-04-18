@@ -23,5 +23,5 @@ export const clearNodeFromCache = async (nodeId: string) => {
 export const clearNodeCache = () => {
   // This can remain synchronous as it directly manipulates the Map.
   nodeCache.clear();
-  console.log("[Cache] Cleared node calculation cache.");
+  
 }; 

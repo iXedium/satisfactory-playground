@@ -11,15 +11,20 @@
   --text-secondary: rgba(255, 255, 255, 0.7);
 }
 
+html {
+  overflow-y: visible; /* Allow body to control scrolling */
+}
+
 body {
   background-color: var(--background);
   background-image: linear-gradient(45deg, #1a1e24 25%, #1d2228 25%, #1d2228 50%, #1a1e24 50%, #1a1e24 75%, #1d2228 75%, #1d2228 100%);
   background-size: 20px 20px;
   color: var(--text);
   font-family: 'Roboto', 'Segoe UI', sans-serif;
-  margin: 0;
-  padding: 0;
+  margin: 0; /* Reset default margin */
+  padding: 0; /* Reset default padding */
   min-height: 100vh;
+  overflow-y: auto; /* Scroll only when content overflows */
 }
 
 /* Root Container */

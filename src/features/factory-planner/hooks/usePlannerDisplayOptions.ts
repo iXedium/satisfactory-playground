@@ -82,7 +82,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
     localStorage.removeItem('savedShowMachineMultiplier');
-    console.log('[Persistence] Cleared display options from localStorage (excluding autoImport).');
   }, []);
 
   return {

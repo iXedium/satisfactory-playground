@@ -43,7 +43,6 @@ export const findNodeConsumers = async (
   }
   // No need for the isByproduct check here anymore
 
-  console.log(`[findNodeConsumers] Searching for consumers importing from root: ${sourceNodeId} (Item ID: ${sourceRootNode.id})`);
 
   // Keep track of consumer parent names to fetch them efficiently
   const consumerParentNames: Record<string, string> = {};
@@ -57,7 +56,6 @@ export const findNodeConsumers = async (
         // Or, if the import node itself is the root, it has no consuming parent in this context?
         // Let's record the import node itself and its tree for now.
         // The *amount* is the amount on the IMPORT node itself.
-        console.log(`[findNodeConsumers] Found consuming node ${node.uniqueId} in tree ${treeId} importing from ${sourceNodeId}`);
         consumers.push({
             consumerNodeId: node.uniqueId,      // The uniqueId of the node with the importReference
             consumerParentId: parentNode?.id ?? 'Root', // The item ID of the parent node (or 'Root')
@@ -101,7 +99,6 @@ export const findNodeConsumers = async (
       }
   });
 
-  console.log(`[findNodeConsumers] Found ${consumers.length} consumers for root ${sourceNodeId}:`, consumers);
   return consumers;
 };
 

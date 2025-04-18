@@ -74,13 +74,11 @@ const dependencySlice = createSlice({
       }>
     ) => {
       const { treeId, tree } = action.payload;
-      console.log(`[Reducer/setDependencies] Setting/Updating tree: ${treeId}`);
       
       // Direct mutation for the specific tree using Immer
       state.dependencyTrees[treeId] = tree;
       
       // Recalculate the *entire* accumulated state after adding/updating a tree
-      console.log(`[Reducer/setDependencies] Recalculating ALL accumulated dependencies.`);
       const newAccumulated: Record<string, AccumulatedNode> = {};
       Object.values(state.dependencyTrees).forEach(currentTree => {
           const treeAccumulated = calculateAccumulatedFromTree(currentTree);
@@ -88,7 +86,6 @@ const dependencySlice = createSlice({
           Object.assign(newAccumulated, treeAccumulated);
       });
       state.accumulatedDependencies = newAccumulated;
-      console.log(`[Reducer/setDependencies] Finished recalculating accumulated dependencies.`);
     },
     
     deleteTree: (
@@ -137,7 +134,6 @@ const dependencySlice = createSlice({
       
       // For each affected node, clear the import reference
       affectedNodes.forEach(({ node }) => {
-        // console.log(`Restoring node ${node.id} that was importing from deleted tree ${treeIdToDelete}`);
         
         // Use our reference-based utility to properly clear import reference
         const clearedNode = clearImportReference(node);
@@ -188,7 +184,7 @@ const dependencySlice = createSlice({
       
       // Add debug logging for recipe updates
       if (updatedNode.recipe) {
-        console.log(`[Reducer/updateNodeProperties] Updating node ${nodeId} with recipe`);
+        // 
       }
       
       for (const treeId in state.dependencyTrees) {
@@ -205,7 +201,6 @@ const dependencySlice = createSlice({
               // Make sure we're setting a complete recipe object with required properties
               node.recipe = { ...updatedNode.recipe };
               
-              console.log(`[Reducer/updateNodeProperties] Set recipe on node ${nodeId}`);
               
               // Remove recipe from the updatedNode to prevent double-application
               const { recipe, ...restOfUpdates } = updatedNode;
@@ -222,22 +217,13 @@ const dependencySlice = createSlice({
           return node.children?.some(updateNodeInTree) || false;
         };
         
-        // Remove the problematic accumulated recalculation here
-        /*
-        if (updateNodeInTree(tree)) {
-          const accumulated = calculateAccumulatedFromTree(tree);
-          state.accumulatedDependencies = accumulated; 
-        }
-        */
-       // Just run the update function
+       // Just run the update function (no accumulated calc here)
        if (updateNodeInTree(tree)) {
-         // Optionally break if we know nodes are unique across trees?
-         // For safety, let it continue checking other trees in case of duplication (though unlikely)
-         // break;
+         // break; // Optional break
        }
       }
       if (!treeUpdated) {
-         // console.warn(`[updateNodeProperties] Node ${nodeId} not found in any tree.`);
+         // Still log warnings
          console.warn(`Node ${nodeId} not found in any tree for update.`);
       }
     },
@@ -254,12 +240,10 @@ const dependencySlice = createSlice({
       .addCase(removeNodeAction, (state, action: PayloadAction<string>) => {
         const nodeIdToRemove = action.payload;
         if (state.dependencyTrees[nodeIdToRemove]) {
-            console.log(`[Reducer/removeNode] Removing root node ${nodeIdToRemove}`);
             delete state.dependencyTrees[nodeIdToRemove];
 
             // Clean up accumulated dependencies associated with the removed tree
             // Recalculate all for simplicity (can be optimized later)
-             console.log(`[Reducer/removeNode] Recalculating all accumulated dependencies after removal.`);
              state.accumulatedDependencies = {};
              Object.values(state.dependencyTrees).forEach((tree) => {
                  const treeAccumulated = calculateAccumulatedFromTree(tree);
@@ -268,6 +252,7 @@ const dependencySlice = createSlice({
              // TODO: A more efficient cleanup of accumulatedDependencies is needed.
 
         } else {
+            // Still log warnings
             console.warn(`[Reducer/removeNode] Node ${nodeIdToRemove} not found in state.dependencyTrees.`);
         }
     });
@@ -298,16 +283,17 @@ export const setExcess = createAction<{
 export const loadNodeRecipe = 
   (nodeId: string, treeId: string) => 
   async (dispatch: AppDispatch, getState: () => { dependencies: DependencyState }) => {
-    console.log(`[RECIPE LOADER] Loading recipe for node ${nodeId} in tree ${treeId}`);
     
     const state = getState();
     // Check if dependencies state exists
     if (!state.dependencies) {
+        // Still log errors
         console.error(`[RECIPE LOADER] Dependencies state is undefined`);
         return;
     }
     const tree = state.dependencies.dependencyTrees[treeId];
     if (!tree) {
+      // Still log errors
       console.error(`[RECIPE LOADER] Tree ${treeId} not found`);
       return;
     }
@@ -315,12 +301,13 @@ export const loadNodeRecipe =
     // Use findNodeById utility
     const node = findNodeById(tree, nodeId);
     if (!node) {
+      // Still log errors
       console.error(`[RECIPE LOADER] Node ${nodeId} not found in tree ${treeId}`);
       return;
     }
     
     if (node.recipe) {
-      console.log(`[RECIPE LOADER] Node ${nodeId} already has a recipe`);
+      // 
       return;
     }
     
@@ -328,18 +315,19 @@ export const loadNodeRecipe =
     // const recipeId = node.recipe?.id; // Removed this potentially problematic line
     // Instead, check if recipe exists directly
     if (!node.recipe) { // Check if recipe object is missing
+      // Still log errors
       console.error(`[RECIPE LOADER] Node ${nodeId} has no recipe information. Attempting default.`);
       try {
-        console.log(`[RECIPE LOADER] Attempting to get default recipe for item ${node.id}`);
         const recipe = await getRecipeByOutput(node.id);
         if (recipe) {
-          console.log(`[RECIPE LOADER] Found default recipe ${recipe.id} for item ${node.id}`);
           dispatch(updateNodeProperties({ nodeId, updatedNode: { recipe } }));
           return;
         } else {
+          // Still log errors
           console.error(`[RECIPE LOADER] No default recipe found for item ${node.id}`);
         }
       } catch (error) {
+        // Still log errors
         console.error(`[RECIPE LOADER] Error getting default recipe:`, error);
       }
       return; // Return if no recipe and default fetch failed/didn't happen
@@ -350,10 +338,10 @@ export const loadNodeRecipe =
     // Let's assume if node.recipe exists, it's the correct one for now.
     // const recipeId = node.recipe.id;
     // try {
-    //   console.log(`[RECIPE LOADER] Loading recipe ${recipeId} for node ${nodeId}`);
+    //   
     //   const recipe = await getRecipeById(recipeId); // This might be redundant if recipe object is already attached
     //   if (recipe) {
-    //     console.log(`[RECIPE LOADER] Successfully loaded recipe ${recipe.id}`);
+    //     
     //     dispatch(updateNodeProperties({ nodeId, updatedNode: { recipe } }));
     //   } else {
     //     console.error(`[RECIPE LOADER] Failed to load recipe ${recipeId}`);

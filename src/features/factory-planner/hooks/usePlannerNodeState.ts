@@ -45,7 +45,6 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       if (savedOverrides) {
         setNodeExtensionOverrides(JSON.parse(savedOverrides));
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       console.error("Error loading node state:", error);
     }
@@ -103,7 +102,6 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     localStorage.removeItem('savedMachineMultiplierMap');
     localStorage.removeItem('plannerExpandedNodes');
     localStorage.removeItem('plannerNodeExtensionOverrides');
-    console.log('[Persistence] Cleared node state from localStorage.');
   }, []);
 
   return {

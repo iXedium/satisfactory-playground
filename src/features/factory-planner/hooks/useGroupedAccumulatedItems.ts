@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { RootState } from '../../../store'; // Adjust path as needed
 import { DependencyNode, Recipe, Item } from '../../../types'; // Adjust path as needed
 import { AccumulatedNode } from '../../../utils'; // Adjust path as needed
-import { getRecipesForItem, getItemById } from '../../../data'; // Adjust path as needed
+import { getRecipesForItem, getItemById, getRecipeByOutput } from '../../../data'; // Add getRecipeByOutput
 
 // Output structure from the original component
 export interface GroupedItem {
@@ -17,6 +16,7 @@ export interface GroupedItem {
   depth: number;
   normalizedMachineCount: number;
   isImport: boolean;
+  isRaw?: boolean; // Add isRaw flag
 }
 
 interface UseGroupedAccumulatedItemsProps {
@@ -134,28 +134,37 @@ export const useGroupedAccumulatedItems = ({
       const uniqueItemIds = Array.from(itemIds);
       const recipePromises = uniqueItemIds.map(id => getRecipesForItem(id));
       const itemPromises = uniqueItemIds.map(id => getItemById(id).then(item => item || null));
+      const defaultRecipePromises = uniqueItemIds.map(id => getRecipeByOutput(id)); // Fetch default recipes
       
       try {
         const recipesResults = await Promise.all(recipePromises);
         const itemsResults = await Promise.all(itemPromises);
+        const defaultRecipesResults = await Promise.all(defaultRecipePromises); // Get default recipes
         
         const newItemsMap: Record<string, Item> = {};
         const newRecipesMap: Record<string, Recipe[]> = {};
+        const defaultRecipesMap: Record<string, Recipe | null> = {}; // Map for default recipes
         
         itemsResults.forEach((item, index) => {
           if (item) {
             newItemsMap[item.id] = item;
             newRecipesMap[item.id] = recipesResults[index] || [];
+            defaultRecipesMap[item.id] = defaultRecipesResults[index] || null; // Store default recipe
           }
         });
 
-        // Pass 3: Update grouped items with fetched data
-        const finalGroupedArray = Object.values(grouped).map(group => ({
-           ...group,
-           name: newItemsMap[group.itemId]?.name || group.name || group.itemId, // Use fetched name
-           recipes: newRecipesMap[group.itemId] || [], // Assign fetched recipes
-           depth: group.depth === Infinity ? 0 : group.depth 
-        }));
+        // Pass 3: Update grouped items with fetched data and isRaw flag
+        const finalGroupedArray = Object.values(grouped).map(group => {
+           const defaultRecipe = defaultRecipesMap[group.itemId];
+           const isRaw = !defaultRecipe || !defaultRecipe.in || Object.keys(defaultRecipe.in).length === 0;
+           return {
+             ...group,
+             name: newItemsMap[group.itemId]?.name || group.name || group.itemId, // Use fetched name
+             recipes: newRecipesMap[group.itemId] || [], // Assign fetched recipes
+             depth: group.depth === Infinity ? 0 : group.depth, 
+             isRaw: isRaw // Set the isRaw flag
+           }
+        });
         
         setItemsMap(newItemsMap);
         setRecipesMap(newRecipesMap);

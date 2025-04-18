@@ -32,7 +32,7 @@ export const setDebugLevel = (level: DebugLevel): void => {
     const validatedLevel = DebugLevelSchema.parse(level);
     currentDebugLevel = validatedLevel;
     localStorage.setItem(LOCAL_STORAGE_KEY, currentDebugLevel);
-    console.log(`[Debug System] Debug level set to: ${currentDebugLevel}`); // Log level change itself
+     // Log level change itself
   } catch (error) {
     console.error('[Debug System] Invalid debug level provided:', level, error);
   }
@@ -55,7 +55,6 @@ export const initializeDebugLevel = (): void => {
   } else {
     currentDebugLevel = 'INFO'; // Default if nothing is stored
   }
-   console.log(`[Debug System] Initialized debug level: ${currentDebugLevel}`);
 };
 
 // --- Logging Function ---

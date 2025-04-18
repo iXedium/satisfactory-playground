@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import CommandBar from "../../../components/CommandBar"; 
 import { useFactoryPlanner } from "../hooks/useFactoryPlanner";
 import FactoryPlannerLayout from "../../../components/shared/FactoryPlannerLayout";
@@ -64,6 +64,13 @@ const FactoryPlanner: React.FC = () => {
   
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
+  const [commandBarHeight, setCommandBarHeight] = useState(0);
+
+  useEffect(() => {
+    if (commandBarRef.current) {
+      setCommandBarHeight(commandBarRef.current.offsetHeight);
+    }
+  }, [isAddItemCollapsed]);
 
   return (
     <FactoryPlannerLayout
@@ -101,6 +108,7 @@ const FactoryPlanner: React.FC = () => {
           onTreeSortDirectionChange={setTreeSortDirection}
         />
       }
+      commandBarHeight={commandBarHeight}
       content={
         <PlannerContent
           viewMode={viewMode}

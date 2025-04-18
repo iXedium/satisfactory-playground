@@ -3,7 +3,7 @@ import { theme } from '../../../styles/theme';
 import StyledSelect from '../../../components/shared/StyledSelect';
 import StyledCheckbox from '../../../components/shared/StyledCheckbox';
 
-type SortKey = "name" | "amount" | "depth";
+type SortKey = "name" | "amount" | "depth" | "hierarchy";
 type SortDirection = "asc" | "desc";
 
 interface AccumulatedViewControlsProps {
@@ -22,6 +22,7 @@ interface AccumulatedViewControlsProps {
 }
 
 const sortByKeyOptions: { id: SortKey; name: string }[] = [
+  { id: 'hierarchy', name: 'Hierarchy' },
   { id: 'name', name: 'Name' },
   { id: 'amount', name: 'Amount' },
   { id: 'depth', name: 'Depth' },
