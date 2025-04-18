@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { ForwardRefRenderFunction, useState, useRef, useEffect, forwardRef } from "react";
 import { Item, Recipe } from "../types";
-import ViewModeSwitch from './ViewModeSwitch'; 
 import StyledSelect from "./shared/StyledSelect";
 import { theme } from "../styles/theme";
 import StyledCheckbox from "./shared/StyledCheckbox";
@@ -19,7 +18,6 @@ import {
 // Remove local type definitions
 // type TreeSortKey = 'default' | 'amount' | 'name'; 
 // type SortDirection = 'asc' | 'desc';
-type ViewMode = "accumulated" | "tree";
 
 interface CommandBarProps {
   items: Item[];
@@ -28,8 +26,6 @@ interface CommandBarProps {
   selectedRecipe: string;
   onRecipeSelect: (recipeId: string) => void;
   onCalculate: () => void;
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onExpandCollapseAll: (expand: boolean) => void;
   showExtensions: boolean;
   onShowExtensionsChange: (show: boolean) => void;
@@ -66,8 +62,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     selectedRecipe,
     onRecipeSelect,
     onCalculate,
-    viewMode,
-    onViewModeChange,
     onExpandCollapseAll,
     showExtensions,
     onShowExtensionsChange,
@@ -130,8 +124,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
       {/* Main Toolbar Row */}
       <div style={rowStyle}>
         <ViewTreeControls 
-           viewMode={viewMode}
-           onViewModeChange={onViewModeChange}
            onExpandCollapseAll={onExpandCollapseAll}
            treeSortKey={treeSortKey}
            onTreeSortKeyChange={onTreeSortKeyChange}

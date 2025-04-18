@@ -1,32 +1,25 @@
 import React from 'react';
-import ViewModeSwitch from '../ViewModeSwitch'; // Adjust path as needed
+// Removed unused ViewModeSwitch
 import StyledSelect from './StyledSelect';
 import { theme } from '../../styles/theme';
-import Icon from '../Icon';
+// Remove unused Icon import
+// import Icon from '../Icon';
 // Import shared types
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 
-type ViewMode = "accumulated" | "tree";
+// Remove ViewMode type
+// type ViewMode = "accumulated" | "tree";
 
 interface ViewTreeControlsProps {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
+  // Remove viewMode props
+  // viewMode: ViewMode;
+  // onViewModeChange: (mode: ViewMode) => void;
   onExpandCollapseAll: (expand: boolean) => void;
-  // Use imported types
   treeSortKey: TreeSortKey;
   onTreeSortKeyChange: (key: TreeSortKey) => void;
   treeSortDirection: SortDirection;
   onTreeSortDirectionChange: (direction: SortDirection) => void;
 }
-
-const depthOptions = [
-  { id: "all", name: "All" },
-  { id: "1", name: "1" },
-  { id: "2", name: "2" },
-  { id: "3", name: "3" },
-  { id: "4", name: "4" },
-  { id: "5", name: "5" },
-];
 
 // Update options to match imported type
 const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
@@ -37,8 +30,9 @@ const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
 ];
 
 const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
-  viewMode,
-  onViewModeChange,
+  // Remove viewMode props from destructuring
+  // viewMode,
+  // onViewModeChange,
   onExpandCollapseAll,
   treeSortKey,
   onTreeSortKeyChange,
@@ -46,8 +40,8 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
   onTreeSortDirectionChange,
 }) => {
 
-  // Handler for depth change (placeholder)
-  const handleDepthChange = () => {};
+  // Remove unused handler
+  // const handleDepthChange = () => {};
 
   const toggleSortDirection = () => {
     onTreeSortDirectionChange(treeSortDirection === 'asc' ? 'desc' : 'asc');
@@ -82,64 +76,40 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
   };
 
   return (
-    <>
-      {/* View Mode Toggle Section */}
-      <div style={sectionStyle}>
-        <ViewModeSwitch
-          viewMode={viewMode}
-          onChange={onViewModeChange}
-          data-view-mode-switch
-        />
-      </div>
-
-      {/* Tree Controls Section - Only shown in Tree View Mode */}
-      {viewMode === 'tree' && (
-        <div style={sectionStyle}>
-          {/* Expand/Collapse Buttons */}
-          <button 
-            style={iconButtonStyle}
-            onClick={() => onExpandCollapseAll(true)}
-            title="Expand All"
-          >
-            <span>+</span>
-          </button>
-          <button 
-            style={iconButtonStyle}
-            onClick={() => onExpandCollapseAll(false)}
-            title="Collapse All"
-          >
-            <span>-</span>
-          </button>
-          
-          {/* Depth Select (unused for now) */}
-          {/* <StyledSelect
-            options={depthOptions}
-            value={"all"} // Use prop selectedDepth later
-            onChange={handleDepthChange}
-            variant="compact"
-            style={{ width: "60px" }}
-          /> */}
-
-          {/* Sort Controls */}
-          <StyledSelect
-            options={sortByKeyOptions}
-            value={treeSortKey}
-            onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
-            variant="compact"
-            style={selectStyle}
-          />
-          
-          {/* Restore Sort Direction Toggle Button */}
-          <button
-            style={iconButtonStyle}
-            onClick={toggleSortDirection} // Use the toggle handler
-            title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
-          >
-            {treeSortDirection === 'asc' ? '↑' : '↓'} 
-          </button>
-        </div>
-      )}
-    </>
+    // Return the div directly
+    <div style={sectionStyle}>
+      {/* Expand/Collapse Buttons */}
+      <button 
+        style={iconButtonStyle}
+        onClick={() => onExpandCollapseAll(true)}
+        title="Expand All"
+      >
+        <span>+</span>
+      </button>
+      <button 
+        style={iconButtonStyle}
+        onClick={() => onExpandCollapseAll(false)}
+        title="Collapse All"
+      >
+        <span>-</span>
+      </button>
+      
+      {/* Sort Controls */}
+      <StyledSelect
+        options={sortByKeyOptions}
+        value={treeSortKey}
+        onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
+        variant="compact"
+        style={selectStyle}
+      />
+      <button
+        style={iconButtonStyle}
+        onClick={toggleSortDirection} // Use the toggle handler
+        title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
+      >
+        {treeSortDirection === 'asc' ? '↑' : '↓'} 
+      </button>
+    </div>
   );
 };
 

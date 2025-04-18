@@ -32,8 +32,6 @@ import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerPersistence } from './usePlannerPersistence';
 
-type ViewMode = "accumulated" | "tree";
-
 // Define types for Tree View sorting and EXPORT them
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
 export type SortDirection = 'asc' | 'desc';
@@ -76,8 +74,6 @@ export const useFactoryPlanner = () => {
   // -------------------------------------------------------------
   
   const {
-    viewMode,
-    setViewMode,
     showExtensions,
     setShowExtensions,
     accumulateExtensions,
@@ -230,7 +226,6 @@ export const useFactoryPlanner = () => {
   return {
     dependencies,
     recipeSelections,
-    viewMode,
     items,
     selectedItem,
     selectedRecipe,
@@ -252,7 +247,6 @@ export const useFactoryPlanner = () => {
 
     setSelectedItem,
     setSelectedRecipe,
-    setViewMode,
     setExpandedNodes,
     setShowExtensions,
     setAccumulateExtensions,

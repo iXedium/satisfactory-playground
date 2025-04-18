@@ -1,16 +1,11 @@
 import React, { RefObject } from 'react';
-import { AccumulatedNode } from '../../utils/calculateAccumulatedFromTree';
 import { DependencyNode } from '../../types';
-import { AccumulatedResourceView } from "../../features/factory-planner/components";
 import TreeViewContainer from './TreeViewContainer';
 import { DependencyState } from '../../features/factory-planner/store/dependencySlice';
 import { Item } from '../../types';
 import { SortDirection, TreeSortKey } from '../../features/factory-planner/hooks/useFactoryPlanner';
 
-type ViewMode = "accumulated" | "tree";
-
 interface PlannerContentProps {
-  viewMode: ViewMode;
   treeViewRef: RefObject<HTMLDivElement | null>;
   dependencies: DependencyState;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -21,14 +16,14 @@ interface PlannerContentProps {
   machineMultiplierMap: Record<string, number>;
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
-  setExpandedNodes: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
+  setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   showExtensions: boolean;
   accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
-  handleNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
+  handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   nodeExtensionOverrides: Record<string, boolean>;
   handleToggleNodeExtensions: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
@@ -38,10 +33,9 @@ interface PlannerContentProps {
 }
 
 /**
- * Content container that renders either TreeView or AccumulatedView based on viewMode
+ * Content container that renders the TreeView
  */
 const PlannerContent: React.FC<PlannerContentProps> = ({
-  viewMode,
   treeViewRef,
   dependencies,
   handleTreeRecipeChange,
@@ -76,49 +70,31 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         ...containerStyle
       }}
     >
-      {viewMode === "tree" ? (
-        <TreeViewContainer
-          dependencies={dependencies}
-          handleTreeRecipeChange={handleTreeRecipeChange}
-          handleExcessChange={handleExcessChange}
-          excessMap={excessMap}
-          machineCountMap={machineCountMap}
-          handleMachineCountChange={handleMachineCountChange}
-          machineMultiplierMap={machineMultiplierMap}
-          handleMachineMultiplierChange={handleMachineMultiplierChange}
-          expandedNodes={expandedNodes}
-          setExpandedNodes={setExpandedNodes}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
-          showMachines={showMachines}
-          showMachineMultiplier={showMachineMultiplier}
-          handleDeleteTree={handleDeleteTree}
-          handleImportNode={handleImportNode}
-          handleNodeUpdate={handleNodeUpdate}
-          itemsMap={itemsMap}
-          treeSortKey={treeSortKey}
-          treeSortDirection={treeSortDirection}
-        />
-      ) : (
-        <AccumulatedResourceView
-          onRecipeChange={handleTreeRecipeChange}
-          onExcessChange={handleExcessChange}
-          excessMap={excessMap}
-          machineCountMap={machineCountMap}
-          onMachineCountChange={handleMachineCountChange}
-          machineMultiplierMap={machineMultiplierMap}
-          onMachineMultiplierChange={handleMachineMultiplierChange}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
-          showMachineSection={showMachines}
-          showMachineMultiplier={showMachineMultiplier}
-          onDeleteTree={handleDeleteTree}
-          accumulatedDependencies={dependencies.accumulatedDependencies}
-          onImportNode={handleImportNode}
-          nodeExtensionOverrides={nodeExtensionOverrides}
-          onToggleNodeExtensions={handleToggleNodeExtensions}
-        />
-      )}
+      <TreeViewContainer
+        dependencies={dependencies}
+        handleTreeRecipeChange={handleTreeRecipeChange}
+        handleExcessChange={handleExcessChange}
+        excessMap={excessMap}
+        machineCountMap={machineCountMap}
+        handleMachineCountChange={handleMachineCountChange}
+        machineMultiplierMap={machineMultiplierMap}
+        handleMachineMultiplierChange={handleMachineMultiplierChange}
+        expandedNodes={expandedNodes}
+        setExpandedNodes={setExpandedNodes}
+        showExtensions={showExtensions}
+        accumulateExtensions={accumulateExtensions}
+        showMachines={showMachines}
+        showMachineMultiplier={showMachineMultiplier}
+        handleDeleteTree={handleDeleteTree}
+        handleImportNode={handleImportNode}
+        handleNodeUpdate={handleNodeUpdate}
+        itemsMap={itemsMap}
+        treeSortKey={treeSortKey}
+        treeSortDirection={treeSortDirection}
+        nodeExtensionOverrides={nodeExtensionOverrides}
+        handleToggleNodeExtensions={handleToggleNodeExtensions}
+        containerStyle={{}}
+      />
     </div>
   );
 };

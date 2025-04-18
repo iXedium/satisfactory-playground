@@ -12,7 +12,6 @@ const FactoryPlanner: React.FC = () => {
   const {
     // State
     dependencies,
-    viewMode,
     items,
     selectedItem,
     selectedRecipe,
@@ -37,7 +36,6 @@ const FactoryPlanner: React.FC = () => {
     // Setters
     setSelectedItem,
     setSelectedRecipe,
-    setViewMode,
     setExpandedNodes,
     setShowExtensions,
     setAccumulateExtensions,
@@ -83,8 +81,6 @@ const FactoryPlanner: React.FC = () => {
           selectedRecipe={selectedRecipe}
           onRecipeSelect={setSelectedRecipe}
           onCalculate={handleCalculate}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           onExpandCollapseAll={handleExpandCollapseAll}
           showExtensions={showExtensions}
           onShowExtensionsChange={setShowExtensions}
@@ -111,7 +107,6 @@ const FactoryPlanner: React.FC = () => {
       commandBarHeight={commandBarHeight}
       content={
         <PlannerContent
-          viewMode={viewMode}
           treeViewRef={treeViewRef}
           dependencies={dependencies}
           handleTreeRecipeChange={handleTreeRecipeChange}
