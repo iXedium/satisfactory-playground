@@ -43,6 +43,38 @@ export const useFactoryPlanner = () => {
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
   
+  // --- Define generateTreeId and createNewTreeStructure FIRST --- 
+  const generateTreeId = useCallback((itemId: string): string => {
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+    return `tree-${itemId}-${timestamp}-${randomSuffix}`;
+  }, []);
+
+  const createNewTreeStructure = useCallback(async (
+    itemId: string, 
+    amount: number, 
+    treeId: string, 
+    recipeId: string | null, 
+    isAutoImportRoot: boolean | undefined,
+    originalDepth: number | undefined,
+    isInitiallyByproductRoot: boolean | undefined,
+    recipeSelections: Record<string, string>, 
+    allTrees: Record<string, DependencyNode>
+  ): Promise<DependencyNode | null> => {
+      const recipe = recipeId ? await getRecipeById(recipeId) : await getRecipeByOutput(itemId);
+      if (!recipe) {
+        const basicNode: DependencyNode = { id: itemId, amount: amount, uniqueId: treeId, children: [], isRoot: isAutoImportRoot, isByproduct: false, depth: 0, originalDepth: originalDepth ?? 0 };
+        return basicNode;
+      }
+      try {
+        const tree = await calculateDependencyTree(itemId, amount, recipe.id, recipeSelections, 0, [], treeId, {}, {}, allTrees );
+        if (!tree) return null;
+        tree.uniqueId = treeId; tree.recipe = recipe; tree.isRoot = true; tree.isByproduct = false; tree.depth = 0; tree.originalDepth = originalDepth ?? 0;
+        return tree;
+      } catch (error) { console.error(`Error in local createNewTreeStructure for ${itemId}:`, error); return null; }
+  }, []);
+  // -------------------------------------------------------------
+  
   const {
     viewMode,
     setViewMode,
@@ -110,11 +142,10 @@ export const useFactoryPlanner = () => {
     selectedRecipe,
     recipeSelections,
     dependencies,
-    excessMap,
+    setExcessMap,
     updateRecentItems,
     setMachineCountMap,
     setMachineMultiplierMap,
-    setExcessMap,
     autoImport,
   });
   
@@ -142,9 +173,8 @@ export const useFactoryPlanner = () => {
   const {
     handleTreeRecipeChange,
   } = usePlannerRecipeManagement({
-    dependencies,
-    recipeSelections,
-    excessMap,
+    autoImportEnabled: autoImport,
+    excessMap: excessMap,
   });
   
   const {
@@ -162,6 +192,13 @@ export const useFactoryPlanner = () => {
   } = usePlannerExcessHandling({
     dependencies,
     setExcessMap,
+    generateTreeId,
+    createNewTreeStructure: async (itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth, isInitiallyByproductRoot) => {
+      return createNewTreeStructure(
+        itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth, 
+        isInitiallyByproductRoot, recipeSelections, dependencies.dependencyTrees
+      );
+    }
   });
   
   usePlannerDebugTools({
@@ -239,7 +276,6 @@ export const useFactoryPlanner = () => {
     clearSavedData,
     handleToggleNodeExtensions,
     handleUnimport,
-    handleCreateNewTree,
     handleTreeRecipeChange,
   };
 };

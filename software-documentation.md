@@ -55,4 +55,17 @@ This document provides documentation for the core state management logic of the 
   - `createNewTreeStructure`: Helper function (exported) used by thunks to calculate the basic structure of a new tree without dispatching.
   - `generateTreeId`: Generates unique IDs for new trees.
 
+### `src/features/factory-planner/hooks/usePlannerRecipeManagement.ts`
+
+- **Purpose:** Provides the `handleTreeRecipeChange` function for managing recipe updates on nodes within the dependency trees.
+- **Key Logic (`handleTreeRecipeChange`):**
+  - Finds the node and its tree.
+  - Stores the `targetTreeId`s of any imported children the node currently has.
+  - Fetches the new recipe details.
+  - Dispatches `setRecipeSelection` to update the global recipe choice for that node.
+  - Recalculates *only the children* of the target node based on the new recipe using `calculateDependencyTree`.
+  - Dispatches `updateNodeProperties` to update the target node with the new recipe and recalculated children.
+  - **If `autoImport` is enabled:** Dispatches `autoImportNodeChildrenThunk` for the target node to handle creating/linking roots for the *new* children.
+  - Dispatches `requestDependencyCheckThunk` for each *old* import target to ensure those roots are recalculated or removed if no longer needed.
+
 *(Add documentation for more files/functions as needed)* 
