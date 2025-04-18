@@ -102,7 +102,8 @@ const AccumulatedResourceView: React.FC<RefactoredAccumulatedViewProps> = ({
     const parentResult = findParentNode(dependenciesState.dependencyTrees[Object.keys(dependenciesState.dependencyTrees)[0]], nodeId);
     if (!parentResult) return;
     
-    const parentNode = parentResult.node;
+    // Use parentResult directly, it's the parent node
+    const parentNode = parentResult;
     
     // Find the group that contains the parent node
     const targetGroup = groupedItems.find(group => 
