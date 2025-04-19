@@ -23,6 +23,7 @@ interface TreeNodeProps {
   isRoot?: boolean;
   onDelete?: (treeId: string) => void;
   onImport?: (nodeId: string) => void;
+  onUnimport?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
@@ -46,6 +47,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   isRoot = false,
   onDelete,
   onImport,
+  onUnimport,
   onNodeUpdate,
   treeSortKey,
   treeSortDirection
@@ -140,6 +142,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         isRoot={false}
         onDelete={onDelete}
         onImport={onImport}
+        onUnimport={onUnimport}
         onNodeUpdate={onNodeUpdate}
         treeSortKey={treeSortKey}
         treeSortDirection={treeSortDirection}
@@ -209,6 +212,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             showMachineMultiplier={showMachineMultiplier}
             onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
             onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
+            onUnimport={!isRoot && onUnimport ? () => onUnimport(node.uniqueId) : undefined}
           />
         </div>
       </div>

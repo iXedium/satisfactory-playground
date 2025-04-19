@@ -23,6 +23,7 @@ interface PlannerContentProps {
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
+  handleUnimportNode?: (nodeId: string) => void;
   handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   nodeExtensionOverrides: Record<string, boolean>;
   handleToggleNodeExtensions: (nodeId: string) => void;
@@ -53,6 +54,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
   showMachineMultiplier,
   handleDeleteTree,
   handleImportNode,
+  handleUnimportNode,
   handleNodeUpdate,
   nodeExtensionOverrides,
   handleToggleNodeExtensions,
@@ -87,6 +89,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         showMachineMultiplier={showMachineMultiplier}
         handleDeleteTree={handleDeleteTree}
         handleImportNode={handleImportNode}
+        handleUnimportNode={handleUnimportNode}
         handleNodeUpdate={handleNodeUpdate}
         itemsMap={itemsMap}
         treeSortKey={treeSortKey}

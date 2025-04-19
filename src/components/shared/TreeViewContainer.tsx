@@ -25,6 +25,7 @@ interface TreeViewContainerProps {
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
+  handleUnimportNode?: (nodeId: string) => void;
   handleNodeUpdate: (nodeId: string, updatedNode: Partial<any>) => void;
   nodeExtensionOverrides?: Record<string, boolean>;
   handleToggleNodeExtensions?: (nodeId: string) => void;
@@ -40,7 +41,7 @@ interface TreeViewContainerProps {
  * Container component for rendering the tree view of dependency trees
  */
 const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeViewContainerProps> = (
-  { dependencies, handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection },
+  { dependencies, handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection },
   ref) => {
 
   // --- Get trees array --- 
@@ -110,6 +111,7 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
             isRoot={true}
             onDelete={() => handleDeleteTree(treeId)}
             onImportNode={handleImportNode}
+            onUnimportNode={handleUnimportNode}
             onNodeUpdate={handleNodeUpdate}
             treeSortKey={treeSortKey}
             treeSortDirection={treeSortDirection}

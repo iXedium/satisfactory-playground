@@ -8,6 +8,7 @@ interface ItemNodeButtonsProps {
   itemId: string;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
+  onUnimport?: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
 }
@@ -18,6 +19,7 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
   itemId,
   onDelete,
   onImport,
+  onUnimport,
   containerStyle,
   buttonStyle: customButtonStyle,
 }) => {
@@ -78,11 +80,15 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
       )}
       
       {/* Import/Revert import button for child nodes */}
-      {!isRoot && onImport && (
+      {!isRoot && (onImport || onUnimport) && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onImport(itemId);
+            if (isImport) {
+              onUnimport?.(itemId);
+            } else {
+              onImport?.(itemId);
+            }
           }}
           style={{
             ...buttonBaseStyle,

@@ -31,6 +31,7 @@ import { usePlannerRecipeManagement } from './usePlannerRecipeManagement';
 import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerPersistence } from './usePlannerPersistence';
+import { unimportNodeThunk } from '../store/importExportLogic';
 
 // Define types for Tree View sorting and EXPORT them
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
@@ -205,6 +206,13 @@ export const useFactoryPlanner = () => {
   
   usePlannerPersistence({ dependencies, recipeSelections });
   
+  // --- Define Unimport Handler --- 
+  const handleUnimportNode = useCallback((nodeId: string) => {
+    // Dispatch the thunk (implementation pending)
+    dispatch(unimportNodeThunk(nodeId)); 
+  }, [dispatch]);
+  // -------------------------------
+
   useEffect(() => {
     try {
       const savedDependencies = localStorage.getItem('savedDependencies');
@@ -266,10 +274,10 @@ export const useFactoryPlanner = () => {
     handleExpandCollapseAll,
     handleDeleteTree,
     handleImportNode,
+    handleUnimportNode,
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,
-    handleUnimport,
     handleTreeRecipeChange,
   };
 };

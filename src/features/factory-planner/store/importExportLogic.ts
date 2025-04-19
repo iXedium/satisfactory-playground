@@ -20,10 +20,12 @@ import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulate
 import { 
   AccumulatedNode 
 } from "../../../utils/calculateAccumulatedFromTree";
+import { findNodeConsumers, ConsumerInfo } from '../../../utils/consumptionUtils';
 
 // Store the last known recipes for nodes that were converted to byproduct
 // This will be used to restore the recipe when converting back to normal
-const nodeRecipeCache: Record<string, Recipe> = {};
+// Use undefined instead of null for consistency with DependencyNode type
+const nodeRecipeCache: Record<string, Recipe | undefined> = {};
 
 // --- Define the expected Slice State Shape locally --- 
 interface ImportExportDependencyState {
@@ -134,7 +136,7 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
       calculatedNewTree.depth = 0;
       // Ensure recipe is attached if calculateDependencyTree found it
       if (!calculatedNewTree.recipe) {
-          const rootRecipe = await getRecipeByOutput(selectedRecipeId);
+      const rootRecipe = await getRecipeByOutput(selectedRecipeId);
           calculatedNewTree.recipe = rootRecipe;
       } // Might need availableRecipes too?
 
@@ -191,7 +193,7 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
 
       return { mainTreeId, newRootIds: finalRootIds };
 
-    } catch (error) {
+              } catch (error) {
       // Still log top-level errors
       console.error("[Thunk/Calc&Import V2] Error during simplified calculateAndAutoImportThunk:", error);
       // Return minimal info on error
@@ -210,41 +212,68 @@ export const destroyNodeRecursiveThunk = createAsyncThunk<
 >(
   'dependency/destroyNodeRecursive',
   async (nodeIdToDestroy, { getState, dispatch }) => {
-    const state = getState();
-    const nodeToDestroy = state.dependencies.dependencyTrees[nodeIdToDestroy];
+    const stateBeforeDelete = getState();
+    const allTrees = stateBeforeDelete.dependencies.dependencyTrees;
+    const nodeToDestroy = allTrees[nodeIdToDestroy];
 
     if (!nodeToDestroy) {
+      // console.log(`[Thunk/Destroy V2] Node ${nodeIdToDestroy} not found. Skipping.`);
       return;
     }
 
-    // Store children *before* removing the node
-    const childrenToCleanup = [...(nodeToDestroy.children || [])];
+    // console.log(`[Thunk/Destroy V2] Starting destruction for ${nodeIdToDestroy}`);
 
-    // Dispatch synchronous action to remove the node from state
+    // 1. Find nodes importing from this node BEFORE deleting it
+    // console.log(`[Thunk/Destroy V2] Finding nodes importing from ${nodeIdToDestroy}...`);
+    const nodesToUnimport = await findNodeConsumers(nodeIdToDestroy, allTrees); 
+    // console.log(`[Thunk/Destroy V2] Found ${nodesToUnimport.length} nodes to unimport.`);
+
+    // 2. Store original children BEFORE deleting
+    const originalChildren = [...(nodeToDestroy.children || [])];
+    // console.log(`[Thunk/Destroy V2] Stored ${originalChildren.length} original children.`);
+
+    // 3. Trigger UNIMPORT for nodes that were importing *FROM* the node being deleted
+    //    Do this BEFORE deleting the node so the unimport logic can access its recipe.
+    // console.log(`[Thunk/Destroy V2] Dispatching unimport for ${nodesToUnimport.length} consumers...`);
+    const unimportPromises = nodesToUnimport.map(consumerInfo => 
+        dispatch(unimportNodeThunk(consumerInfo.consumerNodeId))
+    );
+    // Wait for unimports to potentially finish their state updates? Might not be strictly necessary
+    // await Promise.all(unimportPromises); 
+    // Let's try dispatching without waiting first.
+
+    // 4. Dispatch synchronous action to remove the node from state
+    // console.log(`[Thunk/Destroy V2] Dispatching removeNodeAction for ${nodeIdToDestroy}.`);
     dispatch(removeNodeAction(nodeIdToDestroy));
-    // TODO: Consider cleaning up accumulatedDependencies entry as well?
 
-    // Trigger dependency checks for its former children
-    for (const childNode of childrenToCleanup) {
-      // Ensure childNode has a valid uniqueId before dispatching check
+    // 5. Trigger dependency checks for the ORIGINAL children of the now-deleted node
+    // console.log(`[Thunk/Destroy V2] Triggering dependency checks for ${originalChildren.length} original children...`);
+    for (const childNode of originalChildren) {
       if (childNode && childNode.uniqueId) {
-         // --- FIX: Determine the actual root node to check --- 
-         let nodeIdToActuallyCheck = childNode.uniqueId;
-         const importRef = getImportReference(childNode);
-         if (importRef?.targetTreeId) {
-             nodeIdToActuallyCheck = importRef.targetTreeId;
-         }
-         // Check if the target is a root node before dispatching
-         const targetNodeState = getState().dependencies.dependencyTrees[nodeIdToActuallyCheck];
-         if (targetNodeState && targetNodeState.isRoot) {
-             await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: nodeIdToDestroy }));
-         }
-         // ---------------------------------------------------
+          // Determine the actual root node to check (could be the child itself or its import target)
+          let nodeIdToActuallyCheck = childNode.uniqueId;
+          const importRef = getImportReference(childNode); // Check if the child was an import
+          if (importRef?.targetTreeId) { 
+              nodeIdToActuallyCheck = importRef.targetTreeId;
+              // console.log(`[Thunk/Destroy V2] Original child ${childNode.uniqueId} is an import. Checking its target root ${nodeIdToActuallyCheck}.`);
+          }
+          
+          // Check if the target root still exists in the *current* state (after deletion)
+          const targetNodeState = getState().dependencies.dependencyTrees[nodeIdToActuallyCheck];
+          if (targetNodeState && targetNodeState.isRoot) {
+              // console.log(`[Thunk/Destroy V2] Dispatching requestDependencyCheckThunk for original child's target: ${nodeIdToActuallyCheck}`);
+              // Use await here as these checks might trigger further destructions/unimports
+              await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: nodeIdToDestroy }));
+      } else {
+              // console.log(`[Thunk/Destroy V2] Target ${nodeIdToActuallyCheck} for original child ${childNode.uniqueId} no longer exists or isn't a root. Skipping check.`);
+      }
       } else {
          // Still log warnings for unexpected data
-         console.warn(`[Thunk/Destroy] Invalid child node structure found while cleaning up ${nodeIdToDestroy}. Skipping check.`);
-      }
+         console.warn(`[Thunk/Destroy V2] Invalid original child node structure found while cleaning up ${nodeIdToDestroy}. Skipping check.`);
     }
+    }
+    
+    // console.log(`[Thunk/Destroy V2] Finished destroying node: ${nodeIdToDestroy}`);
   }
 );
 
@@ -278,31 +307,31 @@ export const requestDependencyCheckThunk = createAsyncThunk<
     // 2. Check for other importers
     if (!isStillNeeded) {
       for (const tree of Object.values(state.dependencies.dependencyTrees)) {
-         const findImporter = (node: DependencyNode): boolean => {
+        const findImporter = (node: DependencyNode): boolean => {
            // Skip the consumer that just disconnected this specific node instance
            // if (node.uniqueId === disconnectedConsumerId) return false; 
            // NOTE: This simple check might be insufficient if multiple nodes consume the same root
 
-           const importRef = getImportReference(node);
-           if (importRef?.targetTreeId === nodeIdToCheck) {
+          const importRef = getImportReference(node);
+          if (importRef?.targetTreeId === nodeIdToCheck) {
               // Check if this importer is the one that triggered the check
               // This check might be too simple - consider if the tree ID matters?
               // Let's assume for now any import link keeps it alive, besides the one just cut.
               // We need a more robust way to track consumers if this becomes an issue.
-             return true; // Found another importer
-           }
-           if (node.children) {
-             for (const child of node.children) {
-               if (findImporter(child)) return true;
-             }
-           }
-           return false;
-         };
-         if (findImporter(tree)) {
-           isStillNeeded = true;
-           break; // Stop searching once one importer is found
-         }
-       }
+            return true; // Found another importer
+          }
+          if (node.children) {
+            for (const child of node.children) {
+              if (findImporter(child)) return true;
+            }
+          }
+          return false;
+        };
+        if (findImporter(tree)) {
+          isStillNeeded = true;
+          break; // Stop searching once one importer is found
+        }
+      }
        if (!isStillNeeded) {
         //
        }
@@ -340,7 +369,7 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
       
       if (!recipeToUse) {
         // Fall back to default recipe if no cached recipe available
-        const defaultRecipe = await getRecipeByOutput(targetNode.id);
+      const defaultRecipe = await getRecipeByOutput(targetNode.id);
         if (defaultRecipe) {
           recipeToUse = defaultRecipe;
         }
@@ -415,10 +444,11 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
     } 
     // --- Scenario 2: Convert Normal to Byproduct --- 
     else if (!targetNode.isByproduct && targetNode.amount < 0) {
-
       // Store the recipe in the cache before clearing it
       if (targetNode.recipe) {
-        nodeRecipeCache[targetTreeId] = targetNode.recipe;
+        // console.log(`[Thunk/Convert] Caching recipe ${targetNode.recipe.id} for ${targetTreeId} for potential future B->N conversion.`);
+        // Ensure undefined is stored if recipe is undefined (though check prevents this)
+        nodeRecipeCache[targetTreeId] = targetNode.recipe || undefined; 
       }
 
       // Store original children *before* clearing them
@@ -629,7 +659,7 @@ export const handleNodeUnimportReducer = (
       shouldImport: false
     }
   });
-};
+}; 
 
 // --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN --- 
 export const autoImportNodeChildrenThunk = createAsyncThunk<
@@ -935,7 +965,8 @@ export const setNodeAsImportThunk = createAsyncThunk<
       isImport: true,
       children: [],
       recipe: undefined,
-      amount: importingAmount // Ensure the child node's amount is also set correctly here!
+      amount: importingAmount, // Ensure the child node's amount is also set correctly here!
+      childrenVisible: true, // <<< ADD THIS LINE: Ensure children are visible after unimport
     };
     
     try {
@@ -961,3 +992,164 @@ export const setNodeAsImportThunk = createAsyncThunk<
     }
   }
 ); 
+
+// --- HELPER: Find Node Anywhere in Trees ---
+const findNodeInAnyTree = (trees: Record<string, DependencyNode>, nodeId: string): { node: DependencyNode; parentTreeId: string } | null => {
+  for (const treeId in trees) {
+    const tree = trees[treeId];
+    const foundNode = findNodeById(tree, nodeId);
+    if (foundNode) {
+      return { node: foundNode, parentTreeId: treeId };
+    }
+  }
+  return null;
+};
+
+// --- THUNK TO UNIMPORT A NODE --- 
+export const unimportNodeThunk = createAsyncThunk<
+  void, 
+  string, // nodeIdToUnimport
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/unimportNode',
+  async (nodeIdToUnimport, { getState, dispatch }) => {
+    // console.log(`[Thunk/Unimport] Request to unimport node: ${nodeIdToUnimport}`);
+    const state = getState();
+    const trees = state.dependencies.dependencyTrees;
+    const recipeSelections = state.recipeSelections.selections;
+    
+    // 1. Find the node to unimport and its context
+    const nodeInfo = findNodeInAnyTree(trees, nodeIdToUnimport);
+    if (!nodeInfo) {
+      console.warn(`[Thunk/Unimport] Node ${nodeIdToUnimport} not found.`);
+      return;
+    }
+    const { node: nodeToUnimport, parentTreeId } = nodeInfo;
+    
+    // 2. Verify it's actually an import
+    const importRef = getImportReference(nodeToUnimport);
+    if (!importRef || !importRef.targetTreeId) {
+      // console.log(`[Thunk/Unimport] Node ${nodeIdToUnimport} is not an import. Skipping.`);
+      return;
+    }
+    const targetTreeId = importRef.targetTreeId;
+    const targetNode = trees[targetTreeId]; // Get the target node state
+
+    if (!targetNode) {
+      console.error(`[Thunk/Unimport] Target node ${targetTreeId} not found.`);
+      return;
+    }
+
+    // 3. Determine the recipe to restore FROM THE TARGET NODE
+    let recipeToRestore: Recipe | undefined = undefined; 
+    if (targetNode.recipe) { 
+      recipeToRestore = targetNode.recipe;
+      // console.log(`[Thunk/Unimport] Restoring recipe ${recipeToRestore.id} from target ${targetTreeId}`);
+    } else {
+      // Fallback: If target had no recipe (should be rare for normal nodes), 
+      // use default for the *unimporting* node's item ID as a safety net.
+      console.warn(`[Thunk/Unimport] Target node ${targetTreeId} had no recipe. Falling back to default for item ${nodeToUnimport.id}.`);
+      try {
+        const fetchedRecipe = await getRecipeByOutput(nodeToUnimport.id);
+        recipeToRestore = fetchedRecipe || undefined;
+        if (!recipeToRestore) {
+           console.error(`[Thunk/Unimport] Fallback failed: No default recipe found for item ${nodeToUnimport.id}. Cannot restore chain.`);
+           return; 
+        }
+      } catch (error) {
+        console.error(`[Thunk/Unimport] Error fetching fallback default recipe for ${nodeToUnimport.id}:`, error);
+        return;
+      }
+    }
+
+    // 4. Calculate new children based on restored recipe and current amount
+    let newChildren: DependencyNode[] = [];
+    if (recipeToRestore) {
+      try {
+        // <<< ADD LOGGING HERE >>>
+        console.log(`[Thunk/Unimport DEBUG] Calculating children for ${nodeIdToUnimport} (Item: ${nodeToUnimport.id})`);
+        console.log(`  - Amount: ${nodeToUnimport.amount}`);
+        console.log(`  - Depth: ${nodeToUnimport.depth ?? 0}`);
+        console.log(`  - Recipe ID: ${recipeToRestore.id}`);
+        // console.log(`  - Recipe Selections:`, recipeSelections); // Potentially verbose
+        // console.log(`  - Trees Context:`, trees); // Very verbose
+        
+        const calculatedNode = await calculateDependencyTree(
+          nodeToUnimport.id,
+          nodeToUnimport.amount, 
+          recipeToRestore.id,
+          recipeSelections, 
+          nodeToUnimport.depth ?? 0, 
+          [], 
+          nodeToUnimport.uniqueId, 
+          {}, 
+          {}, 
+          trees 
+        );
+        newChildren = calculatedNode?.children || [];
+        
+        // <<< ADD LOGGING HERE >>>
+        console.log(`[Thunk/Unimport DEBUG] Calculation Result for ${nodeIdToUnimport}:`);
+        console.log(`  - Calculated Node:`, calculatedNode); // Log the whole node
+        console.log(`  - New Children Count: ${newChildren.length}`);
+        if (newChildren.length > 0) {
+           console.log(`  - First Child:`, newChildren[0]);
+        }
+        // <<< END LOGGING >>>
+
+      } catch (error) {
+        console.error(`[Thunk/Unimport] Error calculating children for ${nodeIdToUnimport}:`, error);
+      }
+    }
+
+    // 5. Dispatch update to restore the node
+    const updatePayload: Partial<DependencyNode> = {
+      isImport: false,
+      importReference: undefined,
+      recipe: recipeToRestore, // Use the determined recipe
+      children: newChildren,
+      childrenVisible: true, // <<< ADD THIS LINE: Ensure children are visible after unimport
+    };
+    // console.log(`[Thunk/Unimport] Dispatching updateNodeProperties for ${nodeIdToUnimport}`);
+    await dispatch(updateNodeProperties({ nodeId: nodeIdToUnimport, updatedNode: updatePayload }));
+
+    // <<< ADD LOGGING HERE >>>
+    const stateAfterUpdate = getState();
+    const updatedNodeInfo = findNodeInAnyTree(stateAfterUpdate.dependencies.dependencyTrees, nodeIdToUnimport);
+    console.log(`[Thunk/Unimport DEBUG] State after updateNodeProperties for ${nodeIdToUnimport}:`);
+    if (updatedNodeInfo) {
+        console.log(`  - Found Node:`, updatedNodeInfo.node);
+        console.log(`  - Node Children Count: ${updatedNodeInfo.node.children?.length ?? 0}`);
+        if ((updatedNodeInfo.node.children?.length ?? 0) > 0) {
+            console.log(`  - First Child in State:`, updatedNodeInfo.node.children?.[0]);
+        }
+    } else {
+        console.log(`  - Node ${nodeIdToUnimport} NOT FOUND in state after update!`);
+    }
+    // <<< END LOGGING >>>
+
+    // 6. Trigger amount recalculation for the *target* tree
+    await dispatch(recalculateAndUpdateRootAmountThunk({ 
+        rootNodeId: targetTreeId, 
+        externalDemandChange: undefined 
+    }));
+    
+    // *** NEW STEP 6b: Trigger dependency check for the target tree ***
+    await dispatch(requestDependencyCheckThunk({ 
+        nodeIdToCheck: targetTreeId, 
+        disconnectedConsumerId: nodeIdToUnimport 
+    }));
+
+    // 7. Trigger auto-import for the children of the *now unimported* node (REMOVED)
+    /*
+    if (newChildren.length > 0) {
+      // console.log(`[Thunk/Unimport] Triggering auto-import for new children of ${nodeIdToUnimport}`);
+      await dispatch(autoImportNodeChildrenThunk(nodeIdToUnimport));
+    }
+    */
+    
+    // console.log(`[Thunk/Unimport] Finished unimporting node: ${nodeIdToUnimport}`);
+  }
+); 
+
+// --- THUNK TO SET A NODE AS AN IMPORT AND UPDATE TARGET AMOUNT ---

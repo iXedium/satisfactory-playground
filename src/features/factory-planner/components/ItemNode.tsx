@@ -33,6 +33,7 @@ interface ItemNodeProps {
   showMachineMultiplier?: boolean;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
+  onUnimport?: (nodeId: string) => void;
 }
 
 interface Machine {
@@ -69,6 +70,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   showMachineMultiplier = false,
   onDelete,
   onImport,
+  onUnimport,
 }) => {
   // Log received props for byproducts
   if (isByproduct) {
@@ -251,9 +253,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       <ItemNodeButtons
         isRoot={isRoot}
         isImport={isImport}
-        itemId={itemId}
+        itemId={uniqueId}
         onDelete={onDelete}
         onImport={onImport}
+        onUnimport={onUnimport}
       />
 
       {/* Item Section */}

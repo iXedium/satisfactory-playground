@@ -6,7 +6,8 @@ import { DependencyState } from '../store/dependencySlice';
 import { 
   importNodeAction, 
   unimportNode, 
-  checkAndConvertNodeTypeThunk
+  checkAndConvertNodeTypeThunk,
+  autoImportNodeChildrenThunk
 } from '../store';
 import { findNodeById } from '../../../utils';
 import { hasImportReference } from '../../../utils/nodeReferenceUtils';
@@ -54,7 +55,14 @@ export const usePlannerImportExport = ({
       shouldImport: true
     }));
 
-    // --- Trigger Node Type Check for ALL roots --- 
+    // Trigger children auto-import for the target tree AFTER the import action
+    // Use setTimeout to allow state update from importNodeAction
+    setTimeout(() => {
+      // console.log(`[IMPORT] Triggering auto-import for children of target: ${targetTreeId}`);
+      dispatch(autoImportNodeChildrenThunk(targetTreeId));
+    }, 0); // 0ms timeout queues it for the next event loop tick
+
+    // --- Trigger Node Type Check for ALL roots (Keep this, might be needed after amount changes) --- 
     setTimeout(() => {
       const currentState = dependencies; // Use closure state
       Object.values(currentState.dependencyTrees).forEach(tree => {
@@ -62,7 +70,7 @@ export const usePlannerImportExport = ({
               dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
           }
       });
-    }, 10); 
+    }, 10); // Keep slightly longer delay maybe?
     // ---------------------------------------------
 
   }, [dispatch, dependencies.dependencyTrees]);

@@ -55,6 +55,7 @@ const FactoryPlanner: React.FC = () => {
     handleExpandCollapseAll,
     handleDeleteTree,
     handleImportNode,
+    handleUnimportNode,
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions
@@ -124,6 +125,7 @@ const FactoryPlanner: React.FC = () => {
           showMachineMultiplier={showMachineMultiplier}
           handleDeleteTree={handleDeleteTree}
           handleImportNode={handleImportNode}
+          handleUnimportNode={handleUnimportNode}
           handleNodeUpdate={handleNodeUpdate}
           nodeExtensionOverrides={nodeExtensionOverrides}
           handleToggleNodeExtensions={handleToggleNodeExtensions}

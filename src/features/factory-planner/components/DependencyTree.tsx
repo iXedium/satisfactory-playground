@@ -20,6 +20,7 @@ export interface DependencyTreeProps {
   isRoot: boolean;
   onDelete?: (treeId: string) => void;
   onImportNode?: (nodeId: string) => void;
+  onUnimportNode?: (nodeId: string) => void;
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
@@ -42,6 +43,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   isRoot,
   onDelete,
   onImportNode,
+  onUnimportNode,
   onNodeUpdate,
   treeSortKey,
   treeSortDirection
@@ -73,6 +75,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         isRoot={isRoot}
         onDelete={isRoot && onDelete ? onDelete : undefined}
         onImport={onImportNode}
+        onUnimport={onUnimportNode}
         onNodeUpdate={onNodeUpdate}
         showMachineMultiplier={showMachineMultiplier}
         treeSortKey={treeSortKey}
