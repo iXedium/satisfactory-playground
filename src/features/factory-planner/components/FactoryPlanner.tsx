@@ -3,6 +3,7 @@ import CommandBar from "../../../components/CommandBar";
 import { useFactoryPlanner, TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
 import FactoryPlannerLayout from "../../../components/shared/FactoryPlannerLayout";
 import PlannerContent from "../../../components/shared/PlannerContent";
+import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 
@@ -66,6 +67,10 @@ const FactoryPlanner: React.FC = () => {
     handleToggleNodeExtensions
   } = useFactoryPlanner();
   
+  // --- State for Sidebar Visibility ---
+  const [isSummaryVisible, setIsSummaryVisible] = useState(false);
+  // ---------------------------------
+
   // --- State for Manual Tree Order (Load from Local Storage) ---
   const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
     try {
@@ -97,6 +102,76 @@ const FactoryPlanner: React.FC = () => {
       setCommandBarHeight(commandBarRef.current.offsetHeight);
     }
   }, [isAddItemCollapsed]);
+
+  // --- Item Summary Calculation (v4 using Category) ---
+  const itemSummaryData = useMemo(() => {
+    // Now uses producedItemIds from the outer scope
+    console.log("Recalculating Item Summary (v4 using Category)...");
+    
+    // --- Pass 1: Collect all unique item IDs --- 
+    const allItemIds = new Set<string>();
+    const collectItemIds = (node: DependencyNode) => {
+      allItemIds.add(node.id);
+      if (node.children) node.children.forEach(collectItemIds);
+      if (node.originalChildren) node.originalChildren.forEach(collectItemIds);
+    };
+    Object.values(dependencies.dependencyTrees).forEach(tree => {
+      if (tree) collectItemIds(tree);
+    });
+    // -------------------------------------------
+
+    // --- Initialize Data Map with defaults and category ---
+    const itemDataMap: Record<string, { totalRate: number, category: string, hasByproductSource: boolean }> = {};
+    allItemIds.forEach(id => {
+      // Get category from itemsMap (available via useFactoryPlanner)
+      const category = itemsMap[id]?.category || 'unknown'; 
+      itemDataMap[id] = {
+        totalRate: 0,
+        category: category, // Store the actual category
+        hasByproductSource: false,
+      };
+    });
+    // ---------------------------------------------------
+
+    // --- Pass 2: Accumulate rates, skipping imports, tracking byproducts ---
+    const accumulateRates = (node: DependencyNode) => {
+      const isImportNode = node.isImport || node.importReference;
+
+      if (!isImportNode) {
+        const nodeExcess = excessMap[node.uniqueId] || 0;
+        const currentAmount = (node.amount || 0) + nodeExcess;
+        
+        itemDataMap[node.id].totalRate += currentAmount;
+        
+        if (node.isByproduct) {
+          itemDataMap[node.id].hasByproductSource = true;
+        }
+      }
+
+      if (node.children) {
+        node.children.forEach(accumulateRates);
+      }
+    };
+    Object.values(dependencies.dependencyTrees).forEach(tree => {
+      if (tree) accumulateRates(tree);
+    });
+    // -------------------------------------------------------------------
+
+    console.log("Item Data Map (After Accumulation v4):", JSON.parse(JSON.stringify(itemDataMap))); 
+
+    // Convert map to array, including category
+    const summaryArray = Object.entries(itemDataMap)
+      .map(([itemId, data]) => ({ 
+          itemId,
+          totalRate: data.totalRate,
+          category: data.category, // Include category
+          hasByproductSource: data.hasByproductSource 
+      }));
+
+    console.log("Final Summary Array (v4):", summaryArray);
+    return summaryArray;
+  }, [dependencies.dependencyTrees, excessMap, itemsMap]); 
+  // ----------------------------------------------------
 
   // --- Handle Manual Sort (Drag and Drop) ---
   const handleManualSort = useCallback((result: DropResult) => {
@@ -243,38 +318,51 @@ const FactoryPlanner: React.FC = () => {
           onTreeSortKeyChange={setTreeSortKey}
           treeSortDirection={treeSortDirection}
           onTreeSortDirectionChange={setTreeSortDirection}
+          isSummaryVisible={isSummaryVisible}
+          onToggleSummary={() => setIsSummaryVisible(prev => !prev)}
         />
       }
       commandBarHeight={commandBarHeight}
       content={
-        <PlannerContent
-          treeViewRef={treeViewRef}
-          treesArray={displayTreesArray}
-          onManualSort={handleManualSort}
-          handleTreeRecipeChange={handleTreeRecipeChange}
-          handleExcessChange={handleExcessChange}
-          excessMap={excessMap}
-          machineCountMap={machineCountMap}
-          handleMachineCountChange={handleMachineCountChange}
-          machineMultiplierMap={machineMultiplierMap}
-          handleMachineMultiplierChange={handleMachineMultiplierChange}
-          expandedNodes={expandedNodes}
-          setExpandedNodes={setExpandedNodes}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
-          showMachines={showMachines}
-          showMachineMultiplier={showMachineMultiplier}
-          handleDeleteTree={handleDeleteTree}
-          handleImportNode={handleImportNode}
-          handleUnimportNode={handleUnimportNode}
-          handleNodeUpdate={handleNodeUpdate}
-          nodeExtensionOverrides={nodeExtensionOverrides}
-          handleToggleNodeExtensions={handleToggleNodeExtensions}
-          itemsMap={itemsMap}
-          treeSortKey={treeSortKey}
-          treeSortDirection={treeSortDirection}
-        />
+        <div style={{ display: 'flex', flex: 1 }}>
+          <PlannerContent
+            treeViewRef={treeViewRef}
+            treesArray={displayTreesArray}
+            onManualSort={handleManualSort}
+            handleTreeRecipeChange={handleTreeRecipeChange}
+            handleExcessChange={handleExcessChange}
+            excessMap={excessMap}
+            machineCountMap={machineCountMap}
+            handleMachineCountChange={handleMachineCountChange}
+            machineMultiplierMap={machineMultiplierMap}
+            handleMachineMultiplierChange={handleMachineMultiplierChange}
+            expandedNodes={expandedNodes}
+            setExpandedNodes={setExpandedNodes}
+            showExtensions={showExtensions}
+            accumulateExtensions={accumulateExtensions}
+            showMachines={showMachines}
+            showMachineMultiplier={showMachineMultiplier}
+            handleDeleteTree={handleDeleteTree}
+            handleImportNode={handleImportNode}
+            handleUnimportNode={handleUnimportNode}
+            handleNodeUpdate={handleNodeUpdate}
+            nodeExtensionOverrides={nodeExtensionOverrides}
+            handleToggleNodeExtensions={handleToggleNodeExtensions}
+            containerStyle={{ flex: 1, minWidth: 0 }}
+            itemsMap={itemsMap}
+            treeSortKey={treeSortKey}
+            treeSortDirection={treeSortDirection}
+          />
+          {/* Conditionally render the SummarySidebar */}
+          {isSummaryVisible && (
+            <SummarySidebar 
+              summaryData={itemSummaryData} 
+              itemsMap={itemsMap} 
+            />
+          )}
+        </div>
       }
+      contentContainerStyle={{ display: 'flex', flexDirection: 'column' }}
     />
   );
 };

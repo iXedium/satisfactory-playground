@@ -43,6 +43,7 @@ This document outlines the structure of the Satisfactory Playground project.
 │   │   │   ├── StyledInput.tsx
 │   │   │   ├── StyledSelect.tsx
 │   │   │   ├── StyledSwitch.tsx
+│   │   │   ├── SummarySidebar.tsx
 │   │   │   ├── TreeNodeManager.tsx
 │   │   │   ├── TreeViewContainer.tsx
 │   │   │   ├── TreeViewManager.tsx
@@ -180,6 +181,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `StyledInput.tsx`: Custom styled input field.
     - `StyledSelect.tsx`: Custom styled select dropdown (likely complex).
     - `StyledSwitch.tsx`: Custom styled switch/toggle component.
+    - `SummarySidebar.tsx`: **NEW** - Right-hand sidebar displaying aggregated item totals.
     - `TreeNodeManager.tsx`: Manages interactions or state for tree nodes.
     - `TreeViewContainer.tsx`: Container for the tree visualization.
     - `TreeViewManager.tsx`: Manages the state or interactions of the tree view.

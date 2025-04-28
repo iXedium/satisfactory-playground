@@ -44,6 +44,13 @@ export const sizes = {
     xlarge: '18px',
   },
   
+  // Icon sizes
+  icon: {
+    small: '16px',
+    medium: '20px',
+    large: '24px',
+  },
+  
   // Z-index layers
   zIndex: {
     base: 1,

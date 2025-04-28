@@ -1,6 +1,9 @@
 import { db } from "./dexieDB";
 import { Recipe, Item } from "../types";
 
+// Retrieve all items (including resources, components, etc.)
+export const getAllItems = async (): Promise<Item[]> => await db.items.toArray();
+
 // Retrieve all items in the "components" category.
 export const getComponents = async () => await db.items.where("category").equals("components").toArray();
 

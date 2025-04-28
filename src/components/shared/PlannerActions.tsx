@@ -18,6 +18,9 @@ interface PlannerActionsProps {
   onShowMachineMultiplierChange: (show: boolean) => void;
   autoImport: boolean;
   onAutoImportChange: (value: boolean) => void;
+  // Add Summary Toggle props
+  isSummaryVisible: boolean;
+  onToggleSummary: () => void;
 }
 
 const PlannerActions: React.FC<PlannerActionsProps> = ({
@@ -34,6 +37,9 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onShowMachineMultiplierChange,
   autoImport,
   onAutoImportChange,
+  // Destructure summary props
+  isSummaryVisible,
+  onToggleSummary,
 }) => {
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Remove unused state
 
@@ -70,6 +76,13 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
     width: "28px",
     height: "28px",
     fontSize: "14px",
+    transition: 'background-color 0.2s ease', // Add transition for hover/active state
+  };
+
+  const activeIconButtonStyle: React.CSSProperties = {
+    ...iconButtonStyle,
+    backgroundColor: theme.colors.primary, // Indicate active state
+    color: theme.colors.buttonText, // Change icon color for contrast
   };
 
   return (
@@ -81,7 +94,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         onChange={(e) => onSearchChange(e.target.value)}
       />
 
-      {/* Render SettingsMenu here or keep in CommandBar? Let's keep it here for now */}
+      {/* Settings Menu Button */}
       <SettingsMenu 
         showExtensions={showExtensions}
         onShowExtensionsChange={onShowExtensionsChange}
@@ -93,22 +106,21 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         onShowMachineMultiplierChange={onShowMachineMultiplierChange}
         autoImport={autoImport}
         onAutoImportChange={onAutoImportChange}
-      >
-        {/* Remove children previously passed */}
-        {/* 
-        <div>
-          <StyledSwitch
-            label="Add New Chains As Imported"
-            checked={addAsImported}
-            onChange={(e) => onAddAsImportedChange(e.target.checked)}
-          />
-        </div>
-        */}
-      </SettingsMenu>
+      />
       
+      {/* Summary Toggle Button */}
+      <button 
+        style={isSummaryVisible ? activeIconButtonStyle : iconButtonStyle}
+        onClick={onToggleSummary}
+        title="Toggle Item Summary"
+      >
+        <span>∑</span> {/* Sigma icon for summary */}
+      </button>
+
+      {/* Clear Saved Data Button */}
       {onClearSavedData && (
         <button 
-          style={iconButtonStyle} // Using icon style for consistency
+          style={iconButtonStyle}
           onClick={onClearSavedData}
           title="Clear Saved Data"
         >

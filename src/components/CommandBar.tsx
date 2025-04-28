@@ -49,6 +49,11 @@ interface CommandBarProps {
   treeSortDirection: SortDirection;
   onTreeSortDirectionChange: (direction: SortDirection) => void;
   // -----------------------------------------
+  
+  // --- Add Summary Sidebar Props ---
+  isSummaryVisible: boolean;
+  onToggleSummary: () => void;
+  // ---------------------------------
 }
 
 /**
@@ -85,6 +90,10 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     treeSortDirection,
     onTreeSortDirectionChange,
     // -----------------------------
+    // --- Destructure Summary Props ---
+    isSummaryVisible,
+    onToggleSummary,
+    // ------------------------------
   },
   ref
 ) => {
@@ -146,6 +155,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onShowMachineMultiplierChange={onShowMachineMultiplierChange}
           autoImport={autoImport}
           onAutoImportChange={onAutoImportChange}
+          // Pass summary props down
+          isSummaryVisible={isSummaryVisible}
+          onToggleSummary={onToggleSummary}
         />
       </div>
 

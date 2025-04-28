@@ -1,5 +1,5 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { getComponents } from '../../../data';
+import { getAllItems } from '../../../data';
 import { Item } from '../../../types';
 
 export interface PlannerItemSelectionState {
@@ -25,7 +25,7 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
 
   // Load initial items list
   useEffect(() => {
-    getComponents().then(loadedItems => {
+    getAllItems().then(loadedItems => {
       if (loadedItems) {
         setItems(loadedItems);
       }
