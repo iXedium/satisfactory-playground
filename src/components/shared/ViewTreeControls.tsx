@@ -77,39 +77,39 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
 
   return (
     // Return the div directly
-    <div style={sectionStyle}>
-      {/* Expand/Collapse Buttons */}
-      <button 
-        style={iconButtonStyle}
-        onClick={() => onExpandCollapseAll(true)}
-        title="Expand All"
-      >
-        <span>+</span>
-      </button>
-      <button 
-        style={iconButtonStyle}
-        onClick={() => onExpandCollapseAll(false)}
-        title="Collapse All"
-      >
-        <span>-</span>
-      </button>
-      
-      {/* Sort Controls */}
-      <StyledSelect
+        <div style={sectionStyle}>
+          {/* Expand/Collapse Buttons */}
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(true)}
+            title="Expand All"
+          >
+            <span>+</span>
+          </button>
+          <button 
+            style={iconButtonStyle}
+            onClick={() => onExpandCollapseAll(false)}
+            title="Collapse All"
+          >
+            <span>-</span>
+          </button>
+
+          {/* Sort Controls */}
+          <StyledSelect
         options={sortByKeyOptions}
-        value={treeSortKey}
+            value={treeSortKey}
         onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
-        variant="compact"
+            variant="compact"
         style={selectStyle}
-      />
-      <button
-        style={iconButtonStyle}
+          />
+          <button
+            style={iconButtonStyle}
         onClick={toggleSortDirection} // Use the toggle handler
-        title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
-      >
-        {treeSortDirection === 'asc' ? '↑' : '↓'} 
-      </button>
-    </div>
+            title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
+          >
+            {treeSortDirection === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
   );
 };
 

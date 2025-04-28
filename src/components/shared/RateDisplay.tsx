@@ -21,6 +21,22 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
 }) => {
   const totalAmount = amount + excess;
 
+  const formatNumber = (num: number) => {
+    const fixed = num.toFixed(2);
+    return fixed === '-0.00' ? '0.00' : fixed;
+  };
+
+  let secondaryText = '';
+  if (excess > 1e-9 && !isByproduct && !isImport) {
+    secondaryText = `(f: ${formatNumber(amount)}, e: ${formatNumber(excess)})`;
+  } else if (isByproduct) {
+    secondaryText = `(byproduct)`;
+  } else if (isImport) {
+    secondaryText = `(import)`;
+  } else if (amount > 1e-9 && !isByproduct && !isImport) {
+    secondaryText = `(f: ${formatNumber(amount)})`;
+  }
+
   return (
     <div
       style={{
@@ -29,7 +45,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
         alignItems: 'flex-end',
         fontWeight: 'bold',
         color: isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
-        marginLeft: (isByproduct || isImport) ? 'auto' : sizes.spacing.small,
+        marginLeft: sizes.spacing.small,
         ...containerStyle,
       }}
     >
@@ -39,9 +55,9 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
           ...textStyle,
         }}
       >
-        {totalAmount.toFixed(2)}
+        {formatNumber(totalAmount)}t
       </span>
-      {excess > 0 && !isByproduct && !isImport && (
+      {secondaryText && (
          <span
            style={{
              fontSize: sizes.fontSize.small,
@@ -49,7 +65,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
              marginTop: '-2px',
            }}
          >
-           ({amount.toFixed(2)})
+           {secondaryText}
          </span>
       )}
     </div>

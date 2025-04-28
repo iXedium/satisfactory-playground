@@ -151,17 +151,17 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
 
       {/* Chain Creator Controls - Conditionally Rendered */}
       {!isAddItemCollapsed && (
-        <ChainCreatorControls 
-          items={items}
-          selectedItem={selectedItem}
-          onItemSelect={onItemSelect}
-          selectedRecipe={selectedRecipe}
-          onRecipeSelect={onRecipeSelect}
-          onCalculate={onCalculate}
-          recentItems={recentItems}
-          isCollapsed={isAddItemCollapsed}
-          onRemoveRecentItem={removeRecentItem}
-        />
+      <ChainCreatorControls 
+        items={items}
+        selectedItem={selectedItem}
+        onItemSelect={onItemSelect}
+        selectedRecipe={selectedRecipe}
+        onRecipeSelect={onRecipeSelect}
+        onCalculate={onCalculate}
+        recentItems={recentItems}
+        isCollapsed={isAddItemCollapsed}
+        onRemoveRecentItem={removeRecentItem}
+      />
       )}
 
       {/* Toggle button for collapsing/expanding item section */}

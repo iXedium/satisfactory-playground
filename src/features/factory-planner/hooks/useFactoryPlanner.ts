@@ -212,7 +212,7 @@ export const useFactoryPlanner = () => {
     dispatch(unimportNodeThunk(nodeId)); 
   }, [dispatch]);
   // -------------------------------
-
+  
   useEffect(() => {
     try {
       const savedDependencies = localStorage.getItem('savedDependencies');

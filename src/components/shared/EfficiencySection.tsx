@@ -89,7 +89,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
       setTotalDemand(0);
       return; 
     }
-
+    
     const targetElement = event.currentTarget;
     if (!targetElement) return;
     const rect = targetElement.getBoundingClientRect();
