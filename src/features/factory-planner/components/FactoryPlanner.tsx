@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import CommandBar from "../../../components/CommandBar";
 import { useFactoryPlanner, TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
@@ -9,6 +10,7 @@ import { DropResult } from "@hello-pangea/dnd";
 
 // Define key for local storage
 const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
+const LS_SUMMARY_VISIBLE_KEY = 'plannerSummaryVisible'; // Key for summary visibility
 
 /**
  * Main component for the Factory Planner application
@@ -67,9 +69,28 @@ const FactoryPlanner: React.FC = () => {
     handleToggleNodeExtensions
   } = useFactoryPlanner();
   
-  // --- State for Sidebar Visibility ---
-  const [isSummaryVisible, setIsSummaryVisible] = useState(false);
-  // ---------------------------------
+  // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
+  const [isSummaryVisible, setIsSummaryVisible] = useState<boolean>(() => {
+    try {
+      const savedValue = localStorage.getItem(LS_SUMMARY_VISIBLE_KEY);
+      // Default to true if nothing is saved or value is invalid
+      return savedValue !== null ? JSON.parse(savedValue) : true; 
+    } catch (error) {
+      console.error("Error loading summary visibility state:", error);
+      return true; // Default to true on error
+    }
+  });
+  // ------------------------------------------------------------------------
+
+  // --- Save Summary Visibility to Local Storage on Change ---
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SUMMARY_VISIBLE_KEY, JSON.stringify(isSummaryVisible));
+    } catch (error) {
+      console.error("Error saving summary visibility state:", error);
+    }
+  }, [isSummaryVisible]);
+  // ----------------------------------------------------------
 
   // --- State for Manual Tree Order (Load from Local Storage) ---
   const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
@@ -99,7 +120,7 @@ const FactoryPlanner: React.FC = () => {
 
   useEffect(() => {
     if (commandBarRef.current) {
-      setCommandBarHeight(commandBarRef.current.offsetHeight);
+      setCommandBarHeight(commandBarRef.current.offsetHeight+12);
     }
   }, [isAddItemCollapsed]);
 
@@ -225,6 +246,7 @@ const FactoryPlanner: React.FC = () => {
       // Add new IDs to the end
       return [...existingOrder, ...newIds];
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dependencies.dependencyTrees]); // Rerun when trees change
   // ----------------------------------------------------
 
@@ -324,45 +346,42 @@ const FactoryPlanner: React.FC = () => {
       }
       commandBarHeight={commandBarHeight}
       content={
-        <div style={{ display: 'flex', flex: 1 }}>
-          <PlannerContent
-            treeViewRef={treeViewRef}
-            treesArray={displayTreesArray}
-            onManualSort={handleManualSort}
-            handleTreeRecipeChange={handleTreeRecipeChange}
-            handleExcessChange={handleExcessChange}
-            excessMap={excessMap}
-            machineCountMap={machineCountMap}
-            handleMachineCountChange={handleMachineCountChange}
-            machineMultiplierMap={machineMultiplierMap}
-            handleMachineMultiplierChange={handleMachineMultiplierChange}
-            expandedNodes={expandedNodes}
-            setExpandedNodes={setExpandedNodes}
-            showExtensions={showExtensions}
-            accumulateExtensions={accumulateExtensions}
-            showMachines={showMachines}
-            showMachineMultiplier={showMachineMultiplier}
-            handleDeleteTree={handleDeleteTree}
-            handleImportNode={handleImportNode}
-            handleUnimportNode={handleUnimportNode}
-            handleNodeUpdate={handleNodeUpdate}
-            nodeExtensionOverrides={nodeExtensionOverrides}
-            handleToggleNodeExtensions={handleToggleNodeExtensions}
-            containerStyle={{ flex: 1, minWidth: 0 }}
-            itemsMap={itemsMap}
-            treeSortKey={treeSortKey}
-            treeSortDirection={treeSortDirection}
-          />
-          {/* Conditionally render the SummarySidebar */}
-          {isSummaryVisible && (
-            <SummarySidebar 
-              summaryData={itemSummaryData} 
-              itemsMap={itemsMap} 
-            />
-          )}
-        </div>
+        <PlannerContent
+          treeViewRef={treeViewRef}
+          treesArray={displayTreesArray}
+          onManualSort={handleManualSort}
+          handleTreeRecipeChange={handleTreeRecipeChange}
+          handleExcessChange={handleExcessChange}
+          excessMap={excessMap}
+          machineCountMap={machineCountMap}
+          handleMachineCountChange={handleMachineCountChange}
+          machineMultiplierMap={machineMultiplierMap}
+          handleMachineMultiplierChange={handleMachineMultiplierChange}
+          expandedNodes={expandedNodes}
+          setExpandedNodes={setExpandedNodes}
+          showExtensions={showExtensions}
+          accumulateExtensions={accumulateExtensions}
+          showMachines={showMachines}
+          showMachineMultiplier={showMachineMultiplier}
+          handleDeleteTree={handleDeleteTree}
+          handleImportNode={handleImportNode}
+          handleUnimportNode={handleUnimportNode}
+          handleNodeUpdate={handleNodeUpdate}
+          nodeExtensionOverrides={nodeExtensionOverrides}
+          handleToggleNodeExtensions={handleToggleNodeExtensions}
+          containerStyle={{ flex: 1, minWidth: 0, height: '100%' }}
+          itemsMap={itemsMap}
+          treeSortKey={treeSortKey}
+          treeSortDirection={treeSortDirection}
+        />
       }
-      contentContainerStyle={{ display: 'flex', flexDirection: 'column' }}
+      sidebar={isSummaryVisible ? (
+        <SummarySidebar 
+          summaryData={itemSummaryData}
+          itemsMap={itemsMap} 
+        />
+      ) : undefined}
+      contentContainerStyle={{}}
     />
   );
 };

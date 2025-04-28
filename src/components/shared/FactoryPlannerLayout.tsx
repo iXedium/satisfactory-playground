@@ -4,6 +4,7 @@ import React, { ReactNode } from 'react';
 interface FactoryPlannerLayoutProps {
   commandBar: ReactNode;
   content: ReactNode;
+  sidebar?: ReactNode; // Add optional sidebar prop
   commandBarHeight: number; // Add prop for height
   containerStyle?: React.CSSProperties;
   commandBarContainerStyle?: React.CSSProperties;
@@ -17,6 +18,7 @@ interface FactoryPlannerLayoutProps {
 const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
   commandBar,
   content,
+  sidebar, // Destructure sidebar prop
   commandBarHeight, // Destructure prop
   containerStyle,
   commandBarContainerStyle,
@@ -26,33 +28,43 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      // minHeight: '100vh', // Body handles height/scroll now
       width: '100%',
       position: 'relative',
+      height: '100vh', // Ensure layout takes full viewport height
+      overflow: 'hidden', // Prevent body scroll
       ...containerStyle
     }}>
       {/* Command Bar Container - Fixed Position */}
       <div style={{
-        position: 'fixed', // Change from sticky
+        position: 'fixed',
         top: 0,
         left: 0,
         width: '100%',
-        zIndex: 100, // Increase z-index as per suggestion
-        // backgroundColor: theme.colors.background, // Removed, handled by CommandBar
+        zIndex: 100, 
         ...commandBarContainerStyle
       }}>
         {commandBar}
       </div>
       
-      {/* Content Container - Dynamic Margin Top */}
+      {/* Main Content Area (Flex Container below Command Bar) */}
       <div style={{
-        // flex: 1, // Removed
-        // overflow: 'auto', // Removed, body handles scroll
-        padding: '8px', // Keep padding for content spacing
-        marginTop: `${commandBarHeight}px`, // Use dynamic height
-        ...contentContainerStyle
+        display: 'flex',
+        flex: 1, // Grow to fill remaining vertical space
+        marginTop: `${commandBarHeight}px`, 
+        overflow: 'hidden', // Prevent this container from scrolling, children handle it
+        ...contentContainerStyle // Apply outer styles here
       }}>
-        {content}
+        {/* Content (Tree View) */}
+        <div style={{ flex: 1, minWidth: 0, height: '100%' }}> {/* Allow shrinking, ensure height */}
+            {content} {/* PlannerContent goes here, handles its own scroll */} 
+        </div>
+        
+        {/* Sidebar (Conditionally Rendered) */}
+        {sidebar && (
+            <div style={{ height: '100%' }}> {/* Ensure sidebar takes full height */} 
+                {sidebar} {/* SummarySidebar goes here, handles its own scroll */} 
+            </div>
+        )}
       </div>
     </div>
   );

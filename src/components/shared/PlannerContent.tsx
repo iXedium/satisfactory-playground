@@ -69,7 +69,8 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
       ref={treeViewRef}
       id="tree-view"
       style={{
-        overflow: 'visible',
+        overflowY: 'auto',
+        height: '100%',
         ...containerStyle
       }}
     >
@@ -98,7 +99,6 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         treeSortDirection={treeSortDirection}
         nodeExtensionOverrides={nodeExtensionOverrides}
         handleToggleNodeExtensions={handleToggleNodeExtensions}
-        containerStyle={containerStyle}
       />
     </div>
   );
