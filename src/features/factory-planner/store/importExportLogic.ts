@@ -879,51 +879,36 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
 >(
   'dependency/recalculateAndUpdateRootAmount',
   async ({ rootNodeId, externalDemandChange }, { getState, dispatch }) => { // Destructure args
-    // <<< ADD DEBUG LOGGING START >>>
-    console.log(`[DEBUG/Recalc] Recalculating amount for root: ${rootNodeId}`);
-    if (externalDemandChange) {
-      console.log(`  - Received externalDemandChange: importer=${externalDemandChange.importerNodeId}, amount=${externalDemandChange.amount}`);
-    } else {
-      console.log(`  - No externalDemandChange received.`);
-    }
-    // <<< ADD DEBUG LOGGING END >>>
-    
     const state = getState();
     const rootNode = state.dependencies.dependencyTrees[rootNodeId];
 
     if (!rootNode) { /* ... null check ... */ return; }
     if (!rootNode.isRoot) { /* ... root check ... */ return; }
 
-    // 'amount' should represent FORCED demand, not total including excess.
-    const initialForcedAmount = rootNode.amount; // Read current forced amount
-    let newForcedAmount = 0; // Calculate the new forced amount based ONLY on importers
+    let newRequiredAmount = 0;
+    const initialAmount = rootNode.amount;
     
-    // We still need excess for logging/comparison, but it won't be part of the newForcedAmount calculation
+    // 1. Add manual excess first
     const excessAmount = rootNode.excess || 0;
-    
-    // <<< ADD DEBUG LOGGING START >>>
-    console.log(`[DEBUG/Recalc ${rootNodeId}] Initial Forced Amount: ${initialForcedAmount}, Excess: ${excessAmount}`);
-    let totalDemandFromImporters = 0; 
-    // <<< ADD DEBUG LOGGING END >>>
+    newRequiredAmount += excessAmount;
 
-    // 2. Find all current importers and sum their FORCED demands
+    // 2. Find all current importers and sum their demands
     for (const tree of Object.values(state.dependencies.dependencyTrees)) {
         const findDemand = (node: DependencyNode): number => {
             let demand = 0;
             const importRef = getImportReference(node);
             if (importRef?.targetTreeId === rootNodeId) {
                 let importerAmount = 0;
-                const isExternalMatch = externalDemandChange && externalDemandChange.importerNodeId === node.uniqueId;
-                // ... existing debug logging for importer match ...
-                if (isExternalMatch) { 
+                // *** USE EXTERNAL DEMAND IF PROVIDED FOR THIS IMPORTER ***
+                if (externalDemandChange && externalDemandChange.importerNodeId === node.uniqueId) {
                     importerAmount = externalDemandChange.amount;
-                    // ... existing debug logging for external demand ...
                 } else {
+                    // Otherwise, read from state as before
                     importerAmount = node.amount || 0;
-                    // ... existing debug logging for node amount ...
                 }
                 demand += importerAmount; 
             }
+            // Recursively check children
             if (node.children) {
                 for (const child of node.children) {
                     demand += findDemand(child);
@@ -931,55 +916,18 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
             }
             return demand;
         };
-        const demandFromThisTree = findDemand(tree);
-        // ... existing debug logging for demand from tree ...
-        totalDemandFromImporters += demandFromThisTree;
+        newRequiredAmount += findDemand(tree);
     }
-    
-    // newForcedAmount is JUST the sum of demands from importers
-    newForcedAmount = totalDemandFromImporters;
-    
-    // <<< ADD DEBUG LOGGING START >>>
-    console.log(`[DEBUG/Recalc ${rootNodeId}] Total demand from importers (new Forced Amount): ${newForcedAmount}`);
-    // <<< ADD DEBUG LOGGING END >>>
 
 
-    // 3. Dispatch update only if the FORCED amount has changed
-    // <<< ADD DEBUG LOGGING START >>>
-    const forcedAmountChanged = Math.abs(initialForcedAmount - newForcedAmount) > 1e-9;
-    console.log(`[DEBUG/Recalc ${rootNodeId}] Forced amount changed? ${forcedAmountChanged} (Initial: ${initialForcedAmount}, New: ${newForcedAmount})`);
-    // <<< ADD DEBUG LOGGING END >>>
-    if (forcedAmountChanged) {
-        // <<< ADD DEBUG LOGGING START >>>
-        console.log(`[DEBUG/Recalc ${rootNodeId}] Dispatching updateNodeProperties with FORCED amount: ${newForcedAmount}`);
-        // <<< ADD DEBUG LOGGING END >>>
+    // 3. Dispatch update only if the amount has changed
+    if (Math.abs(initialAmount - newRequiredAmount) > 1e-9) { // Use threshold for float comparison
         await dispatch(updateNodeProperties({
             nodeId: rootNodeId, 
-            updatedNode: { amount: newForcedAmount } // Update with ONLY the new forced amount
+            updatedNode: { amount: newRequiredAmount }
         }));
-        // <<< ADD DEBUG LOGGING START >>>
-        console.log(`[DEBUG/Recalc ${rootNodeId}] Dispatching checkAndConvertNodeTypeThunk`);
-        // <<< ADD DEBUG LOGGING END >>>
         await dispatch(checkAndConvertNodeTypeThunk(rootNodeId));
-    }
-    // ELSE: Even if forced amount didn't change, we might need to run checkAndConvert 
-    // if the *total* amount (forced + excess) might now be negative/positive.
-    // Let's add this check. The total amount IS relevant for conversion.
-    else {
-        const currentTotalAmount = initialForcedAmount + excessAmount;
-        const potentialNewTotalAmount = newForcedAmount + excessAmount; // This should be the same as currentTotalAmount if forcedAmountChanged is false
-        
-        // If the sign might have changed due to external factors not reflected in demand 
-        // (though unlikely with this logic), or just to be safe, run the check.
-        // A simpler condition: check if the node type might need re-evaluating based on the current total.
-        const currentTotalPositive = currentTotalAmount > 1e-9;
-        const currentTotalNegative = currentTotalAmount < -1e-9;
-        const needsConversionCheck = (rootNode.isByproduct && currentTotalPositive) || (!rootNode.isByproduct && currentTotalNegative);
 
-        if (needsConversionCheck) {
-            console.log(`[DEBUG/Recalc ${rootNodeId}] Forced amount unchanged, but dispatching checkAndConvertNodeTypeThunk due to potential type change.`);
-            await dispatch(checkAndConvertNodeTypeThunk(rootNodeId));
-        }
     }
   }
 ); 

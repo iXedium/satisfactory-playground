@@ -34,7 +34,7 @@ import { usePlannerPersistence } from './usePlannerPersistence';
 import { unimportNodeThunk } from '../store/importExportLogic';
 
 // Define types for Tree View sorting and EXPORT them
-export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate';
+export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
 export type SortDirection = 'asc' | 'desc';
 
 export const useFactoryPlanner = () => {

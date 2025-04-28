@@ -5,11 +5,10 @@ import DependencyTree from '../../features/factory-planner/components/Dependency
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface TreeViewContainerProps {
-  dependencies: {
-    dependencyTrees: Record<string, DependencyNode>;
-  };
+  treesArray: DependencyNode[];
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
   handleExcessChange: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
@@ -26,99 +25,109 @@ interface TreeViewContainerProps {
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => void;
   handleUnimportNode?: (nodeId: string) => void;
-  handleNodeUpdate: (nodeId: string, updatedNode: Partial<any>) => void;
+  handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   nodeExtensionOverrides?: Record<string, boolean>;
   handleToggleNodeExtensions?: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
-  // --- Add Sort Props & Item Map --- 
-  itemsMap: Record<string, Item>; 
+  itemsMap: Record<string, Item>;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
-  // -------------------------------
+  onManualSort: (result: DropResult) => void;
 }
 
 /**
- * Container component for rendering the tree view of dependency trees
+ * Container component for rendering the tree view of dependency trees.
+ * Now handles drag-and-drop sorting for root nodes.
  */
 const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeViewContainerProps> = (
-  { dependencies, handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection },
+  {
+    treesArray,
+    handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection,
+    onManualSort
+  },
   ref) => {
 
-  // --- Get trees array --- 
-  const treesArray = Object.values(dependencies.dependencyTrees);
-  
-  // --- Apply Sorting --- 
-  // No longer automatically sorting here, the sort happens inside the if block
-  //  // Remove this log
-  
-  // --- Manual Sorting Logic (Uncommented) ---
-  treesArray.sort((a, b) => {
-    let compareResult = 0;
-    
-    if (treeSortKey === 'originalDepth') {
-      // Sort by originalDepth ascending (main root -1, others Infinity if missing)
-      const depthA = a.originalDepth ?? (a.depth === 0 ? -1 : Infinity);
-      const depthB = b.originalDepth ?? (b.depth === 0 ? -1 : Infinity);
-      compareResult = depthA - depthB;
-    } else if (treeSortKey === 'amount') {
-      compareResult = (a.amount ?? 0) - (b.amount ?? 0);
-    } else if (treeSortKey === 'name') {
-      const nameA = itemsMap[a.id]?.name?.toLowerCase() || a.id.toLowerCase();
-      const nameB = itemsMap[b.id]?.name?.toLowerCase() || b.id.toLowerCase();
-      compareResult = nameA.localeCompare(nameB);
-    } else if (treeSortKey === 'nominalRate') {
-      const outputA = a.recipe?.out?.[a.id] ?? 0;
-      const timeA = a.recipe?.time ?? 0;
-      const rateA = timeA > 0 ? (outputA / timeA) * 60 : 0;
-
-      const outputB = b.recipe?.out?.[b.id] ?? 0;
-      const timeB = b.recipe?.time ?? 0;
-      const rateB = timeB > 0 ? (outputB / timeB) * 60 : 0;
-      
-      compareResult = rateA - rateB;
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || result.destination.index === result.source.index) {
+      return;
     }
-    
-    // Apply direction AFTER comparison is determined
-    return treeSortDirection === 'asc' ? compareResult : -compareResult;
-  });
-  
+    onManualSort(result);
+  };
+
+  const isDragDisabled = treeSortKey !== 'Manual';
 
   return (
-    <div style={containerStyle} ref={ref}>
-      {treesArray.map((tree) => {
-        const treeId = tree.uniqueId;
-        return (
-          <DependencyTree
-            key={treeId}
-            tree={tree}
-            treeId={treeId}
-            onRecipeChange={handleTreeRecipeChange}
-            onExcessChange={handleExcessChange}
-            excessMap={excessMap}
-            machineCountMap={machineCountMap}
-            onMachineCountChange={handleMachineCountChange}
-            machineMultiplierMap={machineMultiplierMap}
-            onMachineMultiplierChange={handleMachineMultiplierChange}
-            expandedNodes={expandedNodes}
-            onNodeExpandChange={(nodeId: string, expanded: boolean) => {
-              setExpandedNodes(prev => ({
-                ...prev,
-                [nodeId]: expanded
-              }));
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="root-nodes">
+        {(provided) => (
+          <div
+            {...provided.droppableProps}
+            ref={node => {
+              provided.innerRef(node);
+              if (typeof ref === 'function') {
+                ref(node);
+              } else if (ref) {
+                ref.current = node;
+              }
             }}
-            showMachines={showMachines}
-            showMachineMultiplier={showMachineMultiplier}
-            isRoot={true}
-            onDelete={() => handleDeleteTree(treeId)}
-            onImportNode={handleImportNode}
-            onUnimportNode={handleUnimportNode}
-            onNodeUpdate={handleNodeUpdate}
-            treeSortKey={treeSortKey}
-            treeSortDirection={treeSortDirection}
-          />
-        );
-      })}
-    </div>
+            style={containerStyle}
+          >
+            {treesArray.map((tree, index) => {
+              const treeId = tree.uniqueId;
+              return (
+                <Draggable
+                  key={treeId}
+                  draggableId={treeId}
+                  index={index}
+                  isDragDisabled={isDragDisabled}
+                >
+                  {(providedDraggable, snapshot) => (
+                    <div
+                      ref={providedDraggable.innerRef}
+                      {...providedDraggable.draggableProps}
+                      {...providedDraggable.dragHandleProps}
+                      style={{
+                        ...providedDraggable.draggableProps.style,
+                        marginBottom: '8px',
+                      }}
+                    >
+                      <DependencyTree
+                        tree={tree}
+                        treeId={treeId}
+                        onRecipeChange={handleTreeRecipeChange}
+                        onExcessChange={handleExcessChange}
+                        excessMap={excessMap}
+                        machineCountMap={machineCountMap}
+                        onMachineCountChange={handleMachineCountChange}
+                        machineMultiplierMap={machineMultiplierMap}
+                        onMachineMultiplierChange={handleMachineMultiplierChange}
+                        expandedNodes={expandedNodes}
+                        onNodeExpandChange={(nodeId: string, expanded: boolean) => {
+                          setExpandedNodes(prev => ({
+                            ...prev,
+                            [nodeId]: expanded
+                          }));
+                        }}
+                        showMachines={showMachines}
+                        showMachineMultiplier={showMachineMultiplier}
+                        isRoot={true}
+                        onDelete={() => handleDeleteTree(treeId)}
+                        onImportNode={handleImportNode}
+                        onUnimportNode={handleUnimportNode}
+                        onNodeUpdate={handleNodeUpdate}
+                        treeSortKey={treeSortKey}
+                        treeSortDirection={treeSortDirection}
+                      />
+                    </div>
+                  )}
+                </Draggable>
+              );
+            })}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 };
 

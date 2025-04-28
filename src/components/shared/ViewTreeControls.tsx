@@ -27,6 +27,7 @@ const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
   { id: 'name', name: 'Name' },
   { id: 'amount', name: 'Amount' },
   { id: 'nominalRate', name: 'Rate' }, // Use correct key
+  { id: 'Manual', name: 'Manual' }, // Added Manual option
 ];
 
 const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({

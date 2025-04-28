@@ -1,13 +1,13 @@
 import React, { RefObject } from 'react';
-import { DependencyNode } from '../../types';
+import { DependencyNode, Item } from '../../types';
 import TreeViewContainer from './TreeViewContainer';
-import { DependencyState } from '../../features/factory-planner/store/dependencySlice';
-import { Item } from '../../types';
 import { SortDirection, TreeSortKey } from '../../features/factory-planner/hooks/useFactoryPlanner';
+import { DropResult } from '@hello-pangea/dnd';
 
 interface PlannerContentProps {
   treeViewRef: RefObject<HTMLDivElement | null>;
-  dependencies: DependencyState;
+  treesArray: DependencyNode[];
+  onManualSort: (result: DropResult) => void;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
   handleExcessChange: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
@@ -25,8 +25,8 @@ interface PlannerContentProps {
   handleImportNode: (nodeId: string) => void;
   handleUnimportNode?: (nodeId: string) => void;
   handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
-  nodeExtensionOverrides: Record<string, boolean>;
-  handleToggleNodeExtensions: (nodeId: string) => void;
+  nodeExtensionOverrides?: Record<string, boolean>;
+  handleToggleNodeExtensions?: (nodeId: string) => void;
   containerStyle?: React.CSSProperties;
   itemsMap: Record<string, Item>;
   treeSortKey: TreeSortKey;
@@ -38,7 +38,8 @@ interface PlannerContentProps {
  */
 const PlannerContent: React.FC<PlannerContentProps> = ({
   treeViewRef,
-  dependencies,
+  treesArray,
+  onManualSort,
   handleTreeRecipeChange,
   handleExcessChange,
   excessMap,
@@ -73,7 +74,8 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
       }}
     >
       <TreeViewContainer
-        dependencies={dependencies}
+        treesArray={treesArray}
+        onManualSort={onManualSort}
         handleTreeRecipeChange={handleTreeRecipeChange}
         handleExcessChange={handleExcessChange}
         excessMap={excessMap}
@@ -96,7 +98,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         treeSortDirection={treeSortDirection}
         nodeExtensionOverrides={nodeExtensionOverrides}
         handleToggleNodeExtensions={handleToggleNodeExtensions}
-        containerStyle={{}}
+        containerStyle={containerStyle}
       />
     </div>
   );
