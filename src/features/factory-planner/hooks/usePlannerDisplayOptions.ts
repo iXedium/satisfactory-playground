@@ -27,7 +27,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
-  const [autoImport, setAutoImport] = useState(false);
+  const [autoImport, setAutoImport] = useState(true);
 
   // Load saved state from localStorage
   useEffect(() => {

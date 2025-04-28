@@ -6,6 +6,9 @@ import PlannerContent from "../../../components/shared/PlannerContent";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 
+// Define key for local storage
+const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
+
 /**
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
@@ -63,9 +66,27 @@ const FactoryPlanner: React.FC = () => {
     handleToggleNodeExtensions
   } = useFactoryPlanner();
   
-  // --- State for Manual Tree Order ---
-  const [manualTreeOrder, setManualTreeOrder] = useState<string[]>([]);
+  // --- State for Manual Tree Order (Load from Local Storage) ---
+  const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
+    try {
+      const savedOrder = localStorage.getItem(LS_MANUAL_ORDER_KEY);
+      return savedOrder ? JSON.parse(savedOrder) : [];
+    } catch (error) {
+      console.error("Error loading manual tree order:", error);
+      return [];
+    }
+  });
   // ---------------------------------
+
+  // --- Save Manual Tree Order to Local Storage on Change ---
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_MANUAL_ORDER_KEY, JSON.stringify(manualTreeOrder));
+    } catch (error) {
+      console.error("Error saving manual tree order:", error);
+    }
+  }, [manualTreeOrder]);
+  // --------------------------------------------------------
 
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
@@ -112,6 +133,15 @@ const FactoryPlanner: React.FC = () => {
   // --- Synchronize manualTreeOrder with actual trees ---
   useEffect(() => {
     const currentTreeIds = Object.keys(dependencies.dependencyTrees);
+    
+    // Add check: Only synchronize if trees have actually loaded
+    if (currentTreeIds.length === 0 && manualTreeOrder.length > 0) {
+        // Avoid wiping the loaded order if trees haven't loaded yet but we have an order
+        return; 
+    }
+    // Or alternatively, ensure we don't run if currentTreeIds is empty
+    // if (currentTreeIds.length === 0) return;
+
     setManualTreeOrder(prevOrder => {
       // Filter out IDs that no longer exist
       const existingOrder = prevOrder.filter(id => currentTreeIds.includes(id));

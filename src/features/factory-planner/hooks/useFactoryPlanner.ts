@@ -37,6 +37,10 @@ import { unimportNodeThunk } from '../store/importExportLogic';
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
 export type SortDirection = 'asc' | 'desc';
 
+// Define keys for local storage
+const LS_SORT_KEY = 'plannerTreeSortKey';
+const LS_SORT_DIRECTION = 'plannerTreeSortDirection';
+
 export const useFactoryPlanner = () => {
   const dispatch = useDispatch<AppDispatch>();
   const dependencies = useSelector((state: RootState) => state.dependencies);
@@ -116,10 +120,32 @@ export const useFactoryPlanner = () => {
     removeRecentItem,
   } = usePlannerItemSelection();
 
-  // --- State for Tree View Sorting ---
-  const [treeSortKey, setTreeSortKey] = useState<TreeSortKey>('originalDepth');
-  const [treeSortDirection, setTreeSortDirection] = useState<SortDirection>('asc');
+  // --- State for Tree View Sorting (Load from Local Storage) ---
+  const [treeSortKey, setTreeSortKey] = useState<TreeSortKey>(() => {
+    return (localStorage.getItem(LS_SORT_KEY) as TreeSortKey | null) || 'originalDepth';
+  });
+  const [treeSortDirection, setTreeSortDirection] = useState<SortDirection>(() => {
+     return (localStorage.getItem(LS_SORT_DIRECTION) as SortDirection | null) || 'asc';
+  });
   // -----------------------------------
+
+  // --- Save Sort Key/Direction to Local Storage on Change ---
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SORT_KEY, treeSortKey);
+    } catch (error) {
+      console.error("Error saving sort key:", error);
+    }
+  }, [treeSortKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SORT_DIRECTION, treeSortDirection);
+    } catch (error) {
+      console.error("Error saving sort direction:", error);
+    }
+  }, [treeSortDirection]);
+  // ----------------------------------------------------------
 
   // --- Create an Item Map for sorting by name --- 
   const itemsMap = useMemo(() => {
@@ -204,15 +230,14 @@ export const useFactoryPlanner = () => {
     handleExcessChange,
   });
   
-  usePlannerPersistence({ dependencies, recipeSelections });
-  
   // --- Define Unimport Handler --- 
   const handleUnimportNode = useCallback((nodeId: string) => {
     // Dispatch the thunk (implementation pending)
     dispatch(unimportNodeThunk(nodeId)); 
   }, [dispatch]);
   // -------------------------------
-  
+
+  // --- Load Core Redux State (Dependencies, Recipes) on Initial Mount --- 
   useEffect(() => {
     try {
       const savedDependencies = localStorage.getItem('savedDependencies');
@@ -227,9 +252,12 @@ export const useFactoryPlanner = () => {
         dispatch(loadRecipeSelections(parsed));
       }
     } catch (error) {
-      console.error("Error loading saved state:", error);
+      console.error("Error loading saved Redux state:", error);
     }
-  }, [dispatch]);
+  }, [dispatch]); // Run only once on mount
+  // ---------------------------------------------------------------------
+  
+  usePlannerPersistence({ dependencies, recipeSelections });
 
   return {
     dependencies,

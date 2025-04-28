@@ -79,7 +79,6 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                   key={treeId}
                   draggableId={treeId}
                   index={index}
-                  isDragDisabled={isDragDisabled}
                 >
                   {(providedDraggable, snapshot) => (
                     <div
