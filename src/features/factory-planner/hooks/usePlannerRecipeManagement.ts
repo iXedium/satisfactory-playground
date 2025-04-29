@@ -27,10 +27,8 @@ export const usePlannerRecipeManagement = ({
   excessMap,
 }: PlannerRecipeManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { dependencies, recipeSelections } = useSelector((state: RootState) => ({
-    dependencies: state.dependencies,
-    recipeSelections: state.recipeSelections.selections,
-  }));
+  const dependencies = useSelector((state: RootState) => state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
   const handleTreeRecipeChange = useCallback(async (nodeId: string, recipeId: string) => {
     const currentTrees = dependencies.dependencyTrees;

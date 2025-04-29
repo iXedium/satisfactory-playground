@@ -122,7 +122,12 @@ const FactoryPlanner: React.FC = () => {
 
   // --- Item Summary Calculation (v4 using Category) ---
   const itemSummaryData = useMemo(() => {
-    // Now uses producedItemIds from the outer scope
+    // Wait until itemsMap is populated before calculating
+    if (!itemsMap || Object.keys(itemsMap).length === 0) {
+      console.log("itemsMap not ready, returning empty summary.");
+      return [];
+    }
+
     console.log("Recalculating Item Summary (v4 using Category)...");
     
     // --- Pass 1: Collect all unique item IDs --- 
