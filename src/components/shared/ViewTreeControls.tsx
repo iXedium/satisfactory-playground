@@ -2,6 +2,7 @@ import React from 'react';
 import StyledSelect from './StyledSelect';
 import { theme } from '../../styles/theme';
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
+import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions';
 
 interface ViewTreeControlsProps {
   onExpandCollapseAll: (expand: boolean) => void;
@@ -9,6 +10,8 @@ interface ViewTreeControlsProps {
   onTreeSortKeyChange: (key: TreeSortKey) => void;
   treeSortDirection: SortDirection;
   onTreeSortDirectionChange: (direction: SortDirection) => void;
+  viewDensity: ViewDensity;
+  setViewDensity: (density: ViewDensity) => void;
 }
 
 const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
@@ -25,6 +28,8 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
   onTreeSortKeyChange,
   treeSortDirection,
   onTreeSortDirectionChange,
+  viewDensity,
+  setViewDensity,
 }) => {
 
   const toggleSortDirection = () => {
@@ -53,6 +58,13 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
     width: '28px',
     height: '28px',
     fontSize: '14px',
+    transition: 'background-color 0.2s ease',
+  };
+
+  const activeIconButtonStyle: React.CSSProperties = {
+    ...iconButtonStyle,
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.buttonText,
   };
 
   const selectStyle: React.CSSProperties = {
@@ -77,6 +89,22 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
             <span>-</span>
           </button>
 
+          {/* Density Toggle Buttons */}
+          <button
+            style={viewDensity === 'relaxed' ? activeIconButtonStyle : iconButtonStyle}
+            onClick={() => setViewDensity('relaxed')}
+            title="Relaxed View"
+          >
+            <span>☐</span>
+          </button>
+          <button
+            style={viewDensity === 'compact' ? activeIconButtonStyle : iconButtonStyle}
+            onClick={() => setViewDensity('compact')}
+            title="Compact View"
+          >
+            <span>≡</span>
+          </button>
+
           {/* Sort Controls */}
           <StyledSelect
             options={sortByKeyOptions}
@@ -87,7 +115,7 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
           />
           <button
             style={iconButtonStyle}
-            onClick={toggleSortDirection} // Use the toggle handler
+            onClick={toggleSortDirection}
             title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
           >
             {treeSortDirection === 'asc' ? '↑' : '↓'}
