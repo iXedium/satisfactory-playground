@@ -7,6 +7,7 @@ import ItemNodeButtons from "../../../components/shared/ItemNodeButtons";
 import ItemDetails from "../../../components/shared/ItemDetails";
 import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
+import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 
 interface ItemNodeProps {
   itemId: string;
@@ -82,8 +83,18 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
-  const [efficiency, setEfficiency] = useState(100);
-  const [nominalRate, setNominalRate] = useState(0);
+
+  // Use the new hook to get calculated values
+  const { efficiency, nominalRate } = useItemNodeCalculations({
+    itemId,
+    amount,
+    excess: localExcess,
+    machineCount: localMachineCount,
+    machineMultiplier: localMachineMultiplier,
+    machine,
+    selectedRecipeId,
+    recipes,
+  });
 
   // Restore useEffect to sync localExcess with excess prop
   useEffect(() => {
@@ -100,8 +111,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       getMachineForRecipe(selectedRecipeId).then((machineData) => {
         if (machineData) {
           setMachine(machineData);
+        } else {
+           // Handle case where machine data isn't found for the recipe
+           setMachine(null);
         }
       });
+    } else {
+      // Clear machine if no recipe is selected
+      setMachine(null);
     }
   }, [selectedRecipeId]);
 
@@ -113,50 +130,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     // Update local state when the multiplier prop changes
     setLocalMachineMultiplier(machineMultiplier); 
   }, [machineMultiplier]);
-
-  // Calculate efficiency and nominal rate whenever relevant values change
-  useEffect(() => {
-    if (machine && selectedRecipeId && recipes) {
-      const recipe = recipes.find((r) => r.id === selectedRecipeId);
-      if (recipe) {
-        const outputAmount = recipe.out[itemId] || 1;
-        const cyclesPerMinute = 60 / recipe.time;
-        const itemsPerMinute = outputAmount * cyclesPerMinute;
-
-        // Calculate nominal production rate (per machine)
-        const nominalRatePerMachine = itemsPerMinute * machine.speed;
-        setNominalRate(nominalRatePerMachine);
-
-        // Calculate total production capacity with all machines
-        // Always use localMachineMultiplier value even when the control is hidden
-        const totalMachineCapacity =
-          localMachineCount * localMachineMultiplier * nominalRatePerMachine;
-
-        // Calculate efficiency (actual needed / total capacity)
-        // Use precise excess value for accurate calculations
-        const neededAmount = amount + localExcess;
-        const newEfficiency = (neededAmount / totalMachineCapacity) * 100;
-        
-        // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} calculating efficiency:
-        //   amount: ${amount}
-        //   localExcess: ${localExcess}
-        //   totalMachineCapacity: ${totalMachineCapacity}
-        //   neededAmount: ${neededAmount}
-        //   efficiency: ${Math.round(newEfficiency * 100) / 100}%`);
-        
-        setEfficiency(Math.round(newEfficiency * 100) / 100);
-      }
-    }
-  }, [
-    amount,
-    localExcess,
-    localMachineCount,
-    localMachineMultiplier,
-    machine,
-    selectedRecipeId,
-    recipes,
-    itemId,
-  ]);
 
   const getItemColor = () => {
     if (isRoot) return theme.colors.nodeRoot;
@@ -259,7 +232,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         onUnimport={onUnimport}
       />
 
-      {/* Item Section */}
+      {/* Item Section Container */}
       <div
         style={{
           display: "flex",
@@ -293,7 +266,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           <MachineDetails
             machine={machine}
             machineCount={localMachineCount}
-            onMachineCountChange={onMachineCountChange || (() => {})}
+            onMachineCountChange={onMachineCountChange || (() => {}) }
             machineMultiplier={localMachineMultiplier}
             onMachineMultiplierChange={onMachineMultiplierChange}
             showMachineMultiplier={showMachineMultiplier}
@@ -304,14 +277,14 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
         {/* Right section - Efficiency and rate */}
         <EfficiencySection
-          efficiency={efficiency}
+          efficiency={Math.round(efficiency * 100) / 100}
           amount={amount}
           isByproduct={isByproduct}
           isImport={isImport}
           excess={localExcess}
           nodeId={uniqueId}
           treeId={treeId}
-          itemName={item.name}
+          itemName={item?.name ?? itemId}
           onExcessChange={onExcessChange ? handleExcessChange : undefined}
           onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
           onResetExcess={onExcessChange ? handleResetExcess : undefined}

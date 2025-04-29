@@ -79,6 +79,7 @@ This document outlines the structure of the Satisfactory Playground project.
 │   │       │   ├── useFactoryPlanner.ts
 │   │       │   ├── useGroupedAccumulatedItems.ts
 │   │       │   ├── useItemFilteringSorting.ts
+│   │       │   ├── useItemNodeCalculations.ts
 │   │       │   ├── usePlannerDataManagement.ts
 │   │       │   ├── usePlannerDebugTools.ts
 │   │       │   ├── usePlannerDisplayOptions.ts
@@ -223,6 +224,7 @@ Contains code organized by application feature domain.
         - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state.
         - `useGroupedAccumulatedItems.ts`: **NEW** - Hook responsible for processing `accumulatedDependencies` from Redux, fetching related item/recipe data, and grouping items for display in the `AccumulatedResourceView`.
         - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
+        - `useItemNodeCalculations.ts`: **NEW** - Hook containing the calculation logic for a node's nominal rate and efficiency, extracted from `ItemNode.tsx`.
         - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
         - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
         - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.). No longer manages the old List/Tree view mode.
