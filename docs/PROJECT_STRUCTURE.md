@@ -157,7 +157,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `ChainCreatorControls.tsx`: **NEW** - Renders item/recipe selectors and the "Add" button for creating new production chains.
     - `PlannerActions.tsx`: **NEW** - Renders search input, settings menu button, and clear data button for the main toolbar.
     - `SettingsMenu.tsx`: **NEW** - Renders the settings gear button and the dropdown menu with display options checkboxes.
-    - `ViewTreeControls.tsx`: **NEW** - Renders view mode switch, expand/collapse buttons, and depth selector for the main toolbar.
+    - `ViewTreeControls.tsx`: **UPDATED** - Renders expand/collapse buttons and sorting controls for the dependency tree view in the main toolbar.
     - `ActionButtons.tsx`: Buttons for primary actions within a section.
     - `CategorySection.tsx`: Component for displaying item/recipe categories.
     - `ChainCreator.tsx`: UI for initiating a new production chain.
@@ -185,7 +185,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `TreeNodeManager.tsx`: Manages interactions or state for tree nodes.
     - `TreeViewContainer.tsx`: Container for the tree visualization.
     - `TreeViewManager.tsx`: Manages the state or interactions of the tree view.
-    - `ViewModeToggle.tsx`: Toggle button for switching view modes.
+    - `ViewModeToggle.tsx`: **DEPRECATED/UNUSED** - Was previously used for List/Tree view toggle.
     - `ViewOptionsPanel.tsx`: Panel containing various view options.
     - `index.ts`: Bundles and exports components from this directory.
 - `CommandBar.tsx`: **REFACTORED** - The main command bar interface for the application. Now acts primarily as a layout container, assembling smaller shared components (`ViewTreeControls`, `PlannerActions`, `ChainCreatorControls`).
@@ -193,7 +193,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
 - `Icon.tsx`: Displays item/recipe icons using the sprite sheet (`public/icons.webp`).
 - `ItemSelect.tsx`: A reusable dropdown component for selecting items.
 - `RecipeSelect.tsx`: A reusable dropdown component for selecting recipes.
-- `ViewModeSwitch.tsx`: Component to switch between different application view modes.
+- `ViewModeSwitch.tsx`: **DEPRECATED/UNUSED** - Was previously used for List/Tree view toggle.
 - `index.ts`: Bundles and exports components from `src/components/` (including re-exporting from `shared/`).
 
 ### `src/data/`
@@ -212,12 +212,12 @@ Contains code organized by application feature domain.
 
 - **`src/features/factory-planner/`**: Houses the core logic and UI for the **factory planning feature**.
     - `components/`: Contains React components **specifically related to the factory planner feature**.
-        - `AccumulatedResourceView.tsx`: **REFACTORED** - Displays the aggregated list of required resources. Now utilizes `useGroupedAccumulatedItems` and `useItemFilteringSorting` hooks for data processing and filtering/sorting logic, and renders `AccumulatedViewControls`.
+        - `AccumulatedResourceView.tsx`: Displays the aggregated list of required resources. Now utilizes `useGroupedAccumulatedItems` and `useItemFilteringSorting` hooks for data processing and filtering/sorting logic, and renders `AccumulatedViewControls`.
         - `DependencyTree.tsx`: Renders the main dependency tree structure.
         - `ItemNode.tsx`: Component representing a single item node within the tree.
-        - `ListNode.tsx`: Component representing the list view node (alternative to tree view).
-        - `FactoryPlanner.tsx`: Component potentially used for testing or displaying dependency logic.
-        - `TreeNode.tsx`: Component representing a generic node in the tree view (might wrap `ItemNode`).
+        - `ListNode.tsx`: **DEPRECATED/UNUSED** - Was previously used for an alternative list view representation.
+        - `FactoryPlanner.tsx`: Main orchestrating component for the factory planner UI and logic.
+        - `TreeNode.tsx`: Component representing a generic node in the tree view (wraps `ItemNode`).
         - `index.ts`: Bundles and exports components from this directory.
     - `hooks/`: Contains React hooks specific to the factory planner logic.
         - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state.
@@ -225,7 +225,7 @@ Contains code organized by application feature domain.
         - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
         - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
         - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
-        - `usePlannerDisplayOptions.ts`: **NEW** - Hook managing state and persistence for UI display options (view mode, show extensions, etc.).
+        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show extensions, show machines, etc.). No longer manages the old List/Tree view mode.
         - `usePlannerExcessHandling.ts`: **NEW** - Hook managing the complex logic for handling changes to node excess production, including dispatching updates and potentially managing UI refresh triggers.
         - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees.
         - `usePlannerItemSelection.ts`: **NEW** - Hook managing state related to selecting items/recipes for creating new production chains (item list, selections, recent items).

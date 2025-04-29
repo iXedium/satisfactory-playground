@@ -23,7 +23,7 @@ The application provides the following core functionalities:
 *   **Excess/Byproduct Handling:** Provides mechanisms to visualize and potentially manage excess production or byproducts.
 *   **Data Persistence:** Saves user-created factory plans locally (using `localStorage` and potentially Dexie.js for more complex state) for later retrieval.
 *   **Import/Export:** Allows users to import/export parts of or entire production trees, facilitating modular design and sharing (details might be in `import-export-redesign.md`).
-*   **Customizable View Options:** Offers different ways to view the data, such as toggling between tree and list views, expanding/collapsing nodes, adjusting display density, etc.
+*   **Customizable View Options:** Offers different ways to view the data, such as expanding/collapsing nodes, adjusting display settings (like showing machine details), and sorting nodes.
 
 ## 3. Implemented Features (Based on Project Structure)
 

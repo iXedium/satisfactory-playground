@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-type ViewMode = "accumulated" | "tree";
-
 export interface BasePlannerDisplayOptions {
-  viewMode: ViewMode;
-  setViewMode: React.Dispatch<React.SetStateAction<ViewMode>>;
   showExtensions: boolean;
   setShowExtensions: React.Dispatch<React.SetStateAction<boolean>>;
   accumulateExtensions: boolean;
@@ -22,7 +18,6 @@ export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
 }
 
 export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
-  const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [showExtensions, setShowExtensions] = useState(false);
   const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
@@ -32,10 +27,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   // Load saved state from localStorage
   useEffect(() => {
     try {
-      const savedViewMode = localStorage.getItem('savedViewMode');
-      if (savedViewMode) {
-        setViewMode(savedViewMode as ViewMode);
-      }
       const savedShowExtensions = localStorage.getItem('savedShowExtensions');
       if (savedShowExtensions) {
         setShowExtensions(JSON.parse(savedShowExtensions));
@@ -64,7 +55,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   // Save state to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('savedViewMode', viewMode);
       localStorage.setItem('savedShowExtensions', JSON.stringify(showExtensions));
       localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
       localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
@@ -73,11 +63,10 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     } catch (error) {
       console.error("Error saving display options:", error);
     }
-  }, [viewMode, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
+  }, [showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
-    localStorage.removeItem('savedViewMode');
     localStorage.removeItem('savedShowExtensions');
     localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
@@ -85,8 +74,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   }, []);
 
   return {
-    viewMode,
-    setViewMode,
     showExtensions,
     setShowExtensions,
     accumulateExtensions,
