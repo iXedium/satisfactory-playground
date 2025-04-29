@@ -888,11 +888,7 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
     let newRequiredAmount = 0;
     const initialAmount = rootNode.amount;
     
-    // 1. Add manual excess first
-    const excessAmount = rootNode.excess || 0;
-    newRequiredAmount += excessAmount;
-
-    // 2. Find all current importers and sum their demands
+    // 1. Find all current importers and sum their demands
     for (const tree of Object.values(state.dependencies.dependencyTrees)) {
         const findDemand = (node: DependencyNode): number => {
             let demand = 0;

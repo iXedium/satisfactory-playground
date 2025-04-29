@@ -28,14 +28,15 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
 
   let secondaryText = '';
   if (excess > 1e-9 && !isByproduct && !isImport) {
-    secondaryText = `(f: ${formatNumber(amount)}, e: ${formatNumber(excess)})`;
+    secondaryText = `(${formatNumber(excess)})`;
   } else if (isByproduct) {
     secondaryText = `(byproduct)`;
   } else if (isImport) {
     secondaryText = `(import)`;
-  } else if (amount > 1e-9 && !isByproduct && !isImport) {
-    secondaryText = `(f: ${formatNumber(amount)})`;
-  }
+  } 
+  // else if (amount > 1e-9 && !isByproduct && !isImport) {
+  //   secondaryText = `(f: ${formatNumber(amount)})`;
+  // }
 
   return (
     <div
@@ -55,7 +56,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
           ...textStyle,
         }}
       >
-        {formatNumber(totalAmount)}t
+        {formatNumber(totalAmount)}
       </span>
       {secondaryText && (
          <span
