@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Software Design Document (SDD) Awareness
+
+Before starting any coding or significant analysis, always consult the Software Design Document: [SDD.md](mdc:docs/SDD.md).
+
+This document outlines the application's purpose, functionality, features, and flow. Ensure it is kept up-to-date with any changes made to the application's design or capabilities.
+
