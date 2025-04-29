@@ -27,8 +27,6 @@ const FactoryPlanner: React.FC = () => {
     machineCountMap,
     machineMultiplierMap,
     expandedNodes,
-    showExtensions,
-    accumulateExtensions,
     showMachines,
     showMachineMultiplier,
     nodeExtensionOverrides,
@@ -45,8 +43,6 @@ const FactoryPlanner: React.FC = () => {
     setSelectedItem,
     setSelectedRecipe,
     setExpandedNodes,
-    setShowExtensions,
-    setAccumulateExtensions,
     setShowMachines,
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
@@ -320,10 +316,6 @@ const FactoryPlanner: React.FC = () => {
           onRecipeSelect={setSelectedRecipe}
           onCalculate={handleCalculate}
           onExpandCollapseAll={handleExpandCollapseAll}
-          showExtensions={showExtensions}
-          onShowExtensionsChange={setShowExtensions}
-          accumulateExtensions={accumulateExtensions}
-          onAccumulateExtensionsChange={setAccumulateExtensions}
           showMachines={showMachines}
           onShowMachinesChange={setShowMachines}
           showMachineMultiplier={showMachineMultiplier}
@@ -359,8 +351,6 @@ const FactoryPlanner: React.FC = () => {
           handleMachineMultiplierChange={handleMachineMultiplierChange}
           expandedNodes={expandedNodes}
           setExpandedNodes={setExpandedNodes}
-          showExtensions={showExtensions}
-          accumulateExtensions={accumulateExtensions}
           showMachines={showMachines}
           showMachineMultiplier={showMachineMultiplier}
           handleDeleteTree={handleDeleteTree}

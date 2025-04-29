@@ -18,8 +18,6 @@ interface TreeViewContainerProps {
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
   setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  showExtensions: boolean;
-  accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
@@ -42,7 +40,7 @@ interface TreeViewContainerProps {
 const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeViewContainerProps> = (
   {
     treesArray,
-    handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection,
+    handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection,
     onManualSort
   },
   ref) => {

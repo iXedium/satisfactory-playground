@@ -8,10 +8,6 @@ interface PlannerActionsProps {
   onSearchChange: (searchTerm: string) => void; // Example handler
   onClearSavedData?: () => void;
   // Include props for SettingsMenu if it's moved here
-  showExtensions: boolean;
-  onShowExtensionsChange: (show: boolean) => void;
-  accumulateExtensions: boolean;
-  onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
@@ -27,10 +23,6 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onSearchChange,
   onClearSavedData,
   // Destructure settings props if moved
-  showExtensions,
-  onShowExtensionsChange,
-  accumulateExtensions,
-  onAccumulateExtensionsChange,
   showMachines,
   onShowMachinesChange,
   showMachineMultiplier,
@@ -96,10 +88,6 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
 
       {/* Settings Menu Button */}
       <SettingsMenu 
-        showExtensions={showExtensions}
-        onShowExtensionsChange={onShowExtensionsChange}
-        accumulateExtensions={accumulateExtensions}
-        onAccumulateExtensionsChange={onAccumulateExtensionsChange}
         showMachines={showMachines}
         onShowMachinesChange={onShowMachinesChange}
         showMachineMultiplier={showMachineMultiplier}

@@ -225,7 +225,7 @@ Contains code organized by application feature domain.
         - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
         - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
         - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
-        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show extensions, show machines, etc.). No longer manages the old List/Tree view mode.
+        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.). No longer manages the old List/Tree view mode.
         - `usePlannerExcessHandling.ts`: **NEW** - Hook managing the complex logic for handling changes to node excess production, including dispatching updates and potentially managing UI refresh triggers.
         - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees.
         - `usePlannerItemSelection.ts`: **NEW** - Hook managing state related to selecting items/recipes for creating new production chains (item list, selections, recent items).

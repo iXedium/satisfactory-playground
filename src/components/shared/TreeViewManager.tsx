@@ -1,9 +1,6 @@
-import React from 'react';
-import DependencyTree from '../../features/factory-planner/components/DependencyTree';
-import { DependencyNode } from '../../types';
-import { AccumulatedNode } from '../../utils';
-import { calculateDependencyTree } from '../../utils';
-import { theme } from '../../styles/theme';
+import React from "react";
+import DependencyTree from "../../features/factory-planner/components/DependencyTree";
+import { DependencyNode } from "../../types";
 
 interface TreeViewManagerProps {
   dependencyTrees: Record<string, DependencyNode>;
@@ -16,8 +13,6 @@ interface TreeViewManagerProps {
   onMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
   onNodeExpandChange: (nodeId: string, expanded: boolean) => void;
-  showExtensions: boolean;
-  accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
   onDeleteTree: (treeId: string) => void;
@@ -48,8 +43,8 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
     <div
       style={{
         flex: 1,
-        overflow: 'visible',
-        ...containerStyle
+        overflow: "visible",
+        ...containerStyle,
       }}
     >
       {Object.entries(dependencyTrees).map(([treeId, tree]) => (
@@ -71,10 +66,13 @@ const TreeViewManager: React.FC<TreeViewManagerProps> = ({
           onDelete={() => onDeleteTree(treeId)}
           onImportNode={onImportNode}
           onNodeUpdate={onNodeUpdate}
+          treeId={""}
+          treeSortKey={"amount"}
+          treeSortDirection={"asc"}
         />
       ))}
     </div>
   );
 };
 
-export default TreeViewManager; 
+export default TreeViewManager;

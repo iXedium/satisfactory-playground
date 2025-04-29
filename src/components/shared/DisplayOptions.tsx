@@ -3,10 +3,6 @@ import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 
 interface DisplayOptionsProps {
-  showExtensions: boolean;
-  onShowExtensionsChange: (show: boolean) => void;
-  accumulateExtensions: boolean;
-  onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
@@ -15,10 +11,6 @@ interface DisplayOptionsProps {
 }
 
 const DisplayOptions: React.FC<DisplayOptionsProps> = ({
-  showExtensions,
-  onShowExtensionsChange,
-  accumulateExtensions,
-  onAccumulateExtensionsChange,
   showMachines,
   onShowMachinesChange,
   showMachineMultiplier,
@@ -59,32 +51,7 @@ const DisplayOptions: React.FC<DisplayOptionsProps> = ({
       <h3 style={{ margin: `0 0 ${sizes.spacing.medium} 0`, color: theme.colors.text }}>
         Display Options
       </h3>
-      
-      <div style={toggleStyle}>
-        <input
-          type="checkbox"
-          id="showExtensions"
-          checked={showExtensions}
-          onChange={(e) => onShowExtensionsChange(e.target.checked)}
-          style={checkboxStyle}
-        />
-        <label htmlFor="showExtensions" style={labelStyle}>
-          Show Extensions
-        </label>
-      </div>
-      
-      <div style={toggleStyle}>
-        <input
-          type="checkbox"
-          id="accumulateExtensions"
-          checked={accumulateExtensions}
-          onChange={(e) => onAccumulateExtensionsChange(e.target.checked)}
-          style={checkboxStyle}
-        />
-        <label htmlFor="accumulateExtensions" style={labelStyle}>
-          Accumulate Extensions
-        </label>
-      </div>
+          
       
       <div style={toggleStyle}>
         <input

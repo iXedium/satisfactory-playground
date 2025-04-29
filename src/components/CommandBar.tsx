@@ -27,10 +27,6 @@ interface CommandBarProps {
   onRecipeSelect: (recipeId: string) => void;
   onCalculate: () => void;
   onExpandCollapseAll: (expand: boolean) => void;
-  showExtensions: boolean;
-  onShowExtensionsChange: (show: boolean) => void;
-  accumulateExtensions: boolean;
-  onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
@@ -68,10 +64,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onRecipeSelect,
     onCalculate,
     onExpandCollapseAll,
-    showExtensions,
-    onShowExtensionsChange,
-    accumulateExtensions,
-    onAccumulateExtensionsChange,
     showMachines,
     onShowMachinesChange,
     showMachineMultiplier,
@@ -145,10 +137,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onSearchChange={handleSearchChange} // Pass placeholder or real handler
           onClearSavedData={onClearSavedData}
           // Pass settings props down
-          showExtensions={showExtensions}
-          onShowExtensionsChange={onShowExtensionsChange}
-          accumulateExtensions={accumulateExtensions}
-          onAccumulateExtensionsChange={onAccumulateExtensionsChange}
           showMachines={showMachines}
           onShowMachinesChange={onShowMachinesChange}
           showMachineMultiplier={showMachineMultiplier}

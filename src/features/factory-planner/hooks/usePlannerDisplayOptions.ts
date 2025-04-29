@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export interface BasePlannerDisplayOptions {
-  showExtensions: boolean;
-  setShowExtensions: React.Dispatch<React.SetStateAction<boolean>>;
-  accumulateExtensions: boolean;
-  setAccumulateExtensions: React.Dispatch<React.SetStateAction<boolean>>;
   showMachines: boolean;
   setShowMachines: React.Dispatch<React.SetStateAction<boolean>>;
   showMachineMultiplier: boolean;
@@ -18,8 +14,6 @@ export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
 }
 
 export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
-  const [showExtensions, setShowExtensions] = useState(false);
-  const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
   const [autoImport, setAutoImport] = useState(true);
@@ -27,14 +21,6 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   // Load saved state from localStorage
   useEffect(() => {
     try {
-      const savedShowExtensions = localStorage.getItem('savedShowExtensions');
-      if (savedShowExtensions) {
-        setShowExtensions(JSON.parse(savedShowExtensions));
-      }
-      const savedAccumulateExtensions = localStorage.getItem('savedAccumulateExtensions');
-      if (savedAccumulateExtensions) {
-        setAccumulateExtensions(JSON.parse(savedAccumulateExtensions));
-      }
       const savedShowMachines = localStorage.getItem('savedShowMachines');
       if (savedShowMachines) {
         setShowMachines(JSON.parse(savedShowMachines));
@@ -55,29 +41,21 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   // Save state to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('savedShowExtensions', JSON.stringify(showExtensions));
-      localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
       localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
       localStorage.setItem('savedShowMachineMultiplier', JSON.stringify(showMachineMultiplier));
       localStorage.setItem('plannerAutoImport', JSON.stringify(autoImport));
     } catch (error) {
       console.error("Error saving display options:", error);
     }
-  }, [showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
+  }, [ showMachines, showMachineMultiplier, autoImport]);
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
-    localStorage.removeItem('savedShowExtensions');
-    localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
     localStorage.removeItem('savedShowMachineMultiplier');
   }, []);
 
   return {
-    showExtensions,
-    setShowExtensions,
-    accumulateExtensions,
-    setAccumulateExtensions,
     showMachines,
     setShowMachines,
     showMachineMultiplier,

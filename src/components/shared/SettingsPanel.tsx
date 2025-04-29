@@ -8,10 +8,6 @@ interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   buttonRef: React.RefObject<HTMLButtonElement>;
-  showExtensions: boolean;
-  onShowExtensionsChange: (show: boolean) => void;
-  accumulateExtensions: boolean;
-  onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
@@ -24,10 +20,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isOpen,
   onClose,
   buttonRef,
-  showExtensions,
-  onShowExtensionsChange,
-  accumulateExtensions,
-  onAccumulateExtensionsChange,
   showMachines,
   onShowMachinesChange,
   showMachineMultiplier,
@@ -115,24 +107,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       </h4>
       
       <div style={checkboxContainerStyle}>
-        <div style={checkboxStyle} onClick={() => onShowExtensionsChange(!showExtensions)}>
-          <StyledCheckbox 
-            checked={showExtensions} 
-            onChange={() => onShowExtensionsChange(!showExtensions)}
-            label=""
-          />
-          <span>Show Extensions</span>
-        </div>
-        
-        <div style={checkboxStyle} onClick={() => onAccumulateExtensionsChange(!accumulateExtensions)}>
-          <StyledCheckbox 
-            checked={accumulateExtensions} 
-            onChange={() => onAccumulateExtensionsChange(!accumulateExtensions)}
-            label=""
-          />
-          <span>Accumulate Extensions</span>
-        </div>
-        
         <div style={checkboxStyle} onClick={() => onShowMachinesChange(!showMachines)}>
           <StyledCheckbox 
             checked={showMachines} 

@@ -78,10 +78,6 @@ export const useFactoryPlanner = () => {
   // -------------------------------------------------------------
   
   const {
-    showExtensions,
-    setShowExtensions,
-    accumulateExtensions,
-    setAccumulateExtensions,
     showMachines,
     setShowMachines,
     showMachineMultiplier,
@@ -268,8 +264,6 @@ export const useFactoryPlanner = () => {
     machineCountMap,
     machineMultiplierMap,
     expandedNodes,
-    showExtensions,
-    accumulateExtensions,
     showMachines,
     showMachineMultiplier,
     nodeExtensionOverrides,
@@ -283,8 +277,6 @@ export const useFactoryPlanner = () => {
     setSelectedItem,
     setSelectedRecipe,
     setExpandedNodes,
-    setShowExtensions,
-    setAccumulateExtensions,
     setShowMachines,
     setShowMachineMultiplier,
     setIsAddItemCollapsed,

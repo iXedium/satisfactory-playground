@@ -17,8 +17,6 @@ interface PlannerContentProps {
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   expandedNodes: Record<string, boolean>;
   setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  showExtensions: boolean;
-  accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
   handleDeleteTree: (treeId: string) => void;
@@ -49,8 +47,6 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
   handleMachineMultiplierChange,
   expandedNodes,
   setExpandedNodes,
-  showExtensions,
-  accumulateExtensions,
   showMachines,
   showMachineMultiplier,
   handleDeleteTree,
@@ -86,8 +82,6 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         handleMachineMultiplierChange={handleMachineMultiplierChange}
         expandedNodes={expandedNodes}
         setExpandedNodes={setExpandedNodes}
-        showExtensions={showExtensions}
-        accumulateExtensions={accumulateExtensions}
         showMachines={showMachines}
         showMachineMultiplier={showMachineMultiplier}
         handleDeleteTree={handleDeleteTree}

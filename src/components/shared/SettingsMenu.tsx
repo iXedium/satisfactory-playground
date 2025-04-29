@@ -4,10 +4,6 @@ import { theme } from '../../styles/theme';
 import StyledCheckbox from './StyledCheckbox';
 
 interface SettingsMenuProps {
-  showExtensions: boolean;
-  onShowExtensionsChange: (show: boolean) => void;
-  accumulateExtensions: boolean;
-  onAccumulateExtensionsChange: (accumulate: boolean) => void;
   showMachines: boolean;
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
@@ -19,10 +15,6 @@ interface SettingsMenuProps {
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
-  showExtensions,
-  onShowExtensionsChange,
-  accumulateExtensions,
-  onAccumulateExtensionsChange,
   showMachines,
   onShowMachinesChange,
   showMachineMultiplier,
@@ -135,22 +127,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         >
           <h4 style={{ margin: '0 0 8px 0', color: theme.colors.text, fontSize: '14px' }}>Display Options</h4>
           <div style={checkboxContainerStyle}>
-            <div style={compactCheckboxStyle}>
-              <StyledCheckbox 
-                checked={showExtensions} 
-                onChange={() => onShowExtensionsChange(!showExtensions)}
-                label=""
-              />
-              <span>Show Extensions</span>
-            </div>
-            <div style={compactCheckboxStyle}>
-              <StyledCheckbox 
-                checked={accumulateExtensions} 
-                onChange={() => onAccumulateExtensionsChange(!accumulateExtensions)}
-                label=""
-              />
-              <span>Accumulate Extensions</span>
-            </div>
+            
             <div style={compactCheckboxStyle}>
               <StyledCheckbox 
                 checked={showMachines} 
