@@ -3,6 +3,7 @@ import { DependencyNode, Item } from '../../types';
 import TreeViewContainer from './TreeViewContainer';
 import { SortDirection, TreeSortKey } from '../../features/factory-planner/hooks/useFactoryPlanner';
 import { DropResult } from '@hello-pangea/dnd';
+import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions';
 
 interface PlannerContentProps {
   treeViewRef: RefObject<HTMLDivElement | null>;
@@ -29,6 +30,7 @@ interface PlannerContentProps {
   itemsMap: Record<string, Item>;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
+  viewDensity: ViewDensity;
 }
 
 /**
@@ -59,6 +61,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
   itemsMap,
   treeSortKey,
   treeSortDirection,
+  viewDensity,
 }) => {
   return (
     <div 
@@ -93,6 +96,7 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         treeSortDirection={treeSortDirection}
         nodeExtensionOverrides={nodeExtensionOverrides}
         handleToggleNodeExtensions={handleToggleNodeExtensions}
+        viewDensity={viewDensity}
       />
     </div>
   );

@@ -38,6 +38,8 @@ const FactoryPlanner: React.FC = () => {
     treeSortKey,
     treeSortDirection,
     itemsMap,
+    // Get density state
+    viewDensity,
 
     // Setters
     setSelectedItem,
@@ -49,6 +51,8 @@ const FactoryPlanner: React.FC = () => {
     updateRecentItems,
     setTreeSortKey,
     setTreeSortDirection,
+    // Get density setter
+    setViewDensity,
 
     // Handlers
     handleCalculate,
@@ -251,63 +255,39 @@ const FactoryPlanner: React.FC = () => {
   }, [dependencies.dependencyTrees]); // Rerun when trees change
   // ----------------------------------------------------
 
-  // --- Prepare Display Trees Array (Sorted or Manually Ordered) ---
+  // --- Trees Array Memoization (with sorting and null filtering) ---
   const displayTreesArray = useMemo(() => {
-    const allTrees = dependencies.dependencyTrees;
+    const allTrees = Object.values(dependencies.dependencyTrees);
     
-    // Add check: Return empty array if trees are not loaded yet
-    if (!allTrees) {
-      return [];
-    }
-
-    let sortedOrOrderedTrees: DependencyNode[] = [];
+    // Filter out any null entries FIRST
+    const validTrees = allTrees.filter((t): t is DependencyNode => t !== null);
 
     if (treeSortKey === 'Manual') {
-      // Use manual order, filtering out potential missing trees and adding new ones
-      const currentTreeIds = Object.keys(allTrees); // Safe now due to check above
-      const orderedTrees = manualTreeOrder
-        .map(id => allTrees[id])
-        .filter(tree => tree !== undefined); // Filter out undefined (deleted trees)
-
-      // Ensure all current trees are included (append new ones)
-      const orderedIds = new Set(orderedTrees.map(t => t.uniqueId));
-      const newTrees = currentTreeIds
-        .filter(id => !orderedIds.has(id))
-        .map(id => allTrees[id]);
-
-      sortedOrOrderedTrees = [...orderedTrees, ...newTrees];
-
+      // Create a map for quick lookup
+      const treeMap = validTrees.reduce((acc, tree) => {
+        acc[tree.uniqueId] = tree;
+        return acc;
+      }, {} as Record<string, DependencyNode>);
+      
+      // Return trees in the manually specified order, filtering out any potentially stale IDs
+      return manualTreeOrder.map(id => treeMap[id]).filter(Boolean); 
     } else {
-      // Apply standard sorting logic
-      const treesArray = Object.values(allTrees);
-      treesArray.sort((a, b) => {
+      // Sort the filtered array based on the selected key and direction
+      return [...validTrees].sort((a, b) => {
         let compareResult = 0;
-        if (treeSortKey === 'originalDepth') {
-          const depthA = a.originalDepth ?? (a.depth === 0 ? -1 : Infinity);
-          const depthB = b.originalDepth ?? (b.depth === 0 ? -1 : Infinity);
-          compareResult = depthA - depthB;
+        // No need to check for null on a or b here anymore
+        if (treeSortKey === 'name') {
+          compareResult = (itemsMap[a.id]?.name || a.id).localeCompare(itemsMap[b.id]?.name || b.id);
         } else if (treeSortKey === 'amount') {
-          compareResult = (a.amount ?? 0) - (b.amount ?? 0);
-        } else if (treeSortKey === 'name') {
-          const nameA = itemsMap[a.id]?.name?.toLowerCase() || a.id.toLowerCase();
-          const nameB = itemsMap[b.id]?.name?.toLowerCase() || b.id.toLowerCase();
-          compareResult = nameA.localeCompare(nameB);
-        } else if (treeSortKey === 'nominalRate') {
-            const outputA = a.recipe?.out?.[a.id] ?? 0;
-            const timeA = a.recipe?.time ?? 0;
-            const rateA = timeA > 0 ? (outputA / timeA) * 60 : 0;
-            const outputB = b.recipe?.out?.[b.id] ?? 0;
-            const timeB = b.recipe?.time ?? 0;
-            const rateB = timeB > 0 ? (outputB / timeB) * 60 : 0;
-            compareResult = rateA - rateB;
+          compareResult = a.amount - b.amount;
+        } else { // Default to originalDepth (Hierarchy)
+          compareResult = (a.originalDepth ?? 0) - (b.originalDepth ?? 0);
         }
         return treeSortDirection === 'asc' ? compareResult : -compareResult;
       });
-      sortedOrOrderedTrees = treesArray;
     }
-    return sortedOrOrderedTrees;
-  }, [dependencies.dependencyTrees, treeSortKey, treeSortDirection, manualTreeOrder, itemsMap]);
-  // -----------------------------------------------------------------
+  }, [dependencies.dependencyTrees, treeSortKey, treeSortDirection, itemsMap, manualTreeOrder]);
+  // ------------------------------------------------------
 
   return (
     <FactoryPlannerLayout
@@ -339,6 +319,9 @@ const FactoryPlanner: React.FC = () => {
           onTreeSortDirectionChange={setTreeSortDirection}
           isSummaryVisible={isSummaryVisible}
           onToggleSummary={() => setIsSummaryVisible(prev => !prev)}
+          // Pass density state/setter
+          viewDensity={viewDensity}
+          setViewDensity={setViewDensity}
         />
       }
       commandBarHeight={commandBarHeight}
@@ -368,6 +351,8 @@ const FactoryPlanner: React.FC = () => {
           itemsMap={itemsMap}
           treeSortKey={treeSortKey}
           treeSortDirection={treeSortDirection}
+          // Pass density state
+          viewDensity={viewDensity}
         />
       }
       sidebar={isSummaryVisible ? (

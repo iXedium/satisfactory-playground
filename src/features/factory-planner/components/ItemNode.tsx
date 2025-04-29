@@ -8,6 +8,7 @@ import ItemDetails from "../../../components/shared/ItemDetails";
 import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
+import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 
 interface ItemNodeProps {
   itemId: string;
@@ -35,6 +36,7 @@ interface ItemNodeProps {
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
   onUnimport?: (nodeId: string) => void;
+  viewDensity: ViewDensity;
 }
 
 interface Machine {
@@ -72,6 +74,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onDelete,
   onImport,
   onUnimport,
+  viewDensity,
 }) => {
   // Log received props for byproducts
   if (isByproduct) {
@@ -211,8 +214,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   if (!item) return null;
 
+  const densityClass = `item-node--${viewDensity}`;
+
    return (
     <div
+      className={`item-node ${densityClass}`}
       style={{
         display: "flex",
         alignItems: "center",
@@ -234,6 +240,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
       {/* Item Section Container */}
       <div
+        className="item-section-container"
         style={{
           display: "flex",
           gap: "4px",

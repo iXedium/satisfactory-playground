@@ -2,24 +2,25 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
-import { getRecipesForItem, getRecipeById, getRecipeByOutput } from '../../../data';
+import { getRecipesForItem, getRecipeById, getRecipeByOutput, getAllItems } from '../../../data';
 import { Item, DependencyNode, Recipe } from '../../../types';
 import { 
   loadSavedState, 
   setDependencies, 
-  deleteTree, 
+  deleteTree as deleteTreeAction,
   importNodeAction,
   updateNodeProperties,
-  unimportNode,
-  updateTreeProduction
+  unimportNode as unimportNodeAction,
+  updateTreeProduction,
+  checkAndConvertNodeTypeThunk,
 } from '../store';
 import { 
-  setRecipeSelection, 
-  loadRecipeSelections 
+  setRecipeSelection as setRecipeSelectionAction,
+  loadRecipeSelections
 } from '../store';
 import { calculateDependencyTree, findNodeById } from '../../../utils';
 import { calculateAccumulatedFromTree } from '../../../utils';
-import { usePlannerDisplayOptions } from './usePlannerDisplayOptions';
+import { usePlannerDisplayOptions, ViewDensity } from './usePlannerDisplayOptions';
 import { usePlannerNodeState } from './usePlannerNodeState';
 import { usePlannerItemSelection } from './usePlannerItemSelection';
 import { usePlannerTreeCalculation } from './usePlannerTreeCalculation';
@@ -31,6 +32,7 @@ import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerPersistence } from './usePlannerPersistence';
 import { unimportNodeThunk } from '../store/importExportLogic';
+import { createNewTreeStructure } from './usePlannerTreeCalculation';
 
 // Define types for Tree View sorting and EXPORT them
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
@@ -40,16 +42,67 @@ export type SortDirection = 'asc' | 'desc';
 const LS_SORT_KEY = 'plannerTreeSortKey';
 const LS_SORT_DIRECTION = 'plannerTreeSortDirection';
 
-export const useFactoryPlanner = () => {
-  const dispatch = useDispatch<AppDispatch>();
+export interface FactoryPlannerHookResult {
+  dependencies: { dependencyTrees: Record<string, DependencyNode | null> };
+  recipeSelections: Record<string, string>;
+  items: Item[];
+  selectedItem: string;
+  selectedRecipe: string;
+  excessMap: Record<string, number>;
+  machineCountMap: Record<string, number>;
+  machineMultiplierMap: Record<string, number>;
+  expandedNodes: Record<string, boolean>;
+  showExtensions: boolean;
+  accumulateExtensions: boolean;
+  showMachines: boolean;
+  showMachineMultiplier: boolean;
+  nodeExtensionOverrides: Record<string, boolean>;
+  isAddItemCollapsed: boolean;
+  recentItems: string[];
+  autoImport: boolean;
+  itemsMap: Record<string, Item>;
+  treeSortKey: TreeSortKey;
+  treeSortDirection: SortDirection;
+  viewDensity: ViewDensity;
+
+  setSelectedItem: React.Dispatch<React.SetStateAction<string>>;
+  setSelectedRecipe: React.Dispatch<React.SetStateAction<string>>;
+  setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  setShowExtensions: React.Dispatch<React.SetStateAction<boolean>>;
+  setAccumulateExtensions: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowMachines: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowMachineMultiplier: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsAddItemCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  updateRecentItems: (itemId: string) => void;
+  removeRecentItem: (itemId: string) => void;
+  setAutoImport: React.Dispatch<React.SetStateAction<boolean>>;
+  setTreeSortKey: React.Dispatch<React.SetStateAction<TreeSortKey>>;
+  setTreeSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
+  setViewDensity: (density: ViewDensity) => void;
+
+  handleCalculate: () => Promise<void>;
+  handleExcessChange: (nodeId: string, excess: number) => Promise<void>;
+  handleMachineCountChange: (nodeId: string, count: number) => void;
+  handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
+  handleExpandCollapseAll: (expand: boolean) => void;
+  handleDeleteTree: (treeId: string) => void;
+  handleImportNode: (nodeId: string) => Promise<void>;
+  handleUnimportNode: (nodeId: string) => void;
+  handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
+  clearSavedData: () => void;
+  handleToggleNodeExtensions?: (nodeId: string) => void;
+  handleTreeRecipeChange: (nodeId: string, recipeId: string) => Promise<void>;
+}
+
+export const useFactoryPlanner = (): FactoryPlannerHookResult => {
+  const dispatch: AppDispatch = useDispatch();
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
   
   // --- Define generateTreeId and createNewTreeStructure FIRST --- 
   const generateTreeId = useCallback((itemId: string): string => {
-    const timestamp = Date.now();
-    const randomSuffix = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
-    return `tree-${itemId}-${timestamp}-${randomSuffix}`;
+    // Simple ID generation for now, ensures uniqueness within session
+    return `${itemId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   }, []);
 
   const createNewTreeStructure = useCallback(async (
@@ -78,6 +131,10 @@ export const useFactoryPlanner = () => {
   // -------------------------------------------------------------
   
   const {
+    showExtensions,
+    setShowExtensions,
+    accumulateExtensions,
+    setAccumulateExtensions,
     showMachines,
     setShowMachines,
     showMachineMultiplier,
@@ -85,6 +142,8 @@ export const useFactoryPlanner = () => {
     clearStorage: clearDisplayOptionsStorage,
     autoImport,
     setAutoImport,
+    viewDensity,
+    setViewDensity,
   } = usePlannerDisplayOptions();
   
   const {
@@ -225,13 +284,6 @@ export const useFactoryPlanner = () => {
     handleExcessChange,
   });
   
-  // --- Define Unimport Handler --- 
-  const handleUnimportNode = useCallback((nodeId: string) => {
-    // Dispatch the thunk (implementation pending)
-    dispatch(unimportNodeThunk(nodeId)); 
-  }, [dispatch]);
-  // -------------------------------
-
   // --- Load Core Redux State (Dependencies, Recipes) on Initial Mount --- 
   useEffect(() => {
     try {
@@ -252,7 +304,10 @@ export const useFactoryPlanner = () => {
   }, [dispatch]); // Run only once on mount
   // ---------------------------------------------------------------------
   
-  usePlannerPersistence({ dependencies, recipeSelections });
+  usePlannerPersistence({
+    dependencies,
+    recipeSelections,
+  });
 
   return {
     dependencies,
@@ -264,6 +319,8 @@ export const useFactoryPlanner = () => {
     machineCountMap,
     machineMultiplierMap,
     expandedNodes,
+    showExtensions,
+    accumulateExtensions,
     showMachines,
     showMachineMultiplier,
     nodeExtensionOverrides,
@@ -273,10 +330,13 @@ export const useFactoryPlanner = () => {
     itemsMap,
     treeSortKey,
     treeSortDirection,
+    viewDensity,
 
     setSelectedItem,
     setSelectedRecipe,
     setExpandedNodes,
+    setShowExtensions,
+    setAccumulateExtensions,
     setShowMachines,
     setShowMachineMultiplier,
     setIsAddItemCollapsed,
@@ -285,6 +345,7 @@ export const useFactoryPlanner = () => {
     setAutoImport,
     setTreeSortKey,
     setTreeSortDirection,
+    setViewDensity,
 
     handleCalculate,
     handleExcessChange,
@@ -293,7 +354,7 @@ export const useFactoryPlanner = () => {
     handleExpandCollapseAll,
     handleDeleteTree,
     handleImportNode,
-    handleUnimportNode,
+    handleUnimportNode: handleUnimport,
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,

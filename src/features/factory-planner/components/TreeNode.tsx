@@ -4,6 +4,7 @@ import { DependencyNode, Item, Recipe } from '../../../types';
 import { theme } from  '../../../styles/theme';
 import { toggleChildrenVisibility } from '../../../utils/nodeReferenceUtils';
 import { TreeSortKey, SortDirection } from '../hooks/useFactoryPlanner';
+import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -27,6 +28,7 @@ interface TreeNodeProps {
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
+  viewDensity: ViewDensity;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -50,7 +52,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onUnimport,
   onNodeUpdate,
   treeSortKey,
-  treeSortDirection
+  treeSortDirection,
+  viewDensity,
 }) => {
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false); 
@@ -146,6 +149,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         onNodeUpdate={onNodeUpdate}
         treeSortKey={treeSortKey}
         treeSortDirection={treeSortDirection}
+        viewDensity={viewDensity}
       />
     ));
   };
@@ -213,14 +217,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             onDelete={isRoot && onDelete ? () => onDelete(node.uniqueId) : undefined}
             onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
             onUnimport={!isRoot && onUnimport ? () => onUnimport(node.uniqueId) : undefined}
+            viewDensity={viewDensity}
           />
         </div>
       </div>
 
       {shouldShowChildren && (
-        <div>
-          {renderChildren()}
-        </div>
+        <div style={{ position: 'relative', zIndex: -1 }}>{renderChildren()}</div>
       )}
     </div>
   );

@@ -6,6 +6,10 @@ export type ViewDensity = 'relaxed' | 'compact';
 export interface BasePlannerDisplayOptions {
   viewDensity: ViewDensity;
   setViewDensity: React.Dispatch<React.SetStateAction<ViewDensity>>;
+  showExtensions: boolean;
+  setShowExtensions: React.Dispatch<React.SetStateAction<boolean>>;
+  accumulateExtensions: boolean;
+  setAccumulateExtensions: React.Dispatch<React.SetStateAction<boolean>>;
   showMachines: boolean;
   setShowMachines: React.Dispatch<React.SetStateAction<boolean>>;
   showMachineMultiplier: boolean;
@@ -20,6 +24,8 @@ export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
 
 export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   const [viewDensity, setViewDensity] = useState<ViewDensity>('relaxed');
+  const [showExtensions, setShowExtensions] = useState(false);
+  const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
   const [autoImport, setAutoImport] = useState(true);
@@ -31,6 +37,14 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       const savedViewDensity = localStorage.getItem('savedViewDensity');
       if (savedViewDensity) {
         setViewDensity(savedViewDensity as ViewDensity);
+      }
+      const savedShowExtensions = localStorage.getItem('savedShowExtensions');
+      if (savedShowExtensions) {
+        setShowExtensions(JSON.parse(savedShowExtensions));
+      }
+      const savedAccumulateExtensions = localStorage.getItem('savedAccumulateExtensions');
+      if (savedAccumulateExtensions) {
+        setAccumulateExtensions(JSON.parse(savedAccumulateExtensions));
       }
       const savedShowMachines = localStorage.getItem('savedShowMachines');
       if (savedShowMachines) {
@@ -54,18 +68,22 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     try {
       // Save view density
       localStorage.setItem('savedViewDensity', viewDensity);
+      localStorage.setItem('savedShowExtensions', JSON.stringify(showExtensions));
+      localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
       localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
       localStorage.setItem('savedShowMachineMultiplier', JSON.stringify(showMachineMultiplier));
       localStorage.setItem('plannerAutoImport', JSON.stringify(autoImport));
     } catch (error) {
       console.error("Error saving display options:", error);
     }
-  }, [viewDensity, showMachines, showMachineMultiplier, autoImport]);
+  }, [viewDensity, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
     // Clear view density
     localStorage.removeItem('savedViewDensity');
+    localStorage.removeItem('savedShowExtensions');
+    localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
     localStorage.removeItem('savedShowMachineMultiplier');
   }, []);
@@ -73,6 +91,10 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   return {
     viewDensity,
     setViewDensity,
+    showExtensions,
+    setShowExtensions,
+    accumulateExtensions,
+    setAccumulateExtensions,
     showMachines,
     setShowMachines,
     showMachineMultiplier,

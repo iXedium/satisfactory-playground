@@ -6,6 +6,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import TreeNode from '../../features/factory-planner/components/TreeNode';
+import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions';
 
 interface TreeViewContainerProps {
   treesArray: DependencyNode[];
@@ -31,6 +33,7 @@ interface TreeViewContainerProps {
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
   onManualSort: (result: DropResult) => void;
+  viewDensity: ViewDensity;
 }
 
 /**
@@ -41,7 +44,9 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
   {
     treesArray,
     handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection,
-    onManualSort
+    onManualSort,
+    handleToggleNodeExtensions,
+    viewDensity
   },
   ref) => {
 
@@ -88,8 +93,10 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                         marginBottom: '8px',
                       }}
                     >
-                      <DependencyTree
-                        tree={tree}
+                      <TreeNode
+                        key={treeId}
+                        node={tree}
+                        depth={0}
                         treeId={treeId}
                         onRecipeChange={handleTreeRecipeChange}
                         onExcessChange={handleExcessChange}
@@ -105,15 +112,16 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                             [nodeId]: expanded
                           }));
                         }}
-                        showMachines={showMachines}
+                        showMachineSection={showMachines}
                         showMachineMultiplier={showMachineMultiplier}
                         isRoot={true}
-                        onDelete={() => handleDeleteTree(treeId)}
-                        onImportNode={handleImportNode}
-                        onUnimportNode={handleUnimportNode}
+                        onDelete={handleDeleteTree}
+                        onImport={handleImportNode}
+                        onUnimport={handleUnimportNode}
                         onNodeUpdate={handleNodeUpdate}
                         treeSortKey={treeSortKey}
                         treeSortDirection={treeSortDirection}
+                        viewDensity={viewDensity}
                       />
                     </div>
                   )}

@@ -14,6 +14,8 @@ import {
   TreeSortKey, 
   SortDirection 
 } from "../features/factory-planner/hooks/useFactoryPlanner";
+// Import ViewDensity type
+import { ViewDensity } from "../features/factory-planner/hooks/usePlannerDisplayOptions";
 
 // Remove local type definitions
 // type TreeSortKey = 'default' | 'amount' | 'name'; 
@@ -50,6 +52,10 @@ interface CommandBarProps {
   isSummaryVisible: boolean;
   onToggleSummary: () => void;
   // ---------------------------------
+  
+  // Add density props
+  viewDensity: ViewDensity;
+  setViewDensity: (density: ViewDensity) => void;
 }
 
 /**
@@ -86,6 +92,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     isSummaryVisible,
     onToggleSummary,
     // ------------------------------
+    // Destructure density props
+    viewDensity,
+    setViewDensity,
   },
   ref
 ) => {
@@ -130,6 +139,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
            onTreeSortKeyChange={onTreeSortKeyChange}
            treeSortDirection={treeSortDirection}
            onTreeSortDirectionChange={onTreeSortDirectionChange}
+           // Pass density props down
+           viewDensity={viewDensity}
+           setViewDensity={setViewDensity}
         />
         
         {/* --- Render PlannerActions --- */}

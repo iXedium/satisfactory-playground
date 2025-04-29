@@ -107,11 +107,11 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
 
           {/* Sort Controls */}
           <StyledSelect
-            options={sortByKeyOptions}
+        options={sortByKeyOptions}
             value={treeSortKey}
-            onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
+        onChange={(val) => onTreeSortKeyChange(val as TreeSortKey)}
             variant="compact"
-            style={selectStyle}
+        style={selectStyle}
           />
           <button
             style={iconButtonStyle}
