@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../../styles/theme';
+// import { theme } from '../../styles/theme'; // REMOVED - No longer needed directly
 import { sizes } from '../../styles/constants';
 import Icon, { IconSize } from '../Icon';
 import MachineControls from './MachineControls';
@@ -38,40 +38,25 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
   containerStyle,
   contentStyle,
 }) => {
-  // Section container styles
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.dark,
-    borderRadius: theme.border.radius,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    padding: `${sizes.spacing.medium} ${sizes.spacing.small}`,
-    display: "flex",
-    alignItems: "center",
-    height: "100%",
-    borderLeft: `4px solid ${theme.colors.secondary}`,
-    flex: 1,
-    maxWidth: "265px",
-    position: "relative",
-    zIndex: sizes.zIndex.base,
-    ...containerStyle
-  };
-
   return (
     <div
-      style={sectionStyle}
+      className="machine-details"
+      style={containerStyle}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Machine icon */}
-      <div style={{ marginRight: sizes.spacing.large }}>
+      <div 
+        className="machine-details-icon-container"
+      >
         <Icon itemId={machine.id} size={size} />
       </div>
 
-      {/* Machine details in column layout */}
+      {/* Machine details content */}
       <div
+        className="machine-details-content"
         style={{
           display: "flex",
-          flexDirection: "column",
           flex: 1,
-          gap: sizes.spacing.large,
           position: "relative",
           zIndex: sizes.zIndex.base,
           ...contentStyle
@@ -80,27 +65,14 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
       >
         {/* Machine name */}
         <div
-          style={{
-            fontWeight: "bold",
-            color: theme.colors.text,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontSize: sizes.fontSize.large,
-          }}
+          className="machine-details-name"
         >
           {machine.name}
         </div>
 
-        {/* Machine controls in row */}
+        {/* Machine controls container */}
         <div
-          style={{
-            display: "flex",
-            gap: sizes.spacing.xsmall,
-            alignItems: "center",
-            position: "relative",
-            zIndex: sizes.zIndex.controls,
-          }}
+          className="machine-details-controls-container"
           onClick={(e) => e.stopPropagation()}
         >
           <MachineControls

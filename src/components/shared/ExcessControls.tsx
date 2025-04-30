@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { theme } from '../../styles/theme';
-import { sizes } from '../../styles/constants';
+// import { theme } from '../../styles/theme'; // No longer needed directly for base styles
+import { sizes } from '../../styles/constants'; // Re-import for zIndex
 import StyledInput from './StyledInput';
+import './ExcessControls.css'; // Import the CSS file
 
 interface ExcessControlsProps {
   excess: number;
@@ -11,6 +12,7 @@ interface ExcessControlsProps {
   containerStyle?: React.CSSProperties;
   inputStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
+  className?: string;
 }
 
 const ExcessControls: React.FC<ExcessControlsProps> = ({
@@ -21,6 +23,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   containerStyle,
   inputStyle,
   buttonStyle: customButtonStyle,
+  className,
 }) => {
   const [preciseExcess, setPreciseExcess] = useState(excess);
   const [isExcessFocused, setIsExcessFocused] = useState(false);
@@ -117,55 +120,15 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
     // When blurred, format to 2 decimal places for display only
   };
 
-  // Button styles
-  const buttonStyle: React.CSSProperties = {
-    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
-    fontSize: sizes.fontSize.small,
-    backgroundColor: theme.colors.buttonDefault,
-    color: theme.colors.text,
-    border: "none",
-    borderRadius: theme.border.radius,
-    cursor: "pointer",
-    fontWeight: "bold",
-    height: sizes.button.standardHeight,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: sizes.button.standardWidth,
-    ...customButtonStyle
-  };
-
-  // Input field styles
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
-    height: sizes.inputField.standardHeight,
-    ...inputStyle
-  };
-
   return (
     <div
-      style={{
-        display: "flex",
-        gap: sizes.spacing.xsmall,
-        alignItems: "center",
-        width: "100%",
-        justifyContent: "space-between",
-        position: "relative",
-        zIndex: sizes.zIndex.controls,
-        ...containerStyle
-      }}
+      className={`excess-controls-container ${className || ""}`.trim()}
+      style={containerStyle}
       onClick={(e) => e.stopPropagation()}
     >
       <button
-        style={{
-          ...buttonStyle,
-          position: "relative",
-          zIndex: sizes.zIndex.controls,
-        }}
+        className="excess-controls-button excess-controls-button--reset"
+        style={customButtonStyle}
         onClick={(e) => {
           e.stopPropagation();
           onResetExcess();
@@ -178,6 +141,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
       <StyledInput
         ref={excessRef}
         type="number"
+        className="excess-controls-input"
         value={displayExcess}
         onChange={(e) => {
           e.stopPropagation();
@@ -219,7 +183,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
         }}
         variant="compact"
         style={{
-          ...inputFieldStyle,
+          ...inputStyle,
           position: "relative",
           zIndex: sizes.zIndex.controls,
           flex: 1,
@@ -230,12 +194,8 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
       />
 
       <button
-        style={{
-          ...buttonStyle,
-          backgroundColor: theme.colors.secondary,
-          position: "relative",
-          zIndex: sizes.zIndex.controls,
-        }}
+        className="excess-controls-button excess-controls-button--max"
+        style={customButtonStyle}
         onClick={(e) => {
           e.stopPropagation();
           onMaxExcess();

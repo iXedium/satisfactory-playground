@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { theme } from '../../styles/theme';
-import { sizes } from '../../styles/constants';
 import StyledInput from './StyledInput';
 
 interface MachineControlsProps {
@@ -10,9 +8,6 @@ interface MachineControlsProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachineMultiplier?: boolean;
   onOptimizeMachines: () => void;
-  containerStyle?: React.CSSProperties;
-  inputStyle?: React.CSSProperties;
-  buttonStyle?: React.CSSProperties;
 }
 
 const MachineControls: React.FC<MachineControlsProps> = ({
@@ -22,9 +17,6 @@ const MachineControls: React.FC<MachineControlsProps> = ({
   onMachineMultiplierChange,
   showMachineMultiplier = false,
   onOptimizeMachines,
-  containerStyle,
-  inputStyle,
-  buttonStyle: customButtonStyle,
 }) => {
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
@@ -98,44 +90,9 @@ const MachineControls: React.FC<MachineControlsProps> = ({
     }, 0);
   };
 
-  // Button styles
-  const buttonStyle: React.CSSProperties = {
-    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
-    fontSize: sizes.fontSize.small,
-    backgroundColor: theme.colors.buttonDefault,
-    color: theme.colors.text,
-    border: "none",
-    borderRadius: theme.border.radius,
-    cursor: "pointer",
-    fontWeight: "bold",
-    height: sizes.button.standardHeight,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: sizes.button.standardWidth,
-    ...customButtonStyle
-  };
-
-  // Input field styles
-  const inputFieldStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.darker,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    borderRadius: theme.border.radius,
-    padding: `${sizes.spacing.small} ${sizes.spacing.small}`,
-    height: sizes.inputField.standardHeight,
-    ...inputStyle
-  };
-
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: sizes.spacing.xsmall,
-        width: '100%',
-        ...containerStyle
-      }}
+      className="machine-controls machine-controls-wrapper"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Machine count */}
@@ -143,6 +100,7 @@ const MachineControls: React.FC<MachineControlsProps> = ({
         ref={machineCountRef}
         type="number"
         value={localMachineCount}
+        className="machine-control-input machine-count-input"
         onChange={(e) => {
           e.stopPropagation();
           handleMachineCountChange(e.target.value);
@@ -178,24 +136,13 @@ const MachineControls: React.FC<MachineControlsProps> = ({
           handleFocus(e);
         }}
         variant="compact"
-        style={{
-          ...inputFieldStyle,
-          position: "relative",
-          zIndex: sizes.zIndex.controls,
-          maxWidth: sizes.inputField.machineCountWidth,
-        }}
         min={1}
         onClick={(e) => e.stopPropagation()}
       />
 
       {/* Optimize button */}
       <button
-        style={{
-          ...buttonStyle,
-          backgroundColor: theme.colors.secondary,
-          position: "relative",
-          zIndex: sizes.zIndex.controls,
-        }}
+        className="machine-control-button optimize-button"
         onClick={(e) => {
           e.stopPropagation();
           onOptimizeMachines();
@@ -211,6 +158,7 @@ const MachineControls: React.FC<MachineControlsProps> = ({
           ref={machineMultiplierRef}
           type="number"
           value={localMachineMultiplier}
+          className="machine-control-input multiplier-input"
           onChange={(e) => {
             e.stopPropagation();
             handleMachineMultiplierChange(e.target.value);
@@ -246,12 +194,6 @@ const MachineControls: React.FC<MachineControlsProps> = ({
             handleFocus(e);
           }}
           variant="compact"
-          style={{
-            ...inputFieldStyle,
-            position: "relative",
-            zIndex: sizes.zIndex.controls,
-            maxWidth: sizes.inputField.machineMultiplierWidth,
-          }}
           min={1}
           onClick={(e) => e.stopPropagation()}
         />

@@ -41,7 +41,9 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
   };
 
   return (
-    <div style={{
+    <div 
+      className="item-node-buttons"
+      style={{
       display: 'flex',
       flexDirection: 'column',
       gap: sizes.spacing.small,

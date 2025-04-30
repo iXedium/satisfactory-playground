@@ -46,7 +46,6 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
         alignItems: 'flex-end',
         fontWeight: 'bold',
         color: isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
-        marginLeft: sizes.spacing.small,
         ...containerStyle,
       }}
     >

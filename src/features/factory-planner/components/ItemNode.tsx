@@ -9,6 +9,7 @@ import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
+import './ItemNode.css';
 
 interface ItemNodeProps {
   itemId: string;
@@ -266,20 +267,25 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           isByproduct={isByproduct}
           isImport={isImport}
           getItemColor={getItemColor}
+          viewDensity={viewDensity}
         />
 
-        {/* Middle section - Machine info */}
+        {/* Wrapper for Machine Details with conditional class */}
         {machine && !isByproduct && !isImport && showMachines && (
-          <MachineDetails
-            machine={machine}
-            machineCount={localMachineCount}
-            onMachineCountChange={onMachineCountChange || (() => {}) }
-            machineMultiplier={localMachineMultiplier}
-            onMachineMultiplierChange={onMachineMultiplierChange}
-            showMachineMultiplier={showMachineMultiplier}
-            onOptimizeMachines={handleOptimizeMachines}
-            size={size}
-          />
+          <div 
+             className={`machine-details-wrapper ${!showMachineMultiplier ? 'no-multiplier' : ''}`.trim()}
+          >
+            <MachineDetails
+              machine={machine}
+              machineCount={localMachineCount}
+              onMachineCountChange={onMachineCountChange || (() => {}) }
+              machineMultiplier={localMachineMultiplier}
+              onMachineMultiplierChange={onMachineMultiplierChange}
+              showMachineMultiplier={showMachineMultiplier}
+              onOptimizeMachines={handleOptimizeMachines}
+              size={size}
+            />
+          </div>
         )}
 
         {/* Right section - Efficiency and rate */}
@@ -295,7 +301,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           onExcessChange={onExcessChange ? handleExcessChange : undefined}
           onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
           onResetExcess={onExcessChange ? handleResetExcess : undefined}
-          getEfficiencyColor={getEfficiencyColor}
+          // getEfficiencyColor={getEfficiencyColor}
+          containerStyle={{
+             borderLeft: `4px solid ${getEfficiencyColor()}` 
+          }}
         />
       </div>
     </div>

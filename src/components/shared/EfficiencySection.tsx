@@ -2,8 +2,6 @@ import React, { useState, useRef, MouseEvent } from 'react';
 import ReactDOM from 'react-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import { theme } from '../../styles/theme';
-import { sizes } from '../../styles/constants';
 import EfficiencyIndicator from './EfficiencyIndicator';
 import RateDisplay from './RateDisplay';
 import ExcessControls from './ExcessControls';
@@ -23,9 +21,7 @@ interface EfficiencySectionProps {
   onExcessChange?: (value: number) => void;
   onMaxExcess?: () => void;
   onResetExcess?: () => void;
-  getEfficiencyColor?: () => string;
   containerStyle?: React.CSSProperties;
-  contentStyle?: React.CSSProperties;
 }
 
 const EfficiencySection: React.FC<EfficiencySectionProps> = ({
@@ -40,9 +36,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   onExcessChange,
   onMaxExcess,
   onResetExcess,
-  getEfficiencyColor = () => theme.colors.efficiency.perfect,
   containerStyle,
-  contentStyle,
 }) => {
   const allTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
   
@@ -131,54 +125,33 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   
   // Remove useEffect for timeout cleanup as it's no longer used
 
-  // Section container styles
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.dark,
-    borderRadius: theme.border.radius,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    padding: `${sizes.spacing.medium} ${sizes.spacing.small}`,
-    display: "flex",
-    alignItems: "center",
-    height: "100%",
-    borderLeft: `4px solid ${!isByproduct && !isImport 
-      ? getEfficiencyColor() 
-      : isByproduct 
-        ? theme.colors.nodeByproduct 
-        : theme.colors.nodeImport}`,
-    flex: 1,
-    minWidth: "140px",
-    maxWidth: "180px",
-    position: "relative",
-    zIndex: sizes.zIndex.base,
-    ...containerStyle
-  };
+  const rateDisplayCursorClass = (isByproduct || isImport) ? 'cursor-default' : '';
 
   return (
     <>
       <div
-        style={sectionStyle}
+        className="efficiency-section"
+        style={containerStyle}
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            gap: sizes.spacing.large,
-            position: "relative",
-            zIndex: sizes.zIndex.base,
-            justifyContent: (isByproduct || isImport) ? "center" : "flex-start",
-            ...contentStyle
-          }}
+          className="efficiency-section-content"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* First row: Efficiency and Rate */}
+          {/* CONTROLS FIRST (for Grid) */}
+          {onExcessChange && !isByproduct && !isImport && onMaxExcess && onResetExcess && (
+            <ExcessControls
+              className="efficiency-excess-controls"
+              excess={excess}
+              onExcessChange={onExcessChange}
+              onMaxExcess={onMaxExcess}
+              onResetExcess={onResetExcess}
+            />
+          )}
+
+          {/* RATE GROUP SECOND (for Grid) */}
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              width: "100%",
-            }}
+            className="efficiency-rate-group"
           >
             {/* Efficiency */}
             <EfficiencyIndicator 
@@ -189,10 +162,10 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
 
             {/* Rate */}
             <div 
+              className={`rate-display-wrapper ${rateDisplayCursorClass}`}
               ref={rateDisplayRef} 
               onMouseEnter={handleRateMouseEnter}
               onMouseLeave={handleRateMouseLeave}
-              style={{ cursor: (isByproduct || isImport) ? 'default' : 'help' }}
             >
               <RateDisplay 
                 amount={amount}
@@ -202,16 +175,6 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
               />
             </div>
           </div>
-
-          {/* Second row: Excess controls */}
-          {onExcessChange && !isByproduct && !isImport && onMaxExcess && onResetExcess && (
-            <ExcessControls
-              excess={excess}
-              onExcessChange={onExcessChange}
-              onMaxExcess={onMaxExcess}
-              onResetExcess={onResetExcess}
-            />
-          )}
         </div>
       </div>
       

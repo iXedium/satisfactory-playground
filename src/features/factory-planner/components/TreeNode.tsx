@@ -218,6 +218,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             onImport={!isRoot && onImport ? () => onImport(node.uniqueId) : undefined}
             onUnimport={!isRoot && onUnimport ? () => onUnimport(node.uniqueId) : undefined}
             viewDensity={viewDensity}
+            size={viewDensity === 'compact' ? 'small' : 'large'}
           />
         </div>
       </div>

@@ -1,0 +1,52 @@
+/* src/components/shared/ExcessControls.css */
+
+.excess-controls-container {
+  display: flex;
+  gap: var(--sizes-spacing-xsmall, 2px); /* Use theme variables */
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+  position: relative;
+  z-index: var(--sizes-zIndex-controls, 10);
+}
+
+.excess-controls-button {
+  padding: var(--sizes-spacing-small, 4px) var(--sizes-spacing-small, 4px);
+  font-size: var(--sizes-fontSize-small, 0.875rem);
+  background-color: var(--theme-colors-buttonDefault, #ff7a00); /* Use theme variable */
+  color: var(--theme-colors-text, #eee); /* Use theme variable */
+  border: none;
+  border-radius: var(--theme-border-radius, 4px); /* Use theme variable */
+  cursor: pointer;
+  font-weight: bold;
+  height: var(--sizes-button-standardHeight, 28px); /* Use theme variable */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--sizes-button-standardWidth, 30px); /* Use theme variable */
+  position: relative;
+  z-index: var(--sizes-zIndex-controls, 10);
+}
+
+.excess-controls-button--reset {
+  /* Inherits base button styles */
+}
+
+.excess-controls-button--max {
+  background-color: var(--theme-colors-secondary, #00b8ff); /* Use theme variable */
+  /* Inherits base button styles */
+}
+
+.excess-controls-input {
+  background-color: var(--theme-colors-darker, #1a1e24); /* Use theme variable */
+  color: var(--theme-colors-text, #eee); /* Use theme variable */
+  border: 1px solid var(--theme-colors-dropdown-border, #444); /* Use theme variable */
+  border-radius: var(--theme-border-radius, 4px); /* Use theme variable */
+  padding: var(--sizes-spacing-small, 4px) var(--sizes-spacing-small, 4px);
+  height: var(--sizes-inputField-standardHeight, 28px); /* Use theme variable */
+  position: relative;
+  z-index: var(--sizes-zIndex-controls, 10);
+  flex: 1;
+  max-width: var(--sizes-inputField-excessWidth, 60px); /* Use theme variable */
+}
+

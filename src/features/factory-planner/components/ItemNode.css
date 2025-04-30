@@ -1,0 +1,574 @@
+/* src/features/factory-planner/components/ItemNode.css */
+
+/* =================================== */
+/* Base (Relaxed View) Styles         */
+/* =================================== */
+
+/* --- ItemDetails --- */
+.item-details {
+  background-color: var(--theme-colors-dark, #2d3744);
+  border-radius: var(--theme-border-radius, 6px);
+  border: 1px solid var(--theme-colors-dropdown-border, #444);
+  padding: 6px 4px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  /* Use CSS variable set inline for dynamic color */
+  border-left: 4px solid var(--item-color, var(--theme-colors-primary, #ff7a00));
+  flex: 2; /* Takes up more space */
+  min-width: 200px;
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  overflow: hidden;
+  gap: 4px;
+}
+.item-details-icon-container {
+  cursor: pointer;
+  margin-right: 6px;
+  flex-shrink: 0; /* Prevent icon shrinking */
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.item-details-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+  height: 100%;
+  gap: 6px;
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  overflow: hidden; /* Prevent content overflow */
+  min-width: 0; /* Allow shrinking */
+}
+.item-details-name-rate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  color: var(--theme-colors-text, #eee);
+  font-size: 0.95rem;
+  overflow: hidden; /* Container for name/rate */
+  gap: 4px; /* Space between name and nominal rate */
+}
+.item-details-name-rate > span:first-child {
+  /* Item Name */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1; /* Allow name to take space */
+}
+.item-details-nominal-rate {
+  font-size: 0.85rem;
+  /* margin-left: 3px; */ /* Replaced by gap */
+  opacity: 0.7;
+  flex-shrink: 0; /* Prevent shrinking */
+  white-space: nowrap;
+  line-height: 1;
+  align-self: center;
+}
+.recipe-selector-container {
+  margin-top: auto; /* Push to bottom */
+  position: relative;
+  z-index: var(--theme-zIndex-controls, 10);
+  width: 100%;
+}
+.recipe-selector-container .styled-select-container {
+  width: 100%;
+}
+.recipe-option {
+  display: flex;
+  align-items: center;
+  gap: 3px 6px;
+  padding: 3px 6px;
+  background-color: transparent;
+  border-radius: var(--theme-border-radius, 6px);
+  width: 100%;
+}
+.recipe-option.selected {
+  background-color: var(--theme-colors-hover, rgba(255, 122, 0, 0.1));
+}
+
+/* --- MachineDetails --- */
+.machine-details {
+  background-color: var(--theme-colors-dark, #2d3744);
+  border-radius: var(--theme-border-radius, 6px);
+  border: 1px solid var(--theme-colors-dropdown-border, #444);
+  padding: 6px 4px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border-left: 4px solid var(--theme-colors-secondary, #00b8ff);
+  flex: 1 1 0%;
+  max-width: 240px;
+  min-width: 160px; /* Added min-width for consistency */
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  gap: 4px;
+}
+.machine-details-icon-container {
+  margin-right: 6px;
+  flex-shrink: 0; /* Prevent icon shrinking */
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.machine-details > .machine-details-content {
+  /* Targeted to avoid conflict with compact */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  justify-content: space-between;
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  overflow: hidden; /* Prevent content overflow */
+  min-width: 0; /* Allow shrinking */
+}
+.machine-details-name {
+  font-weight: bold;
+  color: var(--theme-colors-text, #eee);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+}
+.machine-details-controls-container {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  position: relative;
+  z-index: var(--theme-zIndex-controls, 10);
+}
+
+/* --- MachineControls --- */
+.machine-controls-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%; /* Take full width within controls container */
+}
+.machine-control-input {
+  background-color: var(--theme-colors-darker, #1a1e24);
+  color: var(--theme-colors-text, #eee);
+  border: 1px solid var(--theme-colors-dropdown-border, #444);
+  border-radius: var(--theme-border-radius, 6px);
+  padding: 3px 4px;
+  height: 26px;
+  position: relative;
+  z-index: var(--theme-zIndex-controls, 2);
+  -moz-appearance: textfield;
+  appearance: textfield;
+  flex: 1; /* Allow input to grow */
+  min-width: 16px; /* Prevent collapsing too small */
+}
+.machine-control-input::-webkit-outer-spin-button,
+.machine-control-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.machine-count-input {
+  max-width: 40px; /* Give count slightly more space */
+}
+.multiplier-input {
+  max-width: 35px; /* And multiplier */
+}
+.machine-control-button {
+  padding: 3px 4px;
+  font-size: 11px;
+  background-color: var(--theme-colors-buttonDefault, #ff7a00);
+  color: var(--theme-colors-buttonText, #fff);
+  border: none;
+  border-radius: var(--theme-border-radius, 6px);
+  cursor: pointer;
+  font-weight: bold;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  position: relative;
+  z-index: var(--theme-zIndex-controls, 2);
+  flex-shrink: 0; /* Prevent button shrinking */
+}
+.optimize-button {
+  background-color: var(--theme-colors-secondary, #00b8ff);
+}
+
+/* --- EfficiencySection --- */
+.efficiency-section {
+  background-color: var(--theme-colors-dark, #2d3744);
+  border-radius: var(--theme-border-radius, 6px);
+  border: 1px solid var(--theme-colors-dropdown-border, #444);
+  padding: 8px 4px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  /* Dynamic border-left set via inline style */
+  flex: 1 1 0%;
+  min-width: 140px;
+  max-width: 180px;
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  gap: 4px;
+}
+.efficiency-section > .efficiency-section-content {
+  /* Targeted to avoid conflict with compact */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  position: relative;
+  z-index: var(--theme-zIndex-base, 1);
+  justify-content: flex-start; /* Align top */
+  overflow: hidden; /* Prevent content overflow */
+}
+.efficiency-rate-group {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 4px; /* Space between indicator and rate */
+}
+.efficiency-excess-controls {
+  /* Base styles handled by ExcessControls component CSS */
+}
+.rate-display-wrapper {
+  cursor: help;
+}
+
+/* =================================== */
+/* Compact View Density Styles         */
+/* =================================== */
+
+/* --- Shared Compact Vars & Styles --- */
+:root {
+  /* Defined here for clarity, though technically global */
+  --compact-control-height: 36px; /* Controls height in compact view */
+}
+
+.item-node--compact {
+  padding: 0 2px;
+  gap: 2px;
+  font-size: 0.85rem;
+  align-items: stretch; /* Make children fill height */
+  min-height: 38px;
+  height: 38px;
+  overflow: hidden;
+  display: flex; /* Needed for children alignment */
+  flex-direction: row; /* Default layout */
+}
+
+.item-node--compact .item-section-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Center items vertically */
+  padding: 0 2px;
+  gap: 4px;
+  flex-wrap: nowrap;
+  height: 100%;
+  overflow: hidden;
+  width: 100%; /* Take full width */
+}
+
+/* Apply consistent height/style to inputs/buttons/selects in compact */
+.item-node--compact input[type="number"],
+.item-node--compact button,
+.item-node--compact .styled-select-button {
+  /* Targets inner button of StyledSelect */
+  min-height: var(--compact-control-height) !important;
+  height: var(--compact-control-height) !important; /* Explicit height */
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: calc(var(--compact-control-height) - 2px) !important;
+  font-size: 1em !important; /* Reset font size for larger controls */
+  border-radius: var(--theme-border-radius, 4px) !important;
+  margin: 0 !important; /* Remove default margins */
+  box-sizing: border-box; /* Include padding/border in height */
+}
+.item-node--compact input[type="number"] {
+  padding-left: 4px !important;
+  padding-right: 2px !important;
+}
+.item-node--compact button {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+/* --- Compact ItemNodeButtons --- */
+.item-node--compact .item-node-buttons {
+  flex-direction: row;
+  padding: 0;
+  margin-right: 2px;
+  gap: 2px;
+  flex-basis: content; /* Size based on content */
+  flex-shrink: 0;
+  height: 100%;
+  align-items: center;
+}
+.item-node--compact .item-node-buttons button {
+  min-width: 18px;
+}
+
+/* --- Compact ItemDetails --- */
+.item-node--compact .item-details {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 240px;
+  min-width: 180px;
+  padding: 1px 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  height: 100%;
+  overflow: hidden;
+  border-left: none; /* Remove border */
+}
+.item-node--compact .item-details-icon-container {
+  height: 100%;
+  margin-right: 0;
+  /* Inherits flex from base */
+}
+.item-node--compact .item-details-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  flex-grow: 1;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  position: static;
+  z-index: auto;
+}
+.item-node--compact .item-details-name-rate {
+  padding: 0;
+  font-size: 0.9em;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  line-height: var(--compact-control-height); /* Align baseline */
+}
+.item-node--compact .item-details-name-rate span:first-child {
+  font-weight: 500;
+  /* Inherits display block, overflow, etc. */
+}
+/* Hide nominal rate display within the name group */
+.item-node--compact .item-details-name-rate > .item-details-nominal-rate {
+  display: none;
+}
+/* Show separate nominal rate display */
+.item-node--compact .item-details-nominal-rate {
+  font-size: 0.8em;
+  opacity: 0.8;
+  white-space: nowrap;
+  line-height: var(--compact-control-height); /* Align baseline */
+  margin-left: 0;
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 35px;
+  display: block; /* Ensure it's shown */
+}
+.item-node--compact .recipe-selector-container {
+  display: flex !important; /* Override potential base display */
+  align-items: center;
+  margin: 0; /* Remove margin-top */
+  position: relative; /* Keep relative for dropdown */
+  z-index: var(--theme-zIndex-controls, 10);
+  width: auto;
+  min-width: 120px;
+  flex-basis: 120px;
+  flex-shrink: 0;
+  height: auto; /* Let inner select determine height */
+}
+.item-node--compact .recipe-selector-container .styled-select-button {
+  width: 100%;
+}
+
+/* --- Compact MachineDetails --- */
+.item-node--compact .machine-details {
+  flex-grow: 0.02;
+  flex-shrink: 0;
+  flex-basis: 115px;
+  min-width: 100px;
+  padding: 1px 2px;
+  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  border: none; /* Remove border */
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--theme-colors-dark); /* Keep background */
+  border-radius: var(--theme-border-radius);
+  position: static;
+  z-index: auto;
+  border-left: none; /* Remove border */
+}
+/* Special case for when multiplier is hidden */
+.item-node--compact .machine-details-wrapper.no-multiplier .machine-details {
+  flex-basis: 100px !important;
+  min-width: 90px !important;
+}
+.item-node--compact .machine-details-icon-container {
+  height: 100%;
+  margin-right: 0;
+  /* Inherits flex */
+}
+.item-node--compact .machine-details-content {
+  gap: 3px;
+  flex-direction: row;
+  justify-content: flex-end; /* Push controls right */
+  align-items: center;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: static;
+  z-index: auto;
+}
+.item-node--compact .machine-details-name {
+  display: none; /* Hide name */
+}
+.item-node--compact .machine-details-controls-container {
+  gap: 1px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: static;
+  z-index: auto;
+}
+.item-node--compact .machine-controls-wrapper {
+  gap: 0px !important; /* FORCE zero gap */
+  width: auto; /* Size based on content */
+  /* Inherits display:flex */
+}
+/* Tighter controls */
+.item-node--compact .machine-control-input {
+  max-width: 20px !important;
+  min-width: 20px !important;
+  padding: 0px 1px !important;
+  text-align: center !important;
+  flex: 0 0 auto !important; /* Don't grow/shrink */
+  /* height set by shared compact control style */
+}
+.item-node--compact .machine-control-button {
+  min-width: 14px !important;
+  padding: 0px 2px !important;
+  /* height set by shared compact control style */
+}
+.item-node--compact .machine-controls > span {
+  /* Hide 'x' separator */
+  display: none;
+}
+
+/* --- Compact EfficiencySection --- */
+.item-node--compact .efficiency-section {
+  flex-grow: .01;
+  flex-shrink: 1;
+  flex-basis: 220px; /* Adjusted permanent width */
+  min-width: 200px; /* Adjusted permanent min-width */
+  padding: 1px 3px;
+  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  border: none; /* Remove border */
+  height: 100%;
+  overflow: hidden;
+  border-left: none; /* Remove border */
+  background-color: var(--theme-colors-dark); /* Keep background */
+  border-radius: var(--theme-border-radius);
+  position: static;
+  z-index: auto;
+  max-width: none; /* Remove max-width */
+}
+.item-node--compact .efficiency-section-content {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-column-gap: 4px;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+.item-node--compact .efficiency-rate-group {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  justify-content: space-between;
+  width: 100%;
+}
+.item-node--compact .efficiency-indicator {
+  padding: 0;
+  font-size: 0.85em;
+  min-width: 35px;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: var(--compact-control-height);
+}
+.item-node--compact .rate-display {
+  padding: 0;
+  font-size: 0.85em;
+  min-width: 35px;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: var(--compact-control-height);
+}
+.item-node--compact .rate-display-wrapper {
+  cursor: help;
+  display: flex;
+  align-items: center;
+}
+.item-node--compact .efficiency-excess-controls {
+  display: flex !important;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 1;
+}
+.item-node--compact .excess-controls-container {
+  justify-content: flex-start;
+  gap: 1px !important;
+}
+.item-node--compact .excess-controls-input {
+  max-width: 48px !important;
+  min-width: 30px !important;
+  margin: 0 !important;
+  flex: 1 1 auto !important;
+}
+.item-node--compact .excess-controls-button {
+  min-width: 12px !important;
+  padding: 0px 4px !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+/* =================================== */
+/* Utility Styles                     */
+/* =================================== */
+
+.rate-display-wrapper.cursor-default {
+  cursor: default;
+}
+
+/* Add default cursor if icon has no click handler */
+.item-details-icon-container:not([onClick]) {
+  cursor: default;
+}
+
+/* Hide input spinners (already present in base) */
+/* .machine-control-input::-webkit-outer-spin-button,
+.machine-control-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.machine-control-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+} */

@@ -7,34 +7,34 @@ interface StyledInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const StyledInputBase = styled('input')<{ $variant?: 'default' | 'compact' }>(({ $variant = 'default' }) => ({
-  height: $variant === 'compact' ? '20px' : '24px',
+  height: $variant === 'compact' ? '20px' : '28px',
   textAlign: 'right',
   paddingRight: '12px',
   paddingLeft: '12px',
-  border: `2px solid ${theme.colors.dropdown.border}`,
+  border: `1px solid ${theme.colors.dropdown.border}`,
   borderRadius: theme.border.radius,
-  background: theme.colors.dark,
+  background: theme.colors.darker,
   color: theme.colors.text,
   fontSize: $variant === 'compact' ? '13px' : '14px',
   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
   transition: 'all 0.2s ease-in-out',
   outline: 'none',
-  WebkitAppearance: 'none',
+  appearance: 'textfield',
   MozAppearance: 'textfield',
+  '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': {
+    WebkitAppearance: 'none',
+    margin: 0,
+  },
   '&:focus': {
-    borderColor: theme.colors.primary
+    borderColor: theme.colors.primary,
   },
   '&:hover': {
-    borderColor: theme.colors.dropdown.border
+    borderColor: theme.colors.dropdown.border,
   },
-  '&.no-spinners::-webkit-inner-spin-button, &.no-spinners::-webkit-outer-spin-button': {
-    WebkitAppearance: 'none',
-    margin: 0
-  }
 }));
 
 const StyledInput = forwardRef<HTMLInputElement, StyledInputProps>(
-  ({ variant = 'default', style, ...props }, ref) => {
+  ({ variant = 'default', style, className, ...props }, ref) => {
     const inputRef = useRef<HTMLInputElement>(null);
     
     // Combine the forwarded ref with our local ref
@@ -75,7 +75,7 @@ const StyledInput = forwardRef<HTMLInputElement, StyledInputProps>(
       <StyledInputBase
         ref={setRefs}
         $variant={variant}
-        className="no-spinners"
+        className={className}
         style={style}
         {...props}
       />

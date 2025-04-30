@@ -8,6 +8,7 @@ import { Item, Recipe } from '../../types';
 import { IconSize } from '../Icon';
 import StyledSelect from './StyledSelect';
 import RecipeDetailsPopup from './RecipeDetailsPopup'; // Import the new popup component
+import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions'; // Import ViewDensity
 
 interface ItemDetailsProps {
   item: Item;
@@ -21,9 +22,8 @@ interface ItemDetailsProps {
   nominalRate?: number;
   isByproduct?: boolean;
   isImport?: boolean;
-  containerStyle?: React.CSSProperties;
-  contentStyle?: React.CSSProperties;
   getItemColor?: () => string;
+  viewDensity?: ViewDensity; // ADD viewDensity prop (optional for now)
 }
 
 const ItemDetails: React.FC<ItemDetailsProps> = ({
@@ -38,9 +38,8 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   nominalRate = 0,
   isByproduct = false,
   isImport = false,
-  containerStyle,
-  contentStyle,
   getItemColor = () => theme.colors.primary,
+  viewDensity = 'relaxed', // Default to relaxed if not provided
 }) => {
   const [hoveredRecipe, setHoveredRecipe] = useState<Recipe | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
@@ -53,23 +52,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
     //
   // }
   
-  // Section container styles
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: theme.colors.dark,
-    borderRadius: theme.border.radius,
-    border: `1px solid ${theme.colors.dropdown.border}`,
-    padding: `${sizes.spacing.medium} ${sizes.spacing.small}`,
-    display: "flex",
-    alignItems: "center",
-    height: "100%",
-    borderLeft: `4px solid ${getItemColor()}`,
-    flex: 2,
-    minWidth: "200px",
-    position: "relative",
-    zIndex: sizes.zIndex.base,
-    overflow: "hidden",
-    ...containerStyle
-  };
+  const isCompact = viewDensity === 'compact'; // Helper boolean
 
   const handleMouseEnter = (event: MouseEvent<HTMLDivElement>, recipe: Recipe) => {
     if (hoverTimeoutRef.current) {
@@ -144,16 +127,13 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
     <>
       {/* Main Component Structure */}
       <div
-        style={sectionStyle}
+        className="item-details"
+        style={{ '--item-color': getItemColor() } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Item icon */}
         <div
-          style={{
-            cursor: onIconClick ? "pointer" : "default",
-            marginRight: sizes.spacing.large,
-            alignSelf: "flex-start",
-          }}
+          className="item-details-icon-container"
           onClick={(e) => {
             e.stopPropagation();
             if (onIconClick) onIconClick();
@@ -164,51 +144,25 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
 
         {/* Item info and recipe */}
         <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            justifyContent: "space-between",
-            height: "100%",
-            position: "relative",
-            zIndex: sizes.zIndex.base,
-            gap: sizes.spacing.large,
-            ...contentStyle
-          }}
+          className="item-details-content"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Item name and actual amount */}
+          {/* Item name and actual amount (rate conditionally rendered) */}
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontWeight: "bold",
-              color: theme.colors.text,
-              fontSize: sizes.fontSize.large,
-            }}
+            className="item-details-name-rate"
           >
             <span>{item.name}</span>
-            {/* Commented out inline log */}
-            {/* {( - Amount=${amount}`), null)} */}
-            {nominalRate > 0 && !isByproduct && !isImport && (
-              <span style={{
-                fontSize: sizes.fontSize.standard,
-                opacity: 0.6,
-                marginLeft: sizes.spacing.small
-              }}>
+            {/* Render rate here ONLY if relaxed */}
+            {!isCompact && nominalRate > 0 && !isByproduct && !isImport && (
+              <span className="item-details-nominal-rate">
                 ({nominalRate.toFixed(2)})
               </span>
             )}
           </div>
 
-          {/* Recipe selector - aligned to bottom */}
+          {/* Recipe selector - always rendered after name */}
           <div
-            style={{ 
-              marginTop: "auto", 
-              position: "relative", 
-              zIndex: sizes.zIndex.controls 
-            }}
+            className="recipe-selector-container"
             onClick={(e) => e.stopPropagation()}
           >
             {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && !isImport && (
@@ -217,23 +171,12 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
                 onChange={onRecipeChange}
                 options={recipes}
                 variant="compact"
-                style={{ width: "100%" }}
                 renderOption={(option, isInDropdown) => (
                   <div 
-                    key={option.id} // Add key for React lists
+                    key={option.id}
                     onMouseEnter={(e) => handleMouseEnter(e, option as Recipe)}
                     onMouseLeave={handleMouseLeave}
-                    style={{
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: sizes.spacing.large,
-                      padding: `${sizes.spacing.small} ${sizes.spacing.large}`,
-                      backgroundColor: isInDropdown && option.id === selectedRecipeId 
-                        ? 'rgba(255, 122, 0, 0.1)' 
-                        : 'transparent',
-                      borderRadius: theme.border.radius,
-                      width: '100%',
-                    }}
+                    className={`recipe-option ${isInDropdown && option.id === selectedRecipeId ? 'selected' : ''}`}
                   >
                     <span style={{ fontWeight: 'bold' }}>{option.name}</span>
                   </div>
@@ -241,6 +184,14 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
               />
             )}
           </div>
+
+          {/* Render rate here ONLY if compact */}
+          {isCompact && nominalRate > 0 && !isByproduct && !isImport && (
+            <span className="item-details-nominal-rate">
+              ({nominalRate.toFixed(2)})
+            </span>
+          )}
+
         </div>
       </div>
       {/* Portal for Recipe Details Popup */}

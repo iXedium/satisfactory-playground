@@ -68,12 +68,42 @@ export const theme = {
 
 export const injectThemeVariables = () => {
   const root = document.documentElement;
-  const { colors, border, spacing } = theme;
+  if (!root) return; // Add a check for safety
 
-  root.style.setProperty('--dropdown-background', colors.dropdown.background);
-  root.style.setProperty('--dropdown-hover-background', colors.dropdown.hoverBackground);
-  root.style.setProperty('--dropdown-text', colors.dropdown.text);
-  root.style.setProperty('--dropdown-border', colors.dropdown.border);
-  root.style.setProperty('--border-radius', border.radius);
-  root.style.setProperty('--spacing-padding', spacing.padding);
+  // Define a type for nested objects, allowing string or nested objects
+  type NestedThemeObject = { [key: string]: string | number | NestedThemeObject };
+
+  const flattenObject = (obj: NestedThemeObject, prefix = "") =>
+    Object.keys(obj).reduce<Record<string, string>>((acc, k) => {
+      const pre = prefix.length ? prefix + "-" : "";
+      const value = obj[k]; // Get the value
+      // Check if value is a non-null object and not an array
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        // Recursively flatten nested objects
+        Object.assign(acc, flattenObject(value as NestedThemeObject, pre + k));
+      } else {
+        // Assign stringified value for primitives
+        acc[`--theme-${pre}${k}`] = String(value);
+      }
+      return acc;
+    }, {});
+
+  // Flatten the entire theme object (colors, border, spacing, zIndex, switch)
+  const themeVariables = flattenObject(theme);
+
+  // Also add constants from sizes.ts if needed (assuming sizes is importable)
+  // This might require importing sizes from './styles/constants'
+  // import { sizes } from './styles/constants'; // Example import
+  // const sizeVariables = flattenObject(sizes, 'size'); 
+  // Object.assign(themeVariables, sizeVariables);
+
+  // Set all variables
+  for (const [key, value] of Object.entries(themeVariables)) {
+    root.style.setProperty(key, value);
+    // Optional: Log the set variable
+    // console.log(`Set CSS Var: ${key}=${value}`);
+  }
 };
+
+// Example usage (already added to main.tsx):
+// injectThemeVariables();
