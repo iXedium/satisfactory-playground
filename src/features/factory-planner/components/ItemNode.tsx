@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Recipe, Item } from "../../../types";
+import { useDispatch, useSelector } from 'react-redux';
+import { Recipe, Item, DependencyNode } from "../../../types";
 import { theme } from "../../../styles/theme";
 import { getItemById, getMachineForRecipe } from "../../../data";
 import { IconSize } from "../../../components";
@@ -9,6 +10,13 @@ import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
+import { toggleNodeSelected, toggleNodeCompleted } from '../store/dependencySlice';
+import { RootState } from '../../../store';
+import IconButton from '@mui/material/IconButton';
+import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
+import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import './ItemNode.css';
 
 interface ItemNodeProps {
@@ -77,18 +85,37 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onUnimport,
   viewDensity,
 }) => {
-  // Log received props for byproducts
-  if (isByproduct) {
-    //
-  }
-  
+  const dispatch = useDispatch();
+
+  const nodeData = useSelector((state: RootState) => {
+    const tree = state.dependencies.dependencyTrees[treeId];
+    if (!tree) return null;
+    
+    const findNode = (node: DependencyNode): DependencyNode | null => {
+      if (node.uniqueId === uniqueId) {
+        return node;
+      }
+      if (node.dependencies) {
+        for (const child of node.dependencies) {
+          const found = findNode(child);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    return findNode(tree);
+  });
+
+  const isSelected = nodeData?.isSelected ?? false;
+  const isCompleted = nodeData?.isCompleted ?? false;
+
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
   const [machine, setMachine] = useState<Machine | null>(null);
 
-  // Use the new hook to get calculated values
   const { efficiency, nominalRate } = useItemNodeCalculations({
     itemId,
     amount,
@@ -100,11 +127,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     recipes,
   });
 
-  // Restore useEffect to sync localExcess with excess prop
   useEffect(() => {
-    // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} received new excess prop: ${excess}`); // Keep commented for now
     setLocalExcess(excess);
-  }, [excess]); // Only depend on excess prop
+  }, [excess]);
 
   useEffect(() => {
     getItemById(itemId).then((item) => setItem(item || null));
@@ -116,12 +141,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         if (machineData) {
           setMachine(machineData);
         } else {
-           // Handle case where machine data isn't found for the recipe
            setMachine(null);
         }
       });
     } else {
-      // Clear machine if no recipe is selected
       setMachine(null);
     }
   }, [selectedRecipeId]);
@@ -131,7 +154,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   }, [machineCount]);
 
   useEffect(() => {
-    // Update local state when the multiplier prop changes
     setLocalMachineMultiplier(machineMultiplier); 
   }, [machineMultiplier]);
 
@@ -149,7 +171,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleExcessChange = (value: number) => {
-    // console.debug(`[EXCESS DEBUG] ItemNode ${itemId} handleExcessChange called with: ${value}`);
     setLocalExcess(value);
     onExcessChange?.(value);
   };
@@ -163,13 +184,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     if (machine && selectedRecipeId && recipes) {
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
-        // Calculate the total production capacity
         const totalCapacity =
           localMachineCount * localMachineMultiplier * nominalRate;
 
-        // Calculate excess needed for 100% efficiency - keep full precision
         const excessNeeded = totalCapacity - amount;
-        // Store the precise value without rounding
         const preciseValue = Math.max(0, excessNeeded);
         
         setLocalExcess(preciseValue);
@@ -179,43 +197,35 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   };
 
   const handleOptimizeMachines = () => {
-    // Removed detailed logging
-
     if (machine && selectedRecipeId && recipes && nominalRate > 0) {
       const recipe = recipes.find((r) => r.id === selectedRecipeId);
       if (recipe) {
-        // Calculate the exact machine count needed for 100% efficiency (can be decimal)
         const neededAmount = amount + localExcess;
         const exactMachines = neededAmount / (nominalRate * localMachineMultiplier);
 
-        // Use ceil to get the lowest integer count that is >= 100% efficiency
-        // This ensures the calculated efficiency is <= 100%
         const optimalMachines = Math.max(1, Math.ceil(exactMachines)); 
-
-        // Removed calculation log
 
         setLocalMachineCount(optimalMachines);
         onMachineCountChange?.(optimalMachines);
       } else {
-         // This case should technically not be reachable if the outer 'if' passed
-         // console.warn('[Optimize Error] Recipe not found inside if block.'); // Keep this warn
          console.warn('[Optimize Error] Recipe not found inside if block.');
       }
     } else {
-      // Keep the failure log
-      // console.warn('[Optimize Check Fail] Condition not met. Values:', { 
-      //     machine: !!machine, 
-      //     selectedRecipeId: !!selectedRecipeId, 
-      //     recipes: recipes && recipes.length > 0, 
-      //     nominalRatePositive: nominalRate > 0 
-      // });
       console.warn('[Optimize Check Fail] Condition not met.');
     }
   };
 
-  if (!item) return null;
+  if (!item || !nodeData) return null;
 
   const densityClass = `item-node--${viewDensity}`;
+
+  const handleToggleSelected = () => {
+      dispatch(toggleNodeSelected({ treeId, nodeId: uniqueId }));
+  };
+
+  const handleToggleCompleted = () => {
+      dispatch(toggleNodeCompleted({ treeId, nodeId: uniqueId }));
+  };
 
    return (
     <div
@@ -226,10 +236,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         gap: "4px",
         padding: "8px 2px",
         borderRadius: theme.border.radius,
+        position: 'relative',
         ...style,
       }}
     >
-      {/* Button Section */}
       <ItemNodeButtons
         isRoot={isRoot}
         isImport={isImport}
@@ -239,7 +249,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         onUnimport={onUnimport}
       />
 
-      {/* Item Section Container */}
       <div
         className="item-section-container"
         style={{
@@ -248,12 +257,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
           borderRadius: theme.border.radius,
           padding: "4px",
-          flex: 1,
+          flexGrow: 1,
+          overflow: "hidden",
           minWidth: 0,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Left section - Item info */}
         <ItemDetails
           item={item}
           itemId={itemId}
@@ -270,7 +279,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           viewDensity={viewDensity}
         />
 
-        {/* Wrapper for Machine Details with conditional class */}
         {machine && !isByproduct && !isImport && showMachines && (
           <div 
              className={`machine-details-wrapper ${!showMachineMultiplier ? 'no-multiplier' : ''}`.trim()}
@@ -288,7 +296,6 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           </div>
         )}
 
-        {/* Right section - Efficiency and rate */}
         <EfficiencySection
           efficiency={Math.round(efficiency * 100) / 100}
           amount={amount}
@@ -301,11 +308,27 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           onExcessChange={onExcessChange ? handleExcessChange : undefined}
           onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
           onResetExcess={onExcessChange ? handleResetExcess : undefined}
-          // getEfficiencyColor={getEfficiencyColor}
           containerStyle={{
              borderLeft: `4px solid ${getEfficiencyColor()}` 
           }}
         />
+      </div>
+
+      <div className="item-node-status-buttons">
+          <button
+              className={`status-button status-button--select ${isSelected ? 'active' : ''}`}
+              onClick={handleToggleSelected}
+              title={isSelected ? "Unmark as Selected" : "Mark as Selected"}
+          >
+              {isSelected ? <BookmarkAddedIcon fontSize="inherit" /> : <BookmarkAddOutlinedIcon fontSize="inherit" />}
+          </button>
+          <button
+              className={`status-button status-button--complete ${isCompleted ? 'active' : ''}`}
+              onClick={handleToggleCompleted}
+              title={isCompleted ? "Unmark as Completed" : "Mark as Completed"}
+          >
+              {isCompleted ? <TaskAltIcon fontSize="inherit" /> : <TaskAltOutlinedIcon fontSize="inherit" />}
+          </button>
       </div>
     </div>
   );

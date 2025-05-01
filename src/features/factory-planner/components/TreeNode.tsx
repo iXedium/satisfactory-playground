@@ -29,6 +29,8 @@ interface TreeNodeProps {
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
   viewDensity: ViewDensity;
+  isSelected?: boolean;
+  isCompleted?: boolean;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
@@ -54,6 +56,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   treeSortKey,
   treeSortDirection,
   viewDensity,
+  isSelected = false,
+  isCompleted = false,
 }) => {
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false); 
@@ -83,17 +87,21 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     }
   };
 
-  // Calculate background color based on depth
-  const getBackgroundColor = (depth: number) => {
-    // Start with a lighter base and make subtle changes with depth
-    const baseRGB = [90, 100, 110];  // Slightly lighter base color
-    const darkenStep = 10;  // More subtle darkening per level
+  // Calculate background color based on depth and status
+  const getBackgroundColor = (depth: number, selected: boolean, completed: boolean) => {
+    if (completed) {
+      return 'rgba(76, 175, 80, 0.70)'; // Completed Green Highlight
+    }
+    if (selected) {
+      return 'rgba(255, 165, 0, 0.70)'; // Selected Orange Highlight
+    }
     
-    // Calculate darkened RGB values based on depth
-    const r = Math.max(baseRGB[0] - (depth * darkenStep), 10);  // Don't go darker than 30
-    const g = Math.max(baseRGB[1] - (depth * darkenStep), 20);  // Don't go darker than 40
-    const b = Math.max(baseRGB[2] - (depth * darkenStep), 35);  // Don't go darker than 55
-    
+    // Default depth-based background
+    const baseRGB = [90, 100, 110];
+    const darkenStep = 10;
+    const r = Math.max(baseRGB[0] - (depth * darkenStep), 10);
+    const g = Math.max(baseRGB[1] - (depth * darkenStep), 20);
+    const b = Math.max(baseRGB[2] - (depth * darkenStep), 35);
     return `rgb(${r}, ${g}, ${b})`;
   };
 
@@ -150,6 +158,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         treeSortKey={treeSortKey}
         treeSortDirection={treeSortDirection}
         viewDensity={viewDensity}
+        isSelected={isSelected}
+        isCompleted={isCompleted}
       />
     ));
   };
@@ -160,7 +170,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         style={{
           display: 'flex',
           alignItems: 'center',
-          background: getBackgroundColor(depth),
+          background: getBackgroundColor(depth, isSelected, isCompleted),
           marginBottom: '8px',
           padding: '0 12px 0 0',
           paddingLeft: `${depth * 32}px`,

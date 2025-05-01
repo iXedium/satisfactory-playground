@@ -4,6 +4,112 @@
 /* Base (Relaxed View) Styles         */
 /* =================================== */
 
+.item-node {
+  position: relative; /* Ensure positioning context for status buttons */
+  /* Existing styles */
+}
+
+/* Style the new status button container */
+.item-node-status-buttons {
+  display: flex;
+  flex-direction: column; /* Stack vertically like left buttons */
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 2px; /* Match left buttons */
+  margin-left: 2px; /* Space between content and buttons */
+}
+
+/* Style the individual status buttons */
+.item-node-status-buttons button {
+  /* Match delete button size/style using constants */
+  min-width: var(--sizes-button-compactWidth, 24px) !important; 
+  width: var(--sizes-button-compactWidth, 24px) !important;
+  height: var(--sizes-button-compactHeight, 24px) !important;
+  padding: 0px 6px !important; /* Match ItemNodeButtons padding */
+  border-radius: var(--theme-border-radius, 6px) !important; /* Match ItemNodeButtons radius */
+  font-size: var(--sizes-fontSize-large, 16px) !important; /* Match ItemNodeButtons font size */
+  background-color: var(--theme-colors-dark, #2d3744); /* Add subtle background like delete button */
+  border: 1px solid var(--theme-colors-border, #4a5664); /* Add border like delete button */
+  color: var(--theme-colors-iconDefault); /* Default icon color */
+  /* Keep hover/active color change via sx prop in component */
+}
+
+/* Style the status button container */
+.status-button-container {
+  display: flex;
+  flex-direction: column; /* Stack vertically like left buttons */
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 2px; /* Match left buttons */
+  margin-left: 2px; /* Space between content and buttons */
+}
+
+/* Style the individual status buttons (standard HTML button) */
+.status-button {
+  /* Base style matching ItemNodeButtons */
+  cursor: pointer;
+  padding: 0px 6px !important;
+  border-radius: var(--theme-border-radius, 6px) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--sizes-fontSize-large, 16px) !important;
+  font-weight: bold; /* Match delete button */
+  transition: all 0.2s ease;
+  line-height: 18px; /* Match delete button */
+  height: var(--sizes-button-compactHeight, 24px) !important;
+  width: var(--sizes-button-compactWidth, 24px) !important;
+  min-width: var(--sizes-button-compactWidth, 24px) !important;
+  
+  /* Default appearance (inactive) - subtle */
+  background: var(--theme-colors-dark, #2d3744);
+  border: 1px solid var(--theme-colors-border, #4a5664);
+  color: var(--theme-colors-iconDefault, #aaaaaa); /* Default icon color */
+}
+
+/* Active state colors */
+.status-button.status-button--select.active {
+  color: var(--theme-colors-primary, #ff7a00); /* Orange icon */
+  /* Optionally add background/border change for active state */
+  /* background: rgba(255, 165, 0, 0.1); */
+  /* border-color: var(--theme-colors-primary, #ff7a00); */
+}
+
+.status-button.status-button--complete.active {
+  color: var(--theme-colors-efficiency-perfect, #5aaa5a); /* Green icon */
+  /* Optionally add background/border change for active state */
+  /* background: rgba(76, 175, 80, 0.1); */
+  /* border-color: var(--theme-colors-efficiency-perfect, #5aaa5a); */
+}
+
+/* Hover effect - slightly lighten background/border */
+.status-button:hover {
+   background: var(--theme-colors-surface, #3a4654); /* Use surface or a slightly lighter dark */
+   border-color: var(--theme-colors-dropdown-border, #5a6674); /* Lighter border */
+}
+
+/* Remove Highlight Styles from .item-node */
+.item-node--selected {
+  /* Remove background from outer node */
+  /* background-color: rgba(255, 165, 0, 0.70) !important; */
+}
+
+.item-node--completed {
+  /* Remove background from outer node */
+  /* background-color: rgba(76, 175, 80, 0.70) !important; */
+}
+
+/* Remove highlight from the inner container rules */
+.item-node--selected .item-section-container {
+  /* background-color: rgba(255, 165, 0, 0.20) !important; */
+}
+
+.item-node--completed .item-section-container {
+   /* background-color: rgba(76, 175, 80, 0.20) !important; */
+}
+
 /* --- ItemDetails --- */
 .item-details {
   background-color: var(--theme-colors-dark, #2d3744);
@@ -547,6 +653,40 @@
   padding: 0px 4px !important;
   margin: 0 !important;
   flex: 0 0 auto !important;
+}
+
+/* --- Compact Status Buttons --- */
+.item-node--compact .item-node-status-buttons {
+  flex-direction: row; /* Horizontal in compact */
+  padding: 0;
+  margin-left: 2px;
+  gap: 2px;
+  flex-basis: content; /* Size based on content */
+  flex-shrink: 0;
+  height: 100%; /* Align with compact node height */
+  align-items: center;
+}
+
+.item-node--compact .item-node-status-buttons button {
+  /* Adjust size for compact view, maintain aspect */
+  min-width: 20px !important; 
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0px 4px !important; /* Reduced padding */
+  font-size: 14px !important; /* Slightly smaller icon */
+  line-height: 14px; /* Adjust line-height */
+  /* Inherit background, border, radius, color from base rule */
+}
+
+.item-node--compact .status-button {
+  /* Adjust size for compact view, maintain aspect */
+  min-width: 20px !important; 
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0px 4px !important; /* Reduced padding */
+  font-size: 14px !important; /* Slightly smaller icon */
+  line-height: 14px; /* Adjust line-height */
+  /* Inherit background, border, radius, color from base rule */
 }
 
 /* =================================== */

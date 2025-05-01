@@ -171,6 +171,38 @@ const dependencySlice = createSlice({
       return action.payload;
     },
     
+    toggleNodeSelected: (
+      state,
+      action: PayloadAction<{ treeId: string; nodeId: string }>
+    ) => {
+      const { treeId, nodeId } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (tree) {
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.isSelected = !node.isSelected;
+        }
+      }
+    },
+
+    toggleNodeCompleted: (
+      state,
+      action: PayloadAction<{ treeId: string; nodeId: string }>
+    ) => {
+      const { treeId, nodeId } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (tree) {
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.isCompleted = !node.isCompleted;
+          // If marking as completed, optionally unmark as selected
+          // if (node.isCompleted && node.isSelected) {
+          //   node.isSelected = false;
+          // }
+        }
+      }
+    },
+    
     updateNodeProperties: (
       state,
       // Restore original payload structure
@@ -269,6 +301,8 @@ export const {
   loadSavedState,
   updateNodeProperties,
   clearErrors,
+  toggleNodeSelected,
+  toggleNodeCompleted,
 } = dependencySlice.actions;
 export default dependencySlice.reducer;
 

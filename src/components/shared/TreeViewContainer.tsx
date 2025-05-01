@@ -122,6 +122,8 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                         treeSortKey={treeSortKey}
                         treeSortDirection={treeSortDirection}
                         viewDensity={viewDensity}
+                        isSelected={tree.isSelected}
+                        isCompleted={tree.isCompleted}
                       />
                     </div>
                   )}
