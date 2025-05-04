@@ -12,7 +12,6 @@ import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 import { toggleNodeSelected, toggleNodeCompleted } from '../store/dependencySlice';
 import { RootState } from '../../../store';
-import IconButton from '@mui/material/IconButton';
 import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
@@ -95,8 +94,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       if (node.uniqueId === uniqueId) {
         return node;
       }
-      if (node.dependencies) {
-        for (const child of node.dependencies) {
+      if (node.children) {
+        for (const child of node.children) {
           const found = findNode(child);
           if (found) return found;
         }

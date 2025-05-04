@@ -20,6 +20,14 @@ export interface Recipe {
   category: string;
 }
 
+/** Represents a building/machine in the game */
+export interface Building {
+  id: string;
+  name: string;
+  category: string;
+  // Add other relevant properties like power consumption, etc. as needed
+}
+
 /** Represents an item's dependency tree */
 export interface DependencyNode {
   id: string; // Item class name
@@ -34,11 +42,13 @@ export interface DependencyNode {
   isImport?: boolean; // True if node (or an ancestor) imports from another tree (Legacy)
   importedFrom?: string; // Tree ID it's imported from (Legacy)
   importReference?: { targetTreeId: string; targetNodeId: string }; // New import system
-  childrenVisible?: boolean; // Control visibility independent of actual children
+  childrenVisible?: boolean; // Control visibility of children, especially for imported nodes
+  depth?: number; // Current visual depth
+  isSelected?: boolean; // New property for selection state
+  isCompleted?: boolean; // New property for completion state
   excess?: number; // Amount of excess production requested for this node
   machineCount?: number; // Number of machines allocated
   machineMultiplier?: number; // Clock speed/multiplier for machines
-  depth?: number; // Node's depth within its own tree
   originalDepth?: number; // Original depth in the parent tree before becoming an import root
 }
 

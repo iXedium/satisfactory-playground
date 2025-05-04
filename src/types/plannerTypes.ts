@@ -1,3 +1,6 @@
+import { Recipe } from "types";
+import { Building } from "./index"; // Assuming Building is in index.ts
+
 export interface DependencyNode {
   id: string; // e.g., 'iron-ore', 'iron-ingot'
   uniqueId: string; // Globally unique ID across all trees for this node instance
@@ -19,4 +22,11 @@ export interface DependencyNode {
   itemColor?: string; // Optional color override for the item
   isSelected?: boolean; // Flag for user selection (e.g., work in progress)
   isCompleted?: boolean; // Flag for user completion
+  availableRecipes?: Recipe[];
+  recipe?: Recipe | null;
+  machine?: Building | null;
+  children?: DependencyNode[];
+  originalDepth?: number; // Original depth before potential sorting
+  childrenVisible?: boolean; // Control visibility of children, especially for imported nodes
+  depth?: number; // Current visual depth
 }
