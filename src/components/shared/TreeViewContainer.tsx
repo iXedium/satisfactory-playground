@@ -34,6 +34,7 @@ interface TreeViewContainerProps {
   treeSortDirection: SortDirection;
   onManualSort: (result: DropResult) => void;
   viewDensity: ViewDensity;
+  onOptimizeAllMachines?: () => void;
 }
 
 /**
@@ -46,7 +47,8 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
     handleTreeRecipeChange, handleExcessChange, excessMap, machineCountMap, handleMachineCountChange, machineMultiplierMap, handleMachineMultiplierChange, expandedNodes, setExpandedNodes, showMachines, showMachineMultiplier, handleDeleteTree, handleImportNode, handleUnimportNode, handleNodeUpdate, containerStyle, itemsMap, treeSortKey, treeSortDirection,
     onManualSort,
     handleToggleNodeExtensions,
-    viewDensity
+    viewDensity,
+    onOptimizeAllMachines
   },
   ref) => {
 
@@ -124,6 +126,7 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                         viewDensity={viewDensity}
                         isSelected={tree.isSelected}
                         isCompleted={tree.isCompleted}
+                        onOptimizeAllMachines={onOptimizeAllMachines}
                       />
                     </div>
                   )}

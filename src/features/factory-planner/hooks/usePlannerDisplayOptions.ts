@@ -23,7 +23,8 @@ export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
 }
 
 export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
-  const [viewDensity, setViewDensity] = useState<ViewDensity>('relaxed');
+  // Default to 'compact' mode
+  const [viewDensity, setViewDensity] = useState<ViewDensity>('compact');
   const [showExtensions, setShowExtensions] = useState(false);
   const [accumulateExtensions, setAccumulateExtensions] = useState(true);
   const [showMachines, setShowMachines] = useState(true);

@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react';
+import React, { forwardRef } from 'react';
 import { DependencyNode, Item } from '../../types';
 import TreeViewContainer from './TreeViewContainer';
 import { SortDirection, TreeSortKey } from '../../features/factory-planner/hooks/useFactoryPlanner';
@@ -6,7 +6,6 @@ import { DropResult } from '@hello-pangea/dnd';
 import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions';
 
 interface PlannerContentProps {
-  treeViewRef: RefObject<HTMLDivElement | null>;
   treesArray: DependencyNode[];
   onManualSort: (result: DropResult) => void;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => void;
@@ -31,41 +30,45 @@ interface PlannerContentProps {
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
   viewDensity: ViewDensity;
+  onOptimizeAllMachines?: () => void;
 }
 
 /**
  * Content container that renders the TreeView
  */
-const PlannerContent: React.FC<PlannerContentProps> = ({
-  treeViewRef,
-  treesArray,
-  onManualSort,
-  handleTreeRecipeChange,
-  handleExcessChange,
-  excessMap,
-  machineCountMap,
-  handleMachineCountChange,
-  machineMultiplierMap,
-  handleMachineMultiplierChange,
-  expandedNodes,
-  setExpandedNodes,
-  showMachines,
-  showMachineMultiplier,
-  handleDeleteTree,
-  handleImportNode,
-  handleUnimportNode,
-  handleNodeUpdate,
-  nodeExtensionOverrides,
-  handleToggleNodeExtensions,
-  containerStyle,
-  itemsMap,
-  treeSortKey,
-  treeSortDirection,
-  viewDensity,
-}) => {
+const PlannerContent = forwardRef<HTMLDivElement, PlannerContentProps>((
+  {
+    treesArray,
+    onManualSort,
+    handleTreeRecipeChange,
+    handleExcessChange,
+    excessMap,
+    machineCountMap,
+    handleMachineCountChange,
+    machineMultiplierMap,
+    handleMachineMultiplierChange,
+    expandedNodes,
+    setExpandedNodes,
+    showMachines,
+    showMachineMultiplier,
+    handleDeleteTree,
+    handleImportNode,
+    handleUnimportNode,
+    handleNodeUpdate,
+    nodeExtensionOverrides,
+    handleToggleNodeExtensions,
+    containerStyle,
+    itemsMap,
+    treeSortKey,
+    treeSortDirection,
+    viewDensity,
+    onOptimizeAllMachines,
+  },
+  ref
+) => {
   return (
     <div 
-      ref={treeViewRef}
+      ref={ref}
       id="tree-view"
       style={{
         overflowY: 'auto',
@@ -97,9 +100,10 @@ const PlannerContent: React.FC<PlannerContentProps> = ({
         nodeExtensionOverrides={nodeExtensionOverrides}
         handleToggleNodeExtensions={handleToggleNodeExtensions}
         viewDensity={viewDensity}
+        onOptimizeAllMachines={onOptimizeAllMachines}
       />
     </div>
   );
-};
+});
 
 export default PlannerContent; 

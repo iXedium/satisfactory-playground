@@ -2,17 +2,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
-import { getRecipesForItem, getRecipeById, getRecipeByOutput, getAllItems } from '../../../data';
-import { Item, DependencyNode, Recipe } from '../../../types';
+import { getRecipesForItem, getRecipeById, getRecipeByOutput, getAllItems, getMachineForRecipe } from '../../../data';
+import { Item, DependencyNode, Recipe, Building } from '../../../types';
 import { 
   loadSavedState, 
-  setDependencies, 
-  deleteTree as deleteTreeAction,
-  importNodeAction,
   updateNodeProperties,
-  unimportNode as unimportNodeAction,
-  updateTreeProduction,
-  checkAndConvertNodeTypeThunk,
 } from '../store';
 import { 
   setRecipeSelection as setRecipeSelectionAction,
@@ -33,6 +27,7 @@ import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerPersistence } from './usePlannerPersistence';
 import { unimportNodeThunk } from '../store/importExportLogic';
 import { createNewTreeStructure } from './usePlannerTreeCalculation';
+import { useItemNodeCalculations } from './useItemNodeCalculations';
 
 // Define types for Tree View sorting and EXPORT them
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
@@ -92,6 +87,7 @@ export interface FactoryPlannerHookResult {
   clearSavedData: () => void;
   handleToggleNodeExtensions?: (nodeId: string) => void;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => Promise<void>;
+  handleOptimizeAllMachines: () => Promise<void>;
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
@@ -309,6 +305,70 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     recipeSelections,
   });
 
+  // --- Optimize All Machines Handler ---
+  const handleOptimizeAllMachines = useCallback(async () => {
+    console.log("[OptimizeAll] Starting...");
+    const trees = dependencies.dependencyTrees;
+
+    const processNode = async (node: DependencyNode) => {
+      if (node.isByproduct || node.isImport || !node.recipe?.id || !node.id) {
+        return; // Skip nodes that cannot be optimized
+      }
+
+      const currentAmount = node.amount || 0;
+      const currentExcess = excessMap[node.uniqueId] || 0;
+      const currentMultiplier = machineMultiplierMap[node.uniqueId] || 1;
+      const currentRecipeId = node.recipe.id;
+
+      try {
+        const machine = await getMachineForRecipe(currentRecipeId);
+        if (!machine) {
+          return;
+        }
+
+        let nominalRate = 0;
+        if (machine && node.recipe) {
+          const itemOut = node.recipe.out[node.id];
+          if (itemOut && node.recipe.time > 0 && machine.speed > 0) {
+            nominalRate = (60 / node.recipe.time) * itemOut * machine.speed;
+          }
+        }
+
+        if (nominalRate <= 0) {
+          return;
+        }
+
+        const neededAmount = currentAmount + currentExcess;
+        const exactMachines = neededAmount / (nominalRate * currentMultiplier);
+        const optimalMachines = Math.max(1, Math.ceil(exactMachines));
+        const currentMachineCount = machineCountMap[node.uniqueId] || 1;
+
+        if (optimalMachines !== currentMachineCount) {
+          handleMachineCountChange(node.uniqueId, optimalMachines);
+        }
+      } catch (error) {
+        console.error(`[OptimizeAll] Error calculating optimization for node ${node.uniqueId}:`, error);
+      }
+
+      if (node.children) {
+        for (const child of node.children) {
+          await processNode(child);
+        }
+      }
+    };
+
+    for (const treeId in trees) {
+      const tree = trees[treeId];
+      if (tree) {
+        await processNode(tree);
+      }
+    }
+
+    console.log("[OptimizeAll] Finished processing.");
+
+  }, [dependencies.dependencyTrees, excessMap, machineMultiplierMap, machineCountMap, handleMachineCountChange]);
+  // -------------------------------------
+
   return {
     dependencies,
     recipeSelections,
@@ -359,6 +419,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     clearSavedData,
     handleToggleNodeExtensions,
     handleTreeRecipeChange,
+    handleOptimizeAllMachines,
   };
 };
 

@@ -45,6 +45,7 @@ interface ItemNodeProps {
   onImport?: (nodeId: string) => void;
   onUnimport?: (nodeId: string) => void;
   viewDensity: ViewDensity;
+  onOptimizeAllMachines?: () => void;
 }
 
 interface Machine {
@@ -83,6 +84,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onImport,
   onUnimport,
   viewDensity,
+  onOptimizeAllMachines,
 }) => {
   const dispatch = useDispatch();
 
@@ -290,6 +292,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
               onMachineMultiplierChange={onMachineMultiplierChange}
               showMachineMultiplier={showMachineMultiplier}
               onOptimizeMachines={handleOptimizeMachines}
+              onOptimizeAllMachines={onOptimizeAllMachines}
               size={size}
             />
           </div>

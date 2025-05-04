@@ -123,18 +123,17 @@ export const usePlannerImportExport = ({
 
   // Public handleUnimport: Dispatch the thunk
   const handleUnimport = useCallback((nodeId: string) => {
-    // console.log(`[Hook/usePlannerImportExport] handleUnimport called for: ${nodeId}`);
-    // Dispatch the restored thunk directly
     dispatch(unimportNodeThunk(nodeId));
   }, [dispatch]);
 
-  // Public handleImportNode (keep if still needed)
-  const handleImportNodeById = useCallback((nodeId: string) => {
-    importNodeForTreeInternal(nodeId);
+  // Public handleImportNode: Make this async to match expected return type
+  const handleImportNodeById = useCallback(async (nodeId: string) => {
+    // Await the internal async function
+    await importNodeForTreeInternal(nodeId);
   }, [importNodeForTreeInternal]);
 
   return {
-    handleImportNode: handleImportNodeById,
+    handleImportNode: handleImportNodeById, // Now returns Promise<void>
     handleUnimport,
   };
 }; 

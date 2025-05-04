@@ -8,6 +8,7 @@ interface MachineControlsProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachineMultiplier?: boolean;
   onOptimizeMachines: () => void;
+  onOptimizeAllMachines?: () => void;
 }
 
 const MachineControls: React.FC<MachineControlsProps> = ({
@@ -17,6 +18,7 @@ const MachineControls: React.FC<MachineControlsProps> = ({
   onMachineMultiplierChange,
   showMachineMultiplier = false,
   onOptimizeMachines,
+  onOptimizeAllMachines,
 }) => {
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
@@ -145,9 +147,13 @@ const MachineControls: React.FC<MachineControlsProps> = ({
         className="machine-control-button optimize-button"
         onClick={(e) => {
           e.stopPropagation();
-          onOptimizeMachines();
+          if (e.shiftKey && onOptimizeAllMachines) {
+            onOptimizeAllMachines();
+          } else {
+            onOptimizeMachines();
+          }
         }}
-        title="Set machine count for 100% efficiency"
+        title="Set machine count for 100% efficiency (Shift+Click for All)"
       >
         M
       </button>

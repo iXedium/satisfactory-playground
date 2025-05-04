@@ -66,7 +66,8 @@ const FactoryPlanner: React.FC = () => {
     handleUnimportNode,
     handleNodeUpdate,
     clearSavedData,
-    handleToggleNodeExtensions
+    handleToggleNodeExtensions,
+    handleOptimizeAllMachines,
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -132,7 +133,7 @@ const FactoryPlanner: React.FC = () => {
       return [];
     }
 
-    console.log("Recalculating Item Summary (v4 using Category)...");
+    // console.log("Recalculating Item Summary (v4 using Category)...");
     
     // --- Pass 1: Collect all unique item IDs --- 
     const allItemIds = new Set<string>();
@@ -183,7 +184,7 @@ const FactoryPlanner: React.FC = () => {
     });
     // -------------------------------------------------------------------
 
-    console.log("Item Data Map (After Accumulation v4):", JSON.parse(JSON.stringify(itemDataMap))); 
+    // console.log("Item Data Map (After Accumulation v4):", JSON.parse(JSON.stringify(itemDataMap))); 
 
     // Convert map to array, including category
     const summaryArray = Object.entries(itemDataMap)
@@ -194,7 +195,7 @@ const FactoryPlanner: React.FC = () => {
           hasByproductSource: data.hasByproductSource 
       }));
 
-    console.log("Final Summary Array (v4):", summaryArray);
+    // console.log("Final Summary Array (v4):", summaryArray);
     return summaryArray;
   }, [dependencies.dependencyTrees, excessMap, itemsMap]); 
   // ----------------------------------------------------
@@ -327,7 +328,7 @@ const FactoryPlanner: React.FC = () => {
       commandBarHeight={commandBarHeight}
       content={
         <PlannerContent
-          treeViewRef={treeViewRef}
+          ref={treeViewRef}
           treesArray={displayTreesArray}
           onManualSort={handleManualSort}
           handleTreeRecipeChange={handleTreeRecipeChange}
@@ -353,6 +354,8 @@ const FactoryPlanner: React.FC = () => {
           treeSortDirection={treeSortDirection}
           // Pass density state
           viewDensity={viewDensity}
+          onOptimizeAllMachines={handleOptimizeAllMachines}
+          dependencies={dependencies}
         />
       }
       sidebar={isSummaryVisible ? (

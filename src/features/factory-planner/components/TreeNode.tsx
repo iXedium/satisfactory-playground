@@ -31,6 +31,7 @@ interface TreeNodeProps {
   viewDensity: ViewDensity;
   isSelected?: boolean;
   isCompleted?: boolean;
+  onOptimizeAllMachines?: () => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -58,6 +59,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   viewDensity,
   isSelected = false,
   isCompleted = false,
+  onOptimizeAllMachines,
 }) => {
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false);
@@ -170,6 +172,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         viewDensity={viewDensity}
         isSelected={child.isSelected}
         isCompleted={child.isCompleted}
+        onOptimizeAllMachines={onOptimizeAllMachines}
       />
     ));
   };
@@ -255,6 +258,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             }
             viewDensity={viewDensity}
             size={viewDensity === "compact" ? "small" : "large"}
+            onOptimizeAllMachines={onOptimizeAllMachines}
           />
         </div>
       </div>

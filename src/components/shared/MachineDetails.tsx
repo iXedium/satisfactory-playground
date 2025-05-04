@@ -21,6 +21,7 @@ interface MachineDetailsProps {
   onMachineMultiplierChange?: (multiplier: number) => void;
   showMachineMultiplier?: boolean;
   onOptimizeMachines: () => void;
+  onOptimizeAllMachines?: () => void;
   size?: IconSize;
   containerStyle?: React.CSSProperties;
   contentStyle?: React.CSSProperties;
@@ -34,6 +35,7 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
   onMachineMultiplierChange,
   showMachineMultiplier = false,
   onOptimizeMachines,
+  onOptimizeAllMachines,
   size = "large",
   containerStyle,
   contentStyle,
@@ -82,6 +84,7 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
             onMachineMultiplierChange={onMachineMultiplierChange}
             showMachineMultiplier={showMachineMultiplier}
             onOptimizeMachines={onOptimizeMachines}
+            onOptimizeAllMachines={onOptimizeAllMachines}
           />
         </div>
       </div>
