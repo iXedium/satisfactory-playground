@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 export interface PlannerNodeState {
   excessMap: Record<string, number>;
@@ -21,87 +22,33 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   const [nodeExtensionOverrides, setNodeExtensionOverrides] = useState<Record<string, boolean>>({});
 
   // Load saved state from localStorage
-  useEffect(() => {
-    try {
-      const savedExcessMap = localStorage.getItem('savedExcessMap');
-      if (savedExcessMap) {
-        setExcessMap(JSON.parse(savedExcessMap));
-      }
-      const savedMachineCountMap = localStorage.getItem('savedMachineCountMap');
-      if (savedMachineCountMap) {
-        setMachineCountMap(JSON.parse(savedMachineCountMap));
-      }
-      const savedMachineMultiplierMap = localStorage.getItem('savedMachineMultiplierMap');
-      if (savedMachineMultiplierMap) {
-        setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
-      }
-      const savedExpandedNodes = localStorage.getItem('plannerExpandedNodes');
-      if (savedExpandedNodes) {
-        setExpandedNodes(JSON.parse(savedExpandedNodes));
-      } else {
-        setExpandedNodes({}); // Initialize if nothing is saved
-      }
-      const savedOverrides = localStorage.getItem('plannerNodeExtensionOverrides');
-      if (savedOverrides) {
-        setNodeExtensionOverrides(JSON.parse(savedOverrides));
-      }
-    } catch (error) {
-      console.error("Error loading node state:", error);
-    }
-  }, []);
+  // REMOVED: useEffect for loading node state
 
   // Save excessMap to localStorage
-  useEffect(() => {
-    if (Object.keys(excessMap).length > 0) {
-      try {
-        localStorage.setItem('savedExcessMap', JSON.stringify(excessMap));
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        // console.error("Error saving excess map:", error);
-        localStorage.removeItem('savedExcessMap');
-      }
-    }
-    // Consider removing item if map becomes empty? Or handle on load?
-  }, [excessMap]);
+  // REMOVED: useEffect for saving excessMap
 
   // Save machine maps to localStorage
-  useEffect(() => {
-    try {
-      if (Object.keys(machineCountMap).length > 0) {
-        localStorage.setItem('savedMachineCountMap', JSON.stringify(machineCountMap));
-      } else {
-        localStorage.removeItem('savedMachineCountMap'); // Clean up if empty
-      }
-      if (Object.keys(machineMultiplierMap).length > 0) {
-        localStorage.setItem('savedMachineMultiplierMap', JSON.stringify(machineMultiplierMap));
-      } else {
-        localStorage.removeItem('savedMachineMultiplierMap'); // Clean up if empty
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      // console.error("Error saving machine maps:", error);
-      localStorage.removeItem('savedMachineCountMap');
-      localStorage.removeItem('savedMachineMultiplierMap');
-    }
-  }, [machineCountMap, machineMultiplierMap]);
+  // REMOVED: useEffect for saving machine maps
 
   // Save expanded nodes and overrides to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('plannerExpandedNodes', JSON.stringify(expandedNodes));
-      localStorage.setItem('plannerNodeExtensionOverrides', JSON.stringify(nodeExtensionOverrides));
-    } catch (error) {
-      console.error("Error saving node state:", error);
-    }
-  }, [expandedNodes, nodeExtensionOverrides]);
+  // REMOVED: useEffect for saving expandedNodes and nodeExtensionOverrides
 
   // Function to clear related localStorage items
+  // REMOVED: clearStorage function
+
   const clearStorage = useCallback(() => {
+    // Clear localStorage items this hook previously managed
     localStorage.removeItem('savedExcessMap');
     localStorage.removeItem('savedMachineCountMap');
     localStorage.removeItem('savedMachineMultiplierMap');
     localStorage.removeItem('plannerExpandedNodes');
     localStorage.removeItem('plannerNodeExtensionOverrides');
+    // Also reset the local state
+    setExcessMap({});
+    setMachineCountMap({});
+    setMachineMultiplierMap({});
+    setExpandedNodes({});
+    setNodeExtensionOverrides({});
   }, []);
 
   return {

@@ -68,6 +68,11 @@ const FactoryPlanner: React.FC = () => {
     clearSavedData,
     handleToggleNodeExtensions,
     handleOptimizeAllMachines,
+    // Get save/load functions
+    getSaveNames,
+    saveSetup,
+    loadSetup,
+    deleteSetup,
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -323,6 +328,12 @@ const FactoryPlanner: React.FC = () => {
           // Pass density state/setter
           viewDensity={viewDensity}
           setViewDensity={setViewDensity}
+          // Pass save/load handlers down
+          saveSetup={saveSetup}
+          loadSetup={loadSetup}
+          // Pass getSaveNames and deleteSetup
+          getSaveNames={getSaveNames}
+          deleteSetup={deleteSetup}
         />
       }
       commandBarHeight={commandBarHeight}
@@ -355,7 +366,6 @@ const FactoryPlanner: React.FC = () => {
           // Pass density state
           viewDensity={viewDensity}
           onOptimizeAllMachines={handleOptimizeAllMachines}
-          dependencies={dependencies}
         />
       }
       sidebar={isSummaryVisible ? (

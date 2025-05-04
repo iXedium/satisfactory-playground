@@ -56,6 +56,12 @@ interface CommandBarProps {
   // Add density props
   viewDensity: ViewDensity;
   setViewDensity: (density: ViewDensity) => void;
+  // Add save/load handlers
+  saveSetup?: (name: string) => Promise<void>;
+  loadSetup?: (name: string) => Promise<void>;
+  // Add getSaveNames and deleteSetup handlers
+  getSaveNames?: () => string[];
+  deleteSetup?: (name: string) => Promise<void>;
 }
 
 /**
@@ -95,6 +101,12 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     // Destructure density props
     viewDensity,
     setViewDensity,
+    // Destructure save/load handlers
+    saveSetup,
+    loadSetup,
+    // Destructure getSaveNames and deleteSetup
+    getSaveNames,
+    deleteSetup,
   },
   ref
 ) => {
@@ -158,6 +170,12 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           // Pass summary props down
           isSummaryVisible={isSummaryVisible}
           onToggleSummary={onToggleSummary}
+          // Pass save/load handlers down
+          onSaveSetup={saveSetup}
+          onLoadSetup={loadSetup}
+          // Pass getSaveNames and deleteSetup down
+          getSaveNames={getSaveNames}
+          onDeleteSetup={deleteSetup}
         />
       </div>
 

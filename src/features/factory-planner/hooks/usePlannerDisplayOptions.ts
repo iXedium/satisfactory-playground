@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 // Define the new type
 export type ViewDensity = 'relaxed' | 'compact';
@@ -32,61 +32,27 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   const [autoImport, setAutoImport] = useState(true);
 
   // Load saved state from localStorage
-  useEffect(() => {
-    try {
-      // Load view density
-      const savedViewDensity = localStorage.getItem('savedViewDensity');
-      if (savedViewDensity) {
-        setViewDensity(savedViewDensity as ViewDensity);
-      }
-      const savedShowExtensions = localStorage.getItem('savedShowExtensions');
-      if (savedShowExtensions) {
-        setShowExtensions(JSON.parse(savedShowExtensions));
-      }
-      const savedAccumulateExtensions = localStorage.getItem('savedAccumulateExtensions');
-      if (savedAccumulateExtensions) {
-        setAccumulateExtensions(JSON.parse(savedAccumulateExtensions));
-      }
-      const savedShowMachines = localStorage.getItem('savedShowMachines');
-      if (savedShowMachines) {
-        setShowMachines(JSON.parse(savedShowMachines));
-      }
-      const savedShowMachineMultiplier = localStorage.getItem('savedShowMachineMultiplier');
-      if (savedShowMachineMultiplier) {
-        setShowMachineMultiplier(JSON.parse(savedShowMachineMultiplier));
-      }
-      const savedAutoImport = localStorage.getItem('plannerAutoImport');
-      if (savedAutoImport) {
-        setAutoImport(JSON.parse(savedAutoImport));
-      }
-    } catch (error) {
-      console.error("Error loading saved display options:", error);
-    }
-  }, []);
+  // REMOVED: useEffect for loading display options
 
   // Save state to localStorage
-  useEffect(() => {
-    try {
-      // Save view density
-      localStorage.setItem('savedViewDensity', viewDensity);
-      localStorage.setItem('savedShowExtensions', JSON.stringify(showExtensions));
-      localStorage.setItem('savedAccumulateExtensions', JSON.stringify(accumulateExtensions));
-      localStorage.setItem('savedShowMachines', JSON.stringify(showMachines));
-      localStorage.setItem('savedShowMachineMultiplier', JSON.stringify(showMachineMultiplier));
-      localStorage.setItem('plannerAutoImport', JSON.stringify(autoImport));
-    } catch (error) {
-      console.error("Error saving display options:", error);
-    }
-  }, [viewDensity, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
+  // REMOVED: useEffect for saving display options
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
-    // Clear view density
+    // Clear localStorage items this hook previously managed
     localStorage.removeItem('savedViewDensity');
     localStorage.removeItem('savedShowExtensions');
     localStorage.removeItem('savedAccumulateExtensions');
     localStorage.removeItem('savedShowMachines');
     localStorage.removeItem('savedShowMachineMultiplier');
+    localStorage.removeItem('plannerAutoImport');
+    // Also reset the local state
+    setViewDensity('compact');
+    setShowExtensions(false);
+    setAccumulateExtensions(true);
+    setShowMachines(true);
+    setShowMachineMultiplier(false);
+    setAutoImport(true);
   }, []);
 
   return {

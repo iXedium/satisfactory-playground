@@ -32,27 +32,6 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     });
   }, []);
 
-  // Load/Save recent items
-  useEffect(() => {
-    try {
-      const savedRecentItems = localStorage.getItem('savedRecentItems');
-      if (savedRecentItems) {
-        setRecentItems(JSON.parse(savedRecentItems));
-      }
-    } catch (error) {
-      console.error("Error loading saved recent items:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('savedRecentItems', JSON.stringify(recentItems));
-    } catch (error) {
-      console.error("Error saving recent items:", error);
-      localStorage.removeItem('savedRecentItems');
-    }
-  }, [recentItems]);
-
   // Function to update recent items list
   const updateRecentItems = useCallback((itemId: string) => {
     setRecentItems(prev => {
@@ -62,28 +41,21 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     });
   }, []);
 
-  // Function to clear related localStorage items
-  const clearStorage = useCallback(() => {
-    localStorage.removeItem('plannerSelectedItem');
-    localStorage.removeItem('plannerSelectedRecipe');
-    localStorage.removeItem('plannerRecentItems');
-    // Reset state if needed
-    setSelectedItem('');
-    setSelectedRecipe('');
-    setRecentItems([]);
-  }, []);
-
   const removeRecentItem = useCallback((itemIdToRemove: string) => {
     setRecentItems(prevItems => {
       const newItems = prevItems.filter(id => id !== itemIdToRemove);
-      try {
-        localStorage.setItem('plannerRecentItems', JSON.stringify(newItems));
-      } catch (error) {
-        console.error("Error saving recent items after removal:", error);
-        // Optionally revert state change? 
-      }
       return newItems;
     });
+  }, []);
+
+  const clearStorage = useCallback(() => {
+    // Clear localStorage items this hook previously managed
+    localStorage.removeItem('savedRecentItems');
+    // Reset the local state
+    setRecentItems([]);
+    // Should probably clear selectedItem/selectedRecipe state too?
+    setSelectedItem('');
+    setSelectedRecipe('');
   }, []);
 
   return {

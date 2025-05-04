@@ -184,7 +184,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `StyledSwitch.tsx`: Custom styled switch/toggle component.
     - `SummarySidebar.tsx`: **NEW** - Right-hand sidebar displaying aggregated item totals.
     - `TreeNodeManager.tsx`: Manages interactions or state for tree nodes.
-    - `TreeViewContainer.tsx`: Container for the tree visualization.
+    - `TreeViewContainer.tsx`: Container for the tree visualization. Integrates with `useFactoryPlanner` to pass down props like `onOptimizeAllMachines`.
     - `TreeViewManager.tsx`: Manages the state or interactions of the tree view.
     - `ViewModeToggle.tsx`: **DEPRECATED/UNUSED** - Was previously used for List/Tree view toggle.
     - `ViewOptionsPanel.tsx`: Panel containing various view options.
@@ -211,33 +211,35 @@ Handles data fetching, storage (Dexie.js), and initial loading from static sourc
 
 Contains code organized by application feature domain.
 
-- **`src/features/factory-planner/`**: Houses the core logic and UI for the **factory planning feature**.
+- **`src/features/factory-planner/`**: Houses the core logic and UI for the **factory planning feature**. Includes component-specific styles (e.g., `ItemNode.css`).
     - `components/`: Contains React components **specifically related to the factory planner feature**.
         - `AccumulatedResourceView.tsx`: Displays the aggregated list of required resources. Now utilizes `useGroupedAccumulatedItems` and `useItemFilteringSorting` hooks for data processing and filtering/sorting logic, and renders `AccumulatedViewControls`.
         - `DependencyTree.tsx`: Renders the main dependency tree structure.
-        - `ItemNode.tsx`: Component representing a single item node within the tree.
+        - `ItemNode.tsx`: Component representing a single item node within the tree. Includes styling for different view densities (`ItemNode.css`), handling for `onOptimizeAllMachines` prop.
         - `ListNode.tsx`: **DEPRECATED/UNUSED** - Was previously used for an alternative list view representation.
-        - `FactoryPlanner.tsx`: Main orchestrating component for the factory planner UI and logic.
-        - `TreeNode.tsx`: Component representing a generic node in the tree view (wraps `ItemNode`).
+        - `FactoryPlanner.tsx`: Main orchestrating component for the factory planner UI and logic. Integrates various hooks and passes down handlers like `onOptimizeAllMachines`.
+        - `TreeNode.tsx`: Component representing a generic node in the tree view (wraps `ItemNode`). Handles recursive rendering and passes down props like `onOptimizeAllMachines`.
         - `index.ts`: Bundles and exports components from this directory.
     - `hooks/`: Contains React hooks specific to the factory planner logic.
-        - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state.
+        - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state. Implements the `handleOptimizeAllMachines` logic.
         - `useGroupedAccumulatedItems.ts`: **NEW** - Hook responsible for processing `accumulatedDependencies` from Redux, fetching related item/recipe data, and grouping items for display in the `AccumulatedResourceView`.
         - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
         - `useItemNodeCalculations.ts`: **NEW** - Hook containing the calculation logic for a node's nominal rate and efficiency, extracted from `ItemNode.tsx`.
         - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
         - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
-        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.). No longer manages the old List/Tree view mode.
+        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.), including setting the default `viewDensity` to 'compact'. No longer manages the old List/Tree view mode.
         - `usePlannerExcessHandling.ts`: **NEW** - Hook managing the complex logic for handling changes to node excess production, including dispatching updates and potentially managing UI refresh triggers.
-        - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees.
+        - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees, including dispatching the restored `unimportNodeThunk`.
         - `usePlannerItemSelection.ts`: **NEW** - Hook managing state related to selecting items/recipes for creating new production chains (item list, selections, recent items).
-        - `usePlannerNodeInteractions.ts`: **NEW** - Hook containing handlers for simple UI interactions with nodes (expand/collapse, machine count/multiplier changes, toggle extensions).
+        - `usePlannerNodeInteractions.ts`: **NEW** - Hook containing handlers for simple UI interactions with nodes (expand/collapse, machine count/multiplier changes, toggle extensions). Used by `useFactoryPlanner` to implement optimize-all functionality.
         - `usePlannerNodeState.ts`: **NEW** - Hook managing local state overrides for individual nodes (excess map, machine maps, expanded nodes, extension overrides) and their persistence.
         - `usePlannerPersistence.ts`: **NEW** - Hook responsible for the side effect of saving the main Redux state slices (`dependencies`, `recipeSelections`) to `localStorage`.
         - `usePlannerRecipeManagement.ts`: **NEW** - Hook containing the handler for changing a recipe within an existing tree and triggering recalculation.
-        - `usePlannerTreeCalculation.ts`: **NEW** - Hook containing handlers for creating new production trees (`handleCalculate`, `handleCreateNewTree`) and generating tree IDs.
+        - `usePlannerTreeCalculation.ts`: **NEW** - Hook containing handlers for creating new production trees (`handleCalculate`, `handleCreateNewTree`) and generating tree IDs. Includes fix to ensure `availableRecipes` are populated correctly on new roots.
     - `store/`: Contains Redux Toolkit slices related to the factory planner state.
-        - `dependencySlice.ts`: Manages the state of the dependency tree itself (nodes, connections, calculations). Likely the largest and most complex slice.
+        - `dependencySlice.ts`: Manages the state of the dependency tree itself (nodes, connections, calculations). Likely the largest and most complex slice. Includes actions related to unimport logic (`removeNodeAction`).
+        - `importExportLogic.ts`: Contains Redux thunks and related logic for handling complex import/export operations, notably the restored `unimportNodeThunk` and its dependencies.
+        - `productionUpdateLogic.ts`: Holds logic related to updating production state, potentially including recipe change recalculations.
         - `recipeSelectionsSlice.ts`: Manages the state of selected recipes for nodes.
         - `treeUiSlice.ts`: Manages UI-specific state for the tree view (e.g., expanded nodes, view options).
         - `index.ts`: Bundles and exports slices and selectors from this directory.
@@ -275,12 +277,12 @@ Contains shared TypeScript type definitions and interfaces used across multiple 
 Contains general utility functions reusable across the application, often pure functions.
 
 - `calculateAccumulatedFromTree.ts`: Utility function to calculate accumulated resources based on a dependency tree.
-- `calculateDependencyTree.ts`: **REFACTORED** - The core logic for calculating the production dependency tree. Now delegates caching to `treeCalculationCache` and import node creation to `importNodeLogic`. Uses utilities from `treeUtils`.
-- `importNodeLogic.ts`: **NEW** - Contains helper functions specifically for creating import nodes (`createImportNode`) and managing their original children (`storeOriginalChildren`, `restoreOriginalChildren`).
-- `nodeReferenceUtils.ts`: Utility functions for working with node references, paths, or related data structures within the tree.
+- `calculateDependencyTree.ts`: **REFACTORED** - The core logic for calculating the production dependency tree. Now delegates caching to `treeCalculationCache` and import node creation to `importNodeLogic`. Uses utilities from `treeUtils`. Correctly populates `availableRecipes` for root nodes.
+- `importNodeLogic.ts`: **NEW** - Contains helper functions specifically for creating import nodes (`createImportNode`) and managing their original children (`storeOriginalChildren`, `restoreOriginalChildren`). Also includes `autoImportNodeChildrenThunk` which now correctly populates `availableRecipes` for auto-imported roots.
+- `nodeReferenceUtils.ts`: Utility functions for working with node references, paths, or related data structures within the tree. Includes helpers used by the unimport logic (`findNodeConsumers`, `getImportReference`).
 - `treeCalculationCache.ts`: **NEW** - Manages the `Map`-based cache for memoizing `calculateDependencyTree` results.
 - `treeDiffing.ts`: Utility functions potentially used for comparing different versions of the dependency tree state.
-- `treeUtils.ts`: **NEW** - Consolidated helper functions for working with `DependencyNode` trees (e.g., `findNodeById`, `findParentNode`, `countNodes`, `getTreeDepth`).
+- `treeUtils.ts`: **NEW** - Consolidated helper functions for working with `DependencyNode` trees (e.g., `findNodeById`, `findParentNode`, `countNodes`, `getTreeDepth`). Includes helpers used by unimport logic (`findNodeInAnyTree`).
 - `index.ts`: Bundles and exports utility functions from this directory. **UPDATED** to include exports from new util files.
 
 ### Root Files (`src/`)

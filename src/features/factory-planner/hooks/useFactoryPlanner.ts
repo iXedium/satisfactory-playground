@@ -7,6 +7,9 @@ import { Item, DependencyNode, Recipe, Building } from '../../../types';
 import { 
   loadSavedState, 
   updateNodeProperties,
+  // Import clear actions if they exist, otherwise remove them below
+  // clearAllTrees, 
+  // clearRecipeSelections
 } from '../store';
 import { 
   setRecipeSelection as setRecipeSelectionAction,
@@ -24,7 +27,7 @@ import { usePlannerExcessHandling } from './usePlannerExcessHandling';
 import { usePlannerRecipeManagement } from './usePlannerRecipeManagement';
 import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
-import { usePlannerPersistence } from './usePlannerPersistence';
+import { usePlannerSaveLoad } from './usePlannerSaveLoad';
 import { unimportNodeThunk } from '../store/importExportLogic';
 import { createNewTreeStructure } from './usePlannerTreeCalculation';
 import { useItemNodeCalculations } from './useItemNodeCalculations';
@@ -88,6 +91,10 @@ export interface FactoryPlannerHookResult {
   handleToggleNodeExtensions?: (nodeId: string) => void;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => Promise<void>;
   handleOptimizeAllMachines: () => Promise<void>;
+  getSaveNames: () => string[];
+  saveSetup: (name: string) => Promise<void>;
+  loadSetup: (name: string) => Promise<void>;
+  deleteSetup: (name: string) => Promise<void>;
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
@@ -135,11 +142,11 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setShowMachines,
     showMachineMultiplier,
     setShowMachineMultiplier,
-    clearStorage: clearDisplayOptionsStorage,
     autoImport,
     setAutoImport,
     viewDensity,
     setViewDensity,
+    clearStorage: clearDisplayOptionsStorage,
   } = usePlannerDisplayOptions();
   
   const {
@@ -166,8 +173,8 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setIsAddItemCollapsed,
     recentItems,
     updateRecentItems,
-    clearStorage: clearItemSelectionStorage,
     removeRecentItem,
+    clearStorage: clearItemSelectionStorage,
   } = usePlannerItemSelection();
 
   // --- State for Tree View Sorting (Load from Local Storage) ---
@@ -178,24 +185,6 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
      return (localStorage.getItem(LS_SORT_DIRECTION) as SortDirection | null) || 'asc';
   });
   // -----------------------------------
-
-  // --- Save Sort Key/Direction to Local Storage on Change ---
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_SORT_KEY, treeSortKey);
-    } catch (error) {
-      console.error("Error saving sort key:", error);
-    }
-  }, [treeSortKey]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_SORT_DIRECTION, treeSortDirection);
-    } catch (error) {
-      console.error("Error saving sort direction:", error);
-    }
-  }, [treeSortDirection]);
-  // ----------------------------------------------------------
 
   // --- Create an Item Map for sorting by name --- 
   const itemsMap = useMemo(() => {
@@ -300,9 +289,36 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   }, [dispatch]); // Run only once on mount
   // ---------------------------------------------------------------------
   
-  usePlannerPersistence({
-    dependencies,
-    recipeSelections,
+  // Call the Save/Load Hook
+  const { getSaveNames, saveSetup, loadSetup, deleteSetup } = usePlannerSaveLoad({
+    // Pass setters
+    setExcessMap,
+    setMachineCountMap,
+    setMachineMultiplierMap,
+    setExpandedNodes,
+    setNodeExtensionOverrides,
+    setViewDensity,
+    setShowExtensions,
+    setAccumulateExtensions,
+    setShowMachines,
+    setShowMachineMultiplier,
+    setAutoImport,
+    setTreeSortKey,
+    setTreeSortDirection,
+    // Pass current state values
+    currentExcessMap: excessMap,
+    currentMachineCountMap: machineCountMap,
+    currentMachineMultiplierMap: machineMultiplierMap,
+    currentExpandedNodes: expandedNodes,
+    currentNodeExtensionOverrides: nodeExtensionOverrides,
+    currentViewDensity: viewDensity,
+    currentShowExtensions: showExtensions,
+    currentAccumulateExtensions: accumulateExtensions,
+    currentShowMachines: showMachines,
+    currentShowMachineMultiplier: showMachineMultiplier,
+    currentAutoImport: autoImport,
+    currentTreeSortKey: treeSortKey,
+    currentTreeSortDirection: treeSortDirection,
   });
 
   // --- Optimize All Machines Handler ---
@@ -420,6 +436,11 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     handleToggleNodeExtensions,
     handleTreeRecipeChange,
     handleOptimizeAllMachines,
+
+    getSaveNames,
+    saveSetup,
+    loadSetup,
+    deleteSetup,
   };
 };
 
