@@ -9,21 +9,34 @@ import {
 import { getRecipeById, getRecipeByOutput } from "../../../data";
 import { AppDispatch } from "../../../store";
 import {
-  importNodeAction,
-  unimportNode,
   handleNodeImportReducer,
-  handleNodeUnimportReducer,
-  removeNodeAction
 } from './importExportLogic';
 import {
   productionSliceExtraReducers,
 } from './productionUpdateLogic';
+
+// --- Define Actions needed by thunks/reducers --- 
+// Moved from importExportLogic.ts to break circular dependency
+export const importNodeAction = createAction<{
+  nodeId: string;
+  targetTreeId: string;
+  sourceTreeId: string;
+  shouldImport: boolean;
+}>('dependency/importNode');
+
+// This simple action is likely unused now that unimportNodeThunk handles the logic
+// export const unimportNode = createAction<{ ... }>('dependency/unimportNode'); 
+
+// Action dispatched by destroyNodeRecursiveThunk
+export const removeNodeAction = createAction<string>('dependency/removeNode');
+// -------------------------------------------------
 
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
   accumulatedDependencies: Record<string, AccumulatedNode>;
   // Additional properties for better state management
   errors: string[]; // Track errors like circular references
+  lastUpdateTime: number;
 }
 
 // Export the state interface for use in tests
@@ -32,7 +45,8 @@ export type { DependencyState };
 const initialState: DependencyState = {
   dependencyTrees: {},
   accumulatedDependencies: {},
-  errors: []
+  errors: [],
+  lastUpdateTime: 0
 };
 
 // Helper function to find nodes importing to a specific tree
@@ -86,6 +100,7 @@ const dependencySlice = createSlice({
           Object.assign(newAccumulated, treeAccumulated);
       });
       state.accumulatedDependencies = newAccumulated;
+      state.lastUpdateTime = Date.now();
     },
     
     deleteTree: (
@@ -157,6 +172,7 @@ const dependencySlice = createSlice({
         });
         state.accumulatedDependencies = allAccumulated;
       }
+      state.lastUpdateTime = Date.now();
     },
     
     updateAccumulated: (
@@ -164,6 +180,7 @@ const dependencySlice = createSlice({
       action: PayloadAction<Record<string, AccumulatedNode>>
     ) => {
       state.accumulatedDependencies = action.payload;
+      state.lastUpdateTime = Date.now();
     },
     
     loadSavedState: (state, action: PayloadAction<DependencyState>) => {
@@ -258,43 +275,48 @@ const dependencySlice = createSlice({
          // Still log warnings
          console.warn(`Node ${nodeId} not found in any tree for update.`);
       }
+      state.lastUpdateTime = Date.now();
     },
     
     clearErrors: (state) => {
       state.errors = [];
+      state.lastUpdateTime = Date.now();
+    },
+
+    // Reducer for removeNodeAction
+    _internalRemoveNodeActionReducer: (state, action: PayloadAction<string>) => {
+      const nodeIdToRemove = action.payload;
+      if (state.dependencyTrees[nodeIdToRemove]) {
+        delete state.dependencyTrees[nodeIdToRemove];
+        state.lastUpdateTime = Date.now();
+        // Recalculate accumulated state
+        const newAccumulated: Record<string, AccumulatedNode> = {};
+        Object.values(state.dependencyTrees).forEach(currentTree => {
+            if (currentTree) { // Add null check
+                const treeAccumulated = calculateAccumulatedFromTree(currentTree);
+                Object.assign(newAccumulated, treeAccumulated);
+            }
+        });
+        state.accumulatedDependencies = newAccumulated;
+      } else {
+        console.warn(`[Reducer/removeNodeAction] Node ${nodeIdToRemove} not found.`);
+      }
     },
   },
   extraReducers: (builder) => {
-    // Add cases for the imported actions to use the imported reducer logic
     builder
       .addCase(importNodeAction, handleNodeImportReducer)
-      .addCase(unimportNode, handleNodeUnimportReducer)
-      .addCase(removeNodeAction, (state, action: PayloadAction<string>) => {
-        const nodeIdToRemove = action.payload;
-        if (state.dependencyTrees[nodeIdToRemove]) {
-            delete state.dependencyTrees[nodeIdToRemove];
+      // Use action from createAction and delegate to internal reducer
+      .addCase(removeNodeAction, (state, action) => {
+         dependencySlice.caseReducers._internalRemoveNodeActionReducer(state, action);
+       });
 
-            // Clean up accumulated dependencies associated with the removed tree
-            // Recalculate all for simplicity (can be optimized later)
-             state.accumulatedDependencies = {};
-             Object.values(state.dependencyTrees).forEach((tree) => {
-                 const treeAccumulated = calculateAccumulatedFromTree(tree);
-                 Object.assign(state.accumulatedDependencies, treeAccumulated);
-             });
-             // TODO: A more efficient cleanup of accumulatedDependencies is needed.
-
-        } else {
-            // Still log warnings
-            console.warn(`[Reducer/removeNode] Node ${nodeIdToRemove} not found in state.dependencyTrees.`);
-        }
-    });
-      
-    // Add cases for production update actions by calling the imported function
     productionSliceExtraReducers(builder);
   }
 });
 
 export const { 
+  // Export regular slice actions generated from reducers
   setDependencies, 
   deleteTree, 
   updateAccumulated, 
@@ -303,7 +325,9 @@ export const {
   clearErrors,
   toggleNodeSelected,
   toggleNodeCompleted,
+  // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
+
 export default dependencySlice.reducer;
 
 // Define custom actions for local use (if any) or move relevant ones

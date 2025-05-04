@@ -5,12 +5,12 @@ import { DependencyNode } from '../../../types';
 import { DependencyState } from '../store/dependencySlice';
 import { 
   importNodeAction, 
-  unimportNode, 
   checkAndConvertNodeTypeThunk,
-  autoImportNodeChildrenThunk
+  autoImportNodeChildrenThunk,
+  unimportNodeThunk
 } from '../store';
 import { findNodeById } from '../../../utils';
-import { hasImportReference } from '../../../utils/nodeReferenceUtils';
+import { hasImportReference, getImportReference } from '../../../utils/nodeReferenceUtils';
 
 interface PlannerImportExportProps {
   dependencies: DependencyState;
@@ -75,45 +75,6 @@ export const usePlannerImportExport = ({
 
   }, [dispatch, dependencies.dependencyTrees]);
 
-  // Original handleUnimportNode logic (now internal)
-  const handleUnimportNodeInternal = useCallback(( 
-    sourceNode: DependencyNode,
-    sourceTreeId: string
-  ) => {
-    if (!sourceNode || !sourceTreeId) return;
-    
-    const isImportNode = !!(sourceNode.isImport || (sourceNode.importReference && Object.keys(sourceNode.importReference).length > 0));
-    
-    if (!isImportNode) {
-      console.warn('Not an import node, cannot unimport', sourceNode);
-      return;
-    }
-    
-    const targetTreeId = sourceNode.importedFrom || sourceNode.importReference?.targetTreeId;
-    if (!targetTreeId) {
-      console.error('Cannot unimport - missing target tree ID');
-      return;
-    }
-    
-    dispatch(unimportNode({
-      nodeId: sourceNode.uniqueId,
-      sourceTreeId,
-      targetTreeId
-    }));
-
-    // --- Trigger Node Type Check for ALL roots --- 
-    setTimeout(() => {
-      const currentState = dependencies; // Use closure state
-      Object.values(currentState.dependencyTrees).forEach(tree => {
-          if (tree.isRoot) {
-              dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
-          }
-      });
-    }, 10);
-    // ---------------------------------------------
-
-  }, [dispatch, dependencies.dependencyTrees]);
-
   // Original importNodeForTree logic (now internal)
   const importNodeForTreeInternal = useCallback(async (nodeId: string) => {
     let foundNode: DependencyNode | null = null;
@@ -160,35 +121,20 @@ export const usePlannerImportExport = ({
 
   }, [dependencies.dependencyTrees, handleCreateNewTree, handleImportNodeInternal]);
 
-  // Original handleUnimport logic (public interface)
+  // Public handleUnimport: Dispatch the thunk
   const handleUnimport = useCallback((nodeId: string) => {
-    let sourceNode: DependencyNode | null = null;
-    let sourceTreeId = '';
-    
-    Object.entries(dependencies.dependencyTrees).forEach(([treeId, tree]) => {
-      const node = findNodeById(tree as DependencyNode, nodeId);
-      if (node) {
-        sourceNode = node;
-        sourceTreeId = treeId;
-      }
-    });
-    
-    if (!sourceNode || !sourceTreeId) {
-      console.error('Node not found for unimport');
-      return;
-    }
-    
-    // Use internal handler
-    handleUnimportNodeInternal(sourceNode, sourceTreeId);
-  }, [dependencies.dependencyTrees, handleUnimportNodeInternal]);
+    // console.log(`[Hook/usePlannerImportExport] handleUnimport called for: ${nodeId}`);
+    // Dispatch the restored thunk directly
+    dispatch(unimportNodeThunk(nodeId));
+  }, [dispatch]);
 
-  // Original handleImportNodeById logic (public interface)
+  // Public handleImportNode (keep if still needed)
   const handleImportNodeById = useCallback((nodeId: string) => {
     importNodeForTreeInternal(nodeId);
   }, [importNodeForTreeInternal]);
 
   return {
-    handleImportNode: handleImportNodeById, // Rename for external use
+    handleImportNode: handleImportNodeById,
     handleUnimport,
   };
 }; 

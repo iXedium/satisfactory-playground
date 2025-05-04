@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { createAction, PayloadAction } from '@reduxjs/toolkit';
+import { PayloadAction } from '@reduxjs/toolkit';
 import { WritableDraft } from 'immer'; // Needed for Immer types in reducers
 import { DependencyNode, Recipe } from '../../../types';
 import { 
@@ -15,7 +15,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies } from './dependencySlice';
+import { updateNodeProperties, setDependencies, importNodeAction, unimportNode, removeNodeAction } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -33,23 +33,6 @@ interface ImportExportDependencyState {
   accumulatedDependencies: Record<string, AccumulatedNode>;
   errors: string[]; // Keep consistent with original type
 }
-
-// Define Action Creators related to import/export
-export const importNodeAction = createAction<{
-  nodeId: string;
-  targetTreeId: string;
-  sourceTreeId: string;
-  shouldImport: boolean;
-}>('dependency/importNode');
-
-export const unimportNode = createAction<{
-  nodeId: string;
-  targetTreeId: string;
-  sourceTreeId: string;
-}>('dependency/unimportNode');
-
-// Add removeNodeAction
-export const removeNodeAction = createAction<string>('dependency/removeNode'); // Payload is nodeIdToDestroy
 
 // Helper function to find and replace a node in a tree by its uniqueId (mutable - use with Immer)
 export const findAndReplaceNode = (tree: WritableDraft<DependencyNode>, nodeId: string, replacement: WritableDraft<DependencyNode>): boolean => {
@@ -1147,5 +1130,3 @@ export const unimportNodeThunk = createAsyncThunk<
     // console.log(`[Thunk/Unimport] Finished unimporting node: ${nodeIdToUnimport}`);
   }
 ); 
-
-// --- THUNK TO SET A NODE AS AN IMPORT AND UPDATE TARGET AMOUNT ---
