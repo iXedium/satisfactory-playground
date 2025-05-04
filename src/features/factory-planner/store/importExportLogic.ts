@@ -644,7 +644,7 @@ export const handleNodeUnimportReducer = (
   });
 }; 
 
-// --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN --- 
+// --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN (Restored from 1ce0b34) ---
 export const autoImportNodeChildrenThunk = createAsyncThunk<
   void,
   string, // parentNodeId
@@ -667,66 +667,46 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
     const childrenToProcess = parentNode.children ? [...parentNode.children] : []; // Safer copy
     // let childrenModified = false; // Removed - no longer assigned
 
-    // Need a local way to generate IDs if new roots are needed
-    const generateTreeId = (itemId: string) => {
-      const timestamp = Date.now();
-      const randomSuffix = Math.floor(Math.random() * 10000000);
-      return `tree-${itemId}-${timestamp}-${randomSuffix}`;
-    };
+    const generateTreeId = (itemId: string) => `tree-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1e7)}`;
 
     for (const child of childrenToProcess) {
-      // Skip if already an import or has a reference
-      if (child.isImport || child.importReference) {
-        continue;
-      }
-      
+      if (child.isImport || child.importReference) continue;
+
       let targetTreeId: string | null = null;
       let existingRootFound = false;
-      
-      // --- Handle Byproduct Children --- 
+      const trees = getState().dependencies.dependencyTrees; // Get latest trees
+
+      // --- Handle Byproduct Children ---
       if (child.isByproduct) {
-          // 1a. Find ANY Existing Root (Normal or Byproduct)
-          const existingRoot = Object.values(getState().dependencies.dependencyTrees).find(
-              t => t.isRoot && t.id === child.id
-          );
+          // 1a. Find ANY Existing Root
+          const existingRoot = Object.values(trees).find(t => t?.isRoot && t.id === child.id);
           if (existingRoot) {
               targetTreeId = existingRoot.uniqueId;
               existingRootFound = true;
-          }
-          
-          // 2a. Create New BYPRODUCT Root if None Found
-          if (!existingRootFound) {
+          } else {
+              // 2a. Create New BYPRODUCT Root if None Found
               const newRootId = generateTreeId(child.id);
               try {
                   // Create a minimal BYPRODUCT root structure
                   const newRootNode: DependencyNode = {
                       id: child.id,
                       uniqueId: newRootId,
-                      amount: 0, // Byproduct roots start at 0, driven by input links
+                      amount: 0,
                       isRoot: true,
-                      isByproduct: true, // Mark as byproduct root
-                      recipe: undefined, // Byproduct roots don't produce via recipe
-                      children: [], 
-                      depth: 0, 
-                      // availableRecipes: await getRecipesForItem(child.id), // Maybe not needed for byproduct roots?
+                      isByproduct: true,
+                      recipe: undefined,
+                      children: [],
+                      depth: 0,
+                      // Always fetch available recipes
+                      availableRecipes: await getRecipesForItem(child.id), 
                   };
-                  
                   await dispatch(setDependencies({ treeId: newRootId, tree: newRootNode }));
-                  
-                  // Verify it exists
-                  const stateAfterRootCreation = getState();
-                  if (!stateAfterRootCreation.dependencies.dependencyTrees[newRootId]) {
-                      throw new Error(`New byproduct root ${newRootId} not found after dispatch.`);
-                  }
+                  if (!getState().dependencies.dependencyTrees[newRootId]) throw new Error("Byproduct root not found");
                   targetTreeId = newRootId;
-                  // No recursive call needed for byproduct roots as they have no recipe children
-              } catch (error) {
-                  console.error(`[Thunk/AutoImportChildren] Failed to create new BYPRODUCT root for ${child.id}:`, error);
-                  continue; // Skip this child if root creation failed
-              }
+              } catch (error) { console.error(`[AutoImport] Failed BYPRODUCT root for ${child.id}:`, error); continue; }
           }
       } 
-      // --- Handle Normal Children --- 
+      // --- Handle Normal Children ---
       else { 
           // 1b. Find Existing NORMAL Root
           const existingNormalRoot = Object.values(getState().dependencies.dependencyTrees).find(
@@ -761,12 +741,17 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
           if (!existingRootFound) {
               const newRootId = generateTreeId(child.id);
               try {
-                  // 1. Create node structure (amount starts at 0)
+                 // 1. Create node structure (amount starts at 0)
                   const defaultRecipe = await getRecipeByOutput(child.id);
+                  // ALWAYS fetch all available recipes
+                  const availableRecipes = await getRecipesForItem(child.id);
+                  
                   const newRootNode: DependencyNode = {
                       id: child.id, uniqueId: newRootId, amount: 0, isRoot: true,
-                      recipe: defaultRecipe, children: [], depth: 0, 
-                      availableRecipes: defaultRecipe ? [defaultRecipe] : await getRecipesForItem(child.id),
+                      recipe: defaultRecipe, // Keep default recipe if found
+                      children: [], depth: 0,
+                      // Assign ALL fetched recipes
+                      availableRecipes: availableRecipes, 
                   };
                   
                   // 2. Add the root to the state
@@ -814,9 +799,8 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
                   await dispatch(autoImportNodeChildrenThunk(newRootId));
 
               } catch (error) {
-                  // Still log errors
-                  console.error(`[Thunk/AICN V4] Failed to create new NORMAL root or process its children for ${child.id}:`, error);
-                  continue; 
+                  console.error(`[AutoImport] Failed NORMAL root for ${child.id}:`, error);
+                  continue;
               }
           }
       }

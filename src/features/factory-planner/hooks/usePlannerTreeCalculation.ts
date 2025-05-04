@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
-import { getRecipeById, getRecipeByOutput } from '../../../data';
+import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
   setDependencies, 
@@ -66,12 +66,15 @@ export const createNewTreeStructure = async (
       isRoot: true, 
       isByproduct: true, 
       depth: 0, 
-      originalDepth: originalDepth ?? 0
+      originalDepth: originalDepth ?? 0,
+      availableRecipes: await getRecipesForItem(itemId),
     };
     return byproductRootNode;
   }
 
   const recipe = recipeId ? await getRecipeById(recipeId) : await getRecipeByOutput(itemId);
+  const availableRecipes = await getRecipesForItem(itemId);
+
   if (!recipe) {
     const basicNode: DependencyNode = { 
       id: itemId,
@@ -81,7 +84,8 @@ export const createNewTreeStructure = async (
       isRoot: isAutoImportRoot,
       isByproduct: false, 
       depth: 0, 
-      originalDepth: originalDepth ?? 0
+      originalDepth: originalDepth ?? 0,
+      availableRecipes: availableRecipes,
     };
     return basicNode;
   }
@@ -111,6 +115,7 @@ export const createNewTreeStructure = async (
     tree.isByproduct = false; 
     tree.depth = 0; 
     tree.originalDepth = originalDepth ?? 0;
+    tree.availableRecipes = availableRecipes;
     return tree;
 
   } catch (error) {
