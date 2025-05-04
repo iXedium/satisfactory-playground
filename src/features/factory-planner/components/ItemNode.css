@@ -23,13 +23,22 @@
 /* Style the individual status buttons */
 .item-node-status-buttons button {
   /* Match delete button size/style using constants */
-  min-width: var(--sizes-button-compactWidth, 24px) !important; 
+  min-width: var(--sizes-button-compactWidth, 24px) !important;
   width: var(--sizes-button-compactWidth, 24px) !important;
   height: var(--sizes-button-compactHeight, 24px) !important;
   padding: 0px 6px !important; /* Match ItemNodeButtons padding */
-  border-radius: var(--theme-border-radius, 6px) !important; /* Match ItemNodeButtons radius */
-  font-size: var(--sizes-fontSize-large, 16px) !important; /* Match ItemNodeButtons font size */
-  background-color: var(--theme-colors-dark, #2d3744); /* Add subtle background like delete button */
+  border-radius: var(
+    --theme-border-radius,
+    6px
+  ) !important; /* Match ItemNodeButtons radius */
+  font-size: var(
+    --sizes-fontSize-large,
+    16px
+  ) !important; /* Match ItemNodeButtons font size */
+  background-color: var(
+    --theme-colors-dark,
+    #2d3744
+  ); /* Add subtle background like delete button */
   border: 1px solid var(--theme-colors-border, #4a5664); /* Add border like delete button */
   color: var(--theme-colors-iconDefault); /* Default icon color */
   /* Keep hover/active color change via sx prop in component */
@@ -62,7 +71,7 @@
   height: var(--sizes-button-compactHeight, 24px) !important;
   width: var(--sizes-button-compactWidth, 24px) !important;
   min-width: var(--sizes-button-compactWidth, 24px) !important;
-  
+
   /* Default appearance (inactive) - subtle */
   background: var(--theme-colors-dark, #2d3744);
   border: 1px solid var(--theme-colors-border, #4a5664);
@@ -86,8 +95,14 @@
 
 /* Hover effect - slightly lighten background/border */
 .status-button:hover {
-   background: var(--theme-colors-surface, #3a4654); /* Use surface or a slightly lighter dark */
-   border-color: var(--theme-colors-dropdown-border, #5a6674); /* Lighter border */
+  background: var(
+    --theme-colors-surface,
+    #3a4654
+  ); /* Use surface or a slightly lighter dark */
+  border-color: var(
+    --theme-colors-dropdown-border,
+    #5a6674
+  ); /* Lighter border */
 }
 
 /* Remove Highlight Styles from .item-node */
@@ -107,7 +122,7 @@
 }
 
 .item-node--completed .item-section-container {
-   /* background-color: rgba(76, 175, 80, 0.20) !important; */
+  /* background-color: rgba(76, 175, 80, 0.20) !important; */
 }
 
 /* --- ItemDetails --- */
@@ -442,8 +457,9 @@
 .item-node--compact .item-details-content {
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
-  height: 100%;
+  height: auto;
   flex-grow: 1;
   min-width: 0;
   width: 100%;
@@ -452,48 +468,42 @@
   z-index: auto;
 }
 .item-node--compact .item-details-name-rate {
-  padding: 0;
-  font-size: 0.9em;
-  flex-grow: 1;
-  flex-shrink: 1;
-  min-width: 50px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+  color: var(--theme-colors-text, #eee);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-basis: 30%;
+}
+.item-node--compact .item-details-name-rate span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: block;
-  line-height: var(--compact-control-height); /* Align baseline */
+  flex-shrink: 1;
+  flex-grow: 0;
 }
-.item-node--compact .item-details-name-rate span:first-child {
-  font-weight: 500;
-  /* Inherits display block, overflow, etc. */
-}
-/* Hide nominal rate display within the name group */
-.item-node--compact .item-details-name-rate > .item-details-nominal-rate {
-  display: none;
-}
-/* Show separate nominal rate display */
 .item-node--compact .item-details-nominal-rate {
-  font-size: 0.8em;
-  opacity: 0.8;
-  white-space: nowrap;
-  line-height: var(--compact-control-height); /* Align baseline */
-  margin-left: 0;
-  flex-shrink: 0;
+  /* Nominal Rate (within name-rate container) */
+  /* Already has flex-shrink: 0 from parent rule */
+  /* Keep font-size */
+  /* Keep opacity */
+  /* Keep line-height */
+  /* Keep align-self */
+  flex-basis: 15%;
   text-align: right;
-  min-width: 35px;
-  display: block; /* Ensure it's shown */
 }
 .item-node--compact .recipe-selector-container {
-  display: flex !important; /* Override potential base display */
-  align-items: center;
-  margin: 0; /* Remove margin-top */
-  position: relative; /* Keep relative for dropdown */
+  margin-top: 0;
+  position: relative;
   z-index: var(--theme-zIndex-controls, 10);
-  width: auto;
-  min-width: 120px;
-  flex-basis: 120px;
-  flex-shrink: 0;
-  height: auto; /* Let inner select determine height */
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 100px;
+
 }
 .item-node--compact .recipe-selector-container .styled-select-button {
   width: 100%;
@@ -577,7 +587,7 @@
 
 /* --- Compact EfficiencySection --- */
 .item-node--compact .efficiency-section {
-  flex-grow: .01;
+  flex-grow: 0.01;
   flex-shrink: 1;
   flex-basis: 220px; /* Adjusted permanent width */
   min-width: 200px; /* Adjusted permanent min-width */
@@ -669,7 +679,7 @@
 
 .item-node--compact .item-node-status-buttons button {
   /* Adjust size for compact view, maintain aspect */
-  min-width: 20px !important; 
+  min-width: 20px !important;
   width: 20px !important;
   height: 20px !important;
   padding: 0px 4px !important; /* Reduced padding */
@@ -680,7 +690,7 @@
 
 .item-node--compact .status-button {
   /* Adjust size for compact view, maintain aspect */
-  min-width: 20px !important; 
+  min-width: 20px !important;
   width: 20px !important;
   height: 20px !important;
   padding: 0px 4px !important; /* Reduced padding */
