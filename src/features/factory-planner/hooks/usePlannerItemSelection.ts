@@ -48,15 +48,13 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
     }
   }, []); // Run only on mount
 
-  // Auto-save recent items to LAST SESSION localStorage
+  // Auto-save recent items to LAST SESSION localStorage (Only if array is not empty)
   useEffect(() => {
     try {
-      // Only save if there are items to prevent saving empty array unnecessarily
-      if (recentItems.length > 0) { 
+      if (recentItems.length > 0) { // Check if array is not empty
         localStorage.setItem(LS_RECENT_ITEMS, JSON.stringify(recentItems));
       } else {
-        // If the list becomes empty, remove the key from storage
-        localStorage.removeItem(LS_RECENT_ITEMS);
+        localStorage.removeItem(LS_RECENT_ITEMS); // Remove key if empty
       }
     } catch (error) {
       console.error("Error saving last session recent items:", error);

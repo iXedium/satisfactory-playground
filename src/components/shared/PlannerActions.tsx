@@ -279,20 +279,18 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
                   style={dropdownItemStyle}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.colors.dropdown.hoverBackground)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  // Removed direct onClick from the div to prevent accidental loads
+                  onClick={() => handleLoadItemClick(name)}
+                  title={`Load "${name}"`}
                 >
-                  <span onClick={() => handleLoadItemClick(name)} style={{ flexGrow: 1, marginRight: '10px' }}>{name}</span>
+                  <span style={{ flexGrow: 1, marginRight: '10px' }}>{name}</span>
                   <div style={itemActionsStyle}>
-                    {/* Optional: Add load icon button? */}
-                    {/* <button 
-                      style={itemActionButtonStyle} 
-                      title="Load" 
-                      onClick={() => handleLoadItemClick(name)}
-                    > 💾 </button> */} 
                     <button 
                       style={{...itemActionButtonStyle, color: theme.colors.danger }} 
                       title="Delete"
-                      onClick={() => handleDeleteItemClick(name)}
+                      onClick={(e) => { 
+                          e.stopPropagation();
+                          handleDeleteItemClick(name); 
+                      }}
                     >
                       🗑️
                     </button>

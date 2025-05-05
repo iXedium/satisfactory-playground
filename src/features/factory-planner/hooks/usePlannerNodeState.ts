@@ -31,24 +31,50 @@ export const usePlannerNodeState = (): PlannerNodeState => {
 
   // Load saved state from LAST SESSION localStorage
   useEffect(() => {
+    console.log("[Node State Init] Attempting to load last session state...");
+    let loadedSomething = false;
     try {
       const savedExcessMap = localStorage.getItem(LS_EXCESS_MAP);
-      if (savedExcessMap) setExcessMap(JSON.parse(savedExcessMap));
+      if (savedExcessMap) {
+        console.log("[Node State Init] Found ExcessMap:", savedExcessMap.substring(0, 100)); // Log part of the data
+        setExcessMap(JSON.parse(savedExcessMap));
+        loadedSomething = true;
+      }
 
       const savedMachineCountMap = localStorage.getItem(LS_MACHINE_COUNT);
-      if (savedMachineCountMap) setMachineCountMap(JSON.parse(savedMachineCountMap));
+      if (savedMachineCountMap) {
+        console.log("[Node State Init] Found MachineCountMap:", savedMachineCountMap.substring(0, 100));
+        setMachineCountMap(JSON.parse(savedMachineCountMap));
+        loadedSomething = true;
+      }
 
       const savedMachineMultiplierMap = localStorage.getItem(LS_MACHINE_MULTI);
-      if (savedMachineMultiplierMap) setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
+      if (savedMachineMultiplierMap) {
+        console.log("[Node State Init] Found MachineMultiplierMap:", savedMachineMultiplierMap.substring(0, 100));
+        setMachineMultiplierMap(JSON.parse(savedMachineMultiplierMap));
+        loadedSomething = true;
+      }
 
       const savedExpandedNodes = localStorage.getItem(LS_EXPANDED_NODES);
-      if (savedExpandedNodes) setExpandedNodes(JSON.parse(savedExpandedNodes));
+      if (savedExpandedNodes) {
+        console.log("[Node State Init] Found ExpandedNodes:", savedExpandedNodes.substring(0, 100));
+        setExpandedNodes(JSON.parse(savedExpandedNodes));
+        loadedSomething = true;
+      }
 
       const savedOverrides = localStorage.getItem(LS_NODE_OVERRIDES);
-      if (savedOverrides) setNodeExtensionOverrides(JSON.parse(savedOverrides));
+      if (savedOverrides) {
+        console.log("[Node State Init] Found NodeOverrides:", savedOverrides.substring(0, 100));
+        setNodeExtensionOverrides(JSON.parse(savedOverrides));
+        loadedSomething = true;
+      }
+
+      if (!loadedSomething) {
+          console.log("[Node State Init] No last session node state found in localStorage.");
+      }
 
     } catch (error) {
-      console.error("Error loading last session node state:", error);
+      console.error("[Node State Init] Error loading last session node state:", error);
       // Clear potentially corrupt keys
       localStorage.removeItem(LS_EXCESS_MAP);
       localStorage.removeItem(LS_MACHINE_COUNT);
@@ -58,27 +84,63 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     }
   }, []); // Run only on mount
 
-  // Auto-save individual states to LAST SESSION localStorage
-  useEffect(() => { try { localStorage.setItem(LS_EXCESS_MAP, JSON.stringify(excessMap)); } catch (e) { console.error("Error saving last session excessMap:", e); } }, [excessMap]);
-  useEffect(() => { try { localStorage.setItem(LS_MACHINE_COUNT, JSON.stringify(machineCountMap)); } catch (e) { console.error("Error saving last session machineCountMap:", e); } }, [machineCountMap]);
-  useEffect(() => { try { localStorage.setItem(LS_MACHINE_MULTI, JSON.stringify(machineMultiplierMap)); } catch (e) { console.error("Error saving last session machineMultiplierMap:", e); } }, [machineMultiplierMap]);
-  useEffect(() => { try { localStorage.setItem(LS_EXPANDED_NODES, JSON.stringify(expandedNodes)); } catch (e) { console.error("Error saving last session expandedNodes:", e); } }, [expandedNodes]);
-  useEffect(() => { try { localStorage.setItem(LS_NODE_OVERRIDES, JSON.stringify(nodeExtensionOverrides)); } catch (e) { console.error("Error saving last session nodeExtensionOverrides:", e); } }, [nodeExtensionOverrides]);
+  // Helper to check if an object is empty
+  const isEmptyObject = (obj: Record<string, any>): boolean => {
+    return Object.keys(obj).length === 0;
+  };
 
-  // Function to clear related localStorage items
+  // Auto-save individual states to LAST SESSION localStorage (Only if not empty)
+  useEffect(() => { 
+    if (!isEmptyObject(excessMap)) { // Check if not empty
+      try { localStorage.setItem(LS_EXCESS_MAP, JSON.stringify(excessMap)); } catch (e) { console.error("Error saving last session excessMap:", e); }
+    } else {
+      // Optional: Remove key if state becomes empty after being non-empty? Or just don't save.
+      // localStorage.removeItem(LS_EXCESS_MAP);
+    }
+  }, [excessMap]);
+  
+  useEffect(() => { 
+    if (!isEmptyObject(machineCountMap)) { // Check if not empty
+      try { localStorage.setItem(LS_MACHINE_COUNT, JSON.stringify(machineCountMap)); } catch (e) { console.error("Error saving last session machineCountMap:", e); }
+    } else {
+      // localStorage.removeItem(LS_MACHINE_COUNT);
+    }
+  }, [machineCountMap]);
+  
+  useEffect(() => { 
+    if (!isEmptyObject(machineMultiplierMap)) { // Check if not empty
+      try { localStorage.setItem(LS_MACHINE_MULTI, JSON.stringify(machineMultiplierMap)); } catch (e) { console.error("Error saving last session machineMultiplierMap:", e); }
+    } else {
+      // localStorage.removeItem(LS_MACHINE_MULTI);
+    }
+  }, [machineMultiplierMap]);
+  
+  useEffect(() => { 
+    if (!isEmptyObject(expandedNodes)) { // Check if not empty
+      try { localStorage.setItem(LS_EXPANDED_NODES, JSON.stringify(expandedNodes)); } catch (e) { console.error("Error saving last session expandedNodes:", e); }
+    } else {
+      // localStorage.removeItem(LS_EXPANDED_NODES);
+    }
+  }, [expandedNodes]);
+  
+  useEffect(() => { 
+    if (!isEmptyObject(nodeExtensionOverrides)) { // Check if not empty
+      try { localStorage.setItem(LS_NODE_OVERRIDES, JSON.stringify(nodeExtensionOverrides)); } catch (e) { console.error("Error saving last session nodeExtensionOverrides:", e); }
+    } else {
+      // localStorage.removeItem(LS_NODE_OVERRIDES);
+    }
+  }, [nodeExtensionOverrides]);
+
+  // Function to clear the local React state (called by clearSavedData)
   const clearStorage = useCallback(() => {
-    // Clear localStorage items this hook previously managed
-    localStorage.removeItem('savedExcessMap');
-    localStorage.removeItem('savedMachineCountMap');
-    localStorage.removeItem('savedMachineMultiplierMap');
-    localStorage.removeItem('plannerExpandedNodes');
-    localStorage.removeItem('plannerNodeExtensionOverrides');
-    // Also reset the local state
+    // Reset the local state
+    console.log("[Node State] Clearing local state variables.");
     setExcessMap({});
     setMachineCountMap({});
     setMachineMultiplierMap({});
     setExpandedNodes({});
     setNodeExtensionOverrides({});
+  // No dependencies needed as setters are stable
   }, []);
 
   return {
@@ -92,6 +154,6 @@ export const usePlannerNodeState = (): PlannerNodeState => {
     setExpandedNodes,
     nodeExtensionOverrides,
     setNodeExtensionOverrides,
-    clearStorage,
+    clearStorage, // Expose the state clearing function
   };
 }; 

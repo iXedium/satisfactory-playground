@@ -72,7 +72,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     }
   }, []); // Run only on mount
 
-  // Auto-save state to LAST SESSION localStorage
+  // Auto-save state to LAST SESSION localStorage (No empty checks needed for primitives)
   useEffect(() => {
     try {
       localStorage.setItem(LS_VIEW_DENSITY, viewDensity);

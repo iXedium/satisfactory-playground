@@ -8,7 +8,7 @@ This document outlines the structure of the Satisfactory Playground project.
 .
 ├── docs/
 │   ├── PROJECT_STRUCTURE.md
-│   └── import-export-redesign.md
+│   └── SDD.md
 ├── public/
 │   ├── data.json
 │   ├── icons.webp
@@ -90,6 +90,7 @@ This document outlines the structure of the Satisfactory Playground project.
 │   │       │   ├── usePlannerNodeState.ts
 │   │       │   ├── usePlannerPersistence.ts
 │   │       │   ├── usePlannerRecipeManagement.ts
+│   │       │   ├── usePlannerSaveLoad.ts
 │   │       │   └── usePlannerTreeCalculation.ts
 │   │       └── store/
 │   │           ├── dependencySlice.ts
@@ -156,7 +157,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
 - **`src/components/shared/`**: Contains smaller, fundamental UI pieces often used to compose larger components within `src/components/`.
     - `AccumulatedViewControls.tsx`: **NEW** - Renders controls (search, sort, filters) for the Accumulated Resource View.
     - `ChainCreatorControls.tsx`: **NEW** - Renders item/recipe selectors and the "Add" button for creating new production chains.
-    - `PlannerActions.tsx`: **NEW** - Renders search input, settings menu button, and clear data button for the main toolbar.
+    - `PlannerActions.tsx`: **UPDATED** - Renders search input, settings menu button, clear data button, and **Save/Load dropdown menus** for managing named setups in the main toolbar. Displays a visual indicator on the Save button when changes are unsaved relative to the last named save/load.
     - `SettingsMenu.tsx`: **NEW** - Renders the settings gear button and the dropdown menu with display options checkboxes.
     - `ViewTreeControls.tsx`: **UPDATED** - Renders expand/collapse buttons and sorting controls for the dependency tree view in the main toolbar.
     - `ActionButtons.tsx`: Buttons for primary actions within a section.
@@ -170,7 +171,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `ImportExport.tsx`: Components related to importing/exporting planner state.
     - `ItemDetails.tsx`: Displays details for a selected item.
     - `ItemNodeButtons.tsx`: Action buttons specific to item nodes in the tree.
-    - `MachineControls.tsx`: UI for controlling machine settings (clock speed, recipe).
+    - `MachineControls.tsx`: UI for controlling machine settings (clock speed, recipe). Includes mouse wheel interaction for numeric inputs.
     - `MachineDetails.tsx`: Displays details for selected machines.
     - `PlannerContent.tsx`: Main content area wrapper for the planner.
     - `RateDisplay.tsx`: Formats and displays item/resource rates.
@@ -189,7 +190,7 @@ Contains **globally reusable UI components** forming the application's UI toolki
     - `ViewModeToggle.tsx`: **DEPRECATED/UNUSED** - Was previously used for List/Tree view toggle.
     - `ViewOptionsPanel.tsx`: Panel containing various view options.
     - `index.ts`: Bundles and exports components from this directory.
-- `CommandBar.tsx`: **REFACTORED** - The main command bar interface for the application. Now acts primarily as a layout container, assembling smaller shared components (`ViewTreeControls`, `PlannerActions`, `ChainCreatorControls`).
+- `CommandBar.tsx`: **REFACTORED** - The main command bar interface for the application. Now acts primarily as a layout container, assembling smaller shared components (`ViewTreeControls`, `PlannerActions`, `ChainCreatorControls`). Passes down save/load handlers.
 - `DropdownPortal.tsx`: Utility component for rendering dropdowns in a portal.
 - `Icon.tsx`: Displays item/recipe icons using the sprite sheet (`public/icons.webp`).
 - `ItemSelect.tsx`: A reusable dropdown component for selecting items.
@@ -217,30 +218,31 @@ Contains code organized by application feature domain.
         - `DependencyTree.tsx`: Renders the main dependency tree structure.
         - `ItemNode.tsx`: Component representing a single item node within the tree. Includes styling for different view densities (`ItemNode.css`), handling for `onOptimizeAllMachines` prop.
         - `ListNode.tsx`: **DEPRECATED/UNUSED** - Was previously used for an alternative list view representation.
-        - `FactoryPlanner.tsx`: Main orchestrating component for the factory planner UI and logic. Integrates various hooks and passes down handlers like `onOptimizeAllMachines`.
+        - `FactoryPlanner.tsx`: Main orchestrating component for the factory planner UI and logic. Integrates various hooks and passes down handlers like `onOptimizeAllMachines` and save/load functions.
         - `TreeNode.tsx`: Component representing a generic node in the tree view (wraps `ItemNode`). Handles recursive rendering and passes down props like `onOptimizeAllMachines`.
         - `index.ts`: Bundles and exports components from this directory.
     - `hooks/`: Contains React hooks specific to the factory planner logic.
-        - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Manages loading/saving of core Redux state. Implements the `handleOptimizeAllMachines` logic.
+        - `useFactoryPlanner.ts`: **REFACTORED** - The primary hook for the factory planner feature. Now acts mainly as an **integrator**, assembling state and handlers from Redux and numerous specialized hooks. Integrates `usePlannerSaveLoad` for named setup functionality. Manages **auto-saving/loading of last session Redux state and sort state** to `localStorage` using `lastSession_` keys. Implements the `handleOptimizeAllMachines` logic.
         - `useGroupedAccumulatedItems.ts`: **NEW** - Hook responsible for processing `accumulatedDependencies` from Redux, fetching related item/recipe data, and grouping items for display in the `AccumulatedResourceView`.
         - `useItemFilteringSorting.ts`: **NEW** - Hook managing state and logic for searching, sorting, and filtering items displayed in the `AccumulatedResourceView`.
         - `useItemNodeCalculations.ts`: **NEW** - Hook containing the calculation logic for a node's nominal rate and efficiency, extracted from `ItemNode.tsx`.
-        - `usePlannerDataManagement.ts`: **NEW** - Hook containing handlers for direct data manipulation (deleting trees, updating node properties, clearing saved data).
+        - `usePlannerDataManagement.ts`: **UPDATED** - Hook containing handlers for direct data manipulation. Its `clearSavedData` function now **clears the auto-saved `lastSession_` keys** from `localStorage` in addition to resetting Redux/local state.
         - `usePlannerDebugTools.ts`: **NEW** - Hook containing utility and test functions previously in `useFactoryPlanner`, exposed via the `window` object for debugging.
-        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.), including setting the default `viewDensity` to 'compact'. No longer manages the old List/Tree view mode.
+        - `usePlannerDisplayOptions.ts`: **UPDATED** - Hook managing state and persistence for UI display options (show machines, etc.), including setting the default `viewDensity` to 'compact'. Manages **auto-saving/loading last session display options** to `localStorage` using `lastSession_` keys.
         - `usePlannerExcessHandling.ts`: **NEW** - Hook managing the complex logic for handling changes to node excess production, including dispatching updates and potentially managing UI refresh triggers.
         - `usePlannerImportExport.ts`: **NEW** - Hook containing handlers related to importing and exporting nodes between production trees, including dispatching the restored `unimportNodeThunk`.
-        - `usePlannerItemSelection.ts`: **NEW** - Hook managing state related to selecting items/recipes for creating new production chains (item list, selections, recent items).
+        - `usePlannerItemSelection.ts`: **UPDATED** - Hook managing state related to selecting items/recipes for creating new production chains. Manages **auto-saving/loading last session recent items** to `localStorage` using `lastSession_` keys.
         - `usePlannerNodeInteractions.ts`: **NEW** - Hook containing handlers for simple UI interactions with nodes (expand/collapse, machine count/multiplier changes, toggle extensions). Used by `useFactoryPlanner` to implement optimize-all functionality.
-        - `usePlannerNodeState.ts`: **NEW** - Hook managing local state overrides for individual nodes (excess map, machine maps, expanded nodes, extension overrides) and their persistence.
-        - `usePlannerPersistence.ts`: **NEW** - Hook responsible for the side effect of saving the main Redux state slices (`dependencies`, `recipeSelections`) to `localStorage`.
+        - `usePlannerNodeState.ts`: **UPDATED** - Hook managing local state overrides for individual nodes (excess map, machine maps, expanded nodes, extension overrides). Manages **auto-saving/loading last session node state** to `localStorage` using `lastSession_` keys.
+        - `usePlannerPersistence.ts`: **DEPRECATED/REMOVED?** - Previously responsible for saving Redux state. This functionality is now handled by auto-save logic within `useFactoryPlanner` and named saves in `usePlannerSaveLoad`. (Verify if still used, likely only for initial Redux load now handled in `useFactoryPlanner`).
         - `usePlannerRecipeManagement.ts`: **NEW** - Hook containing the handler for changing a recipe within an existing tree and triggering recalculation.
+        - `usePlannerSaveLoad.ts`: **NEW** - Central hook for managing **named save slots**. Handles saving, loading, deleting named setups via the UI. Tracks the last explicitly saved/loaded setup and calculates the `isDirty` state based on deep comparison.
         - `usePlannerTreeCalculation.ts`: **NEW** - Hook containing handlers for creating new production trees (`handleCalculate`, `handleCreateNewTree`) and generating tree IDs. Includes fix to ensure `availableRecipes` are populated correctly on new roots.
     - `store/`: Contains Redux Toolkit slices related to the factory planner state.
-        - `dependencySlice.ts`: Manages the state of the dependency tree itself (nodes, connections, calculations). Likely the largest and most complex slice. Includes actions related to unimport logic (`removeNodeAction`).
+        - `dependencySlice.ts`: Manages the state of the dependency tree itself (nodes, connections, calculations). Likely the largest and most complex slice. Includes actions related to unimport logic (`removeNodeAction`) and loading state (`loadSavedState`).
         - `importExportLogic.ts`: Contains Redux thunks and related logic for handling complex import/export operations, notably the restored `unimportNodeThunk` and its dependencies.
         - `productionUpdateLogic.ts`: Holds logic related to updating production state, potentially including recipe change recalculations.
-        - `recipeSelectionsSlice.ts`: Manages the state of selected recipes for nodes.
+        - `recipeSelectionsSlice.ts`: Manages the state of selected recipes for nodes. Includes action for loading state (`loadRecipeSelections`).
         - `treeUiSlice.ts`: Manages UI-specific state for the tree view (e.g., expanded nodes, view options).
         - `index.ts`: Bundles and exports slices and selectors from this directory.
 
@@ -305,6 +307,7 @@ Contains static files served directly by the web server.
 Contains project documentation.
 
 - `PROJECT_STRUCTURE.md`: This file, outlining the project layout.
+- `SDD.md`: The Software Design Document.
 - `import-export-redesign.md`: Documentation related to the import/export feature redesign.
 
 ## Root Directory (`./`)
@@ -316,7 +319,7 @@ Contains project configuration files, build scripts, and other top-level items.
 - `index.html`: The main HTML page into which the React application is injected.
 - `jest.config.js`: Configuration for Jest, the testing framework.
 - `launch-app.bat`: A batch script likely used for easily launching the development server on Windows.
-- `package.json`: Defines project metadata, dependencies, and scripts.
+- `package.json`: Defines project metadata, dependencies, and scripts. Includes `lodash`, `@types/lodash`, `use-debounce`.
 - `README.md`: General information about the project.
 - `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`: TypeScript compiler configuration files.
 - `vite.config.ts`: Configuration for Vite, the build tool and development server.

@@ -19,6 +19,9 @@ interface PlannerDataManagementProps {
   clearNodeStateStorage: () => void;
   clearItemSelectionStorage: () => void;
   clearDisplayOptionsStorage: () => void;
+  // Add setters needed for resetting sort state (or handle in useFactoryPlanner)
+  // setTreeSortKey: React.Dispatch<React.SetStateAction<any>>;
+  // setTreeSortDirection: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export const usePlannerDataManagement = ({
@@ -26,6 +29,7 @@ export const usePlannerDataManagement = ({
   clearNodeStateStorage,
   clearItemSelectionStorage,
   clearDisplayOptionsStorage,
+  // Destructure setters if added above
 }: PlannerDataManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -41,28 +45,53 @@ export const usePlannerDataManagement = ({
   }, [dispatch]);
 
   const clearSavedData = useCallback(() => {
-    if (!confirm('This will delete ALL saved trees and recipe selections. This cannot be undone. Are you sure?')) {
+    if (!window.confirm(
+      'Are you sure you want to clear all current planner data?\n' +
+      '- All trees will be removed.\n' +
+      '- This includes the auto-saved session.\n' +
+      '- Named setups saved via Save/Load are NOT affected.\n\n' +
+      'This action cannot be undone.'
+    )) {
       return;
     }
     
-    // Clear local storage items managed by Redux state persistence
-    localStorage.removeItem('savedDependencies'); 
-    localStorage.removeItem('savedRecipeSelections'); 
-    
-    // Call clearStorage functions from other hooks
-    clearNodeStateStorage();
-    // clearItemSelectionStorage(); // Keep recent items
-    clearDisplayOptionsStorage();
+    console.log("[Clear Data] Clearing planner data...");
 
-    // Reset local state via setters - NO LONGER NEEDED HERE
-    // setExcessMap({});
-    // ...
-    
-    // Clear relevant Redux state
-    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [] }));
+    // 1. Clear Redux State (by loading empty state)
+    console.log("[Clear Data] Clearing Redux state...");
+    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [], lastUpdateTime: 0 }));
     dispatch(loadRecipeSelections({}));
 
-  }, [dispatch, clearNodeStateStorage, /* remove clearItemSelectionStorage */ clearDisplayOptionsStorage]); // Update dependencies
+    // 2. Clear Local React State (by calling imported clear functions)
+    console.log("[Clear Data] Clearing local hook states...");
+    clearNodeStateStorage();
+    clearItemSelectionStorage(); // Now including item selection (recent items etc)
+    clearDisplayOptionsStorage();
+    // TODO: Reset sorting state (needs setters passed in or handled elsewhere)
+    // setTreeSortKey('originalDepth');
+    // setTreeSortDirection('asc');
+
+    // 3. Clear Auto-Saved Last Session Data from localStorage
+    console.log("[Clear Data] Removing lastSession keys from localStorage...");
+    try {
+      // Get all keys from localStorage
+      const allKeys = Object.keys(localStorage);
+      // Filter for keys starting with 'lastSession_'
+      const lastSessionKeys = allKeys.filter(key => key.startsWith('lastSession_'));
+      // Remove each key
+      lastSessionKeys.forEach(key => {
+        console.log(`[Clear Data] Removing key: ${key}`);
+        localStorage.removeItem(key);
+      });
+    } catch (e) {
+        console.error("[Clear Data] Error removing lastSession keys:", e);
+    }
+    
+    // 4. Optionally clear the active setup pointer (but not the named setups themselves)
+    // localStorage.removeItem('plannerLastActiveSetupName');
+    // This might be confusing - let's leave it for now. User can load a setup if needed.
+
+  }, [dispatch, clearNodeStateStorage, clearItemSelectionStorage, clearDisplayOptionsStorage]);
 
   return {
     handleDeleteTree,

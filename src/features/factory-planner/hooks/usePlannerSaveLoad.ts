@@ -344,12 +344,12 @@ export const usePlannerSaveLoad = ({
 
     // --- Function to delete a specific state ---
     const deleteSetup = useCallback(async (name: string) => {
+        // Confirmation prompt comes from PlannerActions now
+        // if (!window.confirm(...)) return; // Removed from here
+
         console.log(`[Delete Setup] Attempting to delete "${name}"...`);
         const setups = getAllSetups();
-        if (!setups[name]) {
-            console.warn(`[Delete Setup] Attempted to delete non-existent setup "${name}".`);
-            return; // Or provide feedback
-        }
+        if (!setups[name]) { console.warn(`[Delete Setup] Attempted to delete non-existent setup "${name}".`); return; }
 
         const wasActive = localStorage.getItem(LAST_ACTIVE_SETUP_KEY) === name;
         delete setups[name];
@@ -369,11 +369,9 @@ export const usePlannerSaveLoad = ({
             } else {
                  console.log(`[Delete Setup] "${name}" was not the active setup. No change to active state or dirty flag.`);
             }
-            alert(`Setup "${name}" deleted.`);
         } catch (error) {
             console.error(`[Delete Setup] Error deleting setup "${name}":`, error);
             alert(`Failed to delete setup "${name}". Check console for details.`);
-            // Should we add the setup back to the 'setups' object?
         }
     }, [getAllSetups]);
 
