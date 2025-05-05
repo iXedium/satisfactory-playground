@@ -23,6 +23,7 @@ interface PlannerActionsProps {
   // Add getSaveNames and onDeleteSetup
   getSaveNames?: () => string[];
   onDeleteSetup?: (name: string) => Promise<void>;
+  isDirty?: boolean; // Add isDirty prop
   // We might need getSaveNames to populate the load menu later
   // getSaveNames?: () => string[]; 
 }
@@ -46,6 +47,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   // Destructure new props
   getSaveNames,
   onDeleteSetup,
+  isDirty, // Destructure isDirty
 }) => {
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false); // State for save menu
@@ -125,7 +127,15 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
     width: "28px",
     height: "28px",
     fontSize: "14px",
-    transition: 'background-color 0.2s ease', // Add transition for hover/active state
+    transition: 'background-color 0.2s ease, border-color 0.2s ease', // Add border-color transition
+  };
+
+  // Style for the save button when dirty
+  const dirtyIconButtonStyle: React.CSSProperties = {
+    ...iconButtonStyle,
+    outline: `2px solid ${theme.colors.danger}`, // Red border
+    // Optionally, slightly change background or icon color?
+    // color: theme.colors.danger,
   };
 
   const activeIconButtonStyle: React.CSSProperties = {
@@ -234,6 +244,9 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
 
   const savedSetups = getSaveNames ? getSaveNames() : [];
 
+  // Log the received isDirty prop value on render
+  console.log(`[PlannerActions Render] isDirty prop: ${isDirty}`);
+
   return (
     <div style={lastSectionStyle}>
       <input
@@ -296,9 +309,9 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         {onSaveSetup && (
           <button
             ref={saveButtonRef}
-            style={iconButtonStyle}
-            onClick={handleSaveButtonClick} // Use the new handler
-            title="Save Setup"
+            style={isDirty ? dirtyIconButtonStyle : iconButtonStyle}
+            onClick={handleSaveButtonClick}
+            title={isDirty ? "Save Setup (unsaved changes)" : "Save Setup"}
           >
             <span>💾</span>
           </button>

@@ -73,6 +73,7 @@ const FactoryPlanner: React.FC = () => {
     saveSetup,
     loadSetup,
     deleteSetup,
+    isDirty,
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -331,9 +332,9 @@ const FactoryPlanner: React.FC = () => {
           // Pass save/load handlers down
           saveSetup={saveSetup}
           loadSetup={loadSetup}
-          // Pass getSaveNames and deleteSetup
           getSaveNames={getSaveNames}
           deleteSetup={deleteSetup}
+          isDirty={isDirty}
         />
       }
       commandBarHeight={commandBarHeight}

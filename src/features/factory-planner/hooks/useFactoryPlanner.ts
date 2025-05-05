@@ -37,8 +37,10 @@ export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 
 export type SortDirection = 'asc' | 'desc';
 
 // Define keys for local storage
-const LS_SORT_KEY = 'plannerTreeSortKey';
-const LS_SORT_DIRECTION = 'plannerTreeSortDirection';
+const LS_SORT_KEY = 'lastSession_plannerTreeSortKey';
+const LS_SORT_DIRECTION = 'lastSession_plannerTreeSortDirection';
+const LS_DEPENDENCIES_KEY = 'lastSession_savedDependencies';
+const LS_RECIPES_KEY = 'lastSession_savedRecipeSelections';
 
 export interface FactoryPlannerHookResult {
   dependencies: { dependencyTrees: Record<string, DependencyNode | null> };
@@ -95,6 +97,7 @@ export interface FactoryPlannerHookResult {
   saveSetup: (name: string) => Promise<void>;
   loadSetup: (name: string) => Promise<void>;
   deleteSetup: (name: string) => Promise<void>;
+  isDirty: boolean;
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
@@ -177,14 +180,30 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     clearStorage: clearItemSelectionStorage,
   } = usePlannerItemSelection();
 
-  // --- State for Tree View Sorting (Load from Local Storage) ---
+  // --- State for Tree View Sorting (Load from LAST SESSION Local Storage) ---
   const [treeSortKey, setTreeSortKey] = useState<TreeSortKey>(() => {
     return (localStorage.getItem(LS_SORT_KEY) as TreeSortKey | null) || 'originalDepth';
   });
   const [treeSortDirection, setTreeSortDirection] = useState<SortDirection>(() => {
      return (localStorage.getItem(LS_SORT_DIRECTION) as SortDirection | null) || 'asc';
   });
-  // -----------------------------------
+  // --- Auto-save sort state to LAST SESSION Local Storage ---
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SORT_KEY, treeSortKey);
+    } catch (error) {
+      console.error("Error saving last session sort key:", error);
+    }
+  }, [treeSortKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SORT_DIRECTION, treeSortDirection);
+    } catch (error) {
+      console.error("Error saving last session sort direction:", error);
+    }
+  }, [treeSortDirection]);
+  // -----------------------------------------------------------
 
   // --- Create an Item Map for sorting by name --- 
   const itemsMap = useMemo(() => {
@@ -269,28 +288,74 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     handleExcessChange,
   });
   
-  // --- Load Core Redux State (Dependencies, Recipes) on Initial Mount --- 
+  // --- Load LAST SESSION Core Redux State on Initial Mount --- 
   useEffect(() => {
+    console.log("Attempting to load last session Redux state...");
     try {
-      const savedDependencies = localStorage.getItem('savedDependencies');
+      const savedDependencies = localStorage.getItem(LS_DEPENDENCIES_KEY);
       if (savedDependencies) {
+        console.log("Found last session dependencies, loading...");
         const parsed = JSON.parse(savedDependencies);
         dispatch(loadSavedState(parsed));
+      } else {
+        console.log("No last session dependencies found.");
       }
       
-      const savedRecipeSelections = localStorage.getItem('savedRecipeSelections');
+      const savedRecipeSelections = localStorage.getItem(LS_RECIPES_KEY);
       if (savedRecipeSelections) {
+        console.log("Found last session recipe selections, loading...");
         const parsed = JSON.parse(savedRecipeSelections);
         dispatch(loadRecipeSelections(parsed));
+      } else {
+        console.log("No last session recipe selections found.");
       }
     } catch (error) {
-      console.error("Error loading saved Redux state:", error);
+      console.error("Error loading last session Redux state:", error);
+      // Clear potentially corrupted keys
+      localStorage.removeItem(LS_DEPENDENCIES_KEY);
+      localStorage.removeItem(LS_RECIPES_KEY);
     }
   }, [dispatch]); // Run only once on mount
   // ---------------------------------------------------------------------
-  
+
+  // --- Auto-save Core Redux State to LAST SESSION on Change ---
+  useEffect(() => {
+    // Save dependencies
+    if (dependencies && Object.keys(dependencies.dependencyTrees).length > 0) {
+      try {
+        // console.log("Auto-saving dependencies to last session...");
+        localStorage.setItem(LS_DEPENDENCIES_KEY, JSON.stringify(dependencies));
+      } catch (error) {
+        console.error("Error auto-saving last session dependencies:", error);
+        localStorage.removeItem(LS_DEPENDENCIES_KEY); // Clear on error
+      }
+    } 
+    // Optional: Clear if state becomes empty? Might conflict with initial load.
+  }, [dependencies]);
+
+  useEffect(() => {
+    // Save recipe selections
+    if (recipeSelections && Object.keys(recipeSelections).length > 0) {
+      try {
+        // console.log("Auto-saving recipe selections to last session...");
+        localStorage.setItem(LS_RECIPES_KEY, JSON.stringify(recipeSelections));
+      } catch (error) {
+        console.error("Error auto-saving last session recipe selections:", error);
+        localStorage.removeItem(LS_RECIPES_KEY); // Clear on error
+      }
+    } 
+  }, [recipeSelections]);
+  // -------------------------------------------------------------
+
   // Call the Save/Load Hook
-  const { getSaveNames, saveSetup, loadSetup, deleteSetup } = usePlannerSaveLoad({
+  const { 
+    getSaveNames, 
+    saveSetup, 
+    loadSetup, 
+    deleteSetup, 
+    isDirty,
+    activeSetupName
+  } = usePlannerSaveLoad({
     // Pass setters
     setExcessMap,
     setMachineCountMap,
@@ -441,6 +506,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     saveSetup,
     loadSetup,
     deleteSetup,
+    isDirty,
   };
 };
 

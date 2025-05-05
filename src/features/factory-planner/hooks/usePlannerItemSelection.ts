@@ -16,6 +16,9 @@ export interface PlannerItemSelectionState {
   clearStorage: () => void;
 }
 
+// Define key
+const LS_RECENT_ITEMS = 'lastSession_savedRecentItems';
+
 export const usePlannerItemSelection = (): PlannerItemSelectionState => {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState("");
@@ -31,6 +34,34 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
       }
     });
   }, []);
+
+  // Load recent items from LAST SESSION localStorage
+  useEffect(() => {
+    try {
+      const savedRecentItems = localStorage.getItem(LS_RECENT_ITEMS);
+      if (savedRecentItems) {
+        setRecentItems(JSON.parse(savedRecentItems));
+      }
+    } catch (error) {
+      console.error("Error loading last session recent items:", error);
+      localStorage.removeItem(LS_RECENT_ITEMS); // Clear potentially corrupt key
+    }
+  }, []); // Run only on mount
+
+  // Auto-save recent items to LAST SESSION localStorage
+  useEffect(() => {
+    try {
+      // Only save if there are items to prevent saving empty array unnecessarily
+      if (recentItems.length > 0) { 
+        localStorage.setItem(LS_RECENT_ITEMS, JSON.stringify(recentItems));
+      } else {
+        // If the list becomes empty, remove the key from storage
+        localStorage.removeItem(LS_RECENT_ITEMS);
+      }
+    } catch (error) {
+      console.error("Error saving last session recent items:", error);
+    }
+  }, [recentItems]);
 
   // Function to update recent items list
   const updateRecentItems = useCallback((itemId: string) => {

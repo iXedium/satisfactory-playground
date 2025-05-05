@@ -74,13 +74,10 @@ const MachineControls: React.FC<MachineControlsProps> = ({
     setter: (value: number) => void,
     min: number = 0
   ) => {
-    e.preventDefault(); // Prevent page scrolling
-    
     let step = 1;
     if (e.ctrlKey) step = 10;
     if (e.shiftKey) step = 100;
     
-    // Wheel delta is negative when scrolling down, positive when scrolling up
     const delta = e.deltaY < 0 ? 1 : -1;
     const newValue = Math.max(min, currentValue + (delta * step));
     setter(newValue);

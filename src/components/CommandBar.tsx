@@ -62,6 +62,7 @@ interface CommandBarProps {
   // Add getSaveNames and deleteSetup handlers
   getSaveNames?: () => string[];
   deleteSetup?: (name: string) => Promise<void>;
+  isDirty?: boolean;
 }
 
 /**
@@ -107,6 +108,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     // Destructure getSaveNames and deleteSetup
     getSaveNames,
     deleteSetup,
+    isDirty,
   },
   ref
 ) => {
@@ -176,6 +178,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           // Pass getSaveNames and deleteSetup down
           getSaveNames={getSaveNames}
           onDeleteSetup={deleteSetup}
+          isDirty={isDirty}
         />
       </div>
 
