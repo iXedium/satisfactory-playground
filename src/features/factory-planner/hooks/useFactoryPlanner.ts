@@ -290,24 +290,24 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   
   // --- Load LAST SESSION Core Redux State on Initial Mount --- 
   useEffect(() => {
-    console.log("Attempting to load last session Redux state...");
+    // console.log("Attempting to load last session Redux state...");
     try {
       const savedDependencies = localStorage.getItem(LS_DEPENDENCIES_KEY);
       if (savedDependencies) {
-        console.log("Found last session dependencies, loading...");
+        // console.log("Found last session dependencies, loading...");
         const parsed = JSON.parse(savedDependencies);
         dispatch(loadSavedState(parsed));
       } else {
-        console.log("No last session dependencies found.");
+        // console.log("No last session dependencies found.");
       }
       
       const savedRecipeSelections = localStorage.getItem(LS_RECIPES_KEY);
       if (savedRecipeSelections) {
-        console.log("Found last session recipe selections, loading...");
+        // console.log("Found last session recipe selections, loading...");
         const parsed = JSON.parse(savedRecipeSelections);
         dispatch(loadRecipeSelections(parsed));
       } else {
-        console.log("No last session recipe selections found.");
+        // console.log("No last session recipe selections found.");
       }
     } catch (error) {
       console.error("Error loading last session Redux state:", error);
@@ -388,7 +388,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
 
   // --- Optimize All Machines Handler ---
   const handleOptimizeAllMachines = useCallback(async () => {
-    console.log("[OptimizeAll] Starting...");
+    // console.log("[OptimizeAll] Starting...");
     const trees = dependencies.dependencyTrees;
 
     const processNode = async (node: DependencyNode) => {
@@ -445,7 +445,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
       }
     }
 
-    console.log("[OptimizeAll] Finished processing.");
+    // console.log("[OptimizeAll] Finished processing.");
 
   }, [dependencies.dependencyTrees, excessMap, machineMultiplierMap, machineCountMap, handleMachineCountChange]);
   // -------------------------------------

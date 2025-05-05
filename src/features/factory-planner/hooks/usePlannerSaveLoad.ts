@@ -135,14 +135,14 @@ export const usePlannerSaveLoad = ({
 
     // Load active setup name on mount
     useEffect(() => {
-        console.log("[Init] Loading last active setup info...");
+        // console.log("[Init] Loading last active setup info...");
         const name = localStorage.getItem(LAST_ACTIVE_SETUP_KEY);
         setActiveSetupName(name);
-        console.log(`[Init] Last active setup name from localStorage: ${name}`);
+        // console.log(`[Init] Last active setup name from localStorage: ${name}`);
         if (name) {
             const setups = getAllSetups();
             if (setups[name]) {
-                console.log(`[Init] Found state for "${name}", setting lastSavedStateInMemory.`);
+                // console.log(`[Init] Found state for "${name}", setting lastSavedStateInMemory.`);
                 setLastSavedStateInMemory(setups[name]);
             } else {
                 console.warn(`[Init] Name "${name}" found in localStorage, but no matching setup found in plannerSetups.`);
@@ -150,7 +150,7 @@ export const usePlannerSaveLoad = ({
                 setActiveSetupName(null);
             }
         } else {
-             console.log("[Init] No last active setup name found.");
+            //  console.log("[Init] No last active setup name found.");
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Run only on mount
@@ -208,9 +208,9 @@ export const usePlannerSaveLoad = ({
 
     // --- Debounced Dirty Check --- 
     const checkDirtyState = useDebouncedCallback(() => {
-        console.log("[Dirty Check] Debounced check executing..."); 
+        // console.log("[Dirty Check] Debounced check executing..."); 
         if (!lastSavedStateInMemory) {
-            console.log("[Dirty Check] No last saved state in memory, setting isDirty: false");
+            // console.log("[Dirty Check] No last saved state in memory, setting isDirty: false");
             setIsDirty(false); 
             return;
         }
@@ -221,7 +221,7 @@ export const usePlannerSaveLoad = ({
 
         const areEqual = _isEqual(currentState, lastSavedStateInMemory);
         
-        console.log(`[Dirty Check] States Equal: ${areEqual}. Setting isDirty: ${!areEqual}`);
+        // console.log(`[Dirty Check] States Equal: ${areEqual}. Setting isDirty: ${!areEqual}`);
 
         setIsDirty(!areEqual);
     }, 500); // Debounce for 500ms
@@ -229,7 +229,7 @@ export const usePlannerSaveLoad = ({
     // --- Effect to Run Dirty Check on State Change ---
     useEffect(() => {
         // Log when this effect is triggered
-        console.log("[Dirty Check Trigger] State changed, queuing dirty check."); 
+        // console.log("[Dirty Check Trigger] State changed, queuing dirty check."); 
         checkDirtyState();
     }, [
         dependenciesState, recipeSelectionsState,
@@ -243,7 +243,7 @@ export const usePlannerSaveLoad = ({
 
     // --- Function to save the current state ---
     const saveSetup = useCallback(async (name: string) => {
-        console.log(`[Save Setup] Attempting to save as "${name}"...`);
+        // console.log(`[Save Setup] Attempting to save as "${name}"...`);
         if (!name?.trim()) {
             console.error("Save name cannot be empty.");
             alert("Save name cannot be empty.");
@@ -260,7 +260,7 @@ export const usePlannerSaveLoad = ({
             setLastSavedStateInMemory(currentState); // Update in-memory copy
             setActiveSetupName(name); // Update active name state
             setIsDirty(false); // Explicitly setting dirty to false
-            console.log(`[Save Setup] Success. Active: "${name}", isDirty: false.`);
+            // console.log(`[Save Setup] Success. Active: "${name}", isDirty: false.`);
             alert(`Setup "${name}" saved.`);
         } catch (error) {
             console.error(`[Save Setup] Error saving setup "${name}":`, error);
@@ -275,7 +275,7 @@ export const usePlannerSaveLoad = ({
 
     // --- Function to load a specific state ---
     const loadSetup = useCallback(async (name: string) => {
-        console.log(`[Load Setup] Attempting to load "${name}"...`);
+        // console.log(`[Load Setup] Attempting to load "${name}"...`);
         const setups = getAllSetups();
         const stateToLoad = setups[name];
 
@@ -326,7 +326,7 @@ export const usePlannerSaveLoad = ({
             setLastSavedStateInMemory(stateToLoad); // Update in-memory copy
             setActiveSetupName(name); // Update active name state
             setIsDirty(false); // Explicitly setting dirty to false
-            console.log(`[Load Setup] Success. Active: "${name}", isDirty: false.`);
+            // console.log(`[Load Setup] Success. Active: "${name}", isDirty: false.`);
             // Feedback to user might be good here
 
         } catch (error) {
@@ -347,7 +347,7 @@ export const usePlannerSaveLoad = ({
         // Confirmation prompt comes from PlannerActions now
         // if (!window.confirm(...)) return; // Removed from here
 
-        console.log(`[Delete Setup] Attempting to delete "${name}"...`);
+        // console.log(`[Delete Setup] Attempting to delete "${name}"...`);
         const setups = getAllSetups();
         if (!setups[name]) { console.warn(`[Delete Setup] Attempted to delete non-existent setup "${name}".`); return; }
 
@@ -356,18 +356,18 @@ export const usePlannerSaveLoad = ({
 
         try {
             localStorage.setItem(PLANNER_SETUPS_KEY, JSON.stringify(setups));
-            console.log(`[Delete Setup] Removed "${name}" from plannerSetups.`);
+            // console.log(`[Delete Setup] Removed "${name}" from plannerSetups.`);
             if (wasActive) {
-                console.log(`[Delete Setup] "${name}" was the active setup. Clearing active state.`);
+                // console.log(`[Delete Setup] "${name}" was the active setup. Clearing active state.`);
                 localStorage.removeItem(LAST_ACTIVE_SETUP_KEY);
                 setLastSavedStateInMemory(null); // Clear in-memory state
                 setActiveSetupName(null); // Clear active name
                 // Should it become dirty now? Depends on definition.
                 // Let's assume deleting the active save makes state dirty relative to nothing.
                 setIsDirty(true); 
-                console.log(`[Delete Setup] Cleared active setup. isDirty: true.`);
+                // console.log(`[Delete Setup] Cleared active setup. isDirty: true.`);
             } else {
-                 console.log(`[Delete Setup] "${name}" was not the active setup. No change to active state or dirty flag.`);
+                //  console.log(`[Delete Setup] "${name}" was not the active setup. No change to active state or dirty flag.`);
             }
         } catch (error) {
             console.error(`[Delete Setup] Error deleting setup "${name}":`, error);
@@ -377,7 +377,7 @@ export const usePlannerSaveLoad = ({
 
     // Log whenever isDirty state changes
     useEffect(() => {
-        console.log(`[State Change] isDirty is now: ${isDirty}`);
+        // console.log(`[State Change] isDirty is now: ${isDirty}`);
     }, [isDirty]);
 
     return {

@@ -245,7 +245,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   const savedSetups = getSaveNames ? getSaveNames() : [];
 
   // Log the received isDirty prop value on render
-  console.log(`[PlannerActions Render] isDirty prop: ${isDirty}`);
+  // console.log(`[PlannerActions Render] isDirty prop: ${isDirty}`);
 
   return (
     <div style={lastSectionStyle}>
