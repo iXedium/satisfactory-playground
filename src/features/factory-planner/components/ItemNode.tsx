@@ -129,6 +129,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   });
 
   useEffect(() => {
+    console.log(`[ItemNode ${uniqueId} (${itemId})] Calculated nominalRate: ${nominalRate}`);
+  }, [nominalRate, uniqueId, itemId]);
+
+  useEffect(() => {
     setLocalExcess(excess);
   }, [excess]);
 
@@ -139,6 +143,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   useEffect(() => {
     if (selectedRecipeId) {
       getMachineForRecipe(selectedRecipeId).then((machineData) => {
+        console.log(`[ItemNode ${uniqueId} (${itemId})] Machine data for recipe ${selectedRecipeId}:`, machineData);
         if (machineData) {
           setMachine(machineData);
         } else {
@@ -146,9 +151,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         }
       });
     } else {
+      console.log(`[ItemNode ${uniqueId} (${itemId})] No selected recipe, setting machine to null.`);
       setMachine(null);
     }
-  }, [selectedRecipeId]);
+  }, [selectedRecipeId, uniqueId, itemId]);
 
   useEffect(() => {
     setLocalMachineCount(machineCount);

@@ -1,7 +1,7 @@
 import { db } from "./dexieDB";
 
 const DB_VERSION_KEY = 'satisfactory-db-version';
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 10;
 
 export async function populateDexie() {
     try {
@@ -32,10 +32,18 @@ export async function populateDexie() {
                     throw new Error("Invalid data format in data.json");
                 }
 
+                console.log("[dexieInit] data.items array before bulkPut:", data.items); // LOG data.items
+                const fuelGenInDataArray = data.items.find((item: any) => item.id === 'fuel-generator');
+                console.log("[dexieInit] fuel-generator object in data.items (before bulkPut):", fuelGenInDataArray); // LOG fuel-generator from array
+
                 // Populate the database
                 await db.items.bulkPut(data.items);
                 await db.recipes.bulkPut(data.recipes);
                 await db.icons.bulkPut(data.icons);
+
+                // DEBUG: Check if fuel-generator was added
+                const fuelGenCheck = await db.items.get('fuel-generator');
+                console.log('[dexieInit] Check for fuel-generator immediately after bulkPut:', fuelGenCheck);
 
                 // Update stored version
                 localStorage.setItem(DB_VERSION_KEY, String(CURRENT_VERSION));
@@ -55,6 +63,7 @@ export async function populateDexie() {
                 throw error;
             }
         } else {
+            console.log("[dexieInit] Entered the 'else' block - DB version is current or newer.");
             // Verify data exists even if schema is up to date
             const itemCount = await db.items.count();
             const recipeCount = await db.recipes.count();

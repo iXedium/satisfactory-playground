@@ -1,5 +1,5 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
-import { getAllItems } from '../../../data';
+import { getAllItems, getAllRecipes } from '../../../data';
 import { Item } from '../../../types';
 
 export interface PlannerItemSelectionState {
@@ -28,9 +28,33 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
 
   // Load initial items list
   useEffect(() => {
-    getAllItems().then(loadedItems => {
-      if (loadedItems) {
-        setItems(loadedItems);
+    Promise.all([getAllItems(), getAllRecipes()]).then(([loadedItems, allRecipes]) => {
+      if (loadedItems && allRecipes) {
+        // console.log("[usePlannerItemSelection] All loaded items:", loadedItems);
+        // const powerItemLoaded = loadedItems.find(item => item.id === 'power');
+        // console.log("[usePlannerItemSelection] Is 'power' item loaded?", powerItemLoaded);
+
+        const producibleItemIds = new Set<string>();
+        allRecipes.forEach(recipe => {
+          if (recipe.out) {
+            Object.keys(recipe.out).forEach(itemId => producibleItemIds.add(itemId));
+          }
+        });
+        // console.log("[usePlannerItemSelection] Producible item IDs:", producibleItemIds);
+        // const powerItemIsProducible = producibleItemIds.has('power');
+        // console.log("[usePlannerItemSelection] Is 'power' item producible?", powerItemIsProducible);
+
+        const plannableCategories = ["parts", "components", "power"];
+        const filteredItems = loadedItems.filter(item => 
+          item.category && 
+          plannableCategories.includes(item.category) &&
+          producibleItemIds.has(item.id)
+        );
+        // console.log("[usePlannerItemSelection] Filtered items for selector:", filteredItems);
+        // const powerItemInFinalList = filteredItems.find(item => item.id === 'power');
+        // console.log("[usePlannerItemSelection] Is 'power' item in the final filtered list?", powerItemInFinalList);
+
+        setItems(filteredItems);
       }
     });
   }, []);

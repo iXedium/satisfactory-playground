@@ -123,6 +123,15 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   }, []);
   */
 
+  // Helper to format the rate
+  const formatRate = (rate: number, id: string): string => {
+    // Reverted: Treat power like any other item for now
+    // if (id === 'power') {
+    //   return `${(rate / 1000).toFixed(2)} GW`; // Convert MW to GW
+    // }
+    return `${rate.toFixed(2)}`; // Default formatting (likely implies /min)
+  };
+
   return (
     <>
       {/* Main Component Structure */}
@@ -155,7 +164,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
             {/* Render rate here ONLY if relaxed */}
             {!isCompact && nominalRate > 0 && !isByproduct && !isImport && (
               <span className="item-details-nominal-rate">
-                ({nominalRate.toFixed(2)})
+                ({formatRate(nominalRate, itemId)})
               </span>
             )}
           </div>
@@ -188,7 +197,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
           {/* Render rate here ONLY if compact */}
           {isCompact && nominalRate > 0 && !isByproduct && !isImport && (
             <span className="item-details-nominal-rate">
-              ({nominalRate.toFixed(2)})
+              ({formatRate(nominalRate, itemId)})
             </span>
           )}
 

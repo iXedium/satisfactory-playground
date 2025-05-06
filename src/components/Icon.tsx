@@ -2,7 +2,7 @@ import React from 'react';
 import { CSSProperties, memo } from 'react';
 import { useEffect, useState } from 'react';
 import { theme } from '../styles/theme';
-import { sizes } from '../styles/constants';
+// import { sizes } from '../styles/constants'; // Removed unused import
 import { getIconForItem } from '../data';
 import { Icon as IconType } from '../types';
 import { iconStyles } from '../styles/iconStyles';
@@ -45,10 +45,49 @@ const Icon = memo(({
   const [icon, setIcon] = useState<IconType | null>(null);
 
   useEffect(() => {
-    getIconForItem(itemId).then(iconData => setIcon(iconData || null));
+    getIconForItem(itemId).then(iconData => {
+      setIcon(iconData || null);
+    });
   }, [itemId]);
 
-  if (!icon) return null;
+  if (!icon) {
+    return null;
+  }
+  
+  // Special case for power icon
+  if (icon.id === 'power-display-icon') {
+    const powerIconStyle: CSSProperties = {
+      fontSize: `${sizeMap[size]}px`,
+      lineHeight: `${sizeMap[size]}px`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: `${sizeMap[size]}px`,
+      height: `${sizeMap[size]}px`,
+      color: icon.color || theme.colors.text,
+      ...style
+    };
+    const powerElement = <div style={powerIconStyle} className={className} title={itemId}>⚡</div>;
+    
+    if (!showWrapper) return powerElement;
+    return (
+      <div 
+        style={{
+          ...iconStyles.iconWrapper,
+          color: icon.color || theme.colors.text, // Use icon color for wrapper too for consistency
+          width: `${sizeMap[size] + 2 * wrapperPadding}px`,
+          height: `${sizeMap[size] + 2 * wrapperPadding}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: `${wrapperPadding}px`,
+          overflow: 'hidden'
+        }}
+      >
+        {powerElement}
+      </div>
+    );
+  }
 
   const targetSize = sizeMap[size];
   const scale = targetSize / ORIGINAL_ICON_SIZE;

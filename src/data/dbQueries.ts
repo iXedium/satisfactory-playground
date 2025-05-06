@@ -1,8 +1,11 @@
 import { db } from "./dexieDB";
-import { Recipe, Item } from "../types";
+import { Recipe, Item, Icon as IconType } from "../types";
 
 // Retrieve all items (including resources, components, etc.)
 export const getAllItems = async (): Promise<Item[]> => await db.items.toArray();
+
+// Retrieve all recipes
+export const getAllRecipes = async (): Promise<Recipe[]> => await db.recipes.toArray();
 
 // Retrieve all items in the "components" category.
 export const getComponents = async () => await db.items.where("category").equals("components").toArray();
@@ -74,62 +77,48 @@ interface ItemWithMachine extends Item {
 // Retrieve machine data for a recipe
 export const getMachineForRecipe = async (recipeId: string): Promise<Machine | null> => {
   try {
-    // First get the recipe to find the producer
     const recipe = await getRecipeById(recipeId);
     if (!recipe || !recipe.producers || recipe.producers.length === 0) {
       return null;
     }
     
-    // Use the first producer in the list
     const producerId = recipe.producers[0];
     
-    try {
-      // Fetch the machine data from data.json
-      const response = await fetch("/data.json");
-      
-      if (!response.ok) {
-        console.error(`Failed to fetch data.json: ${response.status} ${response.statusText}`);
-        return null;
-      }
-      
-      const data = await response.json();
-      
-      // Find the machine in the items array
-      // Ensure the item found is treated as potentially having machine data
-      const machineItem = data.items.find((item: Item) => 
-        item.id === producerId
-      ) as ItemWithMachine | undefined;
-      
-      if (!machineItem) {
-        return null;
-      }
-      
-      const machineDetails = machineItem.machine;
-      if (!machineDetails) return null; 
-      
-      // Return the machine data with its ID and name (from Item)
-      return {
-        id: machineItem.id, // id comes from Item base
-        name: machineItem.name, // name comes from Item base
-        ...machineDetails 
-      };
-    } catch (fetchError) {
-      console.error("Error fetching or parsing data.json:", fetchError);
-      
-      // Fallback to a default machine if data.json can't be loaded
-      return {
-        id: producerId,
-        name: "Unknown Machine",
-        speed: 1,
-        type: "unknown",
-        usage: 0
-      };
+    // Fetch the machine item from Dexie
+    const machineItem = await db.items.get(producerId) as ItemWithMachine | undefined;
+    
+    if (!machineItem) {
+      console.warn(`[getMachineForRecipe] Machine item with ID '${producerId}' not found in Dexie DB for recipe '${recipeId}'.`);
+      return null;
     }
+    
+    const machineDetails = machineItem.machine;
+    if (!machineDetails) { 
+      console.warn(`[getMachineForRecipe] Machine item '${producerId}' exists but lacks a 'machine' property.`);
+      return null; 
+    }
+      
+    // Return the machine data with its ID and name
+    return {
+      id: machineItem.id,
+      name: machineItem.name,
+      ...machineDetails 
+    };
+
   } catch (error) {
-    console.error("Error in getMachineForRecipe:", error);
+    console.error(`Error in getMachineForRecipe for recipe '${recipeId}':`, error);
     return null;
   }
 };
 
 // Retrieve an icon for a given item.
-export const getIconForItem = async (itemId: string) => await db.icons.get(itemId);
+export const getIconForItem = async (itemId: string): Promise<IconType | undefined> => {
+  const item = await db.items.get(itemId);
+  if (!item) {
+    // console.warn(`[getIconForItem] Item with ID '${itemId}' not found.`);
+    return undefined;
+  }
+  // If item has an explicit icon field, use that. Otherwise, use the itemId itself as the iconId.
+  const iconIdToLookup = item.icon ? item.icon : itemId;
+  return await db.icons.get(iconIdToLookup);
+};

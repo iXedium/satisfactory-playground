@@ -17,6 +17,11 @@
             "id": "equipment",
             "name": "Equipment",
             "icon": "portable-miner"
+        },
+        {
+            "id": "power",
+            "name": "Power",
+            "icon": "power"
         }
     ],
     "icons": [
@@ -1069,6 +1074,11 @@
             "id": "alien-power-matrix",
             "position": "-832px -896px",
             "color": "#90818b"
+        },
+        {
+            "id": "power-display-icon",
+            "position": "-0px -1000px",
+            "color": "#FFD700"
         }
     ],
     "items": [
@@ -2678,8 +2688,9 @@
             "row": 6,
             "machine": {
                 "speed": 1,
-                "type": "electric",
-                "usage": -2500000
+                "type": "generator",
+                "usage": 0,
+                "power": 2500
             }
         },
         {
@@ -2738,6 +2749,53 @@
                 "speed": 1,
                 "limitation": "mining"
             }
+        },
+        {
+            "category": "power",
+            "id": "power",
+            "name": "Power",
+            "row": 0,
+            "icon": "power-display-icon"
+        },
+        {
+            "id": "biomass-burner",
+            "name": "Biomass Burner",
+            "category": "other",
+            "row": 0,
+            "icon": "biomass-burner",
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.03 }
+        },
+        {
+            "id": "coal-generator",
+            "name": "Coal Generator",
+            "category": "other",
+            "row": 0,
+            "icon": "coal-generator",
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.075 }
+        },
+        {
+            "id": "fuel-generator",
+            "name": "Fuel Generator",
+            "category": "other",
+            "row": 0,
+            "icon": "fuel-generator",
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.15 }
+        },
+        {
+            "id": "geothermal-generator",
+            "name": "Geothermal Generator",
+            "category": "other",
+            "row": 0,
+            "icon": "geothermal-generator",
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.2 }
+        },
+        {
+            "id": "nuclear-power-plant",
+            "name": "Nuclear Power Plant",
+            "category": "other",
+            "row": 0,
+            "icon": "nuclear-power-plant",
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 2.5 }
         }
     ],
     "recipes": [
@@ -7801,6 +7859,136 @@
             },
             "row": 4,
             "category": "equipment"
+        },
+        {
+            "id": "power-biomass-burner-leaves",
+            "name": "Leaves",
+            "producers": ["biomass-burner"],
+            "time": 60,
+            "in": { "leaves": 120 },
+            "out": { "power": 0.03 },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-biomass-burner-wood",
+            "name": "Wood",
+            "producers": ["biomass-burner"],
+            "time": 60,
+            "in": { "wood": 18 },
+            "out": { "power": 0.03 },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-biomass-burner-mycelia",
+            "name": "Mycelia",
+            "producers": ["biomass-burner"],
+            "time": 60,
+            "in": { "mycelia": 90 },
+            "out": { "power": 0.03 },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-biomass-burner-biomass",
+            "name": "Biomass",
+            "producers": ["biomass-burner"],
+            "time": 60,
+            "in": { "biomass": 10 },
+            "out": { "power": 0.03 },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-biomass-burner-solid-biofuel",
+            "name": "Solid Biofuel",
+            "producers": ["biomass-burner"],
+            "time": 60,
+            "in": { "solid-biofuel": 4 },
+            "out": { "power": 0.03 },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-coal-generator-coal",
+            "name": "Coal",
+            "producers": ["coal-generator"],
+            "time": 60,
+            "in": { "coal": 15, "water": 45 },
+            "out": { "power": 0.075 },
+            "row": 1,
+            "category": "power"
+        },
+        {
+            "id": "power-coal-generator-compacted-coal",
+            "name": "Compacted Coal",
+            "producers": ["coal-generator"],
+            "time": 60,
+            "in": { "compacted-coal": 7.142857, "water": 45 },
+            "out": { "power": 0.075 },
+            "row": 1,
+            "category": "power"
+        },
+        {
+            "id": "power-coal-generator-petroleum-coke",
+            "name": "Petroleum Coke",
+            "producers": ["coal-generator"],
+            "time": 60,
+            "in": { "petroleum-coke": 25, "water": 45 },
+            "out": { "power": 0.075 },
+            "row": 1,
+            "category": "power"
+        },
+        {
+            "id": "power-fuel-generator-fuel",
+            "name": "Fuel",
+            "producers": ["fuel-generator"],
+            "time": 60,
+            "in": { "fuel": 12 },
+            "out": { "power": 0.15 },
+            "row": 2,
+            "category": "power"
+        },
+        {
+            "id": "power-fuel-generator-liquid-biofuel",
+            "name": "Liquid Biofuel",
+            "producers": ["fuel-generator"],
+            "time": 60,
+            "in": { "liquid-biofuel": 12 },
+            "out": { "power": 0.15 },
+            "row": 2,
+            "category": "power"
+        },
+        {
+            "id": "power-fuel-generator-turbofuel",
+            "name": "Turbofuel",
+            "producers": ["fuel-generator"],
+            "time": 60,
+            "in": { "turbofuel": 4.5 },
+            "out": { "power": 0.15 },
+            "row": 2,
+            "category": "power"
+        },
+        {
+            "id": "power-nuclear-uranium",
+            "name": "Uranium Fuel Rod",
+            "producers": ["nuclear-power-plant"],
+            "time": 60,
+            "in": { "uranium-fuel-rod": 0.2, "water": 240 },
+            "out": { "power": 2.5, "uranium-waste": 10 },
+            "row": 3,
+            "category": "power"
+        },
+        {
+            "id": "power-nuclear-plutonium",
+            "name": "Plutonium Fuel Rod",
+            "producers": ["nuclear-power-plant"],
+            "time": 60,
+            "in": { "plutonium-fuel-rod": 0.1, "water": 240 },
+            "out": { "power": 2.5, "plutonium-waste": 1 },
+            "row": 3,
+            "category": "power"
         }
     ],
     "defaults": {

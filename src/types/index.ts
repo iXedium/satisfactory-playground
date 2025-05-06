@@ -7,6 +7,7 @@ export interface Item {
   category: string;
   stack?: number;
   fuel?: { category: string; value: number };
+  icon?: string;
 }
 
 /** Represents a recipe in the game */
