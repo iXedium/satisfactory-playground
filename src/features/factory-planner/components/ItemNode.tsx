@@ -305,7 +305,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         )}
 
         <EfficiencySection
-          efficiency={Math.round(efficiency * 100) / 100}
+          efficiency={efficiency}
           amount={amount}
           isByproduct={isByproduct}
           isImport={isImport}
