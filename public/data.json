@@ -2779,7 +2779,7 @@
             "category": "other",
             "row": 0,
             "icon": "fuel-generator",
-            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.15 }
+            "machine": { "speed": 1, "type": "generator", "usage": 0, "power": 0.25 }
         },
         {
             "id": "geothermal-generator",
@@ -7945,8 +7945,8 @@
             "name": "Fuel",
             "producers": ["fuel-generator"],
             "time": 60,
-            "in": { "fuel": 12 },
-            "out": { "power": 0.15 },
+            "in": { "fuel": 20 },
+            "out": { "power": 0.25 },
             "row": 2,
             "category": "power"
         },
@@ -7955,8 +7955,8 @@
             "name": "Liquid Biofuel",
             "producers": ["fuel-generator"],
             "time": 60,
-            "in": { "liquid-biofuel": 12 },
-            "out": { "power": 0.15 },
+            "in": { "liquid-biofuel": 20 },
+            "out": { "power": 0.25 },
             "row": 2,
             "category": "power"
         },
@@ -7965,8 +7965,8 @@
             "name": "Turbofuel",
             "producers": ["fuel-generator"],
             "time": 60,
-            "in": { "turbofuel": 4.5 },
-            "out": { "power": 0.15 },
+            "in": { "turbofuel": 7.5 },
+            "out": { "power": 0.25 },
             "row": 2,
             "category": "power"
         },

@@ -2,7 +2,7 @@ import { Recipe } from "../types";
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from "../data";
 import { NodePath } from "./treeDiffing";
 import { isNodeImporting } from "./nodeReferenceUtils";
-import { DependencyNode } from "../types";
+import { DependencyNode, Item } from "../types";
 // Import cache functions
 import {
   getNodeFromCache,
@@ -28,10 +28,43 @@ export const calculateDependencyTree = async (
   affectedBranches: NodePath[] = [],
   parentId: string = "",
   excessMap: Record<string, number> = {},
-  importMap: Record<string, { targetTreeId: string; amount: number }> = {}, // Legacy import system - will be deprecated
-  dependencyTrees?: Record<string, DependencyNode> // Access to all trees for import references
-): Promise<DependencyNode> => {
-  // const start = performance.now(); // Remove perf logging for now
+  importMap: Record<string, { targetTreeId: string; amount: number }> = {},
+  dependencyTrees?: Record<string, DependencyNode>,
+  visited: string[] = []
+): Promise<DependencyNode | null> => {
+  console.log(`[calculateDependencyTree] ENTER: itemId=${itemId}, recipeArg=${rootRecipeId}, depth=${depth}`);
+
+  // Determine the recipe ID that will be used for this node for cycle key
+  let recipeIdForCycleKey: string | null = rootRecipeId; // For root or if explicitly passed
+  if (depth > 0 || !rootRecipeId) { // For child nodes or if no rootRecipeId given
+    if (recipeMap[parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`]) {
+      recipeIdForCycleKey = recipeMap[parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`];
+    } else {
+      // If not in recipeMap, try to get default. If getRecipeByOutput is async, await it.
+      // For simplicity in cycle key, we might use a placeholder or actual default recipe ID if readily available.
+      // Let's use the itemId itself if no specific recipe is chosen yet for the child for the key.
+      // The actual recipe resolution happens later.
+      const tempRecipe = await getRecipeByOutput(itemId);
+      recipeIdForCycleKey = tempRecipe ? tempRecipe.id : 'no_recipe';
+    }
+  }
+
+  const visitedKey = `${itemId}_${recipeIdForCycleKey || 'any_recipe'}`;
+  if (visited.includes(visitedKey)) {
+    console.warn(`[CIRCULAR DEPENDENCY] Detected for ${itemId} with effective recipe key ${visitedKey}. Depth: ${depth}. Returning leaf node.`);
+    const availableRecipesForCyclic = await getRecipesForItem(itemId);
+    return {
+      id: itemId,
+      amount,
+      uniqueId: parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`,
+      depth: depth,
+      availableRecipes: availableRecipesForCyclic,
+      children: [],
+      excess: excessMap[parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`] || 0,
+      isCyclicReference: true,
+    };
+  }
+  const newVisited = [...visited, visitedKey];
 
   // Create unique ID that includes parent path
   const nodeId = parentId
@@ -118,6 +151,7 @@ export const calculateDependencyTree = async (
   } else {
     recipe = await getRecipeByOutput(itemId);
   }
+  console.log(`[calculateDependencyTree] RESOLVED: itemId=${itemId}, depth=${depth}, chosenRecipeId=${recipe ? recipe.id : 'none'}`);
 
   if (!recipe) {
     // Return node even if no recipe (e.g., raw resource)
@@ -137,22 +171,23 @@ export const calculateDependencyTree = async (
     (amount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
 
   // Pass dependencyTrees to child calculations for import references
-  const children = await Promise.all(
-    Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
-      calculateDependencyTree(
-        inputItem,
-        (inputAmount ?? 0) * cyclesNeeded,
-        null,
-        recipeMap,
-        depth + 1,
-        affectedBranches,
-        nodeId,
-        excessMap,
-        importMap,
-        dependencyTrees
-      )
+  const childrenPromises = Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
+    calculateDependencyTree(
+      inputItem,
+      (inputAmount ?? 0) * cyclesNeeded,
+      null, // Children determine their own recipe unless specified in recipeMap
+      recipeMap,
+      depth + 1,
+      affectedBranches,
+      nodeId, // current node's ID becomes parentId for children
+      excessMap,
+      importMap,
+      dependencyTrees,
+      newVisited // Pass the newVisited array with the current node added
     )
   );
+  const childrenResults = await Promise.all(childrenPromises);
+  const children = childrenResults.filter(child => child !== null) as DependencyNode[]; // Filter out nulls from cycles
 
   // Calculate byproducts initially
   const calculatedByproducts = Object.entries(recipe.out)
@@ -213,7 +248,6 @@ export const calculateDependencyTree = async (
 
   // Store result in cache
   await cacheNode(nodeId, result);
-  // logPerf('Total tree calculation', start); // Removed perf logging
 
   return result;
 };

@@ -53,13 +53,21 @@ class SatisfactoryDatabase extends Dexie {
     const allRecipes = await this.recipes.toArray();
     const item = await this.items.get(itemId);
 
-    // ✅ First, find the recipe where the name matches the item name (Default Recipe)
-    let recipe = item ? allRecipes.find((r) => r.name === item.name) : undefined;
+    // 1. Prioritize recipes that actually output the itemId
+    let recipe = allRecipes.find((r) => r.out && Object.keys(r.out).includes(itemId));
 
-    // ✅ If no exact match is found, fall back to any valid recipe
-    if (!recipe) {
-      recipe = allRecipes.find((r) => Object.keys(r.out).includes(itemId));
+    // 2. If no direct outputting recipe (step 1 failed), AND item exists, 
+    //    try to match by item name, BUT ONLY if that name-matched recipe ALSO outputs the itemId.
+    //    This handles cases where item name might be unique to its producing recipe.
+    if (!recipe && item) {
+      const recipeByName = allRecipes.find((r) => r.name === item.name && r.out && Object.keys(r.out).includes(itemId));
+      if (recipeByName) {
+        recipe = recipeByName;
+      }
     }
+    // If after these steps, recipe is still undefined, it means no recipe produces this item directly,
+    // or the name matching didn't yield a producing recipe.
+    // The initial find (step 1) is the most reliable for finding *a* producer.
 
     return recipe;
   }

@@ -1,7 +1,8 @@
 import { db } from "./dexieDB";
+import { Item } from "../types";
 
 const DB_VERSION_KEY = 'satisfactory-db-version';
-const CURRENT_VERSION = 10;
+const CURRENT_VERSION = 16;
 
 export async function populateDexie() {
     try {
@@ -33,7 +34,7 @@ export async function populateDexie() {
                 }
 
                 console.log("[dexieInit] data.items array before bulkPut:", data.items); // LOG data.items
-                const fuelGenInDataArray = data.items.find((item: any) => item.id === 'fuel-generator');
+                const fuelGenInDataArray = data.items.find((item: Item) => item.id === 'fuel-generator');
                 console.log("[dexieInit] fuel-generator object in data.items (before bulkPut):", fuelGenInDataArray); // LOG fuel-generator from array
 
                 // Populate the database
@@ -53,8 +54,8 @@ export async function populateDexie() {
                 const recipeCount = await db.recipes.count();
                 const iconCount = await db.icons.count();
                 
-                if (itemCount === 0 || recipeCount === 0) {
-                    throw new Error("Database population failed - no items or recipes found after insert");
+                if (itemCount === 0 || recipeCount === 0 || iconCount === 0) {
+                    throw new Error("Database population failed - no items, recipes, or icons found after insert");
                 }
             } catch (error) {
                 console.error("🚨 Failed to reset/populate database:", error);

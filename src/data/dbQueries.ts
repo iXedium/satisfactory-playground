@@ -33,6 +33,8 @@ export const getRecipesForItem = async (itemId: string): Promise<Recipe[]> => {
       return recipe.out && Object.keys(recipe.out).includes(itemId);
     }).toArray();
     
+    console.log(`[dbQueries.getRecipesForItem] Recipes found for ${itemId}:`, recipes.map(r => r.id));
+    
     if (recipes.length === 0) {
       // If no recipes found, try a different approach
       const allRecipes = await db.recipes.toArray();
