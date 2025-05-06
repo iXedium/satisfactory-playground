@@ -18,10 +18,10 @@ Satisfactory Playground is a web-based tool designed to assist players of the ga
 
 The application provides the following core functionalities:
 
-*   **Production Chain Calculation:** Users can select a desired output item and rate, and the application calculates the required input resources, intermediate products, and necessary buildings (Assemblers, Manufacturers, etc.) based on available recipes.
+*   **Production Chain Calculation:** Users can select a desired output item and rate, and the application calculates the required input resources, intermediate products, and necessary buildings (Assemblers, Manufacturers, etc.) based on available recipes. The calculation engine now includes robust cycle detection to prevent infinite loops in complex dependency chains.
 *   **Dependency Tree Visualization:** The calculated production chain is displayed as an interactive dependency tree, showing the flow of items from raw resources to the final product.
 *   **Accumulated Resource Summary:** Aggregates all raw resource inputs and intermediate product requirements across the entire plan or specific sub-trees.
-*   **Recipe Selection & Management:** Allows users to choose alternative recipes for items and updates the production plan accordingly.
+*   **Recipe Selection & Management:** Allows users to choose alternative recipes for items and updates the production plan accordingly. The system employs a defined logic for selecting a default recipe for items: it first attempts to match the item's ID or name to a corresponding recipe ID or name (if that recipe produces the item); if unsuccessful, it defaults to the first available recipe that produces the item.
 *   **Machine Configuration:** Users can adjust machine settings (e.g., clock speed) to see the impact on resource consumption and production rates.
 *   **Excess/Byproduct Handling:** Provides mechanisms to visualize and potentially manage excess production or byproducts.
 *   **Data Persistence:** Supports two modes:
@@ -52,7 +52,7 @@ The application provides the following core functionalities:
 ## 4. Potential Future Implementations (Inferred)
 
 *   **Advanced Optimization:** Features like automatically selecting the "best" recipes based on resource availability or power consumption.
-*   **Power Grid Planning:** Calculating power requirements and potentially visualizing the power network.
+*   **Enhanced Power Grid Planning:** Building on the current support for power as a plannable item, this could involve detailed calculation of net power balance, visualization, and management of distinct power networks.
 *   **Multi-Factory Management:** Support for planning multiple independent factories or sites.
 *   **Cloud Sync/Sharing:** Saving plans to a central server for access across devices or sharing with others.
 *   **Enhanced Visualization:** More sophisticated graphical representations of the factory layout or item flow.

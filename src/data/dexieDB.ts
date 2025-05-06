@@ -42,7 +42,7 @@ class SatisfactoryDatabase extends Dexie {
     super("SatisfactoryDB");
     this.version(3).stores({
       items: "id, name, category",
-      recipes: "id, name, *out", // Index out field for querying by output item
+      recipes: "id, name, *out",
       icons: "id",
     });
     
@@ -53,21 +53,22 @@ class SatisfactoryDatabase extends Dexie {
     const allRecipes = await this.recipes.toArray();
     const item = await this.items.get(itemId);
 
-    // 1. Prioritize recipes that actually output the itemId
-    let recipe = allRecipes.find((r) => r.out && Object.keys(r.out).includes(itemId));
+    let recipe: Recipe | undefined = undefined;
 
-    // 2. If no direct outputting recipe (step 1 failed), AND item exists, 
-    //    try to match by item name, BUT ONLY if that name-matched recipe ALSO outputs the itemId.
-    //    This handles cases where item name might be unique to its producing recipe.
-    if (!recipe && item) {
-      const recipeByName = allRecipes.find((r) => r.name === item.name && r.out && Object.keys(r.out).includes(itemId));
-      if (recipeByName) {
-        recipe = recipeByName;
-      }
+    if (item) {
+      // Preferred default: Recipe ID matches Item ID OR Recipe Name matches Item Name,
+      // AND the recipe actually produces the item.
+      recipe = allRecipes.find(r => 
+        r.out && Object.keys(r.out).includes(itemId) && 
+        (r.id === itemId || r.name === item.name)
+      );
     }
-    // If after these steps, recipe is still undefined, it means no recipe produces this item directly,
-    // or the name matching didn't yield a producing recipe.
-    // The initial find (step 1) is the most reliable for finding *a* producer.
+
+    // Fallback default: If the preferred default isn't found,
+    // take the first recipe that produces the item.
+    if (!recipe) {
+      recipe = allRecipes.find(r => r.out && Object.keys(r.out).includes(itemId));
+    }
 
     return recipe;
   }

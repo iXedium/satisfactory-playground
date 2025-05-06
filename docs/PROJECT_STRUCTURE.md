@@ -204,7 +204,7 @@ Handles data fetching, storage (Dexie.js), and initial loading from static sourc
 
 - `dataLoader.ts`: Loads initial raw game data from `public/data.json`.
 - `dbQueries.ts`: Provides async functions for querying the Dexie database (items, recipes, etc.).
-- `dexieDB.ts`: Defines the Dexie.js database schema and initializes the `db` instance.
+- `dexieDB.ts`: Defines the Dexie.js database schema and initializes the `db` instance. Includes custom Dexie.js query logic, including default recipe selection strategies.
 - `dexieInit.ts`: Handles database creation, initialization, and population from `dataLoader`.
 - `index.ts`: Bundles and exports functions and instances from this directory.
 
@@ -276,11 +276,11 @@ Contains shared TypeScript type definitions and interfaces used across multiple 
 
 ### `src/utils/`
 
-Contains general utility functions reusable across the application, often pure functions.
+General utility functions, including core calculation logic.
 
-- `calculateAccumulatedFromTree.ts`: Utility function to calculate accumulated resources based on a dependency tree.
-- `calculateDependencyTree.ts`: **REFACTORED** - The core logic for calculating the production dependency tree. Now delegates caching to `treeCalculationCache` and import node creation to `importNodeLogic`. Uses utilities from `treeUtils`. Correctly populates `availableRecipes` for root nodes.
-- `importNodeLogic.ts`: **NEW** - Contains helper functions specifically for creating import nodes (`createImportNode`) and managing their original children (`storeOriginalChildren`, `restoreOriginalChildren`). Also includes `autoImportNodeChildrenThunk` which now correctly populates `availableRecipes` for auto-imported roots.
+- `calculateAccumulatedFromTree.ts`: Calculates aggregated resource totals from a dependency tree.
+- `calculateDependencyTree.ts`: Core logic for recursively calculating production dependencies, including cycle detection and byproduct handling.
+- `importNodeLogic.ts`: **NEW** - Utility functions related to creating and managing import nodes.
 - `nodeReferenceUtils.ts`: Utility functions for working with node references, paths, or related data structures within the tree. Includes helpers used by the unimport logic (`findNodeConsumers`, `getImportReference`).
 - `treeCalculationCache.ts`: **NEW** - Manages the `Map`-based cache for memoizing `calculateDependencyTree` results.
 - `treeDiffing.ts`: Utility functions potentially used for comparing different versions of the dependency tree state.
