@@ -133,7 +133,7 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
                 size="tiny" 
               />
               <span style={nameStyle}>{item.name}</span>
-              <span style={rateStyle}>{totalRate.toFixed(2)}/min</span>
+              <span style={rateStyle}>{totalRate.toFixed(2)}</span>
             </div>
           );
         })}
@@ -158,8 +158,8 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
           <p style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>No items to summarize.</p>
         ) : (
           <>
-            {renderSection("Components", components, itemRowStyle)}
             {renderSection("Raw Materials", rawMaterials, itemRowStyle)}
+            {renderSection("Components", components, itemRowStyle)}
             {renderSection("Others", others, itemRowStyle)}
             {renderSection("Byproducts", byproducts, byproductItemRowStyle)}
           </>
