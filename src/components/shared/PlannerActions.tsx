@@ -24,6 +24,7 @@ interface PlannerActionsProps {
   getSaveNames?: () => string[];
   onDeleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean; // Add isDirty prop
+  activeSetupName?: string | null; // Add activeSetupName prop
   // We might need getSaveNames to populate the load menu later
   // getSaveNames?: () => string[]; 
 }
@@ -48,6 +49,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   getSaveNames,
   onDeleteSetup,
   isDirty, // Destructure isDirty
+  activeSetupName, // Destructure activeSetupName
 }) => {
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false); // State for save menu
@@ -249,15 +251,41 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
 
   return (
     <div style={lastSectionStyle}>
-      <input
-        type="text"
-        placeholder="Search..."
-        style={searchStyle}
-        onChange={(e) => onSearchChange(e.target.value)}
-      />
+      {/* Display Active Setup Name */}
+      {activeSetupName && (
+        <span
+          style={{
+            color: theme.colors.text,
+            fontSize: "13px",
+            fontWeight: "bold",
+            marginRight: "10px",
+            whiteSpace: "nowrap",
+            maxWidth: "180px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={activeSetupName}
+        >
+          {activeSetupName}
+          {isDirty ? "*" : ""}
+        </span>
+      )}
 
-      {/* Load Button & Menu Container */} 
-      <div style={{ position: 'relative' }}> {/* Container for positioning */} 
+      {/* Direct Save Button (if activeSetupName exists) */}
+      {activeSetupName && onSaveSetup && (
+        <button
+          style={isDirty ? dirtyIconButtonStyle : iconButtonStyle}
+          onClick={() => onSaveSetup(activeSetupName)}
+          title={`Save "${activeSetupName}"${
+            isDirty ? " (unsaved changes)" : ""
+          }`}
+        >
+          <span>💾</span>
+        </button>
+      )}
+
+      {/* Load Button & Menu Container */}
+      <div style={{ position: "relative" }}>
         {onLoadSetup && (
           <button
             ref={loadButtonRef}
@@ -271,25 +299,37 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         {isLoadMenuOpen && (
           <div ref={loadMenuRef} style={dropdownMenuStyle}>
             {savedSetups.length === 0 ? (
-              <div style={{ ...dropdownItemStyle, cursor: 'default' }}>No saved setups</div>
+              <div style={{ ...dropdownItemStyle, cursor: "default" }}>
+                No saved setups
+              </div>
             ) : (
-              savedSetups.map(name => (
-                <div 
-                  key={name} 
+              savedSetups.map((name) => (
+                <div
+                  key={name}
                   style={dropdownItemStyle}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.colors.dropdown.hoverBackground)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      theme.colors.dropdown.hoverBackground)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
                   onClick={() => handleLoadItemClick(name)}
                   title={`Load "${name}"`}
                 >
-                  <span style={{ flexGrow: 1, marginRight: '10px' }}>{name}</span>
+                  <span style={{ flexGrow: 1, marginRight: "10px" }}>
+                    {name}
+                  </span>
                   <div style={itemActionsStyle}>
-                    <button 
-                      style={{...itemActionButtonStyle, color: theme.colors.danger }} 
+                    <button
+                      style={{
+                        ...itemActionButtonStyle,
+                        color: theme.colors.danger,
+                      }}
                       title="Delete"
-                      onClick={(e) => { 
-                          e.stopPropagation();
-                          handleDeleteItemClick(name); 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteItemClick(name);
                       }}
                     >
                       🗑️
@@ -302,54 +342,65 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         )}
       </div>
 
-      {/* Save Button & Menu Container */} 
-      <div style={{ position: 'relative' }}> 
+      {/* Save Button & Menu Container */}
+      <div style={{ position: "relative" }}>
         {onSaveSetup && (
           <button
             ref={saveButtonRef}
-            style={isDirty ? dirtyIconButtonStyle : iconButtonStyle}
+            style={iconButtonStyle}
             onClick={handleSaveButtonClick}
-            title={isDirty ? "Save Setup (unsaved changes)" : "Save Setup"}
+            title={"Save Options..."}
           >
-            <span>💾</span>
+            <span>💻</span>
           </button>
         )}
         {isSaveMenuOpen && (
           <div ref={saveMenuRef} style={dropdownMenuStyle}>
-            {/* Save as New option */} 
-            <div 
+            <div
               style={dropdownItemStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.colors.dropdown.hoverBackground)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  theme.colors.dropdown.hoverBackground)
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }
               onClick={handleSaveAsNewClick}
             >
               Save as New...
             </div>
-            {/* Separator */} 
             {savedSetups.length > 0 && (
-              <hr style={{ border: 'none', borderTop: `1px solid ${theme.colors.dropdown.border}`, margin: '0' }} />
+              <hr
+                style={{
+                  border: "none",
+                  borderTop: `1px solid ${theme.colors.dropdown.border}`,
+                  margin: "0",
+                }}
+              />
             )}
-            {/* Existing saves for overwrite */} 
-            {savedSetups.map(name => (
-              <div 
-                key={name} 
+            {savedSetups.map((name) => (
+              <div
+                key={name}
                 style={dropdownItemStyle}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.colors.dropdown.hoverBackground)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    theme.colors.dropdown.hoverBackground)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
                 onClick={() => handleOverwriteClick(name)}
                 title={`Overwrite "${name}"`}
               >
                 {name}
               </div>
             ))}
-            {/* Optional: Message if no saves exist yet */} 
-            {/* {savedSetups.length === 0 && (<div style={{...dropdownItemStyle, cursor: 'default'}}>No setups to overwrite</div>)} */}
           </div>
         )}
       </div>
 
       {/* Settings Menu Button */}
-      <SettingsMenu 
+      <SettingsMenu
         showMachines={showMachines}
         onShowMachinesChange={onShowMachinesChange}
         showMachineMultiplier={showMachineMultiplier}
@@ -357,9 +408,9 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         autoImport={autoImport}
         onAutoImportChange={onAutoImportChange}
       />
-      
+
       {/* Summary Toggle Button */}
-      <button 
+      <button
         style={isSummaryVisible ? activeIconButtonStyle : iconButtonStyle}
         onClick={onToggleSummary}
         title="Toggle Item Summary"
@@ -369,7 +420,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
 
       {/* Clear Saved Data Button */}
       {onClearSavedData && (
-        <button 
+        <button
           style={iconButtonStyle}
           onClick={onClearSavedData}
           title="Clear Saved Data"

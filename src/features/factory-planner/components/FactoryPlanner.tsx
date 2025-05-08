@@ -9,7 +9,7 @@ import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 
 // Define key for local storage
-const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
+// const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
 const LS_SUMMARY_VISIBLE_KEY = 'plannerSummaryVisible'; // Key for summary visibility
 
 /**
@@ -74,6 +74,9 @@ const FactoryPlanner: React.FC = () => {
     loadSetup,
     deleteSetup,
     isDirty,
+    activeSetupName,
+    manualTreeOrder, // Get from hook
+    setManualTreeOrder, // Get from hook
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -98,28 +101,6 @@ const FactoryPlanner: React.FC = () => {
     }
   }, [isSummaryVisible]);
   // ----------------------------------------------------------
-
-  // --- State for Manual Tree Order (Load from Local Storage) ---
-  const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
-    try {
-      const savedOrder = localStorage.getItem(LS_MANUAL_ORDER_KEY);
-      return savedOrder ? JSON.parse(savedOrder) : [];
-    } catch (error) {
-      console.error("Error loading manual tree order:", error);
-      return [];
-    }
-  });
-  // ---------------------------------
-
-  // --- Save Manual Tree Order to Local Storage on Change ---
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_MANUAL_ORDER_KEY, JSON.stringify(manualTreeOrder));
-    } catch (error) {
-      console.error("Error saving manual tree order:", error);
-    }
-  }, [manualTreeOrder]);
-  // --------------------------------------------------------
 
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
@@ -335,6 +316,7 @@ const FactoryPlanner: React.FC = () => {
           getSaveNames={getSaveNames}
           deleteSetup={deleteSetup}
           isDirty={isDirty}
+          activeSetupName={activeSetupName}
         />
       }
       commandBarHeight={commandBarHeight}

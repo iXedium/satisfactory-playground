@@ -51,6 +51,7 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
     padding: `0 ${sizes.spacing.medium} ${sizes.spacing.medium} ${sizes.spacing.medium}`, // Remove top padding
     boxSizing: 'border-box',
     marginLeft: sizes.spacing.medium,
+    height: '100%', // Ensure the sidebar itself takes full available height
   };
 
   const listContainerStyle: React.CSSProperties = {

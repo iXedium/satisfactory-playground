@@ -40,6 +40,7 @@ interface SavedPlannerState {
         key: string; // Using string for now
         direction: string; // Using string for now
     };
+    manualTreeOrder: string[]; // Added for manual sort order
     // Add other states if needed, e.g., from usePlannerItemSelection?
 }
 
@@ -74,6 +75,7 @@ interface UsePlannerSaveLoadProps {
     // Add setters from useFactoryPlanner for sorting
     setTreeSortKey: React.Dispatch<React.SetStateAction<TreeSortKey>>; // Use imported TreeSortKey type
     setTreeSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
+    setManualTreeOrder: React.Dispatch<React.SetStateAction<string[]>>; // Added setter for manual order
 
     // Pass current state values needed for saving
     currentExcessMap: Record<string, number>;
@@ -91,6 +93,7 @@ interface UsePlannerSaveLoadProps {
 
     currentTreeSortKey: TreeSortKey;
     currentTreeSortDirection: SortDirection;
+    currentManualTreeOrder: string[]; // Added for manual sort order state
 }
 
 
@@ -109,6 +112,7 @@ export const usePlannerSaveLoad = ({
     setAutoImport,
     setTreeSortKey,
     setTreeSortDirection,
+    setManualTreeOrder, // Destructure setter for manual order
     // Destructure current state values
     currentExcessMap,
     currentMachineCountMap,
@@ -123,6 +127,7 @@ export const usePlannerSaveLoad = ({
     currentAutoImport,
     currentTreeSortKey,
     currentTreeSortDirection,
+    currentManualTreeOrder, // Destructure manual order state
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
     const dispatch: AppDispatch = useDispatch();
     const dependenciesState = useSelector((state: RootState) => state.dependencies);
@@ -195,7 +200,8 @@ export const usePlannerSaveLoad = ({
             sortOptions: {
                 key: currentTreeSortKey,
                 direction: currentTreeSortDirection,
-            }
+            },
+            manualTreeOrder: JSON.parse(JSON.stringify(currentManualTreeOrder)), // Save manual order
         };
     }, [
         dependenciesState, recipeSelectionsState,
@@ -203,7 +209,8 @@ export const usePlannerSaveLoad = ({
         currentExpandedNodes, currentNodeExtensionOverrides,
         currentViewDensity, currentShowExtensions, currentAccumulateExtensions,
         currentShowMachines, currentShowMachineMultiplier, currentAutoImport,
-        currentTreeSortKey, currentTreeSortDirection
+        currentTreeSortKey, currentTreeSortDirection,
+        currentManualTreeOrder, // Add to dependency array
     ]);
 
     // --- Debounced Dirty Check --- 
@@ -238,7 +245,8 @@ export const usePlannerSaveLoad = ({
         currentViewDensity, currentShowExtensions, currentAccumulateExtensions,
         currentShowMachines, currentShowMachineMultiplier, currentAutoImport,
         currentTreeSortKey, currentTreeSortDirection,
-        checkDirtyState 
+        checkDirtyState,
+        currentManualTreeOrder, // Add to dependency array
     ]);
 
     // --- Function to save the current state ---
@@ -316,10 +324,13 @@ export const usePlannerSaveLoad = ({
                 setAutoImport(stateToLoad.displayOptions.autoImport ?? true);
             }
              if (stateToLoad.sortOptions) {
-                setTreeSortKey(stateToLoad.sortOptions.key as TreeSortKey || 'originalDepth'); // Cast loaded key
+                setTreeSortKey(stateToLoad.sortOptions.key as TreeSortKey || 'originalDepth');
                 // Validate or cast loaded direction
                 const direction = stateToLoad.sortOptions.direction;
                 setTreeSortDirection((direction === 'asc' || direction === 'desc') ? direction : 'asc'); 
+            }
+            if (stateToLoad.manualTreeOrder) {
+                setManualTreeOrder(stateToLoad.manualTreeOrder);
             }
 
             localStorage.setItem(LAST_ACTIVE_SETUP_KEY, name); // Track last loaded name
@@ -339,7 +350,8 @@ export const usePlannerSaveLoad = ({
         getAllSetups, dispatch,
         setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides,
         setViewDensity, setShowExtensions, setAccumulateExtensions, setShowMachines, setShowMachineMultiplier, setAutoImport,
-        setTreeSortKey, setTreeSortDirection
+        setTreeSortKey, setTreeSortDirection,
+        setManualTreeOrder
     ]);
 
     // --- Function to delete a specific state ---

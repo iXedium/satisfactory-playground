@@ -41,6 +41,7 @@ const LS_SORT_KEY = 'lastSession_plannerTreeSortKey';
 const LS_SORT_DIRECTION = 'lastSession_plannerTreeSortDirection';
 const LS_DEPENDENCIES_KEY = 'lastSession_savedDependencies';
 const LS_RECIPES_KEY = 'lastSession_savedRecipeSelections';
+const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
 
 export interface FactoryPlannerHookResult {
   dependencies: { dependencyTrees: Record<string, DependencyNode | null> };
@@ -64,6 +65,8 @@ export interface FactoryPlannerHookResult {
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
   viewDensity: ViewDensity;
+  activeSetupName: string | null;
+  manualTreeOrder: string[];
 
   setSelectedItem: React.Dispatch<React.SetStateAction<string>>;
   setSelectedRecipe: React.Dispatch<React.SetStateAction<string>>;
@@ -79,6 +82,7 @@ export interface FactoryPlannerHookResult {
   setTreeSortKey: React.Dispatch<React.SetStateAction<TreeSortKey>>;
   setTreeSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
   setViewDensity: (density: ViewDensity) => void;
+  setManualTreeOrder: React.Dispatch<React.SetStateAction<string[]>>;
 
   handleCalculate: () => Promise<void>;
   handleExcessChange: (nodeId: string, excess: number) => Promise<void>;
@@ -204,6 +208,26 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     }
   }, [treeSortDirection]);
   // -----------------------------------------------------------
+
+  // --- State for Manual Tree Order (Moved from FactoryPlanner.tsx) ---
+  const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
+    try {
+      const savedOrder = localStorage.getItem(LS_MANUAL_ORDER_KEY);
+      return savedOrder ? JSON.parse(savedOrder) : [];
+    } catch (error) {
+      console.error("Error loading manual tree order from localStorage:", error);
+      return [];
+    }
+  });
+
+  // --- Auto-save sort state to LAST SESSION Local Storage ---
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_MANUAL_ORDER_KEY, JSON.stringify(manualTreeOrder));
+    } catch (error) {
+      console.error("Error saving manual tree order to localStorage:", error);
+    }
+  }, [manualTreeOrder]);
 
   // --- Create an Item Map for sorting by name --- 
   const itemsMap = useMemo(() => {
@@ -370,6 +394,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setAutoImport,
     setTreeSortKey,
     setTreeSortDirection,
+    setManualTreeOrder,
     // Pass current state values
     currentExcessMap: excessMap,
     currentMachineCountMap: machineCountMap,
@@ -384,6 +409,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     currentAutoImport: autoImport,
     currentTreeSortKey: treeSortKey,
     currentTreeSortDirection: treeSortDirection,
+    currentManualTreeOrder: manualTreeOrder,
   });
 
   // --- Optimize All Machines Handler ---
@@ -472,6 +498,8 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     treeSortKey,
     treeSortDirection,
     viewDensity,
+    activeSetupName,
+    manualTreeOrder,
 
     setSelectedItem,
     setSelectedRecipe,
@@ -487,6 +515,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setTreeSortKey,
     setTreeSortDirection,
     setViewDensity,
+    setManualTreeOrder,
 
     handleCalculate,
     handleExcessChange,

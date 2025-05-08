@@ -78,4 +78,4 @@ class SatisfactoryDatabase extends Dexie {
 
 // ✅ Create and export the Dexie database instance
 export const db = new SatisfactoryDatabase();
-(window as any).db = db; // ✅ Attach to window for debugging
+//(window as any).db = db; // ✅ Attach to window for debugging
