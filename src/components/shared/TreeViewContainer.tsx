@@ -136,7 +136,7 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                       {...providedDraggable.dragHandleProps}
                       style={{
                         ...providedDraggable.draggableProps.style,
-                        marginBottom: '8px',
+                        // marginBottom: '8px',
                       }}
                     >
                       <TreeNode

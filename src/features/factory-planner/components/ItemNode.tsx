@@ -77,7 +77,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   recipes = [],
   selectedRecipeId,
   onRecipeChange,
-  size = "large",
+  size = "small",
   excess = 0,
   onExcessChange,
   style,

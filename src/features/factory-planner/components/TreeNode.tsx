@@ -222,7 +222,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           background: isHighlighted 
             ? 'linear-gradient(90deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 107, 107, 0.15) 100%)' 
             : getBackgroundColor(depth, isSelected, isCompleted),
-          marginBottom: "8px",
+          marginBottom: "4px",
           padding: "0 12px 0 0",
           paddingLeft: `${depth * 32}px`,
           borderRadius: theme.border.radius,
