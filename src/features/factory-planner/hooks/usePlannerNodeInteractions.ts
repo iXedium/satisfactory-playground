@@ -1,5 +1,8 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
+import { useDispatch } from 'react-redux';
 import { DependencyNode } from '../../../types';
+import { AppDispatch } from '../../../store';
+import { setNodeMachineCount, setNodeMachineMultiplier } from '../store/dependencySlice';
 
 // Define the expected shape of the dependencies state slice locally
 interface DependencySliceStateForInteractions {
@@ -22,6 +25,7 @@ export const usePlannerNodeInteractions = ({
   setMachineMultiplierMap,
   setNodeExtensionOverrides,
 }: PlannerNodeInteractionsProps) => {
+  const dispatch = useDispatch<AppDispatch>();
 
   const handleExpandCollapseAll = useCallback((expand: boolean) => {
     const newExpandedNodes: Record<string, boolean> = {};
@@ -36,12 +40,18 @@ export const usePlannerNodeInteractions = ({
   }, [dependencies.dependencyTrees, setExpandedNodes]);
 
   const handleMachineCountChange = useCallback((nodeId: string, count: number) => {
+    // Update local state for UI responsiveness
     setMachineCountMap(prev => ({ ...prev, [nodeId]: count }));
-  }, [setMachineCountMap]);
+    // Sync to Redux for persistence and thunk access
+    dispatch(setNodeMachineCount({ nodeId, machineCount: count }));
+  }, [setMachineCountMap, dispatch]);
 
   const handleMachineMultiplierChange = useCallback((nodeId: string, multiplier: number) => {
+    // Update local state for UI responsiveness
     setMachineMultiplierMap(prev => ({ ...prev, [nodeId]: multiplier }));
-  }, [setMachineMultiplierMap]);
+    // Sync to Redux for persistence and thunk access
+    dispatch(setNodeMachineMultiplier({ nodeId, machineMultiplier: multiplier }));
+  }, [setMachineMultiplierMap, dispatch]);
 
   const handleToggleNodeExtensions = useCallback((nodeId: string) => {
     setNodeExtensionOverrides(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));

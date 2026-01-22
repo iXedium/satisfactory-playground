@@ -156,18 +156,12 @@ export const usePlannerImportExport = ({
   const handleMaxImportAmount = useCallback((
     treeId: string,
     nodeId: string,
-    parentNodeId: string,
-    machineCountMap: Record<string, number>,
-    machineMultiplierMap: Record<string, number>,
-    excessMap: Record<string, number>
+    parentNodeId: string
   ) => {
     dispatch(maxImportAmountThunk({ 
       treeId, 
       importNodeId: nodeId, 
-      parentNodeId,
-      machineCountMap,
-      machineMultiplierMap,
-      excessMap
+      parentNodeId
     }));
   }, [dispatch]);
 

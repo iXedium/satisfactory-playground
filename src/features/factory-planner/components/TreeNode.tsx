@@ -219,7 +219,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         style={{
           display: "flex",
           alignItems: "center",
-          background: getBackgroundColor(depth, isSelected, isCompleted),
+          background: isHighlighted 
+            ? 'linear-gradient(90deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 107, 107, 0.15) 100%)' 
+            : getBackgroundColor(depth, isSelected, isCompleted),
           marginBottom: "8px",
           padding: "0 12px 0 0",
           paddingLeft: `${depth * 32}px`,
@@ -227,8 +229,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           position: "relative",
           zIndex: 0,
           ...(isHighlighted && {
-            outline: '3px solid #FF6B6B',
-            outlineOffset: '2px',
+            boxShadow: 'inset 0 0 0 2px #FF6B6B, 0 0 8px rgba(255, 107, 107, 0.5)',
           }),
         }}
         data-node-id={node.uniqueId}

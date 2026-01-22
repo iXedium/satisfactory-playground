@@ -229,6 +229,57 @@ const dependencySlice = createSlice({
       state.highlightedNodeId = action.payload;
     },
     
+    // Update machine count on a specific node
+    setNodeMachineCount: (
+      state,
+      action: PayloadAction<{ nodeId: string; machineCount: number }>
+    ) => {
+      const { nodeId, machineCount } = action.payload;
+      for (const treeId in state.dependencyTrees) {
+        const tree = state.dependencyTrees[treeId];
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.machineCount = machineCount;
+          state.lastUpdateTime = Date.now();
+          return;
+        }
+      }
+    },
+    
+    // Update machine multiplier on a specific node
+    setNodeMachineMultiplier: (
+      state,
+      action: PayloadAction<{ nodeId: string; machineMultiplier: number }>
+    ) => {
+      const { nodeId, machineMultiplier } = action.payload;
+      for (const treeId in state.dependencyTrees) {
+        const tree = state.dependencyTrees[treeId];
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.machineMultiplier = machineMultiplier;
+          state.lastUpdateTime = Date.now();
+          return;
+        }
+      }
+    },
+    
+    // Update excess on a specific node
+    setNodeExcess: (
+      state,
+      action: PayloadAction<{ nodeId: string; excess: number }>
+    ) => {
+      const { nodeId, excess } = action.payload;
+      for (const treeId in state.dependencyTrees) {
+        const tree = state.dependencyTrees[treeId];
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.excess = excess;
+          state.lastUpdateTime = Date.now();
+          return;
+        }
+      }
+    },
+    
     updateNodeProperties: (
       state,
       // Restore original payload structure
@@ -335,6 +386,9 @@ export const {
   toggleNodeSelected,
   toggleNodeCompleted,
   setHighlightedNode,
+  setNodeMachineCount,
+  setNodeMachineMultiplier,
+  setNodeExcess,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

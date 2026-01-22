@@ -5,7 +5,10 @@ import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../../da
 import { DependencyNode } from '../../../types';
 import { 
   setDependencies, 
-  setRecipeSelection 
+  setRecipeSelection,
+  setNodeMachineCount,
+  setNodeMachineMultiplier,
+  setNodeExcess,
 } from '../store';
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
 import { usePlannerNodeState } from './usePlannerNodeState';
@@ -163,11 +166,16 @@ export const usePlannerTreeCalculation = ({
     );
     if (newTree) {
       dispatch(setDependencies({ treeId, tree: newTree }));
-      // Set default state for manually created tree
+      // Set default state for manually created tree - sync both local state and Redux
       const resetValues = (node: DependencyNode) => {
+        // Update local state for UI responsiveness
         setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
         setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
         setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
+        // Sync to Redux for thunk access
+        dispatch(setNodeMachineCount({ nodeId: node.uniqueId, machineCount: 1 }));
+        dispatch(setNodeMachineMultiplier({ nodeId: node.uniqueId, machineMultiplier: 1 }));
+        dispatch(setNodeExcess({ nodeId: node.uniqueId, excess: 0 }));
         if (node.children) {
           node.children.forEach(resetValues);
         }
@@ -244,9 +252,14 @@ export const usePlannerTreeCalculation = ({
           dispatch(setRecipeSelection({ nodeId: selectedItem, recipeId: selectedRecipe }));
           
           const resetValues = (node: DependencyNode) => {
+            // Update local state for UI responsiveness
             setMachineCountMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
             setMachineMultiplierMap(prev => ({ ...prev, [node.uniqueId]: 1 }));
             setExcessMap(prev => ({ ...prev, [node.uniqueId]: 0 }));
+            // Sync to Redux for thunk access
+            dispatch(setNodeMachineCount({ nodeId: node.uniqueId, machineCount: 1 }));
+            dispatch(setNodeMachineMultiplier({ nodeId: node.uniqueId, machineMultiplier: 1 }));
+            dispatch(setNodeExcess({ nodeId: node.uniqueId, excess: 0 }));
             if (node.children) {
               node.children.forEach(resetValues);
             }

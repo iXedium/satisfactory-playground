@@ -94,7 +94,7 @@ export interface FactoryPlannerHookResult {
   handleUnimportNode: (nodeId: string) => void;
   handleSetImportAmount: (treeId: string, nodeId: string, parentNodeId: string, newAmount: number) => void;
   handleResetImportAmount: (treeId: string, nodeId: string, parentNodeId: string) => void;
-  handleMaxImportAmount: (treeId: string, nodeId: string, parentNodeId: string, machineCountMap: Record<string, number>, machineMultiplierMap: Record<string, number>, excessMap: Record<string, number>) => void;
+  handleMaxImportAmount: (treeId: string, nodeId: string, parentNodeId: string) => void;
   handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   clearSavedData: () => void;
   handleToggleNodeExtensions?: (nodeId: string) => void;

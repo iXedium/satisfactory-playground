@@ -666,17 +666,12 @@ const calculateNominalRate = (node: DependencyNode): number => {
 };
 
 // --- HELPER: Calculate max capacity a root can provide (machineCount * nominalRate * multiplier - excess) ---
-// If maps are not provided, falls back to node properties (for backward compatibility)
-const calculateRootMaxCapacity = (
-  root: DependencyNode,
-  machineCountMap?: Record<string, number>,
-  machineMultiplierMap?: Record<string, number>,
-  excessMap?: Record<string, number>
-): number => {
+// Now reads directly from node properties (synced from Redux)
+const calculateRootMaxCapacity = (root: DependencyNode): number => {
   const nominalRate = calculateNominalRate(root);
-  const machineCount = machineCountMap?.[root.uniqueId] ?? root.machineCount ?? 1;
-  const multiplier = machineMultiplierMap?.[root.uniqueId] ?? root.machineMultiplier ?? 1;
-  const excess = excessMap?.[root.uniqueId] ?? root.excess ?? 0;
+  const machineCount = root.machineCount ?? 1;
+  const multiplier = root.machineMultiplier ?? 1;
+  const excess = root.excess ?? 0;
   
   const totalCapacity = machineCount * multiplier * nominalRate;
   const availableForImport = totalCapacity - excess;
@@ -1139,9 +1134,6 @@ interface MaxImportAmountArgs {
   importNodeId: string;
   parentNodeId: string;
   treeId: string;
-  machineCountMap?: Record<string, number>;
-  machineMultiplierMap?: Record<string, number>;
-  excessMap?: Record<string, number>;
 }
 
 export const maxImportAmountThunk = createAsyncThunk<
@@ -1150,7 +1142,7 @@ export const maxImportAmountThunk = createAsyncThunk<
   { dispatch: AppDispatch; state: RootState }
 >(
   'dependency/maxImportAmount',
-  async ({ importNodeId, parentNodeId, treeId, machineCountMap, machineMultiplierMap, excessMap }, { getState, dispatch }) => {
+  async ({ importNodeId, parentNodeId, treeId }, { getState, dispatch }) => {
     const state = getState();
     const trees = state.dependencies.dependencyTrees;
     const tree = trees[treeId];
@@ -1171,8 +1163,8 @@ export const maxImportAmountThunk = createAsyncThunk<
     const targetRoot = trees[importRef.targetTreeId];
     if (!targetRoot) return;
     
-    // Calculate max capacity this root can provide
-    const maxCapacity = calculateRootMaxCapacity(targetRoot, machineCountMap, machineMultiplierMap, excessMap);
+    // Calculate max capacity this root can provide (reads from Redux node)
+    const maxCapacity = calculateRootMaxCapacity(targetRoot);
     
     // Calculate total demand from all import siblings for the same item
     const originalImportId = importNodeId.includes('-split-') 
@@ -1184,7 +1176,6 @@ export const maxImportAmountThunk = createAsyncThunk<
     );
     
     const totalDemand = allImportSiblings.reduce((sum, c) => sum + (c.amount || 0), 0);
-    const currentAmount = importNode.amount || 0;
     
     // Max we can take = min(maxCapacity, totalDemand)
     // We take as much as we can from this source, up to total demand

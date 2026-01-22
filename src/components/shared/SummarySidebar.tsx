@@ -122,7 +122,7 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
         {items.map(({ itemId, totalRate }) => {
           const item = itemsMap[itemId];
           if (!item) {
-              console.warn(`SummarySidebar: Item data not found in itemsMap for ID: ${itemId}`);
+              //console.warn(`SummarySidebar: Item data not found in itemsMap for ID: ${itemId}`);
               return null; 
           }
           return (

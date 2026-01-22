@@ -209,15 +209,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const handleMaxImportAmount = useCallback(() => {
     if (!parentNodeId || !isImport) return;
-    // Note: We don't have access to machineCountMap etc here, 
-    // so pass empty objects and let the thunk use node defaults
+    // Machine counts are now synced to Redux, thunk reads directly from node
     dispatch(maxImportAmountThunk({
       treeId,
       importNodeId: uniqueId,
-      parentNodeId,
-      machineCountMap: {},
-      machineMultiplierMap: {},
-      excessMap: {}
+      parentNodeId
     }));
   }, [dispatch, treeId, uniqueId, parentNodeId, isImport]);
 
