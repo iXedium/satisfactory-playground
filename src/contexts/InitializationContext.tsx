@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { populateDexie } from "../data/dexieInit";
 import { injectThemeVariables } from '../styles/theme';
+import { logger } from '../utils/logger';
 
 interface InitializationContextState {
   isLoading: boolean;
@@ -33,7 +34,7 @@ export const InitializationProvider: React.FC<InitializationProviderProps> = ({ 
         
         setIsLoading(false);
       } catch (error: unknown) {
-        console.error("Failed to initialize application:", error);
+        logger.error("Failed to initialize application:", error);
         const message = error instanceof Error ? error.message : "Unknown error initializing the application";
         setErrorMessage(message);
         setIsError(true);

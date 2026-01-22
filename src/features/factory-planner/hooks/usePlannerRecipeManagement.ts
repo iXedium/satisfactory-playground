@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store';
+import { logger } from '../../../utils/logger';
 import { getRecipeById } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
@@ -44,7 +45,7 @@ export const usePlannerRecipeManagement = ({
     }
 
     if (!nodeToUpdate || !treeId) {
-      console.error(`[Recipe Change] Node ${nodeId} not found in any tree.`);
+      logger.error(`[Recipe Change] Node ${nodeId} not found in any tree.`);
       return;
     }
 
@@ -54,7 +55,7 @@ export const usePlannerRecipeManagement = ({
 
     const newRecipe = await getRecipeById(recipeId);
     if (!newRecipe) {
-        console.error(`[Recipe Change] Recipe ${recipeId} not found.`);
+        logger.error(`[Recipe Change] Recipe ${recipeId} not found.`);
         return;
     }
 
@@ -70,14 +71,14 @@ export const usePlannerRecipeManagement = ({
             { ...recipeSelections, [nodeId]: recipeId }, 
             nodeToUpdate.depth ?? 0, 
             [],                      
-            nodeToUpdate.uniqueId.substring(0, nodeToUpdate.uniqueId.lastIndexOf('-')), 
+            nodeToUpdate.uniqueId, // Use this node's uniqueId as parentId for children
             excessMap,
             {},                      
             currentTrees            
         );
-        newChildren = tempRecalculatedNode.children || [];
+        newChildren = tempRecalculatedNode?.children || [];
     } catch (error) {
-        console.error('[Recipe Change] Error recalculating children:', error);
+        logger.error('[Recipe Change] Error recalculating children:', error);
         return;
     }
 
@@ -87,7 +88,7 @@ export const usePlannerRecipeManagement = ({
             updatedNode: { recipe: newRecipe, children: newChildren }
         }));
     } catch (error) {
-        console.error(`[Recipe Change] Error dispatching node update for ${nodeId}:`, error);
+        logger.error(`[Recipe Change] Error dispatching node update for ${nodeId}:`, error);
         return;
     }
     
@@ -95,7 +96,7 @@ export const usePlannerRecipeManagement = ({
         try {
             await dispatch(autoImportNodeChildrenThunk(nodeId));
         } catch (error) {
-            console.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
+            logger.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
         }
       }
       
@@ -107,7 +108,7 @@ export const usePlannerRecipeManagement = ({
                 disconnectedConsumerId: nodeId
             }));
         } catch (error) {
-            console.error(`[Recipe Change] Error dispatching check for old target ${oldTargetId}:`, error);
+            logger.error(`[Recipe Change] Error dispatching check for old target ${oldTargetId}:`, error);
         }
     }
 

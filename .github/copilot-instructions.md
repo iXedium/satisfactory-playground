@@ -3,7 +3,7 @@
 ## Project Overview
 Satisfactory Playground is a React + TypeScript + Vite web application for planning and optimizing production chains in the game Satisfactory. It calculates resource requirements, visualizes dependency trees, manages recipes, and persists factory plans.
 
-**Before any significant work:** Consult [docs/SDD.md](../docs/SDD.md) for feature overview and application flow.
+**Before any significant work:** Consult [docs/SDD.md] for feature overview and application flow.
 
 ## Architecture Essentials
 

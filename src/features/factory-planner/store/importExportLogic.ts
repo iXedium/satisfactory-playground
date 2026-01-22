@@ -15,7 +15,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies, importNodeAction, unimportNode, removeNodeAction } from './dependencySlice';
+import { updateNodeProperties, setDependencies, importNodeAction, removeNodeAction } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -85,16 +85,14 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
       generateTreeId,
     } = args;
 
-    // 
-    let mainTreeId: string | null = null;
+    // Generate the tree ID upfront so it can be used for both the tree and children IDs
+    const mainTreeId: string = generateTreeId(selectedItem);
 
     try {
       const state = getState();
       const existingTrees = state.dependencies.dependencyTrees;
-      
 
       // 1. Calculate the basic structure for the new item
-      // 
       const calculatedNewTree = await calculateDependencyTree(
         selectedItem, 
         0, // Start with 0 amount, let excess/imports drive it later?
@@ -103,7 +101,7 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
         {}, // Empty recipe map for initial calculation
         0, // depth
         [], // affected branches
-        "", // parentId
+        mainTreeId, // parentId - use tree ID to ensure children have proper unique IDs
         {}, // excess map
         {}, // import map
         existingTrees // Pass existing trees for context during calculation (e.g., nested imports)
@@ -113,8 +111,7 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
         throw new Error("Initial tree calculation failed");
       }
 
-      // Assign a unique ID and essential root properties
-      mainTreeId = generateTreeId(selectedItem);
+      // Assign the tree ID and essential root properties
       calculatedNewTree.uniqueId = mainTreeId;
       calculatedNewTree.isRoot = true;
       calculatedNewTree.depth = 0;
@@ -402,11 +399,16 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
           recipeSelections, 
           0, // Depth calculation might need adjustment if this isn't root
           [], // No affected branches needed for this specific recalculation
-          "", // No parent ID for root node calculation
+          targetTreeId, // Use tree ID as parentId so children have proper unique IDs
           {}, // Excess map might not be needed here, assuming root node calculation
           {}, // Empty import map
           dependencyTrees // Pass existing trees for context
         );
+        
+        if (!calculatedNode) {
+          logger.error(`[Thunk/Convert B->N] calculateDependencyTree returned null for ${targetTreeId}`);
+          return targetTreeId;
+        }
         
         const newChildren = calculatedNode.children || [];
         
@@ -748,6 +750,122 @@ const findAllRootsProducingItem = (
   }
   
   return results;
+};
+
+// --- HELPER FUNCTION TO APPLY DISTRIBUTION PLAN ---
+// Applies a distribution plan to import nodes, updating amounts and creating splits as needed
+const applyDistributionPlan = async (
+  child: DependencyNode,
+  distributionPlan: { rootId: string; amount: number }[],
+  importRef: { targetTreeId: string; targetNodeId: string },
+  parentNodeId: string,
+  dispatch: AppDispatch,
+  getState: () => RootState
+): Promise<void> => {
+  const treeId = parentNodeId.split('-')[0] || parentNodeId;
+  const currentTree = getState().dependencies.dependencyTrees[treeId];
+  if (!currentTree) return;
+  
+  const parentNode = findNodeById(currentTree, parentNodeId);
+  if (!parentNode) return;
+  
+  if (distributionPlan.length <= 1) {
+    // Single target - update original import
+    const targetRootId = distributionPlan.length === 1 ? distributionPlan[0].rootId : importRef.targetTreeId;
+    
+    // Update child's import reference if needed
+    if (targetRootId !== importRef.targetTreeId) {
+      await dispatch(updateNodeProperties({
+        nodeId: child.uniqueId,
+        updatedNode: { 
+          importReference: { targetTreeId: targetRootId, targetNodeId: targetRootId }
+        }
+      }));
+    }
+    
+    await dispatch(recalculateAndUpdateRootAmountThunk({
+      rootNodeId: targetRootId,
+      externalDemandChange: { importerNodeId: child.uniqueId, amount: distributionPlan.length === 1 ? distributionPlan[0].amount : 0 }
+    }));
+  } else {
+    // Multiple targets - update first, create splits for others
+    logger.info(`[ApplyDistribution] Creating ${distributionPlan.length} import splits for ${child.uniqueId}`);
+    
+    const firstSource = distributionPlan[0];
+    
+    // Update original child's amount and target
+    await dispatch(updateNodeProperties({
+      nodeId: child.uniqueId,
+      updatedNode: { 
+        amount: firstSource.amount,
+        importReference: { targetTreeId: firstSource.rootId, targetNodeId: firstSource.rootId }
+      }
+    }));
+    
+    await dispatch(recalculateAndUpdateRootAmountThunk({
+      rootNodeId: firstSource.rootId,
+      externalDemandChange: { importerNodeId: child.uniqueId, amount: firstSource.amount }
+    }));
+    
+    // Check if we already have split children from a previous redistribution
+    const existingSplitIds = (parentNode.children || [])
+      .filter(c => c.uniqueId.startsWith(`${child.uniqueId}-split-`))
+      .map(c => c.uniqueId);
+    
+    // Remove old splits first
+    if (existingSplitIds.length > 0) {
+      const currentParent = getState().dependencies.dependencyTrees[treeId];
+      if (currentParent) {
+        const parentNodeNow = findNodeById(currentParent, parentNodeId);
+        if (parentNodeNow) {
+          const filteredChildren = (parentNodeNow.children || []).filter(
+            c => !existingSplitIds.includes(c.uniqueId)
+          );
+          await dispatch(updateNodeProperties({
+            nodeId: parentNodeId,
+            updatedNode: { children: filteredChildren }
+          }));
+        }
+      }
+    }
+    
+    // Create new split children for remaining sources
+    for (let i = 1; i < distributionPlan.length; i++) {
+      const source = distributionPlan[i];
+      const newChildId = `${child.uniqueId}-split-${i}-${Date.now()}`;
+      
+      const newChildNode: DependencyNode = {
+        id: child.id,
+        uniqueId: newChildId,
+        amount: source.amount,
+        depth: child.depth,
+        isImport: true,
+        importReference: { targetTreeId: source.rootId, targetNodeId: source.rootId },
+        children: [],
+        recipe: undefined,
+      };
+      
+      // Add to parent
+      const currentParentTree = getState().dependencies.dependencyTrees[treeId];
+      if (currentParentTree) {
+        const parentNodeNow = findNodeById(currentParentTree, parentNodeId);
+        if (parentNodeNow) {
+          const updatedChildren = [...(parentNodeNow.children || []), newChildNode];
+          await dispatch(updateNodeProperties({
+            nodeId: parentNodeId,
+            updatedNode: { children: updatedChildren }
+          }));
+        }
+      }
+      
+      await dispatch(recalculateAndUpdateRootAmountThunk({
+        rootNodeId: source.rootId,
+        externalDemandChange: { importerNodeId: newChildId, amount: source.amount }
+      }));
+      
+      logger.info(`[ApplyDistribution] Created split ${newChildId} importing ${source.amount} from ${source.rootId}`);
+    }
+  }
 };
 
 // --- THUNK TO REDISTRIBUTE IMPORTS ACROSS MULTIPLE SOURCES ---
@@ -1425,7 +1543,7 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
                     demandForChildren, // <<< Use the correct demand
                     updatedNewRootNode.recipe?.id || null, 
                     stateAfterLinkAndRecalc.recipeSelections.selections, // Use latest selections
-                    0, [], "", {}, {}, 
+                    0, [], newRootId, {}, {}, // Use newRootId as parentId
                     stateAfterLinkAndRecalc.dependencies.dependencyTrees // Pass latest trees
                   ).then(node => node?.children || []);
                   

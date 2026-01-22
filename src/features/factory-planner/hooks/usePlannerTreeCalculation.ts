@@ -13,6 +13,7 @@ import {
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
 import { usePlannerNodeState } from './usePlannerNodeState';
 import { calculateAndAutoImportThunk } from '../store/importExportLogic';
+import { logger } from '../../../utils/logger';
 
 interface DependencySliceStateForCalc {
   dependencyTrees: Record<string, DependencyNode>;
@@ -108,7 +109,7 @@ export const createNewTreeStructure = async (
     );
 
     if (!tree) {
-      console.error(`Failed to calculate dependency tree for ${itemId}`);
+      logger.error(`Failed to calculate dependency tree for ${itemId}`);
       return null;
     }
 
@@ -122,7 +123,7 @@ export const createNewTreeStructure = async (
     return tree;
 
   } catch (error) {
-    console.error(`Error creating new tree structure for ${itemId}:`, error);
+    logger.error(`Error creating new tree structure for ${itemId}:`, error);
     return null;
   }
 };
@@ -231,7 +232,7 @@ export const usePlannerTreeCalculation = ({
         });
         
       } catch (error) {
-        console.error("Error dispatching or processing calculateAndAutoImportThunk:", error);
+        logger.error("Error dispatching or processing calculateAndAutoImportThunk:", error);
       }
     } else {
       // --- Non-Auto-Import Logic (Simpler) --- 
@@ -267,10 +268,10 @@ export const usePlannerTreeCalculation = ({
           resetValues(tree);
           setExpandedNodes(prev => ({ ...prev, [treeId]: true }));
         } else {
-          console.error("Failed to calculate non-auto-import tree");
+          logger.error("Failed to calculate non-auto-import tree");
         }
       } catch (error) {
-        console.error("Error calculating non-auto-import tree:", error);
+        logger.error("Error calculating non-auto-import tree:", error);
       }
     }
 

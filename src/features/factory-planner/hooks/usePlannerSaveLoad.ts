@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { logger } from '../../../utils/logger';
 import { RootState, AppDispatch } from '../../../store';
 import { DependencyNode, Recipe } from '../../../types'; // Assuming types are needed
 import { loadSavedState, loadRecipeSelections } from '../store'; // Actions to load Redux state
@@ -150,7 +151,7 @@ export const usePlannerSaveLoad = ({
                 // console.log(`[Init] Found state for "${name}", setting lastSavedStateInMemory.`);
                 setLastSavedStateInMemory(setups[name]);
             } else {
-                console.warn(`[Init] Name "${name}" found in localStorage, but no matching setup found in plannerSetups.`);
+                logger.warn(`[Init] Name "${name}" found in localStorage, but no matching setup found in plannerSetups.`);
                 localStorage.removeItem(LAST_ACTIVE_SETUP_KEY); // Clean up inconsistent state
                 setActiveSetupName(null);
             }
@@ -166,7 +167,7 @@ export const usePlannerSaveLoad = ({
             const rawData = localStorage.getItem(PLANNER_SETUPS_KEY);
             return rawData ? JSON.parse(rawData) : {};
         } catch (error) {
-            console.error("Error reading planner setups from localStorage:", error);
+            logger.error("Error reading planner setups from localStorage:", error);
             return {}; // Return empty object on error
         }
     }, []);
@@ -253,7 +254,7 @@ export const usePlannerSaveLoad = ({
     const saveSetup = useCallback(async (name: string) => {
         // console.log(`[Save Setup] Attempting to save as "${name}"...`);
         if (!name?.trim()) {
-            console.error("Save name cannot be empty.");
+            logger.error("Save name cannot be empty.");
             alert("Save name cannot be empty.");
             return;
         }
@@ -271,7 +272,7 @@ export const usePlannerSaveLoad = ({
             // console.log(`[Save Setup] Success. Active: "${name}", isDirty: false.`);
             alert(`Setup "${name}" saved.`);
         } catch (error) {
-            console.error(`[Save Setup] Error saving setup "${name}":`, error);
+            logger.error(`[Save Setup] Error saving setup "${name}":`, error);
             // Check for quota exceeded error specifically
             if (error instanceof DOMException && error.name === 'QuotaExceededError') {
                 alert(`Failed to save setup "${name}": LocalStorage quota exceeded. Please delete some setups or clear browser data.`);
@@ -288,7 +289,7 @@ export const usePlannerSaveLoad = ({
         const stateToLoad = setups[name];
 
         if (!stateToLoad) {
-            console.error(`[Load Setup] Setup "${name}" not found.`);
+            logger.error(`[Load Setup] Setup "${name}" not found.`);
             alert(`Setup "${name}" not found.`);
             return;
         }
@@ -341,8 +342,8 @@ export const usePlannerSaveLoad = ({
             // Feedback to user might be good here
 
         } catch (error) {
-            console.error(`[Load Setup] Error loading setup "${name}":`, error);
-            alert(`Failed to load setup "${name}". Check console for details.`);
+            logger.error(`[Load Setup] Error loading setup "${name}":`, error);
+            alert(`Failed to load setup "${name}". Check console for details.`);;
             // Should we attempt to revert state? Probably too complex.
         }
 
@@ -361,7 +362,7 @@ export const usePlannerSaveLoad = ({
 
         // console.log(`[Delete Setup] Attempting to delete "${name}"...`);
         const setups = getAllSetups();
-        if (!setups[name]) { console.warn(`[Delete Setup] Attempted to delete non-existent setup "${name}".`); return; }
+        if (!setups[name]) { logger.warn(`[Delete Setup] Attempted to delete non-existent setup "${name}".`); return; }
 
         const wasActive = localStorage.getItem(LAST_ACTIVE_SETUP_KEY) === name;
         delete setups[name];

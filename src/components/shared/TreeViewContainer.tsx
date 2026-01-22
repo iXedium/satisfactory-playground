@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 import { DependencyNode, Item } from '../../types';
 import DependencyTree from '../../features/factory-planner/components/DependencyTree';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import TreeNode from '../../features/factory-planner/components/TreeNode';
 import { ViewDensity } from '../../features/factory-planner/hooks/usePlannerDisplayOptions';
+import { useTreeNavigation } from '../../contexts/TreeNavigationContext';
+import { setHighlightedNode } from '../../features/factory-planner/store/dependencySlice';
+import { logger } from '../../utils/logger';
 
 interface TreeViewContainerProps {
   treesArray: DependencyNode[];
@@ -51,6 +54,47 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
     onOptimizeAllMachines
   },
   ref) => {
+
+  const dispatch = useDispatch<AppDispatch>();
+  const { navigationRequest, clearNavigationRequest } = useTreeNavigation();
+
+  // Handle navigation requests - expand path and scroll to target
+  useEffect(() => {
+    if (!navigationRequest) return;
+
+    logger.debug('[TreeViewContainer] Handling navigation request:', navigationRequest);
+
+    // Expand all nodes in the path
+    const newExpandedNodes = { ...expandedNodes };
+    for (const nodeId of navigationRequest.pathNodeIds) {
+      newExpandedNodes[nodeId] = true;
+    }
+    setExpandedNodes(newExpandedNodes);
+
+    // Clear the request
+    clearNavigationRequest();
+
+    // Wait for React to re-render with expanded nodes, then scroll
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const targetElement = document.querySelector(`[data-node-id="${navigationRequest.targetNodeId}"]`);
+        logger.debug('[TreeViewContainer] Looking for element after expand:', navigationRequest.targetNodeId, 'Found:', !!targetElement);
+        
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Highlight the target for a moment
+          dispatch(setHighlightedNode(navigationRequest.targetNodeId));
+          setTimeout(() => {
+            dispatch(setHighlightedNode(null));
+          }, 1500);
+          logger.debug('[TreeViewContainer] Scrolled and highlighted');
+        } else {
+          logger.warn('[TreeViewContainer] Target element still not found after expansion');
+        }
+      }, 100); // Small delay to let React render
+    });
+  }, [navigationRequest, expandedNodes, setExpandedNodes, clearNavigationRequest, dispatch]);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination || result.destination.index === result.source.index) {

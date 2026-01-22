@@ -1,6 +1,7 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 import { getAllItems, getAllRecipes } from '../../../data';
 import { Item } from '../../../types';
+import { logger } from '../../../utils/logger';
 
 export interface PlannerItemSelectionState {
   items: Item[];
@@ -67,7 +68,7 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
         setRecentItems(JSON.parse(savedRecentItems));
       }
     } catch (error) {
-      console.error("Error loading last session recent items:", error);
+      logger.error("Error loading last session recent items:", error);
       localStorage.removeItem(LS_RECENT_ITEMS); // Clear potentially corrupt key
     }
   }, []); // Run only on mount
@@ -81,7 +82,7 @@ export const usePlannerItemSelection = (): PlannerItemSelectionState => {
         localStorage.removeItem(LS_RECENT_ITEMS); // Remove key if empty
       }
     } catch (error) {
-      console.error("Error saving last session recent items:", error);
+      logger.error("Error saving last session recent items:", error);
     }
   }, [recentItems]);
 

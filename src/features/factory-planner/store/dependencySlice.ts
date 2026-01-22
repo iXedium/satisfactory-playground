@@ -14,6 +14,7 @@ import {
 import {
   productionSliceExtraReducers,
 } from './productionUpdateLogic';
+import { logger } from '../../../utils/logger';
 
 // --- Define Actions needed by thunks/reducers --- 
 // Moved from importExportLogic.ts to break circular dependency
@@ -349,7 +350,7 @@ const dependencySlice = createSlice({
       }
       if (!treeUpdated) {
          // Still log warnings
-         console.warn(`Node ${nodeId} not found in any tree for update.`);
+         logger.warn(`Node ${nodeId} not found in any tree for update.`);
       }
       state.lastUpdateTime = Date.now();
     },
@@ -375,7 +376,7 @@ const dependencySlice = createSlice({
         });
         state.accumulatedDependencies = newAccumulated;
       } else {
-        console.warn(`[Reducer/removeNodeAction] Node ${nodeIdToRemove} not found.`);
+        logger.warn(`[Reducer/removeNodeAction] Node ${nodeIdToRemove} not found.`);
       }
     },
   },
@@ -427,13 +428,13 @@ export const loadNodeRecipe =
     // Check if dependencies state exists
     if (!state.dependencies) {
         // Still log errors
-        console.error(`[RECIPE LOADER] Dependencies state is undefined`);
+        logger.error(`[RECIPE LOADER] Dependencies state is undefined`);
         return;
     }
     const tree = state.dependencies.dependencyTrees[treeId];
     if (!tree) {
       // Still log errors
-      console.error(`[RECIPE LOADER] Tree ${treeId} not found`);
+      logger.error(`[RECIPE LOADER] Tree ${treeId} not found`);
       return;
     }
     
@@ -441,7 +442,7 @@ export const loadNodeRecipe =
     const node = findNodeById(tree, nodeId);
     if (!node) {
       // Still log errors
-      console.error(`[RECIPE LOADER] Node ${nodeId} not found in tree ${treeId}`);
+      logger.error(`[RECIPE LOADER] Node ${nodeId} not found in tree ${treeId}`);
       return;
     }
     
@@ -455,7 +456,7 @@ export const loadNodeRecipe =
     // Instead, check if recipe exists directly
     if (!node.recipe) { // Check if recipe object is missing
       // Still log errors
-      console.error(`[RECIPE LOADER] Node ${nodeId} has no recipe information. Attempting default.`);
+      logger.error(`[RECIPE LOADER] Node ${nodeId} has no recipe information. Attempting default.`);
       try {
         const recipe = await getRecipeByOutput(node.id);
         if (recipe) {
@@ -463,11 +464,11 @@ export const loadNodeRecipe =
           return;
         } else {
           // Still log errors
-          console.error(`[RECIPE LOADER] No default recipe found for item ${node.id}`);
+          logger.error(`[RECIPE LOADER] No default recipe found for item ${node.id}`);
         }
       } catch (error) {
         // Still log errors
-        console.error(`[RECIPE LOADER] Error getting default recipe:`, error);
+        logger.error(`[RECIPE LOADER] Error getting default recipe:`, error);
       }
       return; // Return if no recipe and default fetch failed/didn't happen
     }

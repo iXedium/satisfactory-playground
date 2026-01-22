@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '../../../utils/logger';
 
 // Define the new type
 export type ViewDensity = 'relaxed' | 'compact';
@@ -68,7 +69,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       if (savedShowHiddenNodes) setShowHiddenNodes(JSON.parse(savedShowHiddenNodes));
 
     } catch (error) {
-      console.error("Error loading last session display options:", error);
+      logger.error("Error loading last session display options:", error);
       // Clear potentially corrupt keys
       localStorage.removeItem(LS_VIEW_DENSITY);
       localStorage.removeItem(LS_SHOW_EXTENSIONS);
@@ -91,7 +92,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       localStorage.setItem(LS_AUTO_IMPORT, JSON.stringify(autoImport));
       localStorage.setItem(LS_SHOW_HIDDEN_NODES, JSON.stringify(showHiddenNodes));
     } catch (error) {
-      console.error("Error saving last session display options:", error);
+      logger.error("Error saving last session display options:", error);
     }
   }, [viewDensity, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport, showHiddenNodes]);
 

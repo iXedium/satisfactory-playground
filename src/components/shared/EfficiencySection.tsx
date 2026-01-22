@@ -158,9 +158,11 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   // Handle click to make popup persistent
   const handleRateClick = async (event: MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
+    logger.debug('[EfficiencySection] handleRateClick called, isPersistent:', isPersistent);
     
     if (isPersistent) {
       // Already persistent, clicking again closes it
+      logger.debug('[EfficiencySection] Closing persistent popup');
       setIsPersistent(false);
       setIsHoveringRate(false);
       setConsumptionData([]);
@@ -172,13 +174,16 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     // Make popup persistent - need to fetch data if not already shown
     if (!isHoveringRate) {
       // Fetch the data first
+      logger.debug('[EfficiencySection] Fetching data before making persistent');
       await handleRateMouseEnter(event);
     }
+    logger.debug('[EfficiencySection] Making popup persistent');
     setIsPersistent(true);
   };
 
   // Handle when an item in the popup is clicked
-  const handlePopupItemClick = useCallback(() => {
+  const handlePopupItemClick = useCallback((consumingTreeId: string, consumerNodeId: string) => {
+    logger.debug('[EfficiencySection] handlePopupItemClick called', { consumingTreeId, consumerNodeId });
     // Close the popup after scrolling to the item
     setIsPersistent(false);
     setIsHoveringRate(false);

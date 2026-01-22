@@ -6,6 +6,8 @@ import { ConsumerInfo } from '../../utils/consumptionUtils'; // Import the type
 import Icon from '../Icon';
 import { setHighlightedNode } from '../../features/factory-planner/store/dependencySlice';
 import { AppDispatch } from '../../store';
+import { logger } from '../../utils/logger';
+import { useTreeNavigation } from '../../contexts/TreeNavigationContext';
 
 // Separate component for each consumer item to handle hover state
 interface ConsumerItemProps {
@@ -73,6 +75,7 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({
   onItemClick,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { requestNavigateToNode } = useTreeNavigation();
 
   const sectionStyle: React.CSSProperties = {
     backgroundColor: theme.colors.darker, 
@@ -116,21 +119,24 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({
   };
 
   const handleItemClick = (consumer: ConsumerInfo) => {
-    if (!isPersistent) return;
+    logger.debug('[ConsumptionReportPopup] handleItemClick called', { 
+      isPersistent, 
+      consumerNodeId: consumer.consumerNodeId,
+      consumingTreeId: consumer.consumingTreeId 
+    });
     
-    // Scroll to the consumer node
-    const targetElement = document.querySelector(`[data-node-id="${consumer.consumerNodeId}"]`);
-    if (targetElement) {
-      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // Highlight the target for a moment
-      dispatch(setHighlightedNode(consumer.consumerNodeId));
-      setTimeout(() => {
-        dispatch(setHighlightedNode(null));
-      }, 1500);
+    if (!isPersistent) {
+      logger.debug('[ConsumptionReportPopup] Not persistent, ignoring click');
+      return;
     }
     
+    // Request navigation to the consumer node
+    // This will expand all parent nodes and then scroll to the target
+    logger.debug('[ConsumptionReportPopup] Requesting navigation to node');
+    requestNavigateToNode(consumer.consumerNodeId, consumer.consumingTreeId);
+    
     // Call the callback to close the popup
+    logger.debug('[ConsumptionReportPopup] Calling onItemClick callback');
     onItemClick?.(consumer.consumingTreeId, consumer.consumerNodeId);
   };
 

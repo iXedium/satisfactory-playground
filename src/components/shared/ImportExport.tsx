@@ -1,6 +1,7 @@
 import React from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
+import { logger } from '../../utils/logger';
 import { DependencyNode } from '../../types';
 import { calculateAccumulatedFromTree } from '../../utils';
 
@@ -51,7 +52,7 @@ const ImportExport: React.FC<ImportExportProps> = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error exporting data:", error);
+      logger.error("Error exporting data:", error);
       alert("Failed to export data. See console for details.");
     }
   };
@@ -71,7 +72,7 @@ const ImportExport: React.FC<ImportExportProps> = ({
           onImport(importedData);
         }
       } catch (error) {
-        console.error("Error importing data:", error);
+        logger.error("Error importing data:", error);
         alert("Failed to import data. The file may be corrupted or in the wrong format.");
       }
     };

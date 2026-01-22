@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
+import { logger } from '../../../utils/logger';
 import { DependencyNode } from '../../../types';
 import { DependencyState } from '../store/dependencySlice';
 import { 
@@ -39,14 +40,14 @@ export const usePlannerImportExport = ({
     sourceTreeId: string
   ) => {
     if (!sourceNode || !targetTreeId || !sourceTreeId) {
-      console.error('[IMPORT ERROR] Missing required parameters for import', { sourceNode, targetTreeId, sourceTreeId });
+      logger.error('[IMPORT ERROR] Missing required parameters for import', { sourceNode, targetTreeId, sourceTreeId });
       return;
     }
     
     
     const targetTree = dependencies.dependencyTrees[targetTreeId];
     if (!targetTree) {
-      console.warn(`[IMPORT WARNING] Target tree ${targetTreeId} not found in current state. This may be expected if the tree was just created.`);
+      logger.warn(`[IMPORT WARNING] Target tree ${targetTreeId} not found in current state. This may be expected if the tree was just created.`);
     } else {
       // ... (optional debug logging for existing imports) ...
     }
@@ -93,7 +94,7 @@ export const usePlannerImportExport = ({
     }
     
     if (!foundNode || !foundTreeId) {
-      console.error("Could not find node to import");
+      logger.error("Could not find node to import");
       return;
     }
     
@@ -115,7 +116,7 @@ export const usePlannerImportExport = ({
         await new Promise(res => setTimeout(res, 50)); 
         targetTreeId = newTreeId;
       } catch (error) {
-         console.error("[IMPORT ERROR] Failed to create new tree during import:", error);
+         logger.error("[IMPORT ERROR] Failed to create new tree during import:", error);
          return; // Stop if tree creation fails
       }
     }

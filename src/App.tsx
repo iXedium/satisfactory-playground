@@ -4,6 +4,7 @@ import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner
 import "./styles/App.css";
 import { useInitialization, InitializationProvider } from "./contexts/InitializationContext";
 import { HideToggleDragProvider } from "./contexts/HideToggleDragContext";
+import { TreeNavigationProvider } from "./contexts/TreeNavigationContext";
 
 const App: React.FC = () => {
   const { isLoading, isError, errorMessage } = useInitialization();
@@ -88,7 +89,9 @@ const App: React.FC = () => {
 const AppWithProvider: React.FC = () => (
   <InitializationProvider>
     <HideToggleDragProvider>
-      <App />
+      <TreeNavigationProvider>
+        <App />
+      </TreeNavigationProvider>
     </HideToggleDragProvider>
   </InitializationProvider>
 );

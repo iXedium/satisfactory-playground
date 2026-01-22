@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, MouseEvent } from 'react';
 import ReactDOM from 'react-dom';
 import { Item, Recipe } from '../../types';
+import { logger } from '../../utils/logger';
 import StyledSelect from './StyledSelect';
 import Icon from '../Icon';
 import { theme } from '../../styles/theme';
@@ -49,7 +50,7 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
             onRecipeSelect(matchingRecipe ? matchingRecipe.id : recipes[0].id);
           }
         })
-        .catch(console.error);
+        .catch(err => logger.error('Error fetching recipes for item:', err));
     } else {
       setFilteredRecipes([]);
     }

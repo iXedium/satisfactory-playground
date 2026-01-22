@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { logger } from '../../../utils/logger';
 import { AppDispatch, RootState } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
@@ -98,7 +99,7 @@ export const usePlannerExcessHandling = ({
                     }
                 }
             } else if (result.status === 'rejected') {
-                 console.error(`[handleExcessChange] checkAndConvertNodeTypeThunk failed for root ${rootIdsToCheck[index]}:`, result.reason);
+                 logger.error(`[handleExcessChange] checkAndConvertNodeTypeThunk failed for root ${rootIdsToCheck[index]}:`, result.reason);
             }
         });
 

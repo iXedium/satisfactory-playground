@@ -7,6 +7,7 @@ import PlannerContent from "../../../components/shared/PlannerContent";
 import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
+import { logger } from "../../../utils/logger";
 
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
@@ -88,7 +89,7 @@ const FactoryPlanner: React.FC = () => {
       // Default to true if nothing is saved or value is invalid
       return savedValue !== null ? JSON.parse(savedValue) : true; 
     } catch (error) {
-      console.error("Error loading summary visibility state:", error);
+      logger.error("Error loading summary visibility state:", error);
       return true; // Default to true on error
     }
   });
@@ -99,7 +100,7 @@ const FactoryPlanner: React.FC = () => {
     try {
       localStorage.setItem(LS_SUMMARY_VISIBLE_KEY, JSON.stringify(isSummaryVisible));
     } catch (error) {
-      console.error("Error saving summary visibility state:", error);
+      logger.error("Error saving summary visibility state:", error);
     }
   }, [isSummaryVisible]);
   // ----------------------------------------------------------
@@ -118,7 +119,7 @@ const FactoryPlanner: React.FC = () => {
   const itemSummaryData = useMemo(() => {
     // Wait until itemsMap is populated before calculating
     if (!itemsMap || Object.keys(itemsMap).length === 0) {
-      console.log("itemsMap not ready, returning empty summary.");
+      logger.debug("itemsMap not ready, returning empty summary.");
       return [];
     }
 

@@ -93,11 +93,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     return sourceRoot.recipe.name;
   }, [node.isImport, node.importReference, dependencyTrees]);
   
-  // Check if this root should be highlighted
+  // Check if this node should be highlighted (works for any node, not just roots)
   const isHighlighted = useMemo(() => {
-    if (!node.isRoot || !highlightedNodeId) return false;
+    if (!highlightedNodeId) return false;
     return node.uniqueId === highlightedNodeId;
-  }, [node.isRoot, node.uniqueId, highlightedNodeId]);
+  }, [node.uniqueId, highlightedNodeId]);
 
   // Update isExpanded when expandedNodes changes, defaulting to false if not present
   useEffect(() => {

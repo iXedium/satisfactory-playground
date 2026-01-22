@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
+import { logger } from '../../../utils/logger';
 
 // Define keys
 const LS_EXCESS_MAP = 'lastSession_savedExcessMap';
@@ -74,7 +75,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
       }
 
     } catch (error) {
-      console.error("[Node State Init] Error loading last session node state:", error);
+      logger.error("[Node State Init] Error loading last session node state:", error);
       // Clear potentially corrupt keys
       localStorage.removeItem(LS_EXCESS_MAP);
       localStorage.removeItem(LS_MACHINE_COUNT);
@@ -92,7 +93,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   // Auto-save individual states to LAST SESSION localStorage (Only if not empty)
   useEffect(() => { 
     if (!isEmptyObject(excessMap)) { // Check if not empty
-      try { localStorage.setItem(LS_EXCESS_MAP, JSON.stringify(excessMap)); } catch (e) { console.error("Error saving last session excessMap:", e); }
+      try { localStorage.setItem(LS_EXCESS_MAP, JSON.stringify(excessMap)); } catch (e) { logger.error("Error saving last session excessMap:", e); }
     } else {
       // Optional: Remove key if state becomes empty after being non-empty? Or just don't save.
       // localStorage.removeItem(LS_EXCESS_MAP);
@@ -101,7 +102,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   
   useEffect(() => { 
     if (!isEmptyObject(machineCountMap)) { // Check if not empty
-      try { localStorage.setItem(LS_MACHINE_COUNT, JSON.stringify(machineCountMap)); } catch (e) { console.error("Error saving last session machineCountMap:", e); }
+      try { localStorage.setItem(LS_MACHINE_COUNT, JSON.stringify(machineCountMap)); } catch (e) { logger.error("Error saving last session machineCountMap:", e); }
     } else {
       // localStorage.removeItem(LS_MACHINE_COUNT);
     }
@@ -109,7 +110,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   
   useEffect(() => { 
     if (!isEmptyObject(machineMultiplierMap)) { // Check if not empty
-      try { localStorage.setItem(LS_MACHINE_MULTI, JSON.stringify(machineMultiplierMap)); } catch (e) { console.error("Error saving last session machineMultiplierMap:", e); }
+      try { localStorage.setItem(LS_MACHINE_MULTI, JSON.stringify(machineMultiplierMap)); } catch (e) { logger.error("Error saving last session machineMultiplierMap:", e); }
     } else {
       // localStorage.removeItem(LS_MACHINE_MULTI);
     }
@@ -117,7 +118,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   
   useEffect(() => { 
     if (!isEmptyObject(expandedNodes)) { // Check if not empty
-      try { localStorage.setItem(LS_EXPANDED_NODES, JSON.stringify(expandedNodes)); } catch (e) { console.error("Error saving last session expandedNodes:", e); }
+      try { localStorage.setItem(LS_EXPANDED_NODES, JSON.stringify(expandedNodes)); } catch (e) { logger.error("Error saving last session expandedNodes:", e); }
     } else {
       // localStorage.removeItem(LS_EXPANDED_NODES);
     }
@@ -125,7 +126,7 @@ export const usePlannerNodeState = (): PlannerNodeState => {
   
   useEffect(() => { 
     if (!isEmptyObject(nodeExtensionOverrides)) { // Check if not empty
-      try { localStorage.setItem(LS_NODE_OVERRIDES, JSON.stringify(nodeExtensionOverrides)); } catch (e) { console.error("Error saving last session nodeExtensionOverrides:", e); }
+      try { localStorage.setItem(LS_NODE_OVERRIDES, JSON.stringify(nodeExtensionOverrides)); } catch (e) { logger.error("Error saving last session nodeExtensionOverrides:", e); }
     } else {
       // localStorage.removeItem(LS_NODE_OVERRIDES);
     }
