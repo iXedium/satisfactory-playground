@@ -520,7 +520,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             baselineValues={comparisonResult.snapshotValues ? {
               excess: comparisonResult.snapshotValues.excess,
               amount: comparisonResult.snapshotValues.amount,
-              efficiency: comparisonResult.snapshotValues.efficiency,
+              efficiency: comparisonResult.snapshotValues.efficiency/100.0,
             } : null}
             changes={{
               excess: comparisonResult.changes.excess,

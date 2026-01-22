@@ -58,6 +58,7 @@ export interface FactoryPlannerHookResult {
   accumulateExtensions: boolean;
   showMachines: boolean;
   showMachineMultiplier: boolean;
+  showHiddenNodes: boolean;
   nodeExtensionOverrides: Record<string, boolean>;
   isAddItemCollapsed: boolean;
   recentItems: string[];
@@ -76,6 +77,7 @@ export interface FactoryPlannerHookResult {
   setAccumulateExtensions: React.Dispatch<React.SetStateAction<boolean>>;
   setShowMachines: React.Dispatch<React.SetStateAction<boolean>>;
   setShowMachineMultiplier: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowHiddenNodes: React.Dispatch<React.SetStateAction<boolean>>;
   setIsAddItemCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   updateRecentItems: (itemId: string) => void;
   removeRecentItem: (itemId: string) => void;
