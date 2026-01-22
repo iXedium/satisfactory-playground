@@ -15,12 +15,18 @@ interface EfficiencySectionProps {
   excess: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  parentNodeId?: string;           // Parent node ID (for import controls)
+  hasMultipleImportSources?: boolean;  // True if multiple sources for same item
   nodeId: string;
   treeId: string;
   itemName: string;
   onExcessChange?: (value: number) => void;
   onMaxExcess?: () => void;
   onResetExcess?: () => void;
+  // Import amount controls (reusing same pattern as excess)
+  onImportAmountChange?: (value: number) => void;
+  onMaxImport?: () => void;
+  onResetImport?: () => void;
   containerStyle?: React.CSSProperties;
 }
 
@@ -30,12 +36,17 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   excess,
   isByproduct = false,
   isImport = false,
+  parentNodeId,
+  hasMultipleImportSources = false,
   nodeId,
   treeId,
   itemName,
   onExcessChange,
   onMaxExcess,
   onResetExcess,
+  onImportAmountChange,
+  onMaxImport,
+  onResetImport,
   containerStyle,
 }) => {
   const allTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
@@ -127,6 +138,9 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
 
   const rateDisplayCursorClass = (isByproduct || isImport) ? 'cursor-default' : '';
 
+  // Show import controls for multi-source imports (reuse ExcessControls component)
+  const showImportControls = isImport && hasMultipleImportSources && parentNodeId && onImportAmountChange && onMaxImport && onResetImport;
+
   return (
     <>
       <div
@@ -146,6 +160,17 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
               onExcessChange={onExcessChange}
               onMaxExcess={onMaxExcess}
               onResetExcess={onResetExcess}
+            />
+          )}
+
+          {/* Import Controls for multi-source imports - reusing ExcessControls */}
+          {showImportControls && (
+            <ExcessControls
+              className="efficiency-import-controls"
+              excess={amount}
+              onExcessChange={onImportAmountChange}
+              onMaxExcess={onMaxImport}
+              onResetExcess={onResetImport}
             />
           )}
 

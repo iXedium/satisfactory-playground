@@ -7,6 +7,7 @@ import {
   getImportReference, 
   hasImportReference 
 } from '../../../utils/nodeReferenceUtils';
+import { redistributeChildImportsThunk } from './importExportLogic';
 // Potentially needed from dependencySlice if state access changes:
 // import { updateNodeProperties } from './dependencySlice'; 
 
@@ -334,5 +335,19 @@ export const updateTreeProduction =
         node.amount,
         node.targetTreeId
       ));
+    }
+    
+    // After updating children, trigger multi-source redistribution if needed
+    // This handles the case where excess changes on a parent and children need to redistribute imports
+    if (productionType === 'excess' || productionType === 'forced') {
+      const nodeAfterUpdate = findNodeById(stateAfterUpdate.dependencies.dependencyTrees[treeId], nodeId);
+      if (nodeAfterUpdate && nodeAfterUpdate.children && nodeAfterUpdate.children.length > 0) {
+        // Check if any children are imports
+        const hasImportChildren = nodeAfterUpdate.children.some(child => hasImportReference(child));
+        if (hasImportChildren) {
+          // Trigger redistribution for this node's children
+          await dispatch(redistributeChildImportsThunk({ parentNodeId: nodeId, treeId }));
+        }
+      }
     }
   }; 

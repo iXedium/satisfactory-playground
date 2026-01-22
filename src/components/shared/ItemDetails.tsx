@@ -22,6 +22,7 @@ interface ItemDetailsProps {
   nominalRate?: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  importSourceRecipeName?: string; // Recipe name of the source node for imports
   getItemColor?: () => string;
   viewDensity?: ViewDensity; // ADD viewDensity prop (optional for now)
 }
@@ -38,6 +39,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   nominalRate = 0,
   isByproduct = false,
   isImport = false,
+  importSourceRecipeName,
   getItemColor = () => theme.colors.primary,
   viewDensity = 'relaxed', // Default to relaxed if not provided
 }) => {
@@ -160,7 +162,10 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
           <div
             className="item-details-name-rate"
           >
-            <span>{item.name}</span>
+            <span>
+              {isImport && importSourceRecipeName ? `[${importSourceRecipeName}] ` : ''}
+              {item.name}
+            </span>
             {/* Render rate here ONLY if relaxed */}
             {!isCompact && nominalRate > 0 && !isByproduct && !isImport && (
               <span className="item-details-nominal-rate">

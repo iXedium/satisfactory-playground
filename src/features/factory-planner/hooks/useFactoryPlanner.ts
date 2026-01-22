@@ -92,6 +92,9 @@ export interface FactoryPlannerHookResult {
   handleDeleteTree: (treeId: string) => void;
   handleImportNode: (nodeId: string) => Promise<void>;
   handleUnimportNode: (nodeId: string) => void;
+  handleSetImportAmount: (treeId: string, nodeId: string, parentNodeId: string, newAmount: number) => void;
+  handleResetImportAmount: (treeId: string, nodeId: string, parentNodeId: string) => void;
+  handleMaxImportAmount: (treeId: string, nodeId: string, parentNodeId: string, machineCountMap: Record<string, number>, machineMultiplierMap: Record<string, number>, excessMap: Record<string, number>) => void;
   handleNodeUpdate: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   clearSavedData: () => void;
   handleToggleNodeExtensions?: (nodeId: string) => void;
@@ -257,6 +260,9 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   const {
     handleImportNode,
     handleUnimport,
+    handleSetImportAmount,
+    handleResetImportAmount,
+    handleMaxImportAmount,
   } = usePlannerImportExport({
     dependencies,
     handleCreateNewTree,
@@ -525,6 +531,9 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     handleDeleteTree,
     handleImportNode,
     handleUnimportNode: handleUnimport,
+    handleSetImportAmount,
+    handleResetImportAmount,
+    handleMaxImportAmount,
     handleNodeUpdate,
     clearSavedData,
     handleToggleNodeExtensions,

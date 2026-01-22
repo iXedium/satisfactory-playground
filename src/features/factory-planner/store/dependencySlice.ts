@@ -34,6 +34,7 @@ export const removeNodeAction = createAction<string>('dependency/removeNode');
 interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
   accumulatedDependencies: Record<string, AccumulatedNode>;
+  highlightedNodeId: string | null;  // Node ID to highlight (e.g., when hovering import)
   // Additional properties for better state management
   errors: string[]; // Track errors like circular references
   lastUpdateTime: number;
@@ -45,6 +46,7 @@ export type { DependencyState };
 const initialState: DependencyState = {
   dependencyTrees: {},
   accumulatedDependencies: {},
+  highlightedNodeId: null,
   errors: [],
   lastUpdateTime: 0
 };
@@ -220,6 +222,13 @@ const dependencySlice = createSlice({
       }
     },
     
+    setHighlightedNode: (
+      state,
+      action: PayloadAction<string | null>
+    ) => {
+      state.highlightedNodeId = action.payload;
+    },
+    
     updateNodeProperties: (
       state,
       // Restore original payload structure
@@ -325,6 +334,7 @@ export const {
   clearErrors,
   toggleNodeSelected,
   toggleNodeCompleted,
+  setHighlightedNode,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

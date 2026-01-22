@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useSelector } from "react-redux";
 import ItemNode from "./ItemNode";
 import { DependencyNode } from "../../../types";
 import { theme } from "../../../styles/theme";
 import { toggleChildrenVisibility } from "../../../utils/nodeReferenceUtils";
 import { TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
 import { ViewDensity } from "../hooks/usePlannerDisplayOptions";
+import { RootState } from "../../../store";
 
 interface TreeNodeProps {
   node: DependencyNode;
   depth: number;
   treeId: string;
+  parentNodeId?: string;             // Parent node ID for import controls
+  siblingNodes?: DependencyNode[];   // Siblings for multi-source detection
   onRecipeChange?: (nodeId: string, recipeId: string) => void;
   onExcessChange?: (nodeId: string, excess: number) => void;
   excessMap: Record<string, number>;
@@ -38,6 +42,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   node,
   depth,
   treeId,
+  parentNodeId,
+  siblingNodes = [],
   onRecipeChange,
   onExcessChange,
   excessMap,
@@ -64,6 +70,34 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = node.children && node.children.length > 0;
+
+  // Check if this is an import node with multiple sources for the same item
+  const hasMultipleImportSources = useMemo(() => {
+    if (!node.isImport || !siblingNodes.length) return false;
+    
+    // Count how many import siblings have the same item ID
+    const importSiblingsForSameItem = siblingNodes.filter(
+      sibling => sibling.isImport && sibling.id === node.id
+    );
+    return importSiblingsForSameItem.length > 1;
+  }, [node.isImport, node.id, siblingNodes]);
+
+  // Get source root's recipe name for import nodes
+  const dependencyTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
+  const highlightedNodeId = useSelector((state: RootState) => state.dependencies.highlightedNodeId);
+  
+  const importSourceRecipeName = useMemo(() => {
+    if (!node.isImport || !node.importReference) return undefined;
+    const sourceRoot = dependencyTrees[node.importReference.targetTreeId];
+    if (!sourceRoot?.recipe?.name) return undefined;
+    return sourceRoot.recipe.name;
+  }, [node.isImport, node.importReference, dependencyTrees]);
+  
+  // Check if this root should be highlighted
+  const isHighlighted = useMemo(() => {
+    if (!node.isRoot || !highlightedNodeId) return false;
+    return node.uniqueId === highlightedNodeId;
+  }, [node.isRoot, node.uniqueId, highlightedNodeId]);
 
   // Update isExpanded when expandedNodes changes, defaulting to false if not present
   useEffect(() => {
@@ -151,6 +185,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         node={child}
         depth={depth + 1}
         treeId={treeId}
+        parentNodeId={node.uniqueId}
+        siblingNodes={sortedChildren}
         onRecipeChange={onRecipeChange}
         onExcessChange={onExcessChange}
         excessMap={excessMap}
@@ -190,6 +226,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           borderRadius: theme.border.radius,
           position: "relative",
           zIndex: 0,
+          ...(isHighlighted && {
+            outline: '3px solid #FF6B6B',
+            outlineOffset: '2px',
+          }),
         }}
         data-node-id={node.uniqueId}
       >
@@ -223,6 +263,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             isRoot={node.isRoot}
             isByproduct={node.isByproduct}
             isImport={node.isImport}
+            importSourceRecipeName={importSourceRecipeName}
+            parentNodeId={parentNodeId}
+            hasMultipleImportSources={hasMultipleImportSources}
             recipes={node.availableRecipes}
             selectedRecipeId={node.recipe?.id ?? undefined}
             onRecipeChange={(recipeId) =>

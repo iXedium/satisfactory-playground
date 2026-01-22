@@ -7,7 +7,10 @@ import {
   importNodeAction, 
   checkAndConvertNodeTypeThunk,
   autoImportNodeChildrenThunk,
-  unimportNodeThunk
+  unimportNodeThunk,
+  setImportAmountThunk,
+  resetImportAmountThunk,
+  maxImportAmountThunk,
 } from '../store';
 import { findNodeById } from '../../../utils';
 import { hasImportReference, getImportReference } from '../../../utils/nodeReferenceUtils';
@@ -132,8 +135,47 @@ export const usePlannerImportExport = ({
     await importNodeForTreeInternal(nodeId);
   }, [importNodeForTreeInternal]);
 
+  // Import amount controls for multi-source imports
+  const handleSetImportAmount = useCallback((
+    treeId: string,
+    nodeId: string,
+    parentNodeId: string,
+    newAmount: number
+  ) => {
+    dispatch(setImportAmountThunk({ treeId, importNodeId: nodeId, parentNodeId, newAmount }));
+  }, [dispatch]);
+
+  const handleResetImportAmount = useCallback((
+    treeId: string,
+    nodeId: string,
+    parentNodeId: string
+  ) => {
+    dispatch(resetImportAmountThunk({ treeId, importNodeId: nodeId, parentNodeId }));
+  }, [dispatch]);
+
+  const handleMaxImportAmount = useCallback((
+    treeId: string,
+    nodeId: string,
+    parentNodeId: string,
+    machineCountMap: Record<string, number>,
+    machineMultiplierMap: Record<string, number>,
+    excessMap: Record<string, number>
+  ) => {
+    dispatch(maxImportAmountThunk({ 
+      treeId, 
+      importNodeId: nodeId, 
+      parentNodeId,
+      machineCountMap,
+      machineMultiplierMap,
+      excessMap
+    }));
+  }, [dispatch]);
+
   return {
     handleImportNode: handleImportNodeById, // Now returns Promise<void>
     handleUnimport,
+    handleSetImportAmount,
+    handleResetImportAmount,
+    handleMaxImportAmount,
   };
 }; 

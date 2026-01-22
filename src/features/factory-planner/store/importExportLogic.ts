@@ -644,7 +644,565 @@ export const handleNodeUnimportReducer = (
   });
 }; 
 
+// --- HELPER: Calculate nominal production rate for a root node ---
+// Returns items per minute per machine at 100% speed
+const calculateNominalRate = (node: DependencyNode): number => {
+  if (!node.recipe) return 0;
+  
+  const recipe = node.recipe;
+  if (recipe.time <= 0) return 0;
+  
+  // Find output amount for this item in the recipe
+  const outputAmount = recipe.out?.[node.id] ?? 0;
+  if (outputAmount <= 0) return 0;
+  
+  // Calculate cycles per minute and items per minute
+  const cyclesPerMinute = 60 / recipe.time;
+  const itemsPerMinute = outputAmount * cyclesPerMinute;
+  
+  // Note: We return raw items/min without machine speed multiplier for weighting purposes
+  // The actual capacity will factor in machine count and multiplier separately
+  return itemsPerMinute;
+};
+
+// --- HELPER: Calculate max capacity a root can provide (machineCount * nominalRate * multiplier - excess) ---
+// If maps are not provided, falls back to node properties (for backward compatibility)
+const calculateRootMaxCapacity = (
+  root: DependencyNode,
+  machineCountMap?: Record<string, number>,
+  machineMultiplierMap?: Record<string, number>,
+  excessMap?: Record<string, number>
+): number => {
+  const nominalRate = calculateNominalRate(root);
+  const machineCount = machineCountMap?.[root.uniqueId] ?? root.machineCount ?? 1;
+  const multiplier = machineMultiplierMap?.[root.uniqueId] ?? root.machineMultiplier ?? 1;
+  const excess = excessMap?.[root.uniqueId] ?? root.excess ?? 0;
+  
+  const totalCapacity = machineCount * multiplier * nominalRate;
+  const availableForImport = totalCapacity - excess;
+  
+  console.log(`[MaxCapacity] ${root.uniqueId}: machineCount=${machineCount}, multiplier=${multiplier}, nominalRate=${nominalRate}, excess=${excess}, available=${availableForImport}`);
+  
+  return Math.max(0, availableForImport);
+};
+
+// --- HELPER: Calculate current demand on a root from all importers ---
+const calculateCurrentDemandOnRoot = (
+  rootNodeId: string, 
+  trees: Record<string, DependencyNode>
+): number => {
+  let totalDemand = 0;
+  for (const tree of Object.values(trees)) {
+    const findDemand = (node: DependencyNode): number => {
+      let demand = 0;
+      const importRef = getImportReference(node);
+      if (importRef?.targetTreeId === rootNodeId) {
+        demand += node.amount || 0;
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          demand += findDemand(child);
+        }
+      }
+      return demand;
+    };
+    totalDemand += findDemand(tree);
+  }
+  return totalDemand;
+};
+
+// --- HELPER: Find all roots producing a specific item ---
+interface RootWithAvailability {
+  root: DependencyNode;
+  currentDemand: number;
+  excess: number;
+  nominalRate: number;       // Production rate per machine (for weighting)
+  maxCapacity: number;       // Max this root can provide (capacity - excess)
+  availableSupply: number;   // What's still available (maxCapacity - currentDemand from others)
+}
+
+const findAllRootsProducingItem = (
+  itemId: string, 
+  trees: Record<string, DependencyNode>,
+  excludeByproducts: boolean = true
+): RootWithAvailability[] => {
+  const results: RootWithAvailability[] = [];
+  
+  for (const tree of Object.values(trees)) {
+    if (!tree.isRoot || tree.id !== itemId) continue;
+    if (excludeByproducts && tree.isByproduct) continue;
+    
+    const currentDemand = calculateCurrentDemandOnRoot(tree.uniqueId, trees);
+    const excess = tree.excess || 0;
+    const nominalRate = calculateNominalRate(tree);
+    const maxCapacity = calculateRootMaxCapacity(tree);
+    
+    // Available supply = maxCapacity - what's already being imported from this root
+    // Note: currentDemand is total demand from ALL importers, so we can't directly subtract
+    // For initial distribution, availableSupply = maxCapacity
+    const availableSupply = maxCapacity;
+    
+    results.push({
+      root: tree,
+      currentDemand,
+      excess,
+      nominalRate,
+      maxCapacity,
+      availableSupply
+    });
+  }
+  
+  return results;
+};
+
+// --- THUNK TO REDISTRIBUTE IMPORTS ACROSS MULTIPLE SOURCES ---
+// Called when a parent node's production changes and its children need to redistribute imports
+interface RedistributeImportsArgs {
+  parentNodeId: string;  // The node whose children need redistribution
+  treeId: string;        // The tree containing the parent
+}
+
+export const redistributeChildImportsThunk = createAsyncThunk<
+  void,
+  RedistributeImportsArgs,
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/redistributeChildImports',
+  async ({ parentNodeId, treeId }, { getState, dispatch }) => {
+    const state = getState();
+    const trees = state.dependencies.dependencyTrees;
+    const parentTree = trees[treeId];
+    
+    if (!parentTree) {
+      console.error(`[Redistribute] Tree ${treeId} not found`);
+      return;
+    }
+    
+    const parentNode = findNodeById(parentTree, parentNodeId);
+    if (!parentNode || !parentNode.children) {
+      return;
+    }
+    
+    // Process each child that is an import node
+    for (const child of parentNode.children) {
+      const importRef = getImportReference(child);
+      if (!importRef) continue; // Not an import node
+      
+      // Skip split children - they are managed by their original import node
+      if (child.uniqueId.includes('-split-')) {
+        console.log(`[Redistribute] Skipping split child ${child.uniqueId} - managed by original`);
+        continue;
+      }
+      
+      const childAmount = child.amount || 0;
+      
+      // Handle cleanup when amount is 0 or less
+      if (childAmount <= 0) {
+        console.log(`[Redistribute] Child ${child.uniqueId} has amount ${childAmount}, cleaning up split imports`);
+        
+        // Find any existing split children for this import
+        const existingSplitIds = parentNode.children
+          .filter(c => c.uniqueId.startsWith(`${child.uniqueId}-split-`))
+          .map(c => c.uniqueId);
+        
+        // Clear demand on original import's target
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: importRef.targetTreeId,
+          externalDemandChange: { importerNodeId: child.uniqueId, amount: 0 }
+        }));
+        
+        // Clear demand on each split's target and remove split nodes
+        if (existingSplitIds.length > 0) {
+          const currentTree = getState().dependencies.dependencyTrees[treeId];
+          if (currentTree) {
+            const parentNodeNow = findNodeById(currentTree, parentNodeId);
+            if (parentNodeNow) {
+              for (const splitId of existingSplitIds) {
+                const splitNode = parentNodeNow.children?.find(c => c.uniqueId === splitId);
+                if (splitNode) {
+                  const splitRef = getImportReference(splitNode);
+                  if (splitRef) {
+                    await dispatch(recalculateAndUpdateRootAmountThunk({
+                      rootNodeId: splitRef.targetTreeId,
+                      externalDemandChange: { importerNodeId: splitId, amount: 0 }
+                    }));
+                  }
+                }
+              }
+              
+              // Remove only split children from parent (keep original import node)
+              const filteredChildren = (parentNodeNow.children || []).filter(
+                c => !existingSplitIds.includes(c.uniqueId)
+              );
+              await dispatch(updateNodeProperties({
+                nodeId: parentNodeId,
+                updatedNode: { children: filteredChildren }
+              }));
+              console.log(`[Redistribute] Removed ${existingSplitIds.length} split children during cleanup (kept original import)`);
+            }
+          }
+        }
+        
+        continue;
+      }
+      
+      // Find all roots producing this item
+      const latestTrees = getState().dependencies.dependencyTrees;
+      const allProducingRoots = findAllRootsProducingItem(child.id, latestTrees, true);
+      
+      if (allProducingRoots.length <= 1) {
+        // Single source - just update the amount on the target
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: importRef.targetTreeId,
+          externalDemandChange: { importerNodeId: child.uniqueId, amount: childAmount }
+        }));
+        continue;
+      }
+      
+      // Multiple sources available - redistribute using production rate weights
+      console.log(`[Redistribute] Child ${child.uniqueId} (${child.id}) needs ${childAmount}, found ${allProducingRoots.length} sources`);
+      
+      // Calculate total weight (sum of all nominal rates)
+      const totalWeight = allProducingRoots.reduce((sum, r) => sum + r.nominalRate, 0);
+      
+      if (totalWeight <= 0) {
+        // Fallback to equal distribution if no rates available
+        console.warn(`[Redistribute] No nominal rates found, falling back to equal distribution`);
+        const perRootShare = childAmount / allProducingRoots.length;
+        const distributionPlan = allProducingRoots.map(rootInfo => ({
+          rootId: rootInfo.root.uniqueId,
+          amount: perRootShare
+        }));
+        await applyDistributionPlan(child, distributionPlan, importRef, parentNodeId, dispatch, getState);
+        continue;
+      }
+      
+      // Distribute based on production rate weights
+      const distributionPlan: { rootId: string; amount: number }[] = [];
+      for (const rootInfo of allProducingRoots) {
+        const weight = rootInfo.nominalRate / totalWeight;
+        const share = childAmount * weight;
+        distributionPlan.push({ rootId: rootInfo.root.uniqueId, amount: share });
+        console.log(`[Redistribute] ${rootInfo.root.uniqueId} weight=${weight.toFixed(3)} (rate=${rootInfo.nominalRate}), share=${share.toFixed(2)}`);
+      }
+      
+      // Apply the distribution
+      if (distributionPlan.length <= 1) {
+        // Single target - update original import
+        const targetRootId = distributionPlan.length === 1 ? distributionPlan[0].rootId : importRef.targetTreeId;
+        
+        // Update child's import reference if needed
+        if (targetRootId !== importRef.targetTreeId) {
+          await dispatch(updateNodeProperties({
+            nodeId: child.uniqueId,
+            updatedNode: { 
+              importReference: { targetTreeId: targetRootId, targetNodeId: targetRootId }
+            }
+          }));
+        }
+        
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: targetRootId,
+          externalDemandChange: { importerNodeId: child.uniqueId, amount: childAmount }
+        }));
+      } else {
+        // Multiple targets - update first, create splits for others
+        console.log(`[Redistribute] Creating ${distributionPlan.length} import splits for ${child.uniqueId}`);
+        
+        const firstSource = distributionPlan[0];
+        
+        // Update original child's amount and target
+        await dispatch(updateNodeProperties({
+          nodeId: child.uniqueId,
+          updatedNode: { 
+            amount: firstSource.amount,
+            importReference: { targetTreeId: firstSource.rootId, targetNodeId: firstSource.rootId }
+          }
+        }));
+        
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: firstSource.rootId,
+          externalDemandChange: { importerNodeId: child.uniqueId, amount: firstSource.amount }
+        }));
+        
+        // Check if we already have split children from a previous redistribution
+        const existingSplitIds = parentNode.children
+          .filter(c => c.uniqueId.startsWith(`${child.uniqueId}-split-`))
+          .map(c => c.uniqueId);
+        
+        // Remove old splits first
+        if (existingSplitIds.length > 0) {
+          const currentParent = getState().dependencies.dependencyTrees[treeId];
+          if (currentParent) {
+            const parentNodeNow = findNodeById(currentParent, parentNodeId);
+            if (parentNodeNow) {
+              const filteredChildren = (parentNodeNow.children || []).filter(
+                c => !existingSplitIds.includes(c.uniqueId)
+              );
+              await dispatch(updateNodeProperties({
+                nodeId: parentNodeId,
+                updatedNode: { children: filteredChildren }
+              }));
+            }
+          }
+        }
+        
+        // Create new split children for remaining sources
+        for (let i = 1; i < distributionPlan.length; i++) {
+          const source = distributionPlan[i];
+          const newChildId = `${child.uniqueId}-split-${i}-${Date.now()}`;
+          
+          const newChildNode: DependencyNode = {
+            id: child.id,
+            uniqueId: newChildId,
+            amount: source.amount,
+            depth: child.depth,
+            isImport: true,
+            importReference: { targetTreeId: source.rootId, targetNodeId: source.rootId },
+            children: [],
+            recipe: undefined,
+          };
+          
+          // Add to parent
+          const currentParent = getState().dependencies.dependencyTrees[treeId];
+          if (currentParent) {
+            const parentNodeNow = findNodeById(currentParent, parentNodeId);
+            if (parentNodeNow) {
+              const updatedChildren = [...(parentNodeNow.children || []), newChildNode];
+              await dispatch(updateNodeProperties({
+                nodeId: parentNodeId,
+                updatedNode: { children: updatedChildren }
+              }));
+            }
+          }
+          
+          await dispatch(recalculateAndUpdateRootAmountThunk({
+            rootNodeId: source.rootId,
+            externalDemandChange: { importerNodeId: newChildId, amount: source.amount }
+          }));
+          
+          console.log(`[Redistribute] Created split ${newChildId} importing ${source.amount} from ${source.rootId}`);
+        }
+      }
+      
+      // Recalculate old target if we changed targets
+      if (distributionPlan.length > 0 && distributionPlan[0].rootId !== importRef.targetTreeId) {
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: importRef.targetTreeId,
+          externalDemandChange: undefined
+        }));
+      }
+    }
+  }
+);
+
+// --- THUNK TO SET IMPORT AMOUNT MANUALLY ---
+// Used when user manually adjusts import amount via input or R/M buttons
+interface SetImportAmountArgs {
+  importNodeId: string;   // The import child node being adjusted
+  parentNodeId: string;   // The parent node containing import children
+  treeId: string;         // Tree containing the parent
+  newAmount: number;      // New amount to import from this source
+}
+
+export const setImportAmountThunk = createAsyncThunk<
+  void,
+  SetImportAmountArgs,
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/setImportAmount',
+  async ({ importNodeId, parentNodeId, treeId, newAmount }, { getState, dispatch }) => {
+    const state = getState();
+    const trees = state.dependencies.dependencyTrees;
+    const tree = trees[treeId];
+    
+    if (!tree) {
+      console.error(`[SetImportAmount] Tree ${treeId} not found`);
+      return;
+    }
+    
+    const parentNode = findNodeById(tree, parentNodeId);
+    if (!parentNode || !parentNode.children) {
+      console.error(`[SetImportAmount] Parent node ${parentNodeId} not found`);
+      return;
+    }
+    
+    // Find the import node being adjusted
+    const importNode = parentNode.children.find(c => c.uniqueId === importNodeId);
+    if (!importNode) {
+      console.error(`[SetImportAmount] Import node ${importNodeId} not found`);
+      return;
+    }
+    
+    const importRef = getImportReference(importNode);
+    if (!importRef) {
+      console.error(`[SetImportAmount] Node ${importNodeId} is not an import node`);
+      return;
+    }
+    
+    // Calculate total demand from all import siblings (original + splits)
+    const originalImportId = importNodeId.includes('-split-') 
+      ? importNodeId.split('-split-')[0] 
+      : importNodeId;
+    
+    const allImportSiblings = parentNode.children.filter(c => 
+      c.uniqueId === originalImportId || c.uniqueId.startsWith(`${originalImportId}-split-`)
+    );
+    
+    const totalDemand = allImportSiblings.reduce((sum, c) => sum + (c.amount || 0), 0);
+    const currentAmount = importNode.amount || 0;
+    const otherSiblingsAmount = totalDemand - currentAmount;
+    
+    // Calculate new total and what remains for redistribution
+    const newTotal = otherSiblingsAmount + Math.max(0, newAmount);
+    
+    console.log(`[SetImportAmount] Setting ${importNodeId} from ${currentAmount} to ${newAmount}. Total demand: ${totalDemand} -> ${newTotal}`);
+    
+    // Update this import node's amount
+    await dispatch(updateNodeProperties({
+      nodeId: importNodeId,
+      updatedNode: { amount: Math.max(0, newAmount) }
+    }));
+    
+    // Update target root
+    await dispatch(recalculateAndUpdateRootAmountThunk({
+      rootNodeId: importRef.targetTreeId,
+      externalDemandChange: { importerNodeId: importNodeId, amount: Math.max(0, newAmount) }
+    }));
+    
+    // Calculate remaining amount to redistribute among other sources
+    const remainingForOthers = totalDemand - Math.max(0, newAmount);
+    
+    if (remainingForOthers > 0 && allImportSiblings.length > 1) {
+      // Find other siblings and redistribute remaining amount proportionally
+      const otherSiblings = allImportSiblings.filter(c => c.uniqueId !== importNodeId);
+      const otherTotal = otherSiblings.reduce((sum, c) => sum + (c.amount || 0), 0);
+      
+      for (const sibling of otherSiblings) {
+        const siblingRef = getImportReference(sibling);
+        if (!siblingRef) continue;
+        
+        // Proportional redistribution
+        const proportion = otherTotal > 0 ? (sibling.amount || 0) / otherTotal : 1 / otherSiblings.length;
+        const newSiblingAmount = remainingForOthers * proportion;
+        
+        await dispatch(updateNodeProperties({
+          nodeId: sibling.uniqueId,
+          updatedNode: { amount: newSiblingAmount }
+        }));
+        
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: siblingRef.targetTreeId,
+          externalDemandChange: { importerNodeId: sibling.uniqueId, amount: newSiblingAmount }
+        }));
+      }
+    } else if (remainingForOthers <= 0 && allImportSiblings.length > 1) {
+      // Set other siblings to 0
+      const otherSiblings = allImportSiblings.filter(c => c.uniqueId !== importNodeId);
+      for (const sibling of otherSiblings) {
+        const siblingRef = getImportReference(sibling);
+        if (!siblingRef) continue;
+        
+        await dispatch(updateNodeProperties({
+          nodeId: sibling.uniqueId,
+          updatedNode: { amount: 0 }
+        }));
+        
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: siblingRef.targetTreeId,
+          externalDemandChange: { importerNodeId: sibling.uniqueId, amount: 0 }
+        }));
+      }
+    }
+  }
+);
+
+// --- THUNK TO RESET IMPORT TO ZERO ---
+export const resetImportAmountThunk = createAsyncThunk<
+  void,
+  { importNodeId: string; parentNodeId: string; treeId: string },
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/resetImportAmount',
+  async ({ importNodeId, parentNodeId, treeId }, { dispatch }) => {
+    await dispatch(setImportAmountThunk({ 
+      importNodeId, 
+      parentNodeId, 
+      treeId, 
+      newAmount: 0 
+    }));
+  }
+);
+
+// --- THUNK TO MAX IMPORT (take as much as source can provide) ---
+interface MaxImportAmountArgs {
+  importNodeId: string;
+  parentNodeId: string;
+  treeId: string;
+  machineCountMap?: Record<string, number>;
+  machineMultiplierMap?: Record<string, number>;
+  excessMap?: Record<string, number>;
+}
+
+export const maxImportAmountThunk = createAsyncThunk<
+  void,
+  MaxImportAmountArgs,
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/maxImportAmount',
+  async ({ importNodeId, parentNodeId, treeId, machineCountMap, machineMultiplierMap, excessMap }, { getState, dispatch }) => {
+    const state = getState();
+    const trees = state.dependencies.dependencyTrees;
+    const tree = trees[treeId];
+    
+    if (!tree) return;
+    
+    const parentNode = findNodeById(tree, parentNodeId);
+    if (!parentNode || !parentNode.children) return;
+    
+    // Find the import node
+    const importNode = parentNode.children.find(c => c.uniqueId === importNodeId);
+    if (!importNode) return;
+    
+    const importRef = getImportReference(importNode);
+    if (!importRef) return;
+    
+    // Find the target root
+    const targetRoot = trees[importRef.targetTreeId];
+    if (!targetRoot) return;
+    
+    // Calculate max capacity this root can provide
+    const maxCapacity = calculateRootMaxCapacity(targetRoot, machineCountMap, machineMultiplierMap, excessMap);
+    
+    // Calculate total demand from all import siblings for the same item
+    const originalImportId = importNodeId.includes('-split-') 
+      ? importNodeId.split('-split-')[0] 
+      : importNodeId;
+    
+    const allImportSiblings = parentNode.children.filter(c => 
+      c.uniqueId === originalImportId || c.uniqueId.startsWith(`${originalImportId}-split-`)
+    );
+    
+    const totalDemand = allImportSiblings.reduce((sum, c) => sum + (c.amount || 0), 0);
+    const currentAmount = importNode.amount || 0;
+    
+    // Max we can take = min(maxCapacity, totalDemand)
+    // We take as much as we can from this source, up to total demand
+    const maxTake = Math.min(maxCapacity, totalDemand);
+    
+    console.log(`[MaxImport] ${importNodeId}: maxCapacity=${maxCapacity}, totalDemand=${totalDemand}, maxTake=${maxTake}`);
+    
+    await dispatch(setImportAmountThunk({
+      importNodeId,
+      parentNodeId,
+      treeId,
+      newAmount: maxTake
+    }));
+  }
+);
+
 // --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN (Restored from 1ce0b34) ---
+// ENHANCED: Now supports multi-source imports - distributing demand across multiple roots
 export const autoImportNodeChildrenThunk = createAsyncThunk<
   void,
   string, // parentNodeId
@@ -665,7 +1223,6 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
     }
 
     const childrenToProcess = parentNode.children ? [...parentNode.children] : []; // Safer copy
-    // let childrenModified = false; // Removed - no longer assigned
 
     const generateTreeId = (itemId: string) => `tree-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1e7)}`;
 
@@ -706,38 +1263,132 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
               } catch (error) { console.error(`[AutoImport] Failed BYPRODUCT root for ${child.id}:`, error); continue; }
           }
       } 
-      // --- Handle Normal Children ---
+      // --- Handle Normal Children (ENHANCED for multi-source) ---
       else { 
-          // 1b. Find Existing NORMAL Root
-          const existingNormalRoot = Object.values(getState().dependencies.dependencyTrees).find(
-            t => t.isRoot && t.id === child.id && !t.isByproduct
-          );
-          if (existingNormalRoot) {
-            targetTreeId = existingNormalRoot.uniqueId;
-            existingRootFound = true;
+          // Find ALL existing normal roots producing this item
+          const latestTrees = getState().dependencies.dependencyTrees;
+          const allProducingRoots = findAllRootsProducingItem(child.id, latestTrees, true);
+          
+          if (allProducingRoots.length > 0) {
+            const requiredAmount = child.amount || 0;
+            
+            // Log multi-source info for debugging
+            if (allProducingRoots.length > 1) {
+              console.log(`[AutoImport Multi-Source] Found ${allProducingRoots.length} roots producing ${child.id}, need ${requiredAmount}:`);
+              allProducingRoots.forEach((r, idx) => {
+                console.log(`  [${idx}] ${r.root.uniqueId} (recipe: ${r.root.recipe?.id || 'none'}): currentDemand=${r.currentDemand}, excess=${r.excess}`);
+              });
+            }
+            
+            // Distribution strategy for multiple sources:
+            // 1. First, use available excess from roots that have it
+            // 2. Then distribute remaining demand proportionally across all roots
+            let remainingToDistribute = requiredAmount;
+            const distributionPlan: { rootId: string; amount: number }[] = [];
+            
+            // Phase 1: Use available excess from each root first
+            for (const rootInfo of allProducingRoots) {
+              if (remainingToDistribute <= 0) break;
+              
+              const excessAvailable = rootInfo.excess;
+              if (excessAvailable > 0) {
+                const takeFromExcess = Math.min(remainingToDistribute, excessAvailable);
+                distributionPlan.push({ rootId: rootInfo.root.uniqueId, amount: takeFromExcess });
+                remainingToDistribute -= takeFromExcess;
+                console.log(`[AutoImport Multi-Source] Using ${takeFromExcess} excess from ${rootInfo.root.uniqueId}, remaining: ${remainingToDistribute}`);
+              }
+            }
+            
+            // Phase 2: Distribute remaining demand equally across all roots
+            if (remainingToDistribute > 0 && allProducingRoots.length > 0) {
+              const perRootShare = remainingToDistribute / allProducingRoots.length;
+              
+              for (const rootInfo of allProducingRoots) {
+                const existingEntry = distributionPlan.find(p => p.rootId === rootInfo.root.uniqueId);
+                if (existingEntry) {
+                  existingEntry.amount += perRootShare;
+                } else {
+                  distributionPlan.push({ rootId: rootInfo.root.uniqueId, amount: perRootShare });
+                }
+              }
+              console.log(`[AutoImport Multi-Source] Distributed remaining ${remainingToDistribute} equally (${perRootShare} each) across ${allProducingRoots.length} roots`);
+            }
+            
+            // If only one target in distribution plan, use simple single-source logic
+            if (distributionPlan.length <= 1) {
+              targetTreeId = distributionPlan.length === 1 ? distributionPlan[0].rootId : allProducingRoots[0].root.uniqueId;
+              existingRootFound = true;
+            } else {
+              // MULTI-SOURCE: Create additional child nodes for each source beyond the first
+              console.log(`[AutoImport Multi-Source] Creating distribution plan with ${distributionPlan.length} sources`);
+              
+              // Handle first source with the original child node
+              const firstSource = distributionPlan[0];
+              targetTreeId = firstSource.rootId;
+              existingRootFound = true;
+              
+              // Update the original child's amount to only be what this source provides
+              await dispatch(updateNodeProperties({ 
+                nodeId: child.uniqueId, 
+                updatedNode: { amount: firstSource.amount } 
+              }));
+              
+              // Create additional child nodes for remaining sources
+              for (let i = 1; i < distributionPlan.length; i++) {
+                const source = distributionPlan[i];
+                const newChildId = `${child.uniqueId}-split-${i}-${Date.now()}`;
+                
+                // Create a new child node that imports from this source
+                const newChildNode: DependencyNode = {
+                  id: child.id,
+                  uniqueId: newChildId,
+                  amount: source.amount,
+                  depth: child.depth,
+                  isImport: true,
+                  importReference: { targetTreeId: source.rootId, targetNodeId: source.rootId },
+                  children: [],
+                  recipe: undefined,
+                };
+                
+                // Add this new child to the parent
+                const currentParent = getState().dependencies.dependencyTrees[parentNodeId];
+                if (currentParent) {
+                  const updatedChildren = [...(currentParent.children || []), newChildNode];
+                  await dispatch(updateNodeProperties({
+                    nodeId: parentNodeId,
+                    updatedNode: { children: updatedChildren }
+                  }));
+                  
+                  // Trigger recalculation for this target root
+                  await dispatch(recalculateAndUpdateRootAmountThunk({
+                    rootNodeId: source.rootId,
+                    externalDemandChange: { importerNodeId: newChildId, amount: source.amount }
+                  }));
+                  
+                  console.log(`[AutoImport Multi-Source] Created split child ${newChildId} importing ${source.amount} from ${source.rootId}`);
+                }
+              }
+            }
           } else {
-            // 2b. No NORMAL root, check for EXISTING BYPRODUCT root
-            const existingByproductRoot = Object.values(getState().dependencies.dependencyTrees).find(
+            // No NORMAL roots, check for EXISTING BYPRODUCT root
+            const existingByproductRoot = Object.values(latestTrees).find(
               t => t.isRoot && t.id === child.id && t.isByproduct
             );
             
             if (existingByproductRoot) {
-                // 3b. Found BYPRODUCT root -> Convert it to NORMAL
+                // Found BYPRODUCT root -> Convert it to NORMAL
                 try {
-                    // We need to wait for the conversion to fully complete, including its own child processing
                     await dispatch(checkAndConvertNodeTypeThunk(existingByproductRoot.uniqueId));
-                    targetTreeId = existingByproductRoot.uniqueId; // Use the ID of the (now converted) node
+                    targetTreeId = existingByproductRoot.uniqueId;
                     existingRootFound = true;
                 } catch (error) {
                     console.error(`[Thunk/AutoImportChildren] Error during B->N conversion dispatch for ${existingByproductRoot.uniqueId}:`, error);
-                    // If conversion fails, maybe we should stop? Or try creating a new normal one?
-                    // For now, let's stop processing this child if conversion fails.
                     continue;
                 }
             }
           }
           
-          // 4b. Create New NORMAL Root if STILL None Found
+          // Create New NORMAL Root if no existing roots found
           if (!existingRootFound) {
               const newRootId = generateTreeId(child.id);
               try {

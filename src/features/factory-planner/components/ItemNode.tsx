@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { Recipe, Item, DependencyNode } from "../../../types";
 import { theme } from "../../../styles/theme";
@@ -10,8 +10,9 @@ import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
-import { toggleNodeSelected, toggleNodeCompleted } from '../store/dependencySlice';
-import { RootState } from '../../../store';
+import { toggleNodeSelected, toggleNodeCompleted, setHighlightedNode } from '../store/dependencySlice';
+import { setImportAmountThunk, resetImportAmountThunk, maxImportAmountThunk } from '../store/importExportLogic';
+import { RootState, AppDispatch } from '../../../store';
 import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
@@ -26,6 +27,9 @@ interface ItemNodeProps {
   isRoot?: boolean;
   isByproduct?: boolean;
   isImport?: boolean;
+  parentNodeId?: string;         // Parent node ID (for import controls)
+  hasMultipleImportSources?: boolean;  // True if multiple sources for same item
+  importSourceRecipeName?: string;     // Recipe name of the source being imported from
   recipes?: Recipe[];
   selectedRecipeId?: string;
   onRecipeChange?: (recipeId: string) => void;
@@ -65,6 +69,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   isRoot = false,
   isByproduct = false,
   isImport = false,
+  parentNodeId,
+  hasMultipleImportSources = false,
+  importSourceRecipeName,
   recipes = [],
   selectedRecipeId,
   onRecipeChange,
@@ -86,7 +93,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   viewDensity,
   onOptimizeAllMachines,
 }) => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
 
   const nodeData = useSelector((state: RootState) => {
     const tree = state.dependencies.dependencyTrees[treeId];
@@ -163,6 +170,56 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   useEffect(() => {
     setLocalMachineMultiplier(machineMultiplier); 
   }, [machineMultiplier]);
+
+  // Get import reference for highlighting source node on hover
+  const importTargetId = nodeData?.importReference?.targetTreeId || nodeData?.importedFrom || null;
+  
+  // Handle mouse enter/leave for import nodes to highlight source
+  const handleImportMouseEnter = useCallback(() => {
+    if (isImport && importTargetId) {
+      dispatch(setHighlightedNode(importTargetId));
+    }
+  }, [isImport, importTargetId, dispatch]);
+  
+  const handleImportMouseLeave = useCallback(() => {
+    if (isImport && importTargetId) {
+      dispatch(setHighlightedNode(null));
+    }
+  }, [isImport, importTargetId, dispatch]);
+
+  // Import amount control handlers for multi-source imports
+  const handleImportAmountChange = useCallback((newAmount: number) => {
+    if (!parentNodeId || !isImport) return;
+    dispatch(setImportAmountThunk({
+      treeId,
+      importNodeId: uniqueId,
+      parentNodeId,
+      newAmount
+    }));
+  }, [dispatch, treeId, uniqueId, parentNodeId, isImport]);
+
+  const handleResetImportAmount = useCallback(() => {
+    if (!parentNodeId || !isImport) return;
+    dispatch(resetImportAmountThunk({
+      treeId,
+      importNodeId: uniqueId,
+      parentNodeId
+    }));
+  }, [dispatch, treeId, uniqueId, parentNodeId, isImport]);
+
+  const handleMaxImportAmount = useCallback(() => {
+    if (!parentNodeId || !isImport) return;
+    // Note: We don't have access to machineCountMap etc here, 
+    // so pass empty objects and let the thunk use node defaults
+    dispatch(maxImportAmountThunk({
+      treeId,
+      importNodeId: uniqueId,
+      parentNodeId,
+      machineCountMap: {},
+      machineMultiplierMap: {},
+      excessMap: {}
+    }));
+  }, [dispatch, treeId, uniqueId, parentNodeId, isImport]);
 
   const getItemColor = () => {
     if (isRoot) return theme.colors.nodeRoot;
@@ -246,6 +303,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         position: 'relative',
         ...style,
       }}
+      onMouseEnter={isImport ? handleImportMouseEnter : undefined}
+      onMouseLeave={isImport ? handleImportMouseLeave : undefined}
     >
       <ItemNodeButtons
         isRoot={isRoot}
@@ -282,6 +341,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           nominalRate={nominalRate}
           isByproduct={isByproduct}
           isImport={isImport}
+          importSourceRecipeName={importSourceRecipeName}
           getItemColor={getItemColor}
           viewDensity={viewDensity}
         />
@@ -309,6 +369,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           amount={amount}
           isByproduct={isByproduct}
           isImport={isImport}
+          parentNodeId={parentNodeId}
+          hasMultipleImportSources={hasMultipleImportSources}
           excess={localExcess}
           nodeId={uniqueId}
           treeId={treeId}
@@ -316,6 +378,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           onExcessChange={onExcessChange ? handleExcessChange : undefined}
           onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
           onResetExcess={onExcessChange ? handleResetExcess : undefined}
+          onImportAmountChange={isImport && hasMultipleImportSources ? handleImportAmountChange : undefined}
+          onMaxImport={isImport && hasMultipleImportSources ? handleMaxImportAmount : undefined}
+          onResetImport={isImport && hasMultipleImportSources ? handleResetImportAmount : undefined}
           containerStyle={{
              borderLeft: `4px solid ${getEfficiencyColor()}` 
           }}
