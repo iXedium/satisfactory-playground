@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import StyledInput from './StyledInput';
 
+interface BaselineValues {
+  machineCount: number;
+  machineMultiplier: number;
+}
+
+type ChangeType = 'increased' | 'decreased' | 'unchanged';
+
 interface MachineControlsProps {
   machineCount: number;
   onMachineCountChange: (count: number) => void;
@@ -9,7 +16,23 @@ interface MachineControlsProps {
   showMachineMultiplier?: boolean;
   onOptimizeMachines: () => void;
   onOptimizeAllMachines?: () => void;
+  // Comparison baseline props
+  showBaseline?: boolean;
+  baselineValues?: BaselineValues | null;
+  changes?: {
+    machineCount: ChangeType;
+    machineMultiplier: ChangeType;
+  };
+  isNew?: boolean;
 }
+
+const getChangeClass = (change: ChangeType): string => {
+  switch (change) {
+    case 'increased': return 'baseline-increased';
+    case 'decreased': return 'baseline-decreased';
+    default: return 'baseline-unchanged';
+  }
+};
 
 const MachineControls: React.FC<MachineControlsProps> = ({
   machineCount,
@@ -19,6 +42,10 @@ const MachineControls: React.FC<MachineControlsProps> = ({
   showMachineMultiplier = false,
   onOptimizeMachines,
   onOptimizeAllMachines,
+  showBaseline = false,
+  baselineValues = null,
+  changes,
+  isNew = false,
 }) => {
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
   const [localMachineMultiplier, setLocalMachineMultiplier] = useState(machineMultiplier);
@@ -94,32 +121,20 @@ const MachineControls: React.FC<MachineControlsProps> = ({
       className="machine-controls machine-controls-wrapper"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Machine count */}
-      <StyledInput
-        ref={machineCountRef}
-        type="number"
-        value={localMachineCount}
-        className="machine-control-input machine-count-input"
-        onChange={(e) => {
-          e.stopPropagation();
-          handleMachineCountChange(e.target.value);
-        }}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          handleKeyDown(
-            e,
-            localMachineCount,
-            (val) => {
-              setLocalMachineCount(val);
-              onMachineCountChange(val);
-            },
-            1
-          );
-        }}
-        onWheel={(e) => {
-          e.stopPropagation();
-          if (document.activeElement === machineCountRef.current) {
-            handleWheel(
+      {/* Machine count column (stacks current + baseline) */}
+      <div className="machine-control-column machine-count-column">
+        <StyledInput
+          ref={machineCountRef}
+          type="number"
+          value={localMachineCount}
+          className="machine-control-input machine-count-input"
+          onChange={(e) => {
+            e.stopPropagation();
+            handleMachineCountChange(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            handleKeyDown(
               e,
               localMachineCount,
               (val) => {
@@ -128,18 +143,43 @@ const MachineControls: React.FC<MachineControlsProps> = ({
               },
               1
             );
-          }
-        }}
-        onFocus={(e) => {
-          e.stopPropagation();
-          handleFocus(e);
-        }}
-        variant="compact"
-        min={1}
-        onClick={(e) => e.stopPropagation()}
-      />
+          }}
+          onWheel={(e) => {
+            e.stopPropagation();
+            if (document.activeElement === machineCountRef.current) {
+              handleWheel(
+                e,
+                localMachineCount,
+                (val) => {
+                  setLocalMachineCount(val);
+                  onMachineCountChange(val);
+                },
+                1
+              );
+            }
+          }}
+          onFocus={(e) => {
+            e.stopPropagation();
+            handleFocus(e);
+          }}
+          variant="compact"
+          min={1}
+          onClick={(e) => e.stopPropagation()}
+        />
+        {showBaseline && baselineValues && !isNew && (
+          <span 
+            className={`baseline-value baseline-machine-count ${getChangeClass(changes?.machineCount || 'unchanged')}`}
+            title={`Baseline: ${baselineValues.machineCount}`}
+          >
+            {baselineValues.machineCount}
+          </span>
+        )}
+        {showBaseline && isNew && (
+          <span className="baseline-new-badge">NEW</span>
+        )}
+      </div>
 
-      {/* Optimize button */}
+      {/* Optimize button column */}
       <button
         className="machine-control-button optimize-button"
         onClick={(e) => {
@@ -155,33 +195,21 @@ const MachineControls: React.FC<MachineControlsProps> = ({
         M
       </button>
 
-      {/* Multiplier - conditionally rendered based on global setting */}
+      {/* Multiplier column (conditionally rendered, stacks current + baseline) */}
       {showMachineMultiplier && onMachineMultiplierChange && (
-        <StyledInput
-          ref={machineMultiplierRef}
-          type="number"
-          value={localMachineMultiplier}
-          className="machine-control-input multiplier-input"
-          onChange={(e) => {
-            e.stopPropagation();
-            handleMachineMultiplierChange(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            handleKeyDown(
-              e,
-              localMachineMultiplier,
-              (val) => {
-                setLocalMachineMultiplier(val);
-                onMachineMultiplierChange?.(val);
-              },
-              1
-            );
-          }}
-          onWheel={(e) => {
-            e.stopPropagation();
-            if (document.activeElement === machineMultiplierRef.current) {
-              handleWheel(
+        <div className="machine-control-column machine-multiplier-column">
+          <StyledInput
+            ref={machineMultiplierRef}
+            type="number"
+            value={localMachineMultiplier}
+            className="machine-control-input multiplier-input"
+            onChange={(e) => {
+              e.stopPropagation();
+              handleMachineMultiplierChange(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              handleKeyDown(
                 e,
                 localMachineMultiplier,
                 (val) => {
@@ -190,16 +218,38 @@ const MachineControls: React.FC<MachineControlsProps> = ({
                 },
                 1
               );
-            }
-          }}
-          onFocus={(e) => {
-            e.stopPropagation();
-            handleFocus(e);
-          }}
-          variant="compact"
-          min={1}
-          onClick={(e) => e.stopPropagation()}
-        />
+            }}
+            onWheel={(e) => {
+              e.stopPropagation();
+              if (document.activeElement === machineMultiplierRef.current) {
+                handleWheel(
+                  e,
+                  localMachineMultiplier,
+                  (val) => {
+                    setLocalMachineMultiplier(val);
+                    onMachineMultiplierChange?.(val);
+                  },
+                  1
+                );
+              }
+            }}
+            onFocus={(e) => {
+              e.stopPropagation();
+              handleFocus(e);
+            }}
+            variant="compact"
+            min={1}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {showBaseline && baselineValues && !isNew && (
+            <span 
+              className={`baseline-value baseline-machine-multiplier ${getChangeClass(changes?.machineMultiplier || 'unchanged')}`}
+              title={`Baseline: ${baselineValues.machineMultiplier}x`}
+            >
+              {baselineValues.machineMultiplier}x
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

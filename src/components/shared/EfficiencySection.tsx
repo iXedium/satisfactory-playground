@@ -10,6 +10,14 @@ import ConsumptionReportPopup from './ConsumptionReportPopup';
 import { findNodeById } from '../../utils/treeUtils';
 import { logger } from '../../utils/logger';
 
+interface BaselineValues {
+  excess: number;
+  amount: number;
+  efficiency: number;
+}
+
+type ChangeType = 'increased' | 'decreased' | 'unchanged';
+
 interface EfficiencySectionProps {
   efficiency: number;
   amount: number;
@@ -29,7 +37,24 @@ interface EfficiencySectionProps {
   onMaxImport?: () => void;
   onResetImport?: () => void;
   containerStyle?: React.CSSProperties;
+  // Comparison baseline props
+  showBaseline?: boolean;
+  baselineValues?: BaselineValues | null;
+  changes?: {
+    excess: ChangeType;
+    amount: ChangeType;
+    efficiency: ChangeType;
+  };
+  isNew?: boolean;
 }
+
+const getChangeClass = (change: ChangeType): string => {
+  switch (change) {
+    case 'increased': return 'baseline-increased';
+    case 'decreased': return 'baseline-decreased';
+    default: return 'baseline-unchanged';
+  }
+};
 
 const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   efficiency,
@@ -49,6 +74,10 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   onMaxImport,
   onResetImport,
   containerStyle,
+  showBaseline = false,
+  baselineValues = null,
+  changes,
+  isNew = false,
 }) => {
   const allTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
   
@@ -204,15 +233,18 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   
   // Remove useEffect for timeout cleanup as it's no longer used
 
-  const rateDisplayCursorClass = (isByproduct || isImport) ? 'cursor-default' : 'cursor-pointer';
-
   // Show import controls for multi-source imports (reuse ExcessControls component)
   const showImportControls = isImport && hasMultipleImportSources && parentNodeId && onImportAmountChange && onMaxImport && onResetImport;
+
+  const totalAmount = amount + excess;
+  const baselineTotalAmount = baselineValues ? baselineValues.amount + baselineValues.excess : 0;
+
+  const rateDisplayCursorClass = 'efficiency-rate-column--clickable';
 
   return (
     <>
       <div
-        className="efficiency-section"
+        className={`efficiency-section ${showBaseline ? 'efficiency-section--with-baseline' : ''}`}
         style={containerStyle}
         onClick={(e) => e.stopPropagation()}
       >
@@ -220,15 +252,28 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
           className="efficiency-section-content"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* CONTROLS FIRST (for Grid) */}
+          {/* CONTROLS FIRST (for Grid) - Excess column */}
           {onExcessChange && !isByproduct && !isImport && onMaxExcess && onResetExcess && (
-            <ExcessControls
-              className="efficiency-excess-controls"
-              excess={excess}
-              onExcessChange={onExcessChange}
-              onMaxExcess={onMaxExcess}
-              onResetExcess={onResetExcess}
-            />
+            <div className="efficiency-control-column efficiency-excess-column">
+              <ExcessControls
+                className="efficiency-excess-controls"
+                excess={excess}
+                onExcessChange={onExcessChange}
+                onMaxExcess={onMaxExcess}
+                onResetExcess={onResetExcess}
+              />
+              {showBaseline && baselineValues && !isNew && (
+                <span 
+                  className={`baseline-value baseline-excess ${getChangeClass(changes?.excess || 'unchanged')}`}
+                  title={`Baseline: ${baselineValues.excess.toFixed(2)}`}
+                >
+                  {baselineValues.excess.toFixed(2)}
+                </span>
+              )}
+              {showBaseline && isNew && (
+                <span className="baseline-new-badge">NEW</span>
+              )}
+            </div>
           )}
 
           {/* Import Controls for multi-source imports - reusing ExcessControls */}
@@ -242,20 +287,28 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
             />
           )}
 
-          {/* RATE GROUP SECOND (for Grid) */}
-          <div
-            className="efficiency-rate-group"
-          >
-            {/* Efficiency */}
-            <EfficiencyIndicator 
-              efficiency={efficiency} 
-              isByproduct={isByproduct} 
-              isImport={isImport} 
-            />
+          {/* RATE GROUP SECOND (for Grid) - Efficiency and Rate columns */}
+          <div className="efficiency-rate-group">
+            {/* Efficiency column */}
+            <div className="efficiency-control-column efficiency-indicator-column">
+              <EfficiencyIndicator 
+                efficiency={efficiency} 
+                isByproduct={isByproduct} 
+                isImport={isImport} 
+              />
+              {showBaseline && baselineValues && !isNew && (
+                <span 
+                  className={`baseline-value baseline-efficiency ${getChangeClass(changes?.efficiency || 'unchanged')}`}
+                  title={`Baseline: ${(baselineValues.efficiency * 100).toFixed(1)}%`}
+                >
+                  {(baselineValues.efficiency * 100).toFixed(1)}%
+                </span>
+              )}
+            </div>
 
-            {/* Rate - click to pin the consumption popup */}
+            {/* Rate column */}
             <div 
-              className={`rate-display-wrapper ${rateDisplayCursorClass}`}
+              className={`efficiency-control-column efficiency-rate-column ${rateDisplayCursorClass}`}
               ref={rateDisplayRef} 
               onMouseEnter={handleRateMouseEnter}
               onMouseLeave={handleRateMouseLeave}
@@ -267,6 +320,14 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
                 isByproduct={isByproduct}
                 isImport={isImport}
               />
+              {showBaseline && baselineValues && !isNew && (
+                <span 
+                  className={`baseline-value baseline-amount ${getChangeClass(changes?.amount || 'unchanged')}`}
+                  title={`Baseline: ${baselineTotalAmount.toFixed(2)}`}
+                >
+                  {baselineTotalAmount.toFixed(2)}
+                </span>
+              )}
             </div>
           </div>
         </div>

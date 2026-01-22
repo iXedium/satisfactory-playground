@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from 'react-redux';
-import { Recipe, Item, DependencyNode } from "../../../types";
+import { Recipe, Item, DependencyNode, NodeComparisonResult, NodeSnapshot } from "../../../types";
 import { theme } from "../../../styles/theme";
 import { getItemById, getMachineForRecipe } from "../../../data";
 import { IconSize } from "../../../components";
@@ -11,6 +11,7 @@ import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 import { toggleNodeSelected, toggleNodeCompleted, toggleNodeHidden, setHighlightedNode } from '../store/dependencySlice';
+import { selectActiveSnapshot, selectShowComparison } from '../store/comparisonSlice';
 import { setImportAmountThunk, resetImportAmountThunk, maxImportAmountThunk } from '../store/importExportLogic';
 import { RootState, AppDispatch } from '../../../store';
 import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
@@ -119,6 +120,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const isSelected = nodeData?.isSelected ?? false;
   const isCompleted = nodeData?.isCompleted ?? false;
 
+  // Comparison state - get from Redux
+  const showComparison = useSelector(selectShowComparison);
+  const activeSnapshot = useSelector(selectActiveSnapshot);
+  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);
   const [localMachineCount, setLocalMachineCount] = useState(machineCount);
@@ -135,6 +141,87 @@ const ItemNode: React.FC<ItemNodeProps> = ({
     selectedRecipeId,
     recipes,
   });
+
+  // Calculate comparison result
+  const comparisonResult: NodeComparisonResult = useMemo(() => {
+    // Skip for byproducts and imports - they don't have their own production metrics
+    if (isByproduct || isImport || !showComparison || !activeSnapshot) {
+      return {
+        hasSnapshot: false,
+        changes: {
+          machineCount: 'unchanged',
+          machineMultiplier: 'unchanged',
+          excess: 'unchanged',
+          amount: 'unchanged',
+          efficiency: 'unchanged',
+          recipe: 'unchanged',
+          isNew: false,
+          isRemoved: false,
+        },
+      };
+    }
+
+    const treeSnapshot = activeSnapshot.trees[treeId];
+    if (!treeSnapshot) {
+      return {
+        hasSnapshot: true,
+        changes: {
+          machineCount: 'unchanged',
+          machineMultiplier: 'unchanged',
+          excess: 'unchanged',
+          amount: 'unchanged',
+          efficiency: 'unchanged',
+          recipe: 'unchanged',
+          isNew: true,
+          isRemoved: false,
+        },
+      };
+    }
+
+    const nodeSnapshot = treeSnapshot.nodes[uniqueId];
+    if (!nodeSnapshot) {
+      return {
+        hasSnapshot: true,
+        changes: {
+          machineCount: 'unchanged',
+          machineMultiplier: 'unchanged',
+          excess: 'unchanged',
+          amount: 'unchanged',
+          efficiency: 'unchanged',
+          recipe: 'unchanged',
+          isNew: true,
+          isRemoved: false,
+        },
+      };
+    }
+
+    // Helper to compare values
+    const compare = (current: number, snapshot: number): 'increased' | 'decreased' | 'unchanged' => {
+      if (current > snapshot) return 'increased';
+      if (current < snapshot) return 'decreased';
+      return 'unchanged';
+    };
+
+    // Get current recipe from selections or node data
+    const currentRecipeId = recipeSelections[uniqueId] || selectedRecipeId;
+
+    return {
+      hasSnapshot: true,
+      snapshotValues: nodeSnapshot,
+      changes: {
+        machineCount: compare(localMachineCount, nodeSnapshot.machineCount),
+        machineMultiplier: compare(localMachineMultiplier, nodeSnapshot.machineMultiplier),
+        excess: compare(localExcess, nodeSnapshot.excess),
+        amount: compare(amount, nodeSnapshot.amount),
+        efficiency: compare(efficiency, nodeSnapshot.efficiency || 0),
+        recipe: currentRecipeId !== nodeSnapshot.recipeId ? 'changed' : 'unchanged',
+        isNew: false,
+        isRemoved: false,
+      },
+    };
+  }, [showComparison, activeSnapshot, treeId, uniqueId, isByproduct, isImport, 
+      localMachineCount, localMachineMultiplier, localExcess, amount, efficiency, 
+      recipeSelections, selectedRecipeId]);
 
   useEffect(() => {
     logger.verbose(`[ItemNode ${uniqueId} (${itemId})] Calculated nominalRate: ${nominalRate}`);
@@ -318,8 +405,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       className={`item-node ${densityClass}`}
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "4px",
+        flexDirection: "column",
+        gap: "0px",
         padding: "8px 2px",
         borderRadius: theme.border.radius,
         position: 'relative',
@@ -330,111 +417,136 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       onMouseLeave={isImport ? handleImportMouseLeave : undefined}
       onClick={isImport ? handleImportClick : undefined}
     >
-      <ItemNodeButtons
-        isRoot={isRoot}
-        isImport={isImport}
-        isHidden={nodeData?.isHidden}
-        itemId={uniqueId}
-        onDelete={onDelete}
-        onImport={onImport}
-        onUnimport={onUnimport}
-        onToggleHidden={isRoot ? handleToggleHidden : undefined}
-      />
-
-      <div
-        className="item-section-container"
-        style={{
-          display: "flex",
-          gap: "4px",
-          backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
-          borderRadius: theme.border.radius,
-          padding: "4px",
-          flexGrow: 1,
-          overflow: "hidden",
-          minWidth: 0,
-          cursor: isImport ? 'pointer' : undefined,
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          // For imports, clicking anywhere in the container should scroll to source
-          if (isImport) {
-            handleImportClick();
-          }
-        }}
-      >
-        <ItemDetails
-          item={item}
-          itemId={itemId}
-          amount={amount}
-          size={size}
-          recipes={recipes}
-          selectedRecipeId={selectedRecipeId}
-          onRecipeChange={onRecipeChange}
-          onIconClick={isImport ? handleImportClick : onIconClick}
-          nominalRate={nominalRate}
-          isByproduct={isByproduct}
+      {/* Main content row */}
+      <div className="item-node-main-row">
+        <ItemNodeButtons
+          isRoot={isRoot}
           isImport={isImport}
-          importSourceRecipeName={importSourceRecipeName}
-          getItemColor={getItemColor}
-          viewDensity={viewDensity}
+          isHidden={nodeData?.isHidden}
+          itemId={uniqueId}
+          onDelete={onDelete}
+          onImport={onImport}
+          onUnimport={onUnimport}
+          onToggleHidden={isRoot ? handleToggleHidden : undefined}
         />
 
-        {machine && !isByproduct && !isImport && showMachines && (
-          <div 
-             className={`machine-details-wrapper ${!showMachineMultiplier ? 'no-multiplier' : ''}`.trim()}
-          >
-            <MachineDetails
-              machine={machine}
-              machineCount={localMachineCount}
-              onMachineCountChange={onMachineCountChange || (() => {}) }
-              machineMultiplier={localMachineMultiplier}
-              onMachineMultiplierChange={onMachineMultiplierChange}
-              showMachineMultiplier={showMachineMultiplier}
-              onOptimizeMachines={handleOptimizeMachines}
-              onOptimizeAllMachines={onOptimizeAllMachines}
-              size={size}
-            />
-          </div>
-        )}
-
-        <EfficiencySection
-          efficiency={efficiency}
-          amount={amount}
-          isByproduct={isByproduct}
-          isImport={isImport}
-          parentNodeId={parentNodeId}
-          hasMultipleImportSources={hasMultipleImportSources}
-          excess={localExcess}
-          nodeId={uniqueId}
-          treeId={treeId}
-          itemName={item?.name ?? itemId}
-          onExcessChange={onExcessChange ? handleExcessChange : undefined}
-          onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
-          onResetExcess={onExcessChange ? handleResetExcess : undefined}
-          onImportAmountChange={isImport && hasMultipleImportSources ? handleImportAmountChange : undefined}
-          onMaxImport={isImport && hasMultipleImportSources ? handleMaxImportAmount : undefined}
-          onResetImport={isImport && hasMultipleImportSources ? handleResetImportAmount : undefined}
-          containerStyle={{
-             borderLeft: `4px solid ${getEfficiencyColor()}` 
+        <div
+          className="item-section-container"
+          style={{
+            display: "flex",
+            gap: "4px",
+            backgroundColor: index % 2 === 0 ? "rgba(0, 0, 0, 0.1)" : "transparent",
+            borderRadius: theme.border.radius,
+            padding: "4px",
+            flexGrow: 1,
+            overflow: "hidden",
+            minWidth: 0,
+            cursor: isImport ? 'pointer' : undefined,
           }}
-        />
-      </div>
+          onClick={(e) => {
+            e.stopPropagation();
+            // For imports, clicking anywhere in the container should scroll to source
+            if (isImport) {
+              handleImportClick();
+            }
+          }}
+        >
+          <ItemDetails
+            item={item}
+            itemId={itemId}
+            amount={amount}
+            size={size}
+            recipes={recipes}
+            selectedRecipeId={selectedRecipeId}
+            onRecipeChange={onRecipeChange}
+            onIconClick={isImport ? handleImportClick : onIconClick}
+            nominalRate={nominalRate}
+            isByproduct={isByproduct}
+            isImport={isImport}
+            importSourceRecipeName={importSourceRecipeName}
+            getItemColor={getItemColor}
+            viewDensity={viewDensity}
+          />
 
-      <div className="item-node-status-buttons">
-          <button
-              className={`status-button status-button--select ${isSelected ? 'active' : ''}`}
-              onClick={handleToggleSelected}
-              title={isSelected ? "Unmark as Selected" : "Mark as Selected"}
-          >
-              {isSelected ? <BookmarkAddedIcon fontSize="inherit" /> : <BookmarkAddOutlinedIcon fontSize="inherit" />}
-          </button>
-          <button
-              className={`status-button status-button--complete ${isCompleted ? 'active' : ''}`}
-              onClick={handleToggleCompleted}
-              title={isCompleted ? "Unmark as Completed" : "Mark as Completed"}
-          >
-              {isCompleted ? <TaskAltIcon fontSize="inherit" /> : <TaskAltOutlinedIcon fontSize="inherit" />}
-          </button>
+          {machine && !isByproduct && !isImport && showMachines && (
+            <div 
+               className={`machine-details-wrapper ${!showMachineMultiplier ? 'no-multiplier' : ''}`.trim()}
+            >
+              <MachineDetails
+                machine={machine}
+                machineCount={localMachineCount}
+                onMachineCountChange={onMachineCountChange || (() => {}) }
+                machineMultiplier={localMachineMultiplier}
+                onMachineMultiplierChange={onMachineMultiplierChange}
+                showMachineMultiplier={showMachineMultiplier}
+                onOptimizeMachines={handleOptimizeMachines}
+                onOptimizeAllMachines={onOptimizeAllMachines}
+                size={size}
+                showBaseline={showComparison && comparisonResult.hasSnapshot}
+                baselineValues={comparisonResult.snapshotValues ? {
+                  machineCount: comparisonResult.snapshotValues.machineCount,
+                  machineMultiplier: comparisonResult.snapshotValues.machineMultiplier,
+                } : null}
+                changes={{
+                  machineCount: comparisonResult.changes.machineCount,
+                  machineMultiplier: comparisonResult.changes.machineMultiplier,
+                }}
+                isNew={comparisonResult.changes.isNew}
+              />
+            </div>
+          )}
+
+          <EfficiencySection
+            efficiency={efficiency}
+            amount={amount}
+            isByproduct={isByproduct}
+            isImport={isImport}
+            parentNodeId={parentNodeId}
+            hasMultipleImportSources={hasMultipleImportSources}
+            excess={localExcess}
+            nodeId={uniqueId}
+            treeId={treeId}
+            itemName={item?.name ?? itemId}
+            onExcessChange={onExcessChange ? handleExcessChange : undefined}
+            onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
+            onResetExcess={onExcessChange ? handleResetExcess : undefined}
+            onImportAmountChange={isImport && hasMultipleImportSources ? handleImportAmountChange : undefined}
+            onMaxImport={isImport && hasMultipleImportSources ? handleMaxImportAmount : undefined}
+            onResetImport={isImport && hasMultipleImportSources ? handleResetImportAmount : undefined}
+            containerStyle={{
+               borderLeft: `4px solid ${getEfficiencyColor()}` 
+            }}
+            showBaseline={showComparison && comparisonResult.hasSnapshot}
+            baselineValues={comparisonResult.snapshotValues ? {
+              excess: comparisonResult.snapshotValues.excess,
+              amount: comparisonResult.snapshotValues.amount,
+              efficiency: comparisonResult.snapshotValues.efficiency,
+            } : null}
+            changes={{
+              excess: comparisonResult.changes.excess,
+              amount: comparisonResult.changes.amount,
+              efficiency: comparisonResult.changes.efficiency,
+            }}
+            isNew={comparisonResult.changes.isNew}
+          />
+        </div>
+
+        <div className="item-node-status-buttons">
+            <button
+                className={`status-button status-button--select ${isSelected ? 'active' : ''}`}
+                onClick={handleToggleSelected}
+                title={isSelected ? "Unmark as Selected" : "Mark as Selected"}
+            >
+                {isSelected ? <BookmarkAddedIcon fontSize="inherit" /> : <BookmarkAddOutlinedIcon fontSize="inherit" />}
+            </button>
+            <button
+                className={`status-button status-button--complete ${isCompleted ? 'active' : ''}`}
+                onClick={handleToggleCompleted}
+                title={isCompleted ? "Unmark as Completed" : "Mark as Completed"}
+            >
+                {isCompleted ? <TaskAltIcon fontSize="inherit" /> : <TaskAltOutlinedIcon fontSize="inherit" />}
+            </button>
+        </div>
       </div>
     </div>
   );

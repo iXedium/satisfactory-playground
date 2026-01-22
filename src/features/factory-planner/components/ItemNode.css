@@ -9,6 +9,20 @@
   /* Existing styles */
 }
 
+/* Main content row wrapper - horizontal layout for core content */
+.item-node-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+/* Styling when comparison is active */
+.item-node--with-comparison {
+  padding-bottom: 4px;
+}
+
 /* Style the new status button container */
 .item-node-status-buttons {
   display: flex;
@@ -373,11 +387,26 @@
   gap: 2px;
   font-size: 0.85rem;
   align-items: stretch; /* Make children fill height */
-  min-height: 38px;
-  height: 38px;
+  min-height: auto; /* Changed from fixed to allow comparison row */
+  height: auto; /* Changed from fixed to allow comparison row */
   overflow: hidden;
   display: flex; /* Needed for children alignment */
-  flex-direction: row; /* Default layout */
+  flex-direction: column; /* Changed to column for comparison support */
+}
+
+/* Compact main row styling */
+.item-node--compact .item-node-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  min-height: 38px;
+  height: 38px;
+}
+
+/* Compact with comparison styling */
+.item-node--compact.item-node--with-comparison {
+  padding-bottom: 2px;
 }
 
 .item-node--compact .item-section-container {
@@ -726,3 +755,171 @@
   -moz-appearance: textfield;
   appearance: textfield;
 } */
+
+/* =================================== */
+/* Baseline Row Styles (Comparison)    */
+/* =================================== */
+
+/* Color classes for comparison values */
+.baseline-increased {
+  color: var(--comparison-color-increased, #ff6b6b) !important;
+}
+.baseline-decreased {
+  color: var(--comparison-color-decreased, #ffd93d) !important;
+}
+.baseline-unchanged {
+  color: var(--comparison-color-unchanged, #6bcb77) !important;
+}
+
+/* NEW badge for nodes that didn't exist in snapshot */
+.baseline-new-badge {
+  color: var(--comparison-color-unchanged, #6bcb77);
+  font-weight: 600;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  background: rgba(107, 203, 119, 0.15);
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-align: center;
+  display: block;
+}
+
+/* --- MachineControls Column Structure --- */
+/* Wrapper for machine controls with baseline */
+.machine-controls-wrapper {
+  display: flex;
+  align-items: flex-start; /* Align to top for vertical stacking */
+  gap: 2px;
+  width: 100%;
+}
+
+/* Column for stacking current + baseline values */
+.machine-control-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.machine-control-column .baseline-value {
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  opacity: 0.9;
+  line-height: 1;
+  padding: 1px 0;
+}
+
+/* Machine count column */
+.machine-count-column {
+  min-width: 40px;
+}
+
+/* Multiplier column */
+.machine-multiplier-column {
+  min-width: 35px;
+}
+
+/* --- EfficiencySection Column Structure --- */
+.efficiency-section--with-baseline {
+  /* Auto-expand height when baseline is shown */
+  min-height: auto;
+}
+
+/* Column for stacking current + baseline values in efficiency section */
+.efficiency-control-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.efficiency-control-column .baseline-value {
+  font-size: 0.7rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  opacity: 0.9;
+  line-height: 1;
+  padding: 1px 0;
+}
+
+/* Excess column */
+.efficiency-excess-column {
+  min-width: 50px;
+}
+
+/* Efficiency indicator column */
+.efficiency-indicator-column {
+  min-width: 50px;
+}
+
+/* Rate column */
+.efficiency-rate-column {
+  min-width: 60px;
+  flex: 1;
+  align-items: flex-end;
+}
+
+.efficiency-rate-column .baseline-value {
+  text-align: right;
+}
+
+/* --- Compact View Baseline Adjustments --- */
+.item-node--compact .machine-control-column .baseline-value {
+  font-size: 0.65rem;
+  padding: 0;
+}
+
+.item-node--compact .machine-count-column {
+  min-width: 24px;
+}
+
+.item-node--compact .machine-multiplier-column {
+  min-width: 24px;
+}
+
+.item-node--compact .efficiency-control-column .baseline-value {
+  font-size: 0.6rem;
+  padding: 0;
+}
+
+.item-node--compact .efficiency-excess-column {
+  min-width: 40px;
+}
+
+.item-node--compact .efficiency-indicator-column {
+  min-width: 42px;
+}
+
+.item-node--compact .efficiency-rate-column {
+  min-width: 50px;
+}
+
+.item-node--compact .baseline-new-badge {
+  font-size: 0.55rem;
+  padding: 0px 3px;
+}
+
+.item-node--compact .efficiency-baseline-row .baseline-excess {
+  min-width: 30px;
+}
+
+.item-node--compact .efficiency-baseline-row .baseline-rate-group {
+  gap: 4px;
+}
+
+.item-node--compact .efficiency-baseline-row .baseline-efficiency {
+  min-width: 35px;
+}
+
+.item-node--compact .efficiency-baseline-row .baseline-amount {
+  min-width: 40px;
+}
+
+.item-node--compact .baseline-new-badge {
+  font-size: 0.55rem;
+  padding: 0px 4px;
+}

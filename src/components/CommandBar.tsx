@@ -66,6 +66,13 @@ interface CommandBarProps {
   deleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean;
   activeSetupName?: string | null;
+  // Comparison props
+  showComparison?: boolean;
+  hasComparisonSnapshot?: boolean;
+  snapshotInfo?: { name: string; timestamp: number; treeCount: number } | null;
+  onStoreSnapshot?: () => void;
+  onClearSnapshot?: () => void;
+  onToggleComparison?: () => void;
 }
 
 /**
@@ -115,6 +122,13 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     deleteSetup,
     isDirty,
     activeSetupName,
+    // Comparison props
+    showComparison,
+    hasComparisonSnapshot,
+    snapshotInfo,
+    onStoreSnapshot,
+    onClearSnapshot,
+    onToggleComparison,
   },
   ref
 ) => {
@@ -189,6 +203,13 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onDeleteSetup={deleteSetup}
           isDirty={isDirty}
           activeSetupName={activeSetupName}
+          // Pass comparison props down
+          showComparison={showComparison}
+          hasComparisonSnapshot={hasComparisonSnapshot}
+          snapshotInfo={snapshotInfo}
+          onStoreSnapshot={onStoreSnapshot}
+          onClearSnapshot={onClearSnapshot}
+          onToggleComparison={onToggleComparison}
         />
       </div>
 

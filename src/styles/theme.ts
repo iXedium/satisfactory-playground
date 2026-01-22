@@ -29,6 +29,14 @@ export const theme = {
       over: '#aa5a5a', // Bolder red for over 100%
     },
     
+    // Comparison colors - For baseline comparison display
+    comparison: {
+      increased: '#ff6b6b', // Red - value went up (costs more)
+      decreased: '#ffd93d', // Yellow - value went down (costs less)
+      unchanged: '#6bcb77', // Green - no change
+      changed: '#9d65c9',   // Purple - for recipe/type changes
+    },
+    
     // Node background with metallic feel
     nodeBg: 'linear-gradient(145deg, #2d3744, #3a4654)',
     

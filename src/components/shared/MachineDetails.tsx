@@ -1,5 +1,4 @@
 import React from 'react';
-// import { theme } from '../../styles/theme'; // REMOVED - No longer needed directly
 import { sizes } from '../../styles/constants';
 import Icon, { IconSize } from '../Icon';
 import MachineControls from './MachineControls';
@@ -13,6 +12,13 @@ interface Machine {
   modules?: number;
 }
 
+interface BaselineValues {
+  machineCount: number;
+  machineMultiplier: number;
+}
+
+type ChangeType = 'increased' | 'decreased' | 'unchanged';
+
 interface MachineDetailsProps {
   machine: Machine;
   machineCount: number;
@@ -25,6 +31,14 @@ interface MachineDetailsProps {
   size?: IconSize;
   containerStyle?: React.CSSProperties;
   contentStyle?: React.CSSProperties;
+  // Comparison baseline props
+  showBaseline?: boolean;
+  baselineValues?: BaselineValues | null;
+  changes?: {
+    machineCount: ChangeType;
+    machineMultiplier: ChangeType;
+  };
+  isNew?: boolean;
 }
 
 const MachineDetails: React.FC<MachineDetailsProps> = ({
@@ -39,10 +53,15 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
   size = "large",
   containerStyle,
   contentStyle,
+  showBaseline = false,
+  baselineValues = null,
+  changes,
+  isNew = false,
 }) => {
+
   return (
     <div
-      className="machine-details"
+      className={`machine-details ${showBaseline ? 'machine-details--with-baseline' : ''}`}
       style={containerStyle}
       onClick={(e) => e.stopPropagation()}
     >
@@ -85,6 +104,10 @@ const MachineDetails: React.FC<MachineDetailsProps> = ({
             showMachineMultiplier={showMachineMultiplier}
             onOptimizeMachines={onOptimizeMachines}
             onOptimizeAllMachines={onOptimizeAllMachines}
+            showBaseline={showBaseline}
+            baselineValues={baselineValues}
+            changes={changes}
+            isNew={isNew}
           />
         </div>
       </div>

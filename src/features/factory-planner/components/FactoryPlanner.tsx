@@ -80,6 +80,13 @@ const FactoryPlanner: React.FC = () => {
     activeSetupName,
     manualTreeOrder, // Get from hook
     setManualTreeOrder, // Get from hook
+    // Get comparison functions
+    showComparison,
+    hasComparisonSnapshot,
+    snapshotInfo,
+    storeCurrentSnapshot,
+    clearActiveSnapshot,
+    toggleComparison,
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -327,6 +334,13 @@ const FactoryPlanner: React.FC = () => {
           deleteSetup={deleteSetup}
           isDirty={isDirty}
           activeSetupName={activeSetupName}
+          // Pass comparison props down
+          showComparison={showComparison}
+          hasComparisonSnapshot={hasComparisonSnapshot}
+          snapshotInfo={snapshotInfo}
+          onStoreSnapshot={storeCurrentSnapshot}
+          onClearSnapshot={clearActiveSnapshot}
+          onToggleComparison={toggleComparison}
         />
       }
       commandBarHeight={commandBarHeight}

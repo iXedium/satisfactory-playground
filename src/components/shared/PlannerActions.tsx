@@ -25,6 +25,13 @@ interface PlannerActionsProps {
   onDeleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean; // Add isDirty prop
   activeSetupName?: string | null; // Add activeSetupName prop
+  // Comparison props
+  showComparison?: boolean;
+  hasComparisonSnapshot?: boolean;
+  snapshotInfo?: { name: string; timestamp: number; treeCount: number } | null;
+  onStoreSnapshot?: () => void;
+  onClearSnapshot?: () => void;
+  onToggleComparison?: () => void;
   // We might need getSaveNames to populate the load menu later
   // getSaveNames?: () => string[]; 
 }
@@ -50,6 +57,13 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onDeleteSetup,
   isDirty, // Destructure isDirty
   activeSetupName, // Destructure activeSetupName
+  // Comparison props
+  showComparison,
+  hasComparisonSnapshot,
+  snapshotInfo,
+  onStoreSnapshot,
+  onClearSnapshot,
+  onToggleComparison,
 }) => {
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false); // State for save menu
@@ -408,6 +422,73 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
         autoImport={autoImport}
         onAutoImportChange={onAutoImportChange}
       />
+
+      {/* Comparison Controls */}
+      {onStoreSnapshot && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '6px', 
+          marginLeft: '8px', 
+          borderLeft: `1px solid ${theme.colors.border}`, 
+          paddingLeft: '8px' 
+        }}>
+          {/* Store Baseline Button - wrap in arrow function to prevent event being passed */}
+          <button
+            style={{
+              ...iconButtonStyle,
+              padding: '4px 8px',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              letterSpacing: '0.3px',
+              minWidth: 'auto',
+              width: 'auto',
+            }}
+            onClick={() => onStoreSnapshot()}
+            title={hasComparisonSnapshot ? `Update baseline (current: ${snapshotInfo?.name || 'Stored'})` : 'Store current state as baseline'}
+          >
+            Store
+          </button>
+
+          {/* Toggle Comparison Display (only if snapshot exists) */}
+          {hasComparisonSnapshot && onToggleComparison && (
+            <button
+              style={{
+                ...(showComparison ? activeIconButtonStyle : iconButtonStyle),
+                padding: '4px 8px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                letterSpacing: '0.3px',
+                minWidth: 'auto',
+                width: 'auto',
+              }}
+              onClick={onToggleComparison}
+              title={showComparison ? 'Hide comparison' : 'Show comparison'}
+            >
+              Compare
+            </button>
+          )}
+
+          {/* Clear Baseline Button (only if snapshot exists) */}
+          {hasComparisonSnapshot && onClearSnapshot && (
+            <button
+              style={{
+                ...iconButtonStyle,
+                padding: '4px 8px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                letterSpacing: '0.3px',
+                minWidth: 'auto',
+                width: 'auto',
+              }}
+              onClick={onClearSnapshot}
+              title="Clear baseline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Summary Toggle Button */}
       <button

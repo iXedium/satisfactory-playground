@@ -71,3 +71,56 @@ export interface Icon {
   position: string;
   color: string;
 }
+
+// ========================================
+// Comparison/Snapshot Types
+// ========================================
+
+/** Snapshot of a single node's metrics for comparison */
+export interface NodeSnapshot {
+  uniqueId: string;
+  itemId: string;
+  recipeId?: string;
+  recipeName?: string;
+  machineCount: number;
+  machineMultiplier: number;
+  excess: number;
+  amount: number;
+  efficiency: number;
+  // For future: machine type changes
+  machineId?: string;
+  machineName?: string;
+}
+
+/** Snapshot of an entire tree for comparison */
+export interface TreeSnapshot {
+  treeId: string;
+  rootItemId: string;
+  rootItemName: string;
+  timestamp: number;
+  nodes: Record<string, NodeSnapshot>; // keyed by uniqueId
+}
+
+/** Complete comparison snapshot state */
+export interface ComparisonSnapshot {
+  id: string; // unique snapshot ID
+  name: string; // user-visible name
+  timestamp: number;
+  trees: Record<string, TreeSnapshot>; // keyed by treeId
+}
+
+/** Result of comparing a node against its snapshot */
+export interface NodeComparisonResult {
+  hasSnapshot: boolean;
+  snapshotValues?: NodeSnapshot;
+  changes: {
+    machineCount: 'increased' | 'decreased' | 'unchanged';
+    machineMultiplier: 'increased' | 'decreased' | 'unchanged';
+    excess: 'increased' | 'decreased' | 'unchanged';
+    amount: 'increased' | 'decreased' | 'unchanged';
+    efficiency: 'increased' | 'decreased' | 'unchanged';
+    recipe: 'changed' | 'unchanged';
+    isNew: boolean; // node didn't exist in snapshot
+    isRemoved: boolean; // node was in snapshot but not current
+  };
+}

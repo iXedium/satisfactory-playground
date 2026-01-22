@@ -28,6 +28,7 @@ import { usePlannerRecipeManagement } from './usePlannerRecipeManagement';
 import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerSaveLoad } from './usePlannerSaveLoad';
+import { usePlannerComparison } from './usePlannerComparison';
 import { unimportNodeThunk } from '../store/importExportLogic';
 import { createNewTreeStructure } from './usePlannerTreeCalculation';
 import { useItemNodeCalculations } from './useItemNodeCalculations';
@@ -105,6 +106,13 @@ export interface FactoryPlannerHookResult {
   loadSetup: (name: string) => Promise<void>;
   deleteSetup: (name: string) => Promise<void>;
   isDirty: boolean;
+  // Comparison
+  showComparison: boolean;
+  hasComparisonSnapshot: boolean;
+  snapshotInfo: { name: string; timestamp: number; treeCount: number } | null;
+  storeCurrentSnapshot: (name?: string) => void;
+  clearActiveSnapshot: () => void;
+  toggleComparison: () => void;
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
@@ -420,6 +428,20 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     currentManualTreeOrder: manualTreeOrder,
   });
 
+  // Call the Comparison Hook
+  const {
+    showComparison,
+    hasSnapshot: hasComparisonSnapshot,
+    storeCurrentSnapshot,
+    clearActiveSnapshot,
+    toggleComparison,
+    snapshotInfo,
+  } = usePlannerComparison({
+    machineCountMap,
+    machineMultiplierMap,
+    excessMap,
+  });
+
   // --- Optimize All Machines Handler ---
   const handleOptimizeAllMachines = useCallback(async () => {
     // console.log("[OptimizeAll] Starting...");
@@ -549,6 +571,13 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     loadSetup,
     deleteSetup,
     isDirty,
+    // Comparison
+    showComparison,
+    hasComparisonSnapshot,
+    snapshotInfo,
+    storeCurrentSnapshot,
+    clearActiveSnapshot,
+    toggleComparison,
   };
 };
 
