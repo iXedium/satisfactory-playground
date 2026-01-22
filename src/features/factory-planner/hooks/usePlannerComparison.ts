@@ -11,6 +11,7 @@ import {
   selectActiveSnapshot,
   selectShowComparison,
 } from '../store/comparisonSlice';
+import { getMachineForRecipe } from '../../../data';
 import { logger } from '../../../utils/logger';
 
 // --- Helper: Calculate efficiency for a node ---
@@ -55,8 +56,8 @@ export interface UsePlannerComparisonResult {
   activeSnapshot: ComparisonSnapshot | null;
   /** Whether there is an active snapshot */
   hasSnapshot: boolean;
-  /** Store current state as snapshot */
-  storeCurrentSnapshot: (name?: string) => void;
+  /** Store current state as snapshot (async - calculates efficiency for all nodes) */
+  storeCurrentSnapshot: (name?: string) => Promise<void>;
   /** Clear the active snapshot */
   clearActiveSnapshot: () => void;
   /** Toggle comparison display on/off */
@@ -98,17 +99,17 @@ export function usePlannerComparison({
     };
   }, [activeSnapshot]);
 
-  // --- Helper: Recursively extract node snapshots from a tree ---
-  const extractNodeSnapshots = useCallback((
+  // --- Helper: Recursively extract node snapshots from a tree (async for machine lookup) ---
+  const extractNodeSnapshots = useCallback(async (
     node: DependencyNode,
     treeId: string,
     snapshots: Record<string, NodeSnapshot>
-  ): void => {
+  ): Promise<void> => {
     // Skip import/byproduct nodes for now - they inherit from source
     if (node.isImport || node.isByproduct) {
       // Still recurse into children if any
       if (node.children) {
-        node.children.forEach(child => extractNodeSnapshots(child, treeId, snapshots));
+        await Promise.all(node.children.map(child => extractNodeSnapshots(child, treeId, snapshots)));
       }
       return;
     }
@@ -121,6 +122,29 @@ export function usePlannerComparison({
     const recipeId = recipeSelections[node.uniqueId] || node.recipe?.id;
     const recipeName = node.recipe?.name;
 
+    // Calculate efficiency at snapshot time
+    // SNAPSHOT-ONLY: These values are stored for comparison baseline capture.
+    // Do NOT use for live calculations; always recalculate fresh in component render.
+    let efficiency = 0;
+    if (node.recipe && recipeId) {
+      try {
+        const machine = await getMachineForRecipe(recipeId);
+        if (machine && node.recipe.time > 0 && machine.speed > 0) {
+          const itemOut = node.recipe.out[node.id];
+          if (itemOut) {
+            const nominalRate = (60 / node.recipe.time) * itemOut * machine.speed;
+            if (nominalRate > 0 && machineCount > 0 && machineMultiplier > 0) {
+              const totalCapacity = machineCount * machineMultiplier * nominalRate;
+              const needed = node.amount + excess;
+              efficiency = (needed / totalCapacity) * 100;
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn('[usePlannerComparison] Failed to get machine for efficiency calc:', error);
+      }
+    }
+
     const snapshot: NodeSnapshot = {
       uniqueId: node.uniqueId,
       itemId: node.id,
@@ -130,30 +154,30 @@ export function usePlannerComparison({
       machineMultiplier,
       excess,
       amount: node.amount,
-      // Efficiency will be calculated at comparison time since it requires nominal rate
-      efficiency: 0, // Placeholder - we'll update this
+      efficiency,
     };
 
     snapshots[node.uniqueId] = snapshot;
 
     // Recurse into children
     if (node.children) {
-      node.children.forEach(child => extractNodeSnapshots(child, treeId, snapshots));
+      await Promise.all(node.children.map(child => extractNodeSnapshots(child, treeId, snapshots)));
     }
   }, [machineCountMap, machineMultiplierMap, excessMap, recipeSelections]);
 
   // --- Store Current State as Snapshot ---
-  const storeCurrentSnapshot = useCallback((name?: string) => {
+  const storeCurrentSnapshot = useCallback(async (name?: string) => {
     const timestamp = Date.now();
     const snapshotName = name || `Snapshot ${new Date(timestamp).toLocaleTimeString()}`;
     
     const trees: Record<string, TreeSnapshot> = {};
 
-    Object.entries(dependencyTrees).forEach(([treeId, tree]) => {
+    // Process trees in parallel for efficiency
+    await Promise.all(Object.entries(dependencyTrees).map(async ([treeId, tree]) => {
       if (!tree) return;
 
       const nodes: Record<string, NodeSnapshot> = {};
-      extractNodeSnapshots(tree, treeId, nodes);
+      await extractNodeSnapshots(tree, treeId, nodes);
 
       trees[treeId] = {
         treeId,
@@ -162,7 +186,7 @@ export function usePlannerComparison({
         timestamp,
         nodes,
       };
-    });
+    }));
 
     const snapshot: ComparisonSnapshot = {
       id: `snapshot-${timestamp}`,

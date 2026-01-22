@@ -110,7 +110,7 @@ export interface FactoryPlannerHookResult {
   showComparison: boolean;
   hasComparisonSnapshot: boolean;
   snapshotInfo: { name: string; timestamp: number; treeCount: number } | null;
-  storeCurrentSnapshot: (name?: string) => void;
+  storeCurrentSnapshot: (name?: string) => Promise<void>;
   clearActiveSnapshot: () => void;
   toggleComparison: () => void;
 }

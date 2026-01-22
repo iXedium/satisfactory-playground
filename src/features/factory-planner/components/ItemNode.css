@@ -341,7 +341,8 @@
   align-items: center;
   height: 100%;
   /* Dynamic border-left set via inline style */
-  flex: 1 1 0%;
+  /*flex: 1 1 0%;*/
+  flex-grow: 1;
   min-width: 140px;
   max-width: 180px;
   position: relative;
@@ -397,11 +398,12 @@
 /* Compact main row styling */
 .item-node--compact .item-node-main-row {
   display: flex;
+  flex-grow: 1;
   flex-direction: row;
   align-items: center;
   gap: 2px;
   min-height: 38px;
-  height: 38px;
+  height: auto;
 }
 
 /* Compact with comparison styling */
@@ -412,8 +414,8 @@
 .item-node--compact .item-section-container {
   display: flex;
   flex-direction: row;
-  align-items: center; /* Center items vertically */
-  padding: 0 2px;
+  align-items: stretch; /* Center items vertically */
+  /* padding: 0 2px; */
   gap: 4px;
   flex-wrap: nowrap;
   height: 100%;
@@ -469,12 +471,12 @@
   flex-shrink: 1;
   flex-basis: 240px;
   min-width: 180px;
-  padding: 1px 4px;
+  /* padding: 1px 4px; */
   flex-direction: row;
   align-items: center;
   gap: 4px;
   border: none;
-  height: 100%;
+  height: auto;
   overflow: hidden;
   border-left: none; /* Remove border */
 }
@@ -540,16 +542,16 @@
 
 /* --- Compact MachineDetails --- */
 .item-node--compact .machine-details {
-  flex-grow: 0.02;
+  flex-grow: 1;
   flex-shrink: 0;
   flex-basis: 115px;
   min-width: 100px;
-  padding: 1px 2px;
+  /* padding: 1px 2px; */
   gap: 3px;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   border: none; /* Remove border */
-  height: 100%;
+  height: auto;
   overflow: hidden;
   background-color: var(--theme-colors-dark); /* Keep background */
   border-radius: var(--theme-border-radius);
@@ -558,6 +560,12 @@
   border-left: none; /* Remove border */
 }
 /* Special case for when multiplier is hidden */
+.machine-details-wrapper{
+  display: flex;
+  align-items: stretch;
+  height: auto;
+}
+
 .item-node--compact .machine-details-wrapper.no-multiplier .machine-details {
   flex-basis: 100px !important;
   min-width: 90px !important;
@@ -620,12 +628,12 @@
   flex-shrink: 1;
   flex-basis: 220px; /* Adjusted permanent width */
   min-width: 200px; /* Adjusted permanent min-width */
-  padding: 1px 3px;
+  /* padding: 1px 3px; */
   gap: 3px;
   flex-direction: row;
   align-items: center;
   border: none; /* Remove border */
-  height: 100%;
+  height: auto;
   overflow: hidden;
   border-left: none; /* Remove border */
   background-color: var(--theme-colors-dark); /* Keep background */
@@ -782,7 +790,7 @@
   letter-spacing: 0.3px;
   text-transform: uppercase;
   text-align: center;
-  display: block;
+  /* display: block; */
 }
 
 /* --- MachineControls Column Structure --- */
@@ -869,7 +877,7 @@
 
 /* --- Compact View Baseline Adjustments --- */
 .item-node--compact .machine-control-column .baseline-value {
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   padding: 0;
 }
 
@@ -882,8 +890,8 @@
 }
 
 .item-node--compact .efficiency-control-column .baseline-value {
-  font-size: 0.6rem;
-  padding: 0;
+  font-size: .8rem;
+  padding: 0px;
 }
 
 .item-node--compact .efficiency-excess-column {
@@ -892,6 +900,7 @@
 
 .item-node--compact .efficiency-indicator-column {
   min-width: 42px;
+  padding-left: 8px;
 }
 
 .item-node--compact .efficiency-rate-column {

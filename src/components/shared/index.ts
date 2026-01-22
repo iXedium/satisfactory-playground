@@ -1,6 +1,6 @@
 export * from './ActionButtons';
 export * from './CategorySection';
-export * from './ChainCreator';
+export * from './ChainCreatorControls';
 export * from './DisplayOptions';
 export * from './EfficiencyIndicator';
 export * from './EfficiencySection';
