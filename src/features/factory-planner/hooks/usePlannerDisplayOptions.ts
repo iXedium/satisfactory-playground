@@ -10,6 +10,7 @@ const LS_ACCUMULATE_EXTENSIONS = 'lastSession_savedAccumulateExtensions';
 const LS_SHOW_MACHINES = 'lastSession_savedShowMachines';
 const LS_SHOW_MACHINE_MULTI = 'lastSession_savedShowMachineMultiplier';
 const LS_AUTO_IMPORT = 'lastSession_plannerAutoImport';
+const LS_SHOW_HIDDEN_NODES = 'lastSession_showHiddenNodes';
 
 export interface BasePlannerDisplayOptions {
   viewDensity: ViewDensity;
@@ -27,6 +28,8 @@ export interface BasePlannerDisplayOptions {
 export interface PlannerDisplayOptions extends BasePlannerDisplayOptions {
   autoImport: boolean;
   setAutoImport: React.Dispatch<React.SetStateAction<boolean>>;
+  showHiddenNodes: boolean;
+  setShowHiddenNodes: React.Dispatch<React.SetStateAction<boolean>>;
   clearStorage: () => void;
 }
 
@@ -38,6 +41,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
   const [showMachines, setShowMachines] = useState(true);
   const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
   const [autoImport, setAutoImport] = useState(true);
+  const [showHiddenNodes, setShowHiddenNodes] = useState(false);
 
   // Load saved state from LAST SESSION localStorage
   useEffect(() => {
@@ -60,6 +64,9 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       const savedAutoImport = localStorage.getItem(LS_AUTO_IMPORT);
       if (savedAutoImport) setAutoImport(JSON.parse(savedAutoImport));
 
+      const savedShowHiddenNodes = localStorage.getItem(LS_SHOW_HIDDEN_NODES);
+      if (savedShowHiddenNodes) setShowHiddenNodes(JSON.parse(savedShowHiddenNodes));
+
     } catch (error) {
       console.error("Error loading last session display options:", error);
       // Clear potentially corrupt keys
@@ -69,6 +76,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       localStorage.removeItem(LS_SHOW_MACHINES);
       localStorage.removeItem(LS_SHOW_MACHINE_MULTI);
       localStorage.removeItem(LS_AUTO_IMPORT);
+      localStorage.removeItem(LS_SHOW_HIDDEN_NODES);
     }
   }, []); // Run only on mount
 
@@ -81,10 +89,11 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
       localStorage.setItem(LS_SHOW_MACHINES, JSON.stringify(showMachines));
       localStorage.setItem(LS_SHOW_MACHINE_MULTI, JSON.stringify(showMachineMultiplier));
       localStorage.setItem(LS_AUTO_IMPORT, JSON.stringify(autoImport));
+      localStorage.setItem(LS_SHOW_HIDDEN_NODES, JSON.stringify(showHiddenNodes));
     } catch (error) {
       console.error("Error saving last session display options:", error);
     }
-  }, [viewDensity, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport]);
+  }, [viewDensity, showExtensions, accumulateExtensions, showMachines, showMachineMultiplier, autoImport, showHiddenNodes]);
 
   // Function to clear related localStorage items
   const clearStorage = useCallback(() => {
@@ -102,6 +111,7 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     setShowMachines(true);
     setShowMachineMultiplier(false);
     setAutoImport(true);
+    setShowHiddenNodes(false);
   }, []);
 
   return {
@@ -117,6 +127,8 @@ export const usePlannerDisplayOptions = (): PlannerDisplayOptions => {
     setShowMachineMultiplier,
     autoImport,
     setAutoImport,
+    showHiddenNodes,
+    setShowHiddenNodes,
     clearStorage,
   };
 }; 

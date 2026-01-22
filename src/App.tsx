@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner";
 import "./styles/App.css";
 import { useInitialization, InitializationProvider } from "./contexts/InitializationContext";
+import { HideToggleDragProvider } from "./contexts/HideToggleDragContext";
 
 const App: React.FC = () => {
   const { isLoading, isError, errorMessage } = useInitialization();
@@ -86,7 +87,9 @@ const App: React.FC = () => {
 
 const AppWithProvider: React.FC = () => (
   <InitializationProvider>
-    <App />
+    <HideToggleDragProvider>
+      <App />
+    </HideToggleDragProvider>
   </InitializationProvider>
 );
 

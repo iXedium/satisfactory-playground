@@ -29,6 +29,7 @@ const FactoryPlanner: React.FC = () => {
     expandedNodes,
     showMachines,
     showMachineMultiplier,
+    showHiddenNodes,
     nodeExtensionOverrides,
     isAddItemCollapsed,
     recentItems,
@@ -47,6 +48,7 @@ const FactoryPlanner: React.FC = () => {
     setExpandedNodes,
     setShowMachines,
     setShowMachineMultiplier,
+    setShowHiddenNodes,
     setIsAddItemCollapsed,
     updateRecentItems,
     setTreeSortKey,
@@ -247,8 +249,13 @@ const FactoryPlanner: React.FC = () => {
   const displayTreesArray = useMemo(() => {
     const allTrees = Object.values(dependencies.dependencyTrees);
     
-    // Filter out any null entries FIRST
-    const validTrees = allTrees.filter((t): t is DependencyNode => t !== null);
+    // Filter out any null entries FIRST, then filter hidden nodes if showHiddenNodes is false
+    const validTrees = allTrees.filter((t): t is DependencyNode => {
+      if (t === null) return false;
+      // If showHiddenNodes is false, filter out hidden trees
+      if (!showHiddenNodes && t.isHidden) return false;
+      return true;
+    });
 
     if (treeSortKey === 'Manual') {
       // Create a map for quick lookup
@@ -274,7 +281,7 @@ const FactoryPlanner: React.FC = () => {
         return treeSortDirection === 'asc' ? compareResult : -compareResult;
       });
     }
-  }, [dependencies.dependencyTrees, treeSortKey, treeSortDirection, itemsMap, manualTreeOrder]);
+  }, [dependencies.dependencyTrees, treeSortKey, treeSortDirection, itemsMap, manualTreeOrder, showHiddenNodes]);
   // ------------------------------------------------------
 
   return (
@@ -293,6 +300,8 @@ const FactoryPlanner: React.FC = () => {
           onShowMachinesChange={setShowMachines}
           showMachineMultiplier={showMachineMultiplier}
           onShowMachineMultiplierChange={setShowMachineMultiplier}
+          showHiddenNodes={showHiddenNodes}
+          onShowHiddenNodesChange={setShowHiddenNodes}
           isAddItemCollapsed={isAddItemCollapsed}
           onAddItemCollapsedChange={setIsAddItemCollapsed}
           onClearSavedData={clearSavedData}

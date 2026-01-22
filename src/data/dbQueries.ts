@@ -1,5 +1,6 @@
 import { db } from "./dexieDB";
 import { Recipe, Item, Icon as IconType } from "../types";
+import { logger } from "../utils/logger";
 
 // Retrieve all items (including resources, components, etc.)
 export const getAllItems = async (): Promise<Item[]> => await db.items.toArray();
@@ -33,7 +34,7 @@ export const getRecipesForItem = async (itemId: string): Promise<Recipe[]> => {
       return recipe.out && Object.keys(recipe.out).includes(itemId);
     }).toArray();
     
-    console.log(`[dbQueries.getRecipesForItem] Recipes found for ${itemId}:`, recipes.map(r => r.id));
+    logger.info(`[dbQueries.getRecipesForItem] Recipes found for ${itemId}:`, recipes.map(r => r.id));
     
     if (recipes.length === 0) {
       // If no recipes found, try a different approach
@@ -46,7 +47,7 @@ export const getRecipesForItem = async (itemId: string): Promise<Recipe[]> => {
     
     return recipes;
   } catch (error) {
-    console.error(`Error finding recipes for ${itemId}:`, error);
+    logger.error(`Error finding recipes for ${itemId}:`, error);
     return [];
   }
 };
@@ -90,13 +91,13 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
     const machineItem = await db.items.get(producerId) as ItemWithMachine | undefined;
     
     if (!machineItem) {
-      console.warn(`[getMachineForRecipe] Machine item with ID '${producerId}' not found in Dexie DB for recipe '${recipeId}'.`);
+      logger.warn(`[getMachineForRecipe] Machine item with ID '${producerId}' not found in Dexie DB for recipe '${recipeId}'.`);
       return null;
     }
     
     const machineDetails = machineItem.machine;
     if (!machineDetails) { 
-      console.warn(`[getMachineForRecipe] Machine item '${producerId}' exists but lacks a 'machine' property.`);
+      logger.warn(`[getMachineForRecipe] Machine item '${producerId}' exists but lacks a 'machine' property.`);
       return null; 
     }
       
@@ -108,7 +109,7 @@ export const getMachineForRecipe = async (recipeId: string): Promise<Machine | n
     };
 
   } catch (error) {
-    console.error(`Error in getMachineForRecipe for recipe '${recipeId}':`, error);
+    logger.error(`Error in getMachineForRecipe for recipe '${recipeId}':`, error);
     return null;
   }
 };

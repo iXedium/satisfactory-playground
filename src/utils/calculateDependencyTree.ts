@@ -14,6 +14,8 @@ import {
 import { createImportNode } from "./importNodeLogic";
 // Import tree utils
 import { findNodeByIdInAllTrees } from "./treeUtils";
+// Import logger
+import { logger } from "./logger";
 
 // FindNodeById likely comes from calculateDependencyTree itself or should be imported correctly
 // Let's assume it should be defined locally for now, uncommenting the local version
@@ -32,7 +34,7 @@ export const calculateDependencyTree = async (
   dependencyTrees?: Record<string, DependencyNode>,
   visited: string[] = []
 ): Promise<DependencyNode | null> => {
-  console.log(`[calculateDependencyTree] ENTER: itemId=${itemId}, recipeArg=${rootRecipeId}, depth=${depth}`);
+  logger.verbose(`[calculateDependencyTree] ENTER: itemId=${itemId}, recipeArg=${rootRecipeId}, depth=${depth}`);
 
   // Determine the recipe ID that will be used for this node for cycle key
   let recipeIdForCycleKey: string | null = rootRecipeId; // For root or if explicitly passed
@@ -51,7 +53,7 @@ export const calculateDependencyTree = async (
 
   const visitedKey = `${itemId}_${recipeIdForCycleKey || 'any_recipe'}`;
   if (visited.includes(visitedKey)) {
-    console.warn(`[CIRCULAR DEPENDENCY] Detected for ${itemId} with effective recipe key ${visitedKey}. Depth: ${depth}. Returning leaf node.`);
+    logger.warn(`[CIRCULAR DEPENDENCY] Detected for ${itemId} with effective recipe key ${visitedKey}. Depth: ${depth}. Returning leaf node.`);
     const availableRecipesForCyclic = await getRecipesForItem(itemId);
     return {
       id: itemId,
@@ -151,7 +153,7 @@ export const calculateDependencyTree = async (
   } else {
     recipe = await getRecipeByOutput(itemId);
   }
-  console.log(`[calculateDependencyTree] RESOLVED: itemId=${itemId}, depth=${depth}, chosenRecipeId=${recipe ? recipe.id : 'none'}`);
+  logger.verbose(`[calculateDependencyTree] RESOLVED: itemId=${itemId}, depth=${depth}, chosenRecipeId=${recipe ? recipe.id : 'none'}`);
 
   if (!recipe) {
     // Return node even if no recipe (e.g., raw resource)

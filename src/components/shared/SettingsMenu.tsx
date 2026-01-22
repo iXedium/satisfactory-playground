@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { theme } from '../../styles/theme';
 import StyledCheckbox from './StyledCheckbox';
+import StyledSelect from './StyledSelect';
+import { logger, LOG_LEVEL_OPTIONS, LogLevel } from '../../utils/logger';
 
 interface SettingsMenuProps {
   showMachines: boolean;
@@ -11,7 +13,6 @@ interface SettingsMenuProps {
   // Add creation options
   autoImport: boolean;
   onAutoImportChange: (value: boolean) => void;
-  // children?: React.ReactNode; // Remove children prop
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
@@ -19,13 +20,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   onShowMachinesChange,
   showMachineMultiplier,
   onShowMachineMultiplierChange,
-  // children, // Remove children destructuring
-  autoImport, // Renamed
-  onAutoImportChange, // Renamed
+  autoImport,
+  onAutoImportChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [logLevel, setLogLevel] = useState<LogLevel>(logger.getLevel());
 
   // Update menu position when it's opened
   useEffect(() => {
@@ -49,7 +50,18 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             // Check if the click was inside the portal menu
             const menuElement = document.getElementById('settings-menu-portal');
             if (menuElement && !menuElement.contains(event.target as Node)) {
-                 setIsOpen(false);
+                // Check if click is inside a dropdown portal (any portal div outside #root)
+                const target = event.target as HTMLElement;
+                const portalDropdowns = document.querySelectorAll('body > div:not(#root):not(#settings-menu-portal)');
+                let isInsideDropdown = false;
+                portalDropdowns.forEach(portal => {
+                  if (portal.contains(target)) {
+                    isInsideDropdown = true;
+                  }
+                });
+                if (!isInsideDropdown) {
+                  setIsOpen(false);
+                }
             }
       }
     };
@@ -144,32 +156,39 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               />
               <span>Show Multiplier</span>
             </div>
-            {/* Add Compact View checkbox if needed later */}
-            {/* <div style={compactCheckboxStyle}>
-              <StyledCheckbox 
-                checked={compactView} 
-                onChange={toggleCompactView}
-                label=""
-              />
-              <span>Compact View</span>
-            </div> */}
           </div>
-          {/* Remove children rendering */}
-          {/* {children && <div style={{ marginTop: '12px', borderTop: `1px solid ${theme.colors.dropdown.border}`, paddingTop: '12px' }}>{children}</div>} */}
 
-          {/* Add New Section for Creation Options */} 
+          {/* Creation Options */} 
           <div style={{ marginTop: '12px', borderTop: `1px solid ${theme.colors.dropdown.border}`, paddingTop: '12px' }}>
             <h4 style={{ margin: '0 0 8px 0', color: theme.colors.text, fontSize: '14px' }}>Creation Options</h4>
             <div style={checkboxContainerStyle}>
               <div style={compactCheckboxStyle}>
                 <StyledCheckbox 
-                  checked={autoImport} // Renamed prop
-                  // StyledCheckbox onChange returns boolean directly
-                  onChange={onAutoImportChange} // Renamed prop
+                  checked={autoImport}
+                  onChange={onAutoImportChange}
                   label=""
                 />
-                <span>Auto Import Chains</span> {/* Updated Label */}
+                <span>Auto Import Chains</span>
               </div>
+            </div>
+          </div>
+
+          {/* Developer Options */}
+          <div style={{ marginTop: '12px', borderTop: `1px solid ${theme.colors.dropdown.border}`, paddingTop: '12px' }}>
+            <h4 style={{ margin: '0 0 8px 0', color: theme.colors.text, fontSize: '14px' }}>Developer</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>Log Level:</span>
+              <StyledSelect
+                options={LOG_LEVEL_OPTIONS}
+                value={logLevel}
+                onChange={(val) => {
+                  const newLevel = val as LogLevel;
+                  logger.setLevel(newLevel);
+                  setLogLevel(newLevel);
+                }}
+                variant="compact"
+                style={{ minWidth: '100px' }}
+              />
             </div>
           </div>
         </div>,

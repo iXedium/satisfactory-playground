@@ -10,13 +10,14 @@ import MachineDetails from "../../../components/shared/MachineDetails";
 import EfficiencySection from "../../../components/shared/EfficiencySection";
 import { useItemNodeCalculations } from '../hooks/useItemNodeCalculations';
 import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
-import { toggleNodeSelected, toggleNodeCompleted, setHighlightedNode } from '../store/dependencySlice';
+import { toggleNodeSelected, toggleNodeCompleted, toggleNodeHidden, setHighlightedNode } from '../store/dependencySlice';
 import { setImportAmountThunk, resetImportAmountThunk, maxImportAmountThunk } from '../store/importExportLogic';
 import { RootState, AppDispatch } from '../../../store';
 import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import { logger } from '../../../utils/logger';
 import './ItemNode.css';
 
 interface ItemNodeProps {
@@ -136,7 +137,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   });
 
   useEffect(() => {
-    console.log(`[ItemNode ${uniqueId} (${itemId})] Calculated nominalRate: ${nominalRate}`);
+    logger.verbose(`[ItemNode ${uniqueId} (${itemId})] Calculated nominalRate: ${nominalRate}`);
   }, [nominalRate, uniqueId, itemId]);
 
   useEffect(() => {
@@ -150,7 +151,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   useEffect(() => {
     if (selectedRecipeId) {
       getMachineForRecipe(selectedRecipeId).then((machineData) => {
-        console.log(`[ItemNode ${uniqueId} (${itemId})] Machine data for recipe ${selectedRecipeId}:`, machineData);
+        logger.verbose(`[ItemNode ${uniqueId} (${itemId})] Machine data for recipe ${selectedRecipeId}:`, machineData);
         if (machineData) {
           setMachine(machineData);
         } else {
@@ -158,7 +159,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         }
       });
     } else {
-      console.log(`[ItemNode ${uniqueId} (${itemId})] No selected recipe, setting machine to null.`);
+      logger.verbose(`[ItemNode ${uniqueId} (${itemId})] No selected recipe, setting machine to null.`);
       setMachine(null);
     }
   }, [selectedRecipeId, uniqueId, itemId]);
@@ -184,6 +185,26 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const handleImportMouseLeave = useCallback(() => {
     if (isImport && importTargetId) {
       dispatch(setHighlightedNode(null));
+    }
+  }, [isImport, importTargetId, dispatch]);
+
+  // Handle click on import node to scroll to source and highlight it
+  const handleImportClick = useCallback(() => {
+    if (!isImport || !importTargetId) return;
+    
+    // Find the source node element using data-node-id attribute
+    const sourceElement = document.querySelector(`[data-node-id="${importTargetId}"]`);
+    if (sourceElement) {
+      // Scroll to the element smoothly
+      sourceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Highlight the source for a moment
+      dispatch(setHighlightedNode(importTargetId));
+      
+      // Clear the highlight after 1.5 seconds
+      setTimeout(() => {
+        dispatch(setHighlightedNode(null));
+      }, 1500);
     }
   }, [isImport, importTargetId, dispatch]);
 
@@ -216,6 +237,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
       parentNodeId
     }));
   }, [dispatch, treeId, uniqueId, parentNodeId, isImport]);
+
+  // Handle toggling hidden state for root nodes
+  const handleToggleHidden = useCallback(() => {
+    dispatch(toggleNodeHidden({ treeId, nodeId: uniqueId }));
+  }, [dispatch, treeId, uniqueId]);
 
   const getItemColor = () => {
     if (isRoot) return theme.colors.nodeRoot;
@@ -268,10 +294,10 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         setLocalMachineCount(optimalMachines);
         onMachineCountChange?.(optimalMachines);
       } else {
-         console.warn('[Optimize Error] Recipe not found inside if block.');
+         logger.warn('[Optimize Error] Recipe not found inside if block.');
       }
     } else {
-      console.warn('[Optimize Check Fail] Condition not met.');
+      logger.debug('[Optimize Check Fail] Condition not met.');
     }
   };
 
@@ -297,18 +323,22 @@ const ItemNode: React.FC<ItemNodeProps> = ({
         padding: "8px 2px",
         borderRadius: theme.border.radius,
         position: 'relative',
+        cursor: isImport ? 'pointer' : undefined,
         ...style,
       }}
       onMouseEnter={isImport ? handleImportMouseEnter : undefined}
       onMouseLeave={isImport ? handleImportMouseLeave : undefined}
+      onClick={isImport ? handleImportClick : undefined}
     >
       <ItemNodeButtons
         isRoot={isRoot}
         isImport={isImport}
+        isHidden={nodeData?.isHidden}
         itemId={uniqueId}
         onDelete={onDelete}
         onImport={onImport}
         onUnimport={onUnimport}
+        onToggleHidden={isRoot ? handleToggleHidden : undefined}
       />
 
       <div
@@ -322,8 +352,15 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           flexGrow: 1,
           overflow: "hidden",
           minWidth: 0,
+          cursor: isImport ? 'pointer' : undefined,
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          // For imports, clicking anywhere in the container should scroll to source
+          if (isImport) {
+            handleImportClick();
+          }
+        }}
       >
         <ItemDetails
           item={item}
@@ -333,7 +370,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           recipes={recipes}
           selectedRecipeId={selectedRecipeId}
           onRecipeChange={onRecipeChange}
-          onIconClick={onIconClick}
+          onIconClick={isImport ? handleImportClick : onIconClick}
           nominalRate={nominalRate}
           isByproduct={isByproduct}
           isImport={isImport}

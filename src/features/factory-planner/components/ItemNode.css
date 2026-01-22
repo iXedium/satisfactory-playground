@@ -707,6 +707,10 @@
   cursor: default;
 }
 
+.rate-display-wrapper.cursor-pointer {
+  cursor: pointer;
+}
+
 /* Add default cursor if icon has no click handler */
 .item-details-icon-container:not([onClick]) {
   cursor: default;

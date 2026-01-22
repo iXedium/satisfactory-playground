@@ -139,16 +139,24 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
       {/* Main Component Structure */}
       <div
         className="item-details"
-        style={{ '--item-color': getItemColor() } as React.CSSProperties}
-        onClick={(e) => e.stopPropagation()}
+        style={{ 
+          '--item-color': getItemColor(),
+          cursor: onIconClick ? 'pointer' : undefined 
+        } as React.CSSProperties}
+        onClick={(e) => {
+          // Only stop propagation if there's no icon click handler
+          // For imports, we want the click to trigger scrolling
+          if (onIconClick) {
+            e.stopPropagation();
+            onIconClick();
+          } else {
+            e.stopPropagation();
+          }
+        }}
       >
         {/* Item icon */}
         <div
           className="item-details-icon-container"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onIconClick) onIconClick();
-          }}
         >
           <Icon itemId={itemId} size={size} />
         </div>
@@ -156,7 +164,6 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
         {/* Item info and recipe */}
         <div
           className="item-details-content"
-          onClick={(e) => e.stopPropagation()}
         >
           {/* Item name and actual amount (rate conditionally rendered) */}
           <div

@@ -20,4 +20,4 @@ export * from './consumptionUtils';
 
 // Add exports for the new utility files
 export * from './treeCalculationCache';
-export * from './importNodeLogic';
+export * from './importNodeLogic';export * from './logger';

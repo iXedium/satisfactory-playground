@@ -23,6 +23,8 @@ async function getItemName(itemId: string): Promise<string> {
     }
 }
 
+import { logger } from './logger';
+
 /**
  * Finds all nodes across all trees that consume the output of a given source node.
  * @param sourceNodeId The uniqueId of the SOURCE ROOT node whose output consumption we want to find.
@@ -37,7 +39,7 @@ export const findNodeConsumers = async (
   const sourceRootNode = allTrees[sourceNodeId];
 
   if (!sourceRootNode) {
-    console.warn(`[findNodeConsumers] Source root node ${sourceNodeId} not found.`);
+    logger.warn(`[findNodeConsumers] Source root node ${sourceNodeId} not found.`);
     return consumers;
   }
 

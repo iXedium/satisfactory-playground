@@ -12,6 +12,8 @@ interface ViewTreeControlsProps {
   onTreeSortDirectionChange: (direction: SortDirection) => void;
   viewDensity: ViewDensity;
   setViewDensity: (density: ViewDensity) => void;
+  showHiddenNodes: boolean;
+  onShowHiddenNodesChange: (show: boolean) => void;
 }
 
 const sortByKeyOptions: { id: TreeSortKey; name: string }[] = [
@@ -30,6 +32,8 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
   onTreeSortDirectionChange,
   viewDensity,
   setViewDensity,
+  showHiddenNodes,
+  onShowHiddenNodesChange,
 }) => {
 
   const toggleSortDirection = () => {
@@ -119,6 +123,15 @@ const ViewTreeControls: React.FC<ViewTreeControlsProps> = ({
             title={`Sort Direction (${treeSortDirection === 'asc' ? 'Ascending' : 'Descending'})`}
           >
             {treeSortDirection === 'asc' ? '↑' : '↓'}
+          </button>
+
+          {/* Show Hidden Nodes Toggle */}
+          <button
+            style={showHiddenNodes ? activeIconButtonStyle : iconButtonStyle}
+            onClick={() => onShowHiddenNodesChange(!showHiddenNodes)}
+            title={showHiddenNodes ? "Showing hidden chains" : "Hidden chains not shown"}
+          >
+            <span>{showHiddenNodes ? '👁' : '⌣'}</span>
           </button>
         </div>
   );

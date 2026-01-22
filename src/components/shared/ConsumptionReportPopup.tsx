@@ -1,17 +1,78 @@
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import { ConsumerInfo } from '../../utils/consumptionUtils'; // Import the type
 import Icon from '../Icon';
+import { setHighlightedNode } from '../../features/factory-planner/store/dependencySlice';
+import { AppDispatch } from '../../store';
+
+// Separate component for each consumer item to handle hover state
+interface ConsumerItemProps {
+  consumer: ConsumerInfo;
+  itemLineStyle: React.CSSProperties;
+  itemLineHoverStyle: React.CSSProperties;
+  isPersistent: boolean;
+  nameStyle: React.CSSProperties;
+  valueGroupStyle: React.CSSProperties;
+  percentageStyle: React.CSSProperties;
+  amountStyle: React.CSSProperties;
+  calculatePercentage: (part: number) => string;
+  onClick: (consumer: ConsumerInfo) => void;
+}
+
+const ConsumerItem: React.FC<ConsumerItemProps> = ({
+  consumer,
+  itemLineStyle,
+  itemLineHoverStyle,
+  isPersistent,
+  nameStyle,
+  valueGroupStyle,
+  percentageStyle,
+  amountStyle,
+  calculatePercentage,
+  onClick,
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  return (
+    <div 
+      style={{
+        ...itemLineStyle,
+        ...(isPersistent && isHovered ? itemLineHoverStyle : {}),
+      }}
+      onClick={() => onClick(consumer)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Icon itemId={consumer.consumerParentId} size="xsmall" />
+      <span style={nameStyle}>{consumer.consumerParentName}</span>
+      <div style={valueGroupStyle}>
+        <span style={percentageStyle}>{calculatePercentage(consumer.consumedAmount)}</span>
+        <span style={amountStyle}>{consumer.consumedAmount.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+};
 
 interface ConsumptionReportPopupProps {
   consumers: ConsumerInfo[];
   sourceItemName: string; // Add source item name for title
   totalDemand: number; // Add total demand for percentage calculation
   sourceNodeExcess: number; // Add source node's excess
+  isPersistent?: boolean; // Whether popup is in persistent mode (clicked)
+  onItemClick?: (consumingTreeId: string, consumerNodeId: string) => void; // Callback when item clicked
 }
 
-const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consumers, sourceItemName, totalDemand, sourceNodeExcess }) => {
+const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ 
+  consumers, 
+  sourceItemName, 
+  totalDemand, 
+  sourceNodeExcess,
+  isPersistent = false,
+  onItemClick,
+}) => {
+  const dispatch = useDispatch<AppDispatch>();
 
   const sectionStyle: React.CSSProperties = {
     backgroundColor: theme.colors.darker, 
@@ -27,7 +88,7 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
     minWidth: '220px', // Slightly wider for more info
     maxWidth: '350px',
     zIndex: sizes.zIndex.tooltip, 
-    pointerEvents: 'none', // Allow mouse events to pass through
+    pointerEvents: isPersistent ? 'auto' : 'none', // Allow mouse events when persistent
   };
   
   const titleStyle: React.CSSProperties = {
@@ -44,7 +105,33 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
     display: 'flex',
     alignItems: 'center',
     gap: sizes.spacing.small,
-    padding: `${sizes.spacing.xsmall} 0`, // Add vertical padding
+    padding: `${sizes.spacing.xsmall} ${sizes.spacing.small}`, // Add horizontal padding
+    cursor: isPersistent ? 'pointer' : 'default',
+    borderRadius: theme.border.radius,
+    transition: 'background-color 0.15s ease',
+  };
+
+  const itemLineHoverStyle: React.CSSProperties = {
+    backgroundColor: theme.colors.surface,
+  };
+
+  const handleItemClick = (consumer: ConsumerInfo) => {
+    if (!isPersistent) return;
+    
+    // Scroll to the consumer node
+    const targetElement = document.querySelector(`[data-node-id="${consumer.consumerNodeId}"]`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Highlight the target for a moment
+      dispatch(setHighlightedNode(consumer.consumerNodeId));
+      setTimeout(() => {
+        dispatch(setHighlightedNode(null));
+      }, 1500);
+    }
+    
+    // Call the callback to close the popup
+    onItemClick?.(consumer.consumingTreeId, consumer.consumerNodeId);
   };
 
   const nameStyle: React.CSSProperties = {
@@ -103,17 +190,19 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({ consume
         </div>
       ) : (
         consumers.map((consumer, index) => (
-          <div key={`${consumer.consumingTreeId}-${consumer.consumerNodeId}-${index}`} style={itemLineStyle}>
-            {/* Optionally add icon of the consuming parent */}
-            <Icon itemId={consumer.consumerParentId} size="xsmall" />
-            <span style={nameStyle}>{consumer.consumerParentName}</span>
-            {/* Group percentage and amount */}
-            <div style={valueGroupStyle}>
-              {/* Pass only the part to calculatePercentage */}
-              <span style={percentageStyle}>{calculatePercentage(consumer.consumedAmount)}</span>
-              <span style={amountStyle}>{consumer.consumedAmount.toFixed(2)}</span>
-            </div>
-          </div>
+          <ConsumerItem
+            key={`${consumer.consumingTreeId}-${consumer.consumerNodeId}-${index}`}
+            consumer={consumer}
+            itemLineStyle={itemLineStyle}
+            itemLineHoverStyle={itemLineHoverStyle}
+            isPersistent={isPersistent}
+            nameStyle={nameStyle}
+            valueGroupStyle={valueGroupStyle}
+            percentageStyle={percentageStyle}
+            amountStyle={amountStyle}
+            calculatePercentage={calculatePercentage}
+            onClick={handleItemClick}
+          />
         ))
       )}
       

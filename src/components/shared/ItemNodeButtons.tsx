@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
+import { useHideToggleDrag } from '../../contexts/HideToggleDragContext';
 
 interface ItemNodeButtonsProps {
   isRoot?: boolean;
   isImport?: boolean;
+  isHidden?: boolean;
   itemId: string;
   onDelete?: () => void;
   onImport?: (nodeId: string) => void;
   onUnimport?: (nodeId: string) => void;
+  onToggleHidden?: () => void;
   containerStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
 }
@@ -16,13 +19,26 @@ interface ItemNodeButtonsProps {
 const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
   isRoot = false,
   isImport = false,
+  isHidden = false,
   itemId,
   onDelete,
   onImport,
   onUnimport,
+  onToggleHidden,
   containerStyle,
   buttonStyle: customButtonStyle,
 }) => {
+  // Use the hide toggle drag context for drag-to-toggle behavior
+  const { state: dragState, startDrag, registerButton, unregisterButton, handleButtonEnter } = useHideToggleDrag();
+  
+  // Register/unregister this button with the context
+  useEffect(() => {
+    if (isRoot && onToggleHidden) {
+      registerButton(itemId, isHidden, onToggleHidden);
+      return () => unregisterButton(itemId);
+    }
+  }, [isRoot, itemId, isHidden, onToggleHidden, registerButton, unregisterButton]);
+
   // Styles
   const buttonBaseStyle: React.CSSProperties = {
     cursor: 'pointer',
@@ -45,12 +61,12 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
       className="item-node-buttons"
       style={{
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'row',
       gap: sizes.spacing.small,
       padding: `${sizes.spacing.small} 0`,
       marginRight: sizes.spacing.xsmall,
-      width: '24px',
-      flex: '0 0 24px',
+      width: '48px',
+      flex: '0 0 48px',
       alignItems: 'center',
       ...containerStyle
     }}>
@@ -78,6 +94,48 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
           title="Delete chain"
         >
           ×
+        </button>
+      )}
+
+      {/* Hide/Show toggle button for root nodes */}
+      {isRoot && onToggleHidden && (
+        <button
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault(); // Prevent text selection during drag
+            // Start drag - target state is the opposite of current (what we're toggling TO)
+            startDrag(!isHidden);
+            // Also toggle this button immediately
+            onToggleHidden();
+          }}
+          onMouseEnter={(e) => {
+            // Handle drag-to-toggle
+            if (dragState.isDragging) {
+              handleButtonEnter(itemId);
+            }
+            // Visual hover effect
+            e.currentTarget.style.backgroundColor = 'rgba(128, 128, 128, 0.4)';
+            e.currentTarget.style.color = isHidden ? '#444444' : '#31af61';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = isHidden 
+              ? 'rgba(128, 128, 128, 0.3)' 
+              : 'rgba(128, 128, 128, 0.1)';
+            e.currentTarget.style.color = isHidden ? '#666666' : '#5bc082';
+          }}
+          style={{
+            ...buttonBaseStyle,
+            background: isHidden 
+              ? 'rgba(128, 128, 128, 0.3)' 
+              : 'rgba(128, 128, 128, 0.1)',
+            border: '1px solid rgba(128, 128, 128, 0.3)',
+            color: isHidden ? '#666666' : '#5bc082',
+            fontSize: '12px',
+            userSelect: 'none', // Prevent text selection
+          }}
+          title={isHidden ? "Show chain (unhide)" : "Hide chain (drag to toggle multiple)"}
+        >
+          {isHidden ? '⌣' : '👁'}
         </button>
       )}
       

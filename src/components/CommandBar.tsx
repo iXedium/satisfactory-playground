@@ -33,6 +33,8 @@ interface CommandBarProps {
   onShowMachinesChange: (show: boolean) => void;
   showMachineMultiplier: boolean;
   onShowMachineMultiplierChange: (show: boolean) => void;
+  showHiddenNodes: boolean;
+  onShowHiddenNodesChange: (show: boolean) => void;
   isAddItemCollapsed: boolean;
   onAddItemCollapsedChange: (collapsed: boolean) => void;
   onClearSavedData: () => void;
@@ -82,6 +84,8 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onShowMachinesChange,
     showMachineMultiplier,
     onShowMachineMultiplierChange,
+    showHiddenNodes,
+    onShowHiddenNodesChange,
     isAddItemCollapsed,
     onAddItemCollapsedChange,
     onClearSavedData,
@@ -158,6 +162,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
            // Pass density props down
            viewDensity={viewDensity}
            setViewDensity={setViewDensity}
+           // Pass show hidden props down
+           showHiddenNodes={showHiddenNodes}
+           onShowHiddenNodesChange={onShowHiddenNodesChange}
         />
         
         {/* --- Render PlannerActions --- */}

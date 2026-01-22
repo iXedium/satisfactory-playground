@@ -1,6 +1,7 @@
 import { DependencyNode, Recipe } from "../types";
 import { getRecipeById, getRecipeByOutput } from "../data";
 import { setImportReference } from "./nodeReferenceUtils"; // Import setImportReference
+import { logger } from "./logger";
 // We need to import calculateDependencyTree to avoid circular dependency
 // This might indicate a need for further refactoring later.
 // For now, we use a dynamic import or pass it as an argument if needed.
@@ -289,7 +290,7 @@ export async function convertToImportTree(
             initialTrees[newTree.uniqueId] = newTree; // Add to map for subsequent lookups
             processedChild = setImportReference(processedChild, newTree.uniqueId, newTree.uniqueId);
           } else {
-            console.error(`[convertToImportTree] createTreeFn failed for NORMAL item ${itemIdToImport}`);
+            logger.error(`[convertToImportTree] createTreeFn failed for NORMAL item ${itemIdToImport}`);
           }
         }
       }

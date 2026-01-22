@@ -51,6 +51,7 @@ export interface DependencyNode {
   machineCount?: number; // Number of machines allocated
   machineMultiplier?: number; // Clock speed/multiplier for machines
   originalDepth?: number; // Original depth in the parent tree before becoming an import root
+  isHidden?: boolean; // True if this node is hidden (shy layer)
 }
 
 /** Stores calculated dependency state */

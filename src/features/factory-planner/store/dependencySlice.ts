@@ -280,6 +280,22 @@ const dependencySlice = createSlice({
       }
     },
     
+    // Toggle hidden state on a specific node (shy layer)
+    toggleNodeHidden: (
+      state,
+      action: PayloadAction<{ treeId: string; nodeId: string }>
+    ) => {
+      const { treeId, nodeId } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (tree) {
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          node.isHidden = !node.isHidden;
+          state.lastUpdateTime = Date.now();
+        }
+      }
+    },
+    
     updateNodeProperties: (
       state,
       // Restore original payload structure
@@ -385,6 +401,7 @@ export const {
   clearErrors,
   toggleNodeSelected,
   toggleNodeCompleted,
+  toggleNodeHidden,
   setHighlightedNode,
   setNodeMachineCount,
   setNodeMachineMultiplier,
