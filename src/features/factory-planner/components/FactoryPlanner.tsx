@@ -87,6 +87,7 @@ const FactoryPlanner: React.FC = () => {
     storeCurrentSnapshot,
     clearActiveSnapshot,
     toggleComparison,
+    resetToSnapshot,
   } = useFactoryPlanner();
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
@@ -197,63 +198,8 @@ const FactoryPlanner: React.FC = () => {
   }, [dependencies.dependencyTrees, excessMap, itemsMap]); 
   // ----------------------------------------------------
 
-  // --- Handle Manual Sort (Drag and Drop) ---
-  const handleManualSort = useCallback((result: DropResult) => {
-    if (!result.destination) {
-      return; // Dropped outside the list
-    }
-
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-
-    setManualTreeOrder(prevOrder => {
-      const newOrder = Array.from(prevOrder);
-      const [removed] = newOrder.splice(sourceIndex, 1);
-      newOrder.splice(destinationIndex, 0, removed);
-      return newOrder;
-    });
-
-    // Set sort key to Manual
-    setTreeSortKey('Manual');
-    // Optionally reset direction for manual sort? Or keep the last direction?
-    // setTreeSortDirection('asc');
-
-  }, [setTreeSortKey]); // Add setTreeSortKey dependency
-  // ----------------------------------------
-
-  // --- Handle Tree Deletion (Update Manual Order) ---
-   const handleDeleteTree = useCallback((treeId: string) => {
-    originalHandleDeleteTree(treeId); // Call the original delete logic from the hook
-    // Remove the deleted treeId from the manual order state
-    setManualTreeOrder(prevOrder => prevOrder.filter(id => id !== treeId));
-  }, [originalHandleDeleteTree]);
-  // ----------------------------------------------
-
-  // --- Synchronize manualTreeOrder with actual trees ---
-  useEffect(() => {
-    const currentTreeIds = Object.keys(dependencies.dependencyTrees);
-    
-    // Add check: Only synchronize if trees have actually loaded
-    if (currentTreeIds.length === 0 && manualTreeOrder.length > 0) {
-        // Avoid wiping the loaded order if trees haven't loaded yet but we have an order
-        return; 
-    }
-    // Or alternatively, ensure we don't run if currentTreeIds is empty
-    // if (currentTreeIds.length === 0) return;
-
-    setManualTreeOrder(prevOrder => {
-      // Filter out IDs that no longer exist
-      const existingOrder = prevOrder.filter(id => currentTreeIds.includes(id));
-      // Find IDs that are in current trees but not in the order yet
-      const newIds = currentTreeIds.filter(id => !existingOrder.includes(id));
-      // Add new IDs to the end
-      return [...existingOrder, ...newIds];
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dependencies.dependencyTrees]); // Rerun when trees change
-  // ----------------------------------------------------
-
   // --- Trees Array Memoization (with sorting and null filtering) ---
+  // NOTE: Moved BEFORE handleManualSort so it can be used as a dependency
   const displayTreesArray = useMemo(() => {
     const allTrees = Object.values(dependencies.dependencyTrees);
     
@@ -291,6 +237,97 @@ const FactoryPlanner: React.FC = () => {
     }
   }, [dependencies.dependencyTrees, treeSortKey, treeSortDirection, itemsMap, manualTreeOrder, showHiddenNodes]);
   // ------------------------------------------------------
+
+  // --- Handle Manual Sort (Drag and Drop) ---
+  // When hidden nodes are filtered out, drag indices are relative to visible trees only.
+  // We need to map those indices back to positions in manualTreeOrder (which includes all trees).
+  const handleManualSort = useCallback((result: DropResult) => {
+    if (!result.destination) {
+      return; // Dropped outside the list
+    }
+
+    const sourceVisibleIndex = result.source.index;
+    const destinationVisibleIndex = result.destination.index;
+
+    // Get the tree ID that was dragged (from the visible/filtered array)
+    const draggedTreeId = displayTreesArray[sourceVisibleIndex]?.uniqueId;
+    if (!draggedTreeId) return;
+
+    // Get the tree ID at the destination position (in the visible array)
+    // This helps us figure out where to insert in the full order
+    const destinationTreeId = displayTreesArray[destinationVisibleIndex]?.uniqueId;
+
+    setManualTreeOrder(prevOrder => {
+      const newOrder = Array.from(prevOrder);
+      
+      // Find the current position of the dragged tree in the full order
+      const sourceFullIndex = newOrder.indexOf(draggedTreeId);
+      if (sourceFullIndex === -1) return prevOrder;
+
+      // Remove the dragged tree from its current position
+      newOrder.splice(sourceFullIndex, 1);
+
+      // Find where to insert:
+      // If we have a destination tree ID, insert relative to that position
+      if (destinationTreeId) {
+        let destinationFullIndex = newOrder.indexOf(destinationTreeId);
+        if (destinationFullIndex !== -1) {
+          // If dragging DOWN (source visible index < destination visible index),
+          // insert AFTER the destination tree
+          if (sourceVisibleIndex < destinationVisibleIndex) {
+            destinationFullIndex += 1;
+          }
+          // If dragging UP, insert BEFORE the destination tree (at its current index)
+          newOrder.splice(destinationFullIndex, 0, draggedTreeId);
+        } else {
+          // Destination tree not found (shouldn't happen), append to end
+          newOrder.push(draggedTreeId);
+        }
+      } else {
+        // No destination tree (edge case), append to end
+        newOrder.push(draggedTreeId);
+      }
+
+      return newOrder;
+    });
+
+    // Set sort key to Manual
+    setTreeSortKey('Manual');
+
+  }, [setTreeSortKey, displayTreesArray]);
+  // ----------------------------------------
+
+  // --- Handle Tree Deletion (Update Manual Order) ---
+   const handleDeleteTree = useCallback((treeId: string) => {
+    originalHandleDeleteTree(treeId); // Call the original delete logic from the hook
+    // Remove the deleted treeId from the manual order state
+    setManualTreeOrder(prevOrder => prevOrder.filter(id => id !== treeId));
+  }, [originalHandleDeleteTree]);
+  // ----------------------------------------------
+
+  // --- Synchronize manualTreeOrder with actual trees ---
+  useEffect(() => {
+    const currentTreeIds = Object.keys(dependencies.dependencyTrees);
+    
+    // Add check: Only synchronize if trees have actually loaded
+    if (currentTreeIds.length === 0 && manualTreeOrder.length > 0) {
+        // Avoid wiping the loaded order if trees haven't loaded yet but we have an order
+        return; 
+    }
+    // Or alternatively, ensure we don't run if currentTreeIds is empty
+    // if (currentTreeIds.length === 0) return;
+
+    setManualTreeOrder(prevOrder => {
+      // Filter out IDs that no longer exist
+      const existingOrder = prevOrder.filter(id => currentTreeIds.includes(id));
+      // Find IDs that are in current trees but not in the order yet
+      const newIds = currentTreeIds.filter(id => !existingOrder.includes(id));
+      // Add new IDs to the end
+      return [...existingOrder, ...newIds];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dependencies.dependencyTrees]); // Rerun when trees change
+  // ----------------------------------------------------
 
   return (
     <FactoryPlannerLayout
@@ -341,6 +378,7 @@ const FactoryPlanner: React.FC = () => {
           onStoreSnapshot={storeCurrentSnapshot}
           onClearSnapshot={clearActiveSnapshot}
           onToggleComparison={toggleComparison}
+          onResetToSnapshot={resetToSnapshot}
         />
       }
       commandBarHeight={commandBarHeight}

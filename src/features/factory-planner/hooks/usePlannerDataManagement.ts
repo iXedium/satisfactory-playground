@@ -33,8 +33,8 @@ export const usePlannerDataManagement = ({
 }: PlannerDataManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const handleDeleteTree = useCallback((treeId: string) => {
-    dispatch(destroyNodeRecursiveThunk(treeId));
+  const handleDeleteTree = useCallback(async (treeId: string) => {
+    await dispatch(destroyNodeRecursiveThunk(treeId));
   }, [dispatch]);
 
   const handleNodeUpdate = useCallback((nodeId: string, updatedNode: Partial<DependencyNode>) => {

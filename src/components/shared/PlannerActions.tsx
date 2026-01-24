@@ -32,6 +32,7 @@ interface PlannerActionsProps {
   onStoreSnapshot?: () => void;
   onClearSnapshot?: () => void;
   onToggleComparison?: () => void;
+  onResetToSnapshot?: (removeNewNodes: boolean) => Promise<void>;
   // We might need getSaveNames to populate the load menu later
   // getSaveNames?: () => string[]; 
 }
@@ -64,6 +65,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onStoreSnapshot,
   onClearSnapshot,
   onToggleComparison,
+  onResetToSnapshot,
 }) => {
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false); // State for save menu
@@ -466,6 +468,25 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
               title={showComparison ? 'Hide comparison' : 'Show comparison'}
             >
               Compare
+            </button>
+          )}
+
+          {/* Reset to Baseline Button (only if snapshot exists) */}
+          {hasComparisonSnapshot && onResetToSnapshot && (
+            <button
+              style={{
+                ...iconButtonStyle,
+                padding: '4px 8px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                letterSpacing: '0.3px',
+                minWidth: 'auto',
+                width: 'auto',
+              }}
+              onClick={(e) => onResetToSnapshot(e.shiftKey)}
+              title="Reset to baseline values. Shift+Click: also remove new nodes added after store."
+            >
+              Reset
             </button>
           )}
 

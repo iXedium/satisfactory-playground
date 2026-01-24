@@ -92,7 +92,7 @@ export interface FactoryPlannerHookResult {
   handleMachineCountChange: (nodeId: string, count: number) => void;
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   handleExpandCollapseAll: (expand: boolean) => void;
-  handleDeleteTree: (treeId: string) => void;
+  handleDeleteTree: (treeId: string) => Promise<void>;
   handleImportNode: (nodeId: string) => Promise<void>;
   handleUnimportNode: (nodeId: string) => void;
   handleSetImportAmount: (treeId: string, nodeId: string, parentNodeId: string, newAmount: number) => void;
@@ -115,6 +115,7 @@ export interface FactoryPlannerHookResult {
   storeCurrentSnapshot: (name?: string) => Promise<void>;
   clearActiveSnapshot: () => void;
   toggleComparison: () => void;
+  resetToSnapshot: (removeNewNodes: boolean) => Promise<void>;
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
@@ -438,10 +439,15 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     clearActiveSnapshot,
     toggleComparison,
     snapshotInfo,
+    resetToSnapshot,
   } = usePlannerComparison({
     machineCountMap,
     machineMultiplierMap,
     excessMap,
+    setMachineCountMap,
+    setMachineMultiplierMap,
+    setExcessMap,
+    handleDeleteTree,
   });
 
   // --- Optimize All Machines Handler ---
@@ -580,6 +586,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     storeCurrentSnapshot,
     clearActiveSnapshot,
     toggleComparison,
+    resetToSnapshot,
   };
 };
 

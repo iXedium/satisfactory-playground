@@ -22,6 +22,11 @@ import {
 } from "../../../utils/calculateAccumulatedFromTree";
 import { findNodeConsumers, ConsumerInfo } from '../../../utils/consumptionUtils';
 import { logger } from '../../../utils/logger';
+import { 
+  calculateChildProductionNeeds, 
+  updateForcedProduction,
+  AffectedNodeUpdate 
+} from './productionUpdateLogic';
 
 // Store the last known recipes for nodes that were converted to byproduct
 // This will be used to restore the recipe when converting back to normal
@@ -1645,12 +1650,65 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
 
     // 3. Dispatch update only if the amount has changed
     if (Math.abs(initialAmount - newRequiredAmount) > 1e-9) { // Use threshold for float comparison
-        await dispatch(updateNodeProperties({
+        // Update the root node's amount
+        dispatch(updateForcedProduction({ 
             nodeId: rootNodeId, 
-            updatedNode: { amount: newRequiredAmount }
+            treeId: rootNodeId, 
+            amount: newRequiredAmount 
         }));
+        await Promise.resolve(); // Ensure state update completes
+        
+        // 4. Cascade updates to children
+        // Get fresh state after root amount update
+        const stateAfterRootUpdate = getState();
+        const updatedRootNode = stateAfterRootUpdate.dependencies.dependencyTrees[rootNodeId];
+        
+        if (updatedRootNode) {
+            // Calculate total production (amount + excess) for child calculations
+            const totalProduction = (updatedRootNode.amount || 0) + (updatedRootNode.excess || 0);
+            
+            // Get child updates needed
+            const childUpdates = calculateChildProductionNeeds(updatedRootNode, rootNodeId, totalProduction);
+            
+            // Recursively dispatch updates for children
+            const cascadeChildUpdates = async (updates: AffectedNodeUpdate[]) => {
+                for (const update of updates) {
+                    // Update this child's amount
+                    dispatch(updateForcedProduction({
+                        nodeId: update.nodeId,
+                        treeId: update.treeId,
+                        amount: update.amount
+                    }));
+                    await Promise.resolve();
+                    
+                    // Check if this child has import reference - if so, recalculate that target
+                    const freshState = getState();
+                    const tree = freshState.dependencies.dependencyTrees[update.treeId];
+                    if (tree) {
+                        const childNode = findNodeById(tree, update.nodeId);
+                        if (childNode) {
+                            const childImportRef = getImportReference(childNode);
+                            if (childImportRef?.targetTreeId) {
+                                // This child imports from another tree - recalculate that target
+                                await dispatch(recalculateAndUpdateRootAmountThunk({
+                                    rootNodeId: childImportRef.targetTreeId,
+                                    externalDemandChange: undefined
+                                }));
+                            } else if (childNode.children && childNode.children.length > 0) {
+                                // Not an import - recurse into this child's children
+                                const childTotalProduction = (childNode.amount || 0) + (childNode.excess || 0);
+                                const grandchildUpdates = calculateChildProductionNeeds(childNode, update.treeId, childTotalProduction);
+                                await cascadeChildUpdates(grandchildUpdates);
+                            }
+                        }
+                    }
+                }
+            };
+            
+            await cascadeChildUpdates(childUpdates);
+        }
+        
         await dispatch(checkAndConvertNodeTypeThunk(rootNodeId));
-
     }
   }
 ); 

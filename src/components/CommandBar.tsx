@@ -73,6 +73,7 @@ interface CommandBarProps {
   onStoreSnapshot?: () => void;
   onClearSnapshot?: () => void;
   onToggleComparison?: () => void;
+  onResetToSnapshot?: (removeNewNodes: boolean) => Promise<void>;
 }
 
 /**
@@ -129,6 +130,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onStoreSnapshot,
     onClearSnapshot,
     onToggleComparison,
+    onResetToSnapshot,
   },
   ref
 ) => {
@@ -210,6 +212,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onStoreSnapshot={onStoreSnapshot}
           onClearSnapshot={onClearSnapshot}
           onToggleComparison={onToggleComparison}
+          onResetToSnapshot={onResetToSnapshot}
         />
       </div>
 

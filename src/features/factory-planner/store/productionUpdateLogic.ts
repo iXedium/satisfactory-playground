@@ -58,7 +58,7 @@ function getAllNodeIds(tree: DependencyNode): string[] {
 }
 
 // Type definition for the result objects
-type AffectedNodeUpdate = {
+export type AffectedNodeUpdate = {
   nodeId: string;
   treeId: string;
   productionType: 'excess' | 'forced' | 'imported';
@@ -111,7 +111,7 @@ function calculateImportTargetUpdate(
 }
 
 /** Calculates the production needs for a node's children based on its recipe and total production. */
-function calculateChildProductionNeeds(
+export function calculateChildProductionNeeds(
   node: DependencyNode,
   treeId: string,
   totalProduction: number

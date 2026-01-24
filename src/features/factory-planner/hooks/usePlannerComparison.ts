@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
 import { DependencyNode, ComparisonSnapshot, TreeSnapshot, NodeSnapshot, NodeComparisonResult } from '../../../types';
@@ -11,6 +11,7 @@ import {
   selectActiveSnapshot,
   selectShowComparison,
 } from '../store/comparisonSlice';
+import { updateTreeProduction } from '../store/productionUpdateLogic';
 import { getMachineForRecipe } from '../../../data';
 import { logger } from '../../../utils/logger';
 
@@ -41,6 +42,12 @@ interface UsePlannerComparisonProps {
   machineCountMap: Record<string, number>;
   machineMultiplierMap: Record<string, number>;
   excessMap: Record<string, number>;
+  // Setters for reset functionality
+  setMachineCountMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setMachineMultiplierMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setExcessMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  // Function to delete a tree (for removing new trees on shift+reset)
+  handleDeleteTree: (treeId: string) => Promise<void>;
   /**
    * Function to get nominal rate for a node
    * This needs to be provided because nominal rate calculation requires recipe data
@@ -70,6 +77,8 @@ export interface UsePlannerComparisonResult {
   removeTreeFromSnapshot: (treeId: string) => void;
   /** Get snapshot info for display */
   snapshotInfo: { name: string; timestamp: number; treeCount: number } | null;
+  /** Reset current values to stored baseline. If removeNewNodes is true, also removes nodes/trees added after snapshot. */
+  resetToSnapshot: (removeNewNodes: boolean) => Promise<void>;
 }
 
 /**
@@ -79,6 +88,10 @@ export function usePlannerComparison({
   machineCountMap,
   machineMultiplierMap,
   excessMap,
+  setMachineCountMap,
+  setMachineMultiplierMap,
+  setExcessMap,
+  handleDeleteTree,
 }: UsePlannerComparisonProps): UsePlannerComparisonResult {
   const dispatch = useDispatch<AppDispatch>();
   
@@ -306,6 +319,127 @@ export function usePlannerComparison({
     return result;
   }, [activeSnapshot, machineCountMap, machineMultiplierMap, excessMap, recipeSelections]);
 
+  // --- Reset to Snapshot ---
+  // Restores all user-editable values (machineCount, machineMultiplier, excess) to their stored baseline.
+  // If removeNewNodes is true, also removes trees and nodes that didn't exist in the snapshot.
+  const resetToSnapshot = useCallback(async (removeNewNodes: boolean) => {
+    if (!activeSnapshot) {
+      logger.warn('[usePlannerComparison] Cannot reset: no active snapshot');
+      return;
+    }
+
+    logger.info('[usePlannerComparison] Resetting to snapshot', { removeNewNodes });
+
+    // If removeNewNodes is true, delete trees that weren't in the snapshot FIRST
+    // (before we start changing values, to avoid unnecessary recalculations)
+    const snapshotTreeIds = new Set(Object.keys(activeSnapshot.trees));
+    if (removeNewNodes) {
+      const currentTreeIds = Object.keys(dependencyTrees);
+      for (const treeId of currentTreeIds) {
+        if (!snapshotTreeIds.has(treeId)) {
+          logger.info('[usePlannerComparison] Removing new tree:', treeId);
+          await handleDeleteTree(treeId);
+        }
+      }
+    }
+
+    // Build new maps from snapshot values
+    const newMachineCountMap: Record<string, number> = {};
+    const newMachineMultiplierMap: Record<string, number> = {};
+    const newExcessMap: Record<string, number> = {};
+
+    // Collect all node IDs from snapshot for reference
+    const snapshotNodeIds = new Set<string>();
+
+    // Track which root nodes need recalculation (those with changed excess values)
+    const rootsNeedingRecalc: Array<{ treeId: string; nodeId: string; excess: number }> = [];
+
+    // Iterate through all trees and nodes in the snapshot
+    for (const [treeId, treeSnapshot] of Object.entries(activeSnapshot.trees)) {
+      for (const [nodeId, nodeSnapshot] of Object.entries(treeSnapshot.nodes)) {
+        snapshotNodeIds.add(nodeId);
+        
+        // Restore the user-editable values from snapshot
+        newMachineCountMap[nodeId] = nodeSnapshot.machineCount;
+        newMachineMultiplierMap[nodeId] = nodeSnapshot.machineMultiplier;
+        newExcessMap[nodeId] = nodeSnapshot.excess;
+
+        // Check if this is a root node that needs recalculation
+        // A root node's uniqueId equals the treeId
+        const tree = dependencyTrees[treeId];
+        if (tree && tree.uniqueId === nodeId) {
+          // Check if excess changed - this is what drives production amounts
+          const currentExcess = excessMap[nodeId] ?? 0;
+          if (currentExcess !== nodeSnapshot.excess) {
+            rootsNeedingRecalc.push({ 
+              treeId, 
+              nodeId, 
+              excess: nodeSnapshot.excess 
+            });
+          }
+        }
+      }
+    }
+
+    // Merge with current values: keep values for NEW nodes (not in snapshot) unless removeNewNodes
+    if (!removeNewNodes) {
+      // For nodes NOT in snapshot, keep their current values
+      for (const [nodeId, value] of Object.entries(machineCountMap)) {
+        if (!snapshotNodeIds.has(nodeId)) {
+          newMachineCountMap[nodeId] = value;
+        }
+      }
+      for (const [nodeId, value] of Object.entries(machineMultiplierMap)) {
+        if (!snapshotNodeIds.has(nodeId)) {
+          newMachineMultiplierMap[nodeId] = value;
+        }
+      }
+      for (const [nodeId, value] of Object.entries(excessMap)) {
+        if (!snapshotNodeIds.has(nodeId)) {
+          newExcessMap[nodeId] = value;
+        }
+      }
+    }
+    // If removeNewNodes is true, new nodes' values are simply not included in the new maps
+    // (they'll be deleted along with their trees below)
+
+    // Apply the new maps
+    setMachineCountMap(newMachineCountMap);
+    setMachineMultiplierMap(newMachineMultiplierMap);
+    setExcessMap(newExcessMap);
+
+    // Trigger recalculation for root nodes with changed excess
+    // This will cascade the production updates through the entire tree
+    for (const { treeId, nodeId, excess } of rootsNeedingRecalc) {
+      logger.info('[usePlannerComparison] Triggering recalc for root:', { treeId, nodeId, excess });
+      dispatch(updateTreeProduction(nodeId, treeId, 'excess', excess));
+    }
+
+    // Also recalculate any tree that exists in snapshot but didn't have excess changes
+    // This ensures all trees are in sync with their baseline amounts
+    for (const [treeId, treeSnapshot] of Object.entries(activeSnapshot.trees)) {
+      const tree = dependencyTrees[treeId];
+      if (!tree) continue;
+      
+      const rootNodeId = tree.uniqueId;
+      const alreadyRecalced = rootsNeedingRecalc.some(r => r.treeId === treeId);
+      
+      if (!alreadyRecalced) {
+        const snapshotExcess = treeSnapshot.nodes[rootNodeId]?.excess ?? 0;
+        logger.info('[usePlannerComparison] Triggering recalc for unchanged root:', { treeId, rootNodeId, snapshotExcess });
+        dispatch(updateTreeProduction(rootNodeId, treeId, 'excess', snapshotExcess));
+      }
+    }
+
+    logger.info('[usePlannerComparison] Reset complete', {
+      restoredNodes: snapshotNodeIds.size,
+      rootsRecalculated: rootsNeedingRecalc.length,
+      removeNewNodes,
+    });
+  }, [activeSnapshot, machineCountMap, machineMultiplierMap, excessMap, 
+      setMachineCountMap, setMachineMultiplierMap, setExcessMap, 
+      handleDeleteTree, dependencyTrees, dispatch]);
+
   return {
     showComparison,
     activeSnapshot,
@@ -317,5 +451,6 @@ export function usePlannerComparison({
     getNodeComparison,
     removeTreeFromSnapshot,
     snapshotInfo,
+    resetToSnapshot,
   };
 }
