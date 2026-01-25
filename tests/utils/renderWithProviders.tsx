@@ -8,7 +8,7 @@
 import React, { PropsWithChildren } from 'react';
 import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { configureStore, combineReducers, PreloadedState } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from '../../src/store';
 
 // Import all reducers
@@ -39,7 +39,7 @@ export type TestStore = ReturnType<typeof createTestStore>;
 export function createTestStore(preloadedState?: Partial<RootState>) {
   return configureStore({
     reducer: rootReducer,
-    preloadedState: preloadedState as PreloadedState<RootState>,
+    preloadedState: preloadedState as RootState,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {

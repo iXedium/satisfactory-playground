@@ -187,7 +187,6 @@ export function createMockNode(
   const uniqueId = overrides.uniqueId ?? `${id}-${nodeCounter++}`;
   
   return {
-    id,
     uniqueId,
     amount: 1,
     depth: 0,
