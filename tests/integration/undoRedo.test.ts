@@ -34,7 +34,7 @@ import {
 } from '../../src/features/factory-planner/store/historySlice';
 import { loadSavedState } from '../../src/features/factory-planner/store/dependencySlice';
 import { loadRecipeSelections } from '../../src/features/factory-planner/store/recipeSelectionsSlice';
-import { loadRecipeSelections } from '../../src/features/factory-planner/store/recipeSelectionsSlice';
+import { updateExcessProduction } from '../../src/features/factory-planner/store/productionUpdateLogic';
 import type { RootState, AppDispatch } from '../../src/store';
 
 // ============================================
@@ -615,6 +615,58 @@ describe('Undo/Redo System', () => {
       expect(restoredTree.machineCount).toBe(3);
       expect(restoredTree.children![0].amount).toBe(63);
       expect(restoredTree.children![0].excess).toBe(8);
+    });
+
+    it('should capture excess changes via updateExcessProduction action', () => {
+      // This tests the EXACT flow when a user changes excess in the UI:
+      // 1. Add tree with excess=0
+      // 2. Dispatch updateExcessProduction to set excess=20
+      // 3. Undo should restore excess=0
+      // 4. Redo should restore excess=20
+      
+      const TREE_ID = 'excess-test-tree';
+      // The TreeBuilder uses TREE_ID directly as the root node's uniqueId
+      const NODE_ID = TREE_ID;
+      
+      // Step 1: Add tree with NO excess
+      const tree = new TreeBuilder('Desc_IronPlate_C', TREE_ID)
+        .withAmount(20)
+        .withExcess(0)
+        .build();
+      
+      dispatch(setDependencies({ treeId: TREE_ID, tree }));
+      
+      let state = store.getState();
+      expect(state.dependencies.dependencyTrees[TREE_ID].uniqueId).toBe(NODE_ID);
+      expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(0);
+      expect(getUndoStackSize(state)).toBe(1);
+      
+      // Step 2: Set excess to 20 using the same action the UI uses
+      dispatch(updateExcessProduction({ 
+        nodeId: NODE_ID, 
+        treeId: TREE_ID, 
+        amount: 20 
+      }));
+      
+      state = store.getState();
+      expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(20);
+      expect(getUndoStackSize(state)).toBe(2);
+      
+      // Step 3: Undo should restore excess=0
+      dispatch(undoAction() as unknown as AnyAction);
+      
+      state = store.getState();
+      expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(0);
+      expect(getUndoStackSize(state)).toBe(1);
+      expect(getRedoStackSize(state)).toBe(1);
+      
+      // Step 4: Redo should restore excess=20
+      dispatch(redoAction() as unknown as AnyAction);
+      
+      state = store.getState();
+      expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(20);
+      expect(getUndoStackSize(state)).toBe(2);
+      expect(getRedoStackSize(state)).toBe(0);
     });
   });
 });

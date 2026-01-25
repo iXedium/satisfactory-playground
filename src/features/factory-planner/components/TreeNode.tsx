@@ -275,15 +275,15 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             style={{
               backgroundColor: "transparent",
             }}
-            excess={excessMap[node.uniqueId] || 0}
+            excess={node.excess || 0}
             onExcessChange={(excess) => onExcessChange?.(node.uniqueId, excess)}
             onIconClick={hasChildren ? handleToggle : undefined}
             index={depth}
-            machineCount={machineCountMap[node.uniqueId] || 1}
+            machineCount={node.machineCount || 1}
             onMachineCountChange={(count) =>
               onMachineCountChange?.(node.uniqueId, count)
             }
-            machineMultiplier={machineMultiplierMap[node.uniqueId] || 1}
+            machineMultiplier={node.machineMultiplier || 1}
             onMachineMultiplierChange={(multiplier) =>
               onMachineMultiplierChange?.(node.uniqueId, multiplier)
             }
