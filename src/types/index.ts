@@ -52,6 +52,7 @@ export interface DependencyNode {
   machineMultiplier?: number; // Clock speed/multiplier for machines
   originalDepth?: number; // Original depth in the parent tree before becoming an import root
   isHidden?: boolean; // True if this node is hidden (shy layer)
+  isCyclicReference?: boolean; // True if this node represents a circular dependency
 }
 
 /** Stores calculated dependency state */

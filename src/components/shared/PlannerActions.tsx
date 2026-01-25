@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { theme } from '../../styles/theme';
 import SettingsMenu from './SettingsMenu'; // Keep settings separate or move here?
 import StyledSwitch from '../../components/shared/StyledSwitch';
+import { useUndoRedo } from '../../features/factory-planner/hooks/useUndoRedo';
 
 interface PlannerActionsProps {
   onSearchChange: (searchTerm: string) => void; // Example handler
@@ -265,8 +266,44 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   // Log the received isDirty prop value on render
   // console.log(`[PlannerActions Render] isDirty prop: ${isDirty}`);
 
+  // Undo/Redo hook (keyboard shortcuts enabled)
+  const { canUndo, canRedo, undo, redo, lastUndoAction, lastRedoAction } = useUndoRedo(true);
+
+  // Disabled button style
+  const disabledIconButtonStyle: React.CSSProperties = {
+    ...iconButtonStyle,
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  };
+
   return (
     <div style={lastSectionStyle}>
+      {/* Undo/Redo Buttons */}
+      <button
+        style={canUndo ? iconButtonStyle : disabledIconButtonStyle}
+        onClick={undo}
+        disabled={!canUndo}
+        title={canUndo ? `Undo: ${lastUndoAction || 'last action'} (Ctrl+Z)` : 'Nothing to undo'}
+      >
+        <span>↩️</span>
+      </button>
+      <button
+        style={canRedo ? iconButtonStyle : disabledIconButtonStyle}
+        onClick={redo}
+        disabled={!canRedo}
+        title={canRedo ? `Redo: ${lastRedoAction || 'last action'} (Ctrl+Y)` : 'Nothing to redo'}
+      >
+        <span>↪️</span>
+      </button>
+
+      {/* Separator */}
+      <div style={{ 
+        width: '1px', 
+        height: '20px', 
+        backgroundColor: theme.colors.border, 
+        margin: '0 4px' 
+      }} />
+
       {/* Display Active Setup Name */}
       {activeSetupName && (
         <span

@@ -71,7 +71,7 @@ export const diffTrees = (
 
     if (!oldNode || 
         oldNode.amount !== newNode.amount || 
-        oldNode.selectedRecipeId !== newNode.selectedRecipeId ||
+        oldNode.recipe?.id !== newNode.recipe?.id ||
         oldNode.excess !== newNode.excess) {
       changedPaths.push(...currentPath); // Add path if node changed
     }

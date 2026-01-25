@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
 import { getRecipesForItem, getRecipeById, getRecipeByOutput, getAllItems, getMachineForRecipe } from '../../../data';
@@ -32,6 +32,39 @@ import { usePlannerComparison } from './usePlannerComparison';
 import { unimportNodeThunk } from '../store/importExportLogic';
 import { createNewTreeStructure } from './usePlannerTreeCalculation';
 import { useItemNodeCalculations } from './useItemNodeCalculations';
+
+// --- Helper to extract local state maps from dependency trees ---
+function extractLocalStateMapsFromTrees(dependencyTrees: Record<string, DependencyNode | null>): {
+  excessMap: Record<string, number>;
+  machineCountMap: Record<string, number>;
+  machineMultiplierMap: Record<string, number>;
+} {
+  const excessMap: Record<string, number> = {};
+  const machineCountMap: Record<string, number> = {};
+  const machineMultiplierMap: Record<string, number> = {};
+  
+  const extractFromNode = (node: DependencyNode | null) => {
+    if (!node) return;
+    
+    if (node.excess !== undefined && node.excess !== 0) {
+      excessMap[node.uniqueId] = node.excess;
+    }
+    if (node.machineCount !== undefined && node.machineCount !== 0) {
+      machineCountMap[node.uniqueId] = node.machineCount;
+    }
+    if (node.machineMultiplier !== undefined && node.machineMultiplier !== 1) {
+      machineMultiplierMap[node.uniqueId] = node.machineMultiplier;
+    }
+    
+    if (node.children) {
+      node.children.forEach(extractFromNode);
+    }
+  };
+  
+  Object.values(dependencyTrees).forEach(extractFromNode);
+  
+  return { excessMap, machineCountMap, machineMultiplierMap };
+}
 
 // Define types for Tree View sorting and EXPORT them
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
@@ -186,6 +219,23 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     clearStorage: clearNodeStateStorage,
   } = usePlannerNodeState();
   
+  // --- Subscribe to history isRestoring state for undo/redo sync ---
+  const isRestoring = useSelector((state: RootState) => state.history?.isRestoring ?? false);
+  const wasRestoringRef = useRef(false);
+  
+  // Sync local state maps from Redux when coming out of a restore (undo/redo)
+  useEffect(() => {
+    // Detect transition from restoring=true to restoring=false
+    if (wasRestoringRef.current && !isRestoring) {
+      console.log('[History] 🔄 Syncing local state maps after undo/redo restore');
+      const extracted = extractLocalStateMapsFromTrees(dependencies.dependencyTrees);
+      setExcessMap(extracted.excessMap);
+      setMachineCountMap(extracted.machineCountMap);
+      setMachineMultiplierMap(extracted.machineMultiplierMap);
+    }
+    wasRestoringRef.current = isRestoring;
+  }, [isRestoring, dependencies.dependencyTrees, setExcessMap, setMachineCountMap, setMachineMultiplierMap]);
+  
   const {
     items,
     selectedItem,
@@ -316,13 +366,6 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   } = usePlannerExcessHandling({
     dependencies,
     setExcessMap,
-    generateTreeId,
-    createNewTreeStructure: async (itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth, isInitiallyByproductRoot) => {
-      return createNewTreeStructure(
-        itemId, amount, treeId, recipeId, isAutoImportRoot, originalDepth, 
-        isInitiallyByproductRoot, recipeSelections, dependencies.dependencyTrees
-      );
-    }
   });
   
   usePlannerDebugTools({

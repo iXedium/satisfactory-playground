@@ -1,20 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { logger } from '../../../utils/logger';
-import { AppDispatch, RootState } from '../../../store';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
     updateTreeProduction, 
     checkAndConvertNodeTypeThunk, 
-    calculateAndAutoImportThunk
+    beginHistoryTransaction,
+    commitHistoryTransaction
 } from '../store';
 import { findNodeById } from '../../../utils';
-import { createNewTreeStructure } from './usePlannerTreeCalculation';
-import { PayloadAction } from '@reduxjs/toolkit';
 
 // Define the expected shape of the dependencies state slice locally
-// Matching the one used in usePlannerNodeInteractions
 interface DependencySliceStateForExcess {
   dependencyTrees: Record<string, DependencyNode>;
 }
@@ -22,138 +19,66 @@ interface DependencySliceStateForExcess {
 interface PlannerExcessHandlingProps {
   dependencies: DependencySliceStateForExcess;
   setExcessMap: Dispatch<SetStateAction<Record<string, number>>>;
-  generateTreeId: (itemId: string) => string;
-  createNewTreeStructure: (
-    itemId: string, 
-    amount: number, 
-    treeId: string, 
-    recipeId: string | null, 
-    isAutoImportRoot: boolean | undefined,
-    originalDepth: number | undefined,
-    isInitiallyByproductRoot: boolean | undefined,
-    recipeSelections: Record<string, string>, 
-    allTrees: Record<string, DependencyNode>
-  ) => Promise<DependencyNode | null>;
 }
 
 export const usePlannerExcessHandling = ({
   dependencies,
   setExcessMap,
-  generateTreeId,
-  createNewTreeStructure,
 }: PlannerExcessHandlingProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    // Update local map immediately
-    setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
+    // Start transaction for the entire excess change operation
+    dispatch(beginHistoryTransaction(`Set excess to ${excess}`) as unknown as Parameters<typeof dispatch>[0]);
     
-    let treeIdToUpdate = null;
-    let rootNodeUniqueId = null; // Store the uniqueId of the root
-
-    // Determine the treeId and rootNode's uniqueId
-    if (dependencies.dependencyTrees[nodeId]) { 
-      const tree = dependencies.dependencyTrees[nodeId];
-      treeIdToUpdate = nodeId;
-      rootNodeUniqueId = tree.uniqueId;
-      setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
-      dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess));
-    } else {
-      let foundTreeId = '';
-      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-        const node = findNodeById(tree, nodeId);
-        if (node) {
-          foundTreeId = treeId;
-          treeIdToUpdate = treeId; 
-          rootNodeUniqueId = tree.uniqueId;
-          break;
+    try {
+      // Update local map immediately
+      setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
+      
+      // Determine the treeId and rootNode's uniqueId
+      if (dependencies.dependencyTrees[nodeId]) { 
+        const tree = dependencies.dependencyTrees[nodeId];
+        setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
+        // AWAIT the thunk to ensure all cascading updates complete before transaction commits
+        await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess));
+      } else {
+        let foundTreeId = '';
+        for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+          const node = findNodeById(tree, nodeId);
+          if (node) {
+            foundTreeId = treeId;
+            break;
+          }
         }
+        if (!foundTreeId) {
+          dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+          return;
+        }
+        // AWAIT the thunk to ensure all cascading updates complete before transaction commits
+        await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
       }
-      if (!foundTreeId) return;
-      dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
+
+      // Commit transaction AFTER all cascading updates are complete
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      
+      // --- Trigger Node Type Conversion Check (OUTSIDE transaction - these are follow-up effects) --- 
+      setTimeout(async () => {
+          const stateBeforeChecks = { ...dependencies.dependencyTrees };
+          const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
+
+          const checkPromises = rootIdsToCheck.map(rootId => 
+              dispatch(checkAndConvertNodeTypeThunk(rootId))
+          );
+
+          await Promise.allSettled(checkPromises);
+      }, 10);
+      
+    } catch (error) {
+      // On error, still commit to avoid leaving transaction open
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      throw error;
     }
-
-    // --- Trigger Node Type Conversion Check and Potential Recalculation --- 
-    const timeoutId = setTimeout(async () => {
-        const stateBeforeChecks = { ...dependencies.dependencyTrees }; // Use current dependencies prop
-        const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
-
-        // Dispatch checks for all roots and collect promises
-        const checkPromises = rootIdsToCheck.map(rootId => 
-            dispatch(checkAndConvertNodeTypeThunk(rootId))
-        );
-
-        // Wait for all checks to settle and get their results
-        const results = await Promise.allSettled(checkPromises);
-
-        const convertedNodeIds: string[] = [];
-        results.forEach((result, index) => {
-            // Add explicit type assertion for the fulfilled action
-            if (result.status === 'fulfilled') {
-                const fulfilledAction = result.value as PayloadAction<string | undefined>; // Type assertion
-                if (fulfilledAction?.payload) {
-                    const convertedId = fulfilledAction.payload;
-                    if (convertedId) { // Ensure it's not undefined
-                       convertedNodeIds.push(convertedId);
-                    }
-                }
-            } else if (result.status === 'rejected') {
-                 logger.error(`[handleExcessChange] checkAndConvertNodeTypeThunk failed for root ${rootIdsToCheck[index]}:`, result.reason);
-            }
-        });
-
-        // If any nodes converted B->N, trigger recalculation for them
-        if (convertedNodeIds.length > 0) {
-            
-            // No need to trigger recalculation here anymore - the thunk handles it synchronously
-            /*
-            // This code is now disabled as recalculation happens directly in the checkAndConvertNodeTypeThunk
-            await new Promise(resolve => setTimeout(resolve, 100)); 
-
-            const latestTreesState = dependencies.dependencyTrees;
-
-            for (const convertedNodeId of convertedNodeIds) {
-                 const nodeAfter = latestTreesState ? latestTreesState[convertedNodeId] : undefined;
-                    
-                    const recipeId = nodeAfter.recipe?.id;
-                    if (recipeId) {
-                        // Prepare args for the main thunk
-                         const createStructureArg = async (
-                            itemId: string, amount: number, treeId?: string, recipeIdOverride?: string | null, 
-                            isAutoImportRoot?: boolean, originalDepth?: number, isInitiallyByproductRoot?: boolean
-                          ): Promise<DependencyNode | null> => {
-                              const actualTreeId = treeId || generateTreeId(itemId);
-                              // Pass the *very latest* trees state into the helper
-                              return createNewTreeStructure(
-                                itemId, amount, actualTreeId, recipeIdOverride ?? null, 
-                                isAutoImportRoot, originalDepth, isInitiallyByproductRoot, 
-                                recipeSelections, dependencies.dependencyTrees // Use current dependencies from hook scope
-                              );
-                          };
-
-                        dispatch(calculateAndAutoImportThunk({
-                            selectedItem: nodeAfter.id,
-                            selectedRecipeId: recipeId,
-                            recipeSelections,
-                            generateTreeId,
-                            createNewTreeStructure: createStructureArg
-                        })).catch(error => {
-                            console.error(`[handleExcessChange] Error dispatching recalculation for ${convertedNodeId}:`, error);
-                        });
-                    } else {
-                        console.warn(`[handleExcessChange] Node ${convertedNodeId} converted B->N but has no recipe ID in latest state. Cannot trigger recalculation.`);
-                    }
-                 } else {
-                      console.warn(`[handleExcessChange] Could not find state for node ${convertedNodeId} after B->N conversion. Skipping recalculation.`);
-                 }
-            }
-            */
-        } 
-    }, 10); // Initial delay
-    // ------------------------------------------------------
-
-  }, [dependencies, dispatch, setExcessMap, recipeSelections, generateTreeId, createNewTreeStructure]);
+  }, [dependencies, dispatch, setExcessMap]);
 
   return {
     handleExcessChange,

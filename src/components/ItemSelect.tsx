@@ -46,13 +46,11 @@ const ItemSelect: React.FC<ItemSelectProps> = ({
   // Render nothing until items are loaded.
   if (items.length === 0) return null;
 
-  const options = items.map(item => ({ id: item.id, name: item.name }));
-
   return (
     <Autocomplete
       // disable clearability
       disableClearable
-      options={options}
+      options={items}
       value={selectedOption || undefined}
       inputValue={inputValue}
       filterOptions={filterOptions}

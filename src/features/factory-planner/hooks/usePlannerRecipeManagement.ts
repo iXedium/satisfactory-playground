@@ -17,6 +17,10 @@ import {
   calculateDependencyTree,
   findNodeById,
 } from '../../../utils';
+import { 
+  beginHistoryTransaction, 
+  commitHistoryTransaction 
+} from '../store/historyMiddleware';
 
 interface PlannerRecipeManagementProps {
   autoImportEnabled: boolean;
@@ -49,69 +53,82 @@ export const usePlannerRecipeManagement = ({
       return;
     }
 
-    const oldImportTargetIds = (nodeToUpdate.children || [])
-        .map(child => getImportReference(child)?.targetTreeId)
-        .filter((id): id is string => !!id);
-
-    const newRecipe = await getRecipeById(recipeId);
-    if (!newRecipe) {
-        logger.error(`[Recipe Change] Recipe ${recipeId} not found.`);
-        return;
-    }
-
-    dispatch(setRecipeSelection({ nodeId, recipeId }));
-
-    const drivingAmount = excessMap[nodeId] || 0;
-    let newChildren: DependencyNode[] = [];
-    try {
-        const tempRecalculatedNode = await calculateDependencyTree(
-            nodeToUpdate.id,         
-            drivingAmount,
-            recipeId,                
-            { ...recipeSelections, [nodeId]: recipeId }, 
-            nodeToUpdate.depth ?? 0, 
-            [],                      
-            nodeToUpdate.uniqueId, // Use this node's uniqueId as parentId for children
-            excessMap,
-            {},                      
-            currentTrees            
-        );
-        newChildren = tempRecalculatedNode?.children || [];
-    } catch (error) {
-        logger.error('[Recipe Change] Error recalculating children:', error);
-        return;
-    }
+    // Start history transaction for recipe change
+    dispatch(beginHistoryTransaction(`Change recipe for ${nodeToUpdate.id}`) as unknown as Parameters<typeof dispatch>[0]);
 
     try {
-        await dispatch(updateNodeProperties({ 
-            nodeId: nodeId, 
-            updatedNode: { recipe: newRecipe, children: newChildren }
-        }));
-    } catch (error) {
-        logger.error(`[Recipe Change] Error dispatching node update for ${nodeId}:`, error);
-        return;
-    }
-    
-    if (autoImportEnabled) {
-        try {
-            await dispatch(autoImportNodeChildrenThunk(nodeId));
-        } catch (error) {
-            logger.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
-        }
+      const oldImportTargetIds = (nodeToUpdate.children || [])
+          .map(child => getImportReference(child)?.targetTreeId)
+          .filter((id): id is string => !!id);
+
+      const newRecipe = await getRecipeById(recipeId);
+      if (!newRecipe) {
+          logger.error(`[Recipe Change] Recipe ${recipeId} not found.`);
+          dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+          return;
+      }
+
+      dispatch(setRecipeSelection({ nodeId, recipeId }));
+
+      const drivingAmount = excessMap[nodeId] || 0;
+      let newChildren: DependencyNode[] = [];
+      try {
+          const tempRecalculatedNode = await calculateDependencyTree(
+              nodeToUpdate.id,         
+              drivingAmount,
+              recipeId,                
+              { ...recipeSelections, [nodeId]: recipeId }, 
+              nodeToUpdate.depth ?? 0, 
+              [],                      
+              nodeToUpdate.uniqueId, // Use this node's uniqueId as parentId for children
+              excessMap,
+              {},                      
+              currentTrees            
+          );
+          newChildren = tempRecalculatedNode?.children || [];
+      } catch (error) {
+          logger.error('[Recipe Change] Error recalculating children:', error);
+          dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+          return;
+      }
+
+      try {
+          await dispatch(updateNodeProperties({ 
+              nodeId: nodeId, 
+              updatedNode: { recipe: newRecipe, children: newChildren }
+          }));
+      } catch (error) {
+          logger.error(`[Recipe Change] Error dispatching node update for ${nodeId}:`, error);
+          dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+          return;
       }
       
-
-    for (const oldTargetId of oldImportTargetIds) {
-        try {
-            dispatch(requestDependencyCheckThunk({ 
-                nodeIdToCheck: oldTargetId, 
-                disconnectedConsumerId: nodeId
-            }));
-        } catch (error) {
-            logger.error(`[Recipe Change] Error dispatching check for old target ${oldTargetId}:`, error);
+      if (autoImportEnabled) {
+          try {
+              await dispatch(autoImportNodeChildrenThunk(nodeId));
+          } catch (error) {
+              logger.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
+          }
         }
-    }
+        
 
+      for (const oldTargetId of oldImportTargetIds) {
+          try {
+              dispatch(requestDependencyCheckThunk({ 
+                  nodeIdToCheck: oldTargetId, 
+                  disconnectedConsumerId: nodeId
+              }));
+          } catch (error) {
+              logger.error(`[Recipe Change] Error dispatching check for old target ${oldTargetId}:`, error);
+          }
+      }
+
+      // Commit transaction
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch (error) {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      throw error;
+    }
 
   }, [dependencies, recipeSelections, dispatch, autoImportEnabled, excessMap]);
 

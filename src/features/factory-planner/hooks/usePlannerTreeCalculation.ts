@@ -13,6 +13,10 @@ import {
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
 import { usePlannerNodeState } from './usePlannerNodeState';
 import { calculateAndAutoImportThunk } from '../store/importExportLogic';
+import { 
+  beginHistoryTransaction, 
+  commitHistoryTransaction 
+} from '../store/historyMiddleware';
 import { logger } from '../../../utils/logger';
 
 interface DependencySliceStateForCalc {
@@ -189,10 +193,13 @@ export const usePlannerTreeCalculation = ({
   const handleCalculate = useCallback(async () => {
     if (!selectedItem || !selectedRecipe) return;
     
-    updateRecentItems(selectedItem);
+    // Start history transaction - all Redux actions until commit are grouped
+    dispatch(beginHistoryTransaction(`Add ${selectedItem}`) as unknown as Parameters<typeof dispatch>[0]);
     
-    if (autoImport) {
-      try {
+    try {
+      updateRecentItems(selectedItem);
+      
+      if (autoImport) {
         // --- Pass a correctly typed lambda for createNewTreeStructure --- 
         const createStructureArg = async (
           itemId: string, amount: number, treeId?: string, recipeId?: string | null, 
@@ -231,12 +238,8 @@ export const usePlannerTreeCalculation = ({
           return newState;
         });
         
-      } catch (error) {
-        logger.error("Error dispatching or processing calculateAndAutoImportThunk:", error);
-      }
-    } else {
-      // --- Non-Auto-Import Logic (Simpler) --- 
-      try {
+      } else {
+        // --- Non-Auto-Import Logic (Simpler) --- 
         const treeId = generateTreeId(selectedItem);
         const tree = await calculateDependencyTree(
           selectedItem, 0, selectedRecipe, recipeSelections, 0, [], 
@@ -270,21 +273,26 @@ export const usePlannerTreeCalculation = ({
         } else {
           logger.error("Failed to calculate non-auto-import tree");
         }
-      } catch (error) {
-        logger.error("Error calculating non-auto-import tree:", error);
       }
-    }
 
-    // --- UI Refresh Hack (Keep?) ---
-    setTimeout(() => {
-      const treeViewElement = document.getElementById('tree-view');
-      if (treeViewElement) {
-        treeViewElement.style.opacity = '0.99';
-        setTimeout(() => {
-          if (treeViewElement) treeViewElement.style.opacity = '1';
-        }, 10);
-      }
-    }, 100);
+      // Commit history transaction - all actions since begin are now ONE undo step
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      
+      // --- UI Refresh Hack (Keep?) ---
+      setTimeout(() => {
+        const treeViewElement = document.getElementById('tree-view');
+        if (treeViewElement) {
+          treeViewElement.style.opacity = '0.99';
+          setTimeout(() => {
+            if (treeViewElement) treeViewElement.style.opacity = '1';
+          }, 10);
+        }
+      }, 100);
+    } catch (error) {
+      // Commit transaction on error so user can undo partial state
+      logger.error("Error in handleCalculate:", error);
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    }
   }, [selectedItem, selectedRecipe, recipeSelections, updateRecentItems, generateTreeId, dispatch, setMachineCountMap, setMachineMultiplierMap, setExcessMap, autoImport, dependencies.dependencyTrees, setExpandedNodes]);
 
   return {

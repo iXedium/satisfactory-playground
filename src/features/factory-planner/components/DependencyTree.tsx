@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { DependencyNode } from '../../../types';
 import TreeNode from './TreeNode';
 import { TreeSortKey, SortDirection } from '../hooks/useFactoryPlanner';
+import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 
 export interface DependencyTreeProps {
   tree: DependencyNode;
@@ -24,6 +25,7 @@ export interface DependencyTreeProps {
   onNodeUpdate?: (nodeId: string, updatedNode: Partial<DependencyNode>) => void;
   treeSortKey: TreeSortKey;
   treeSortDirection: SortDirection;
+  viewDensity?: ViewDensity;
 }
 
 const DependencyTree: React.FC<DependencyTreeProps> = ({
@@ -46,7 +48,8 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
   onUnimportNode,
   onNodeUpdate,
   treeSortKey,
-  treeSortDirection
+  treeSortDirection,
+  viewDensity = 'compact',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +83,7 @@ const DependencyTree: React.FC<DependencyTreeProps> = ({
         showMachineMultiplier={showMachineMultiplier}
         treeSortKey={treeSortKey}
         treeSortDirection={treeSortDirection}
+        viewDensity={viewDensity}
       />
     </div>
   );

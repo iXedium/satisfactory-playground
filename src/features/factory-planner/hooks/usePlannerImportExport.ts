@@ -15,6 +15,10 @@ import {
 } from '../store';
 import { findNodeById } from '../../../utils';
 import { hasImportReference, getImportReference } from '../../../utils/nodeReferenceUtils';
+import { 
+  beginHistoryTransaction, 
+  commitHistoryTransaction 
+} from '../store/historyMiddleware';
 
 interface PlannerImportExportProps {
   dependencies: DependencyState;
@@ -125,16 +129,30 @@ export const usePlannerImportExport = ({
 
   }, [dependencies.dependencyTrees, handleCreateNewTree, handleImportNodeInternal]);
 
-  // Public handleUnimport: Dispatch the thunk
+  // Public handleUnimport: Dispatch the thunk with transaction
   const handleUnimport = useCallback((nodeId: string) => {
-    dispatch(unimportNodeThunk(nodeId));
+    dispatch(beginHistoryTransaction('Unimport node') as unknown as Parameters<typeof dispatch>[0]);
+    try {
+      dispatch(unimportNodeThunk(nodeId));
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch (error) {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      throw error;
+    }
   }, [dispatch]);
 
   // Public handleImportNode: Make this async to match expected return type
   const handleImportNodeById = useCallback(async (nodeId: string) => {
-    // Await the internal async function
-    await importNodeForTreeInternal(nodeId);
-  }, [importNodeForTreeInternal]);
+    dispatch(beginHistoryTransaction('Import node') as unknown as Parameters<typeof dispatch>[0]);
+    try {
+      // Await the internal async function
+      await importNodeForTreeInternal(nodeId);
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch (error) {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      throw error;
+    }
+  }, [dispatch, importNodeForTreeInternal]);
 
   // Import amount controls for multi-source imports
   const handleSetImportAmount = useCallback((

@@ -10,6 +10,10 @@ import {
   loadRecipeSelections 
 } from '../store';
 import { destroyNodeRecursiveThunk } from '../store/importExportLogic';
+import { 
+  beginHistoryTransaction, 
+  commitHistoryTransaction 
+} from '../store/historyMiddleware';
 
 interface PlannerDataManagementProps {
   // Remove individual setters
@@ -34,7 +38,16 @@ export const usePlannerDataManagement = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const handleDeleteTree = useCallback(async (treeId: string) => {
-    await dispatch(destroyNodeRecursiveThunk(treeId));
+    // Start history transaction for delete
+    dispatch(beginHistoryTransaction(`Delete tree`) as unknown as Parameters<typeof dispatch>[0]);
+    try {
+      await dispatch(destroyNodeRecursiveThunk(treeId));
+      // Commit transaction
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch (error) {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      throw error;
+    }
   }, [dispatch]);
 
   const handleNodeUpdate = useCallback((nodeId: string, updatedNode: Partial<DependencyNode>) => {
@@ -59,7 +72,7 @@ export const usePlannerDataManagement = ({
 
     // 1. Clear Redux State (by loading empty state)
     console.log("[Clear Data] Clearing Redux state...");
-    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, errors: [], lastUpdateTime: 0 }));
+    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, highlightedNodeId: null, errors: [], lastUpdateTime: 0 }));
     dispatch(loadRecipeSelections({}));
 
     // 2. Clear Local React State (by calling imported clear functions)
