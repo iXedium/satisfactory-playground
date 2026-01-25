@@ -1,10 +1,12 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, mergeConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import viteConfig from './vite.config';
 
-export default defineConfig({
-  plugins: [react()],
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
   test: {
     // Use jsdom for browser-like environment
     environment: 'jsdom',
@@ -63,4 +65,5 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
     },
   },
-});
+  })
+);
