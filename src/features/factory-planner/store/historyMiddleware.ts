@@ -63,7 +63,6 @@ const TRACKED_ACTIONS: Record<string, string | ((action: AnyAction) => string)> 
   'dependencies/setDependencies': 'Update dependency tree',
   'dependencies/deleteTree': 'Delete production tree',
   'dependencies/updateNodeProperties': 'Update node properties',
-  'dependencies/loadSavedState': 'Load saved state',
   'dependencies/toggleNodeSelected': 'Toggle node selection',
   'dependencies/toggleNodeCompleted': 'Toggle node completion',
   'dependencies/toggleNodeHidden': 'Toggle node visibility',
@@ -84,7 +83,6 @@ const TRACKED_ACTIONS: Record<string, string | ((action: AnyAction) => string)> 
   // Recipe selection actions
   'recipeSelections/setRecipeSelection': 'Change recipe selection',
   'recipeSelections/clearRecipeSelections': 'Clear all recipe selections',
-  'recipeSelections/loadRecipeSelections': 'Load recipe selections',
   
   // Comparison actions (only data-changing ones)
   'comparison/storeSnapshot': 'Store comparison snapshot',
@@ -122,6 +120,10 @@ const IGNORED_ACTIONS: string[] = [
   // Data loading (not user actions)
   'data/setDataLoaded',
   'data/setInitialLoadComplete',
+  
+  // State restoration (system actions, not user-initiated)
+  'dependencies/loadSavedState',
+  'recipeSelections/loadRecipeSelections',
 ];
 
 // --- Helper Functions ---
@@ -228,23 +230,29 @@ export const historyMiddleware: Middleware<object, RootState, Dispatch<AnyAction
 /**
  * Thunk to perform an undo operation.
  * Restores the previous state from the undo stack.
+ * 
+ * Flow:
+ * 1. Get the pre-action snapshot from undo stack (state BEFORE the action)
+ * 2. Save CURRENT state (post-action) to redo stack so we can redo later
+ * 3. Restore the pre-action snapshot
  */
 export const undoAction = () => (dispatch: Dispatch, getState: () => RootState) => {
   const state = getState();
-  const { undoStack, redoStack } = state.history;
+  const { undoStack } = state.history;
   
   if (undoStack.length === 0) {
     logger.warn('[Undo] Nothing to undo');
     return false;
   }
   
-  // Get the snapshot to restore (the one we're about to pop)
+  // Get the snapshot to restore (the pre-action state)
   const snapshotToRestore = undoStack[undoStack.length - 1];
   
-  // First, save current state to redo stack by creating a snapshot
+  // IMPORTANT: Save CURRENT state (post-action) to redo stack
+  // This is what we'll restore when user clicks "redo"
   const currentSnapshot: HistorySnapshot = {
     timestamp: Date.now(),
-    actionDescription: snapshotToRestore.actionDescription, // Use same description
+    actionDescription: snapshotToRestore.actionDescription,
     dependencies: JSON.parse(JSON.stringify(state.dependencies)),
     recipeSelections: JSON.parse(JSON.stringify(state.recipeSelections)),
     comparison: JSON.parse(JSON.stringify(state.comparison)),
@@ -254,18 +262,20 @@ export const undoAction = () => (dispatch: Dispatch, getState: () => RootState) 
   dispatch(setRestoring(true));
   
   try {
-    // Pop from undo (this moves it to redo internally)
-    dispatch({ type: 'history/popUndo' });
+    // Remove the snapshot from undo stack and push current state to redo
+    // Using a custom action instead of popUndo to properly manage the stacks
+    dispatch({ 
+      type: 'history/undoStackPop',
+      payload: { currentSnapshot }
+    });
     
-    // Restore the state from the snapshot
+    // Restore the state from the pre-action snapshot
     if (snapshotToRestore.dependencies) {
       dispatch(loadSavedState(snapshotToRestore.dependencies as Parameters<typeof loadSavedState>[0]));
     }
     if (snapshotToRestore.recipeSelections) {
       dispatch(loadRecipeSelections(snapshotToRestore.recipeSelections.selections));
     }
-    // Note: We're not restoring comparison state to keep things simple
-    // Add if needed: dispatch(restoreComparisonState(snapshotToRestore.comparison));
     
     logger.info(`[Undo] Restored: ${snapshotToRestore.actionDescription}`);
     return true;
@@ -278,6 +288,11 @@ export const undoAction = () => (dispatch: Dispatch, getState: () => RootState) 
 /**
  * Thunk to perform a redo operation.
  * Restores the next state from the redo stack.
+ * 
+ * Flow:
+ * 1. Get the post-action snapshot from redo stack (state AFTER the action)
+ * 2. Save CURRENT state (pre-action) to undo stack so we can undo again
+ * 3. Restore the post-action snapshot
  */
 export const redoAction = () => (dispatch: Dispatch, getState: () => RootState) => {
   const state = getState();
@@ -288,17 +303,30 @@ export const redoAction = () => (dispatch: Dispatch, getState: () => RootState) 
     return false;
   }
   
-  // Get the snapshot to restore
+  // Get the snapshot to restore (the post-action state)
   const snapshotToRestore = redoStack[redoStack.length - 1];
+  
+  // IMPORTANT: Save CURRENT state (pre-action) to undo stack
+  // This is what we'll restore when user clicks "undo" again
+  const currentSnapshot: HistorySnapshot = {
+    timestamp: Date.now(),
+    actionDescription: snapshotToRestore.actionDescription,
+    dependencies: JSON.parse(JSON.stringify(state.dependencies)),
+    recipeSelections: JSON.parse(JSON.stringify(state.recipeSelections)),
+    comparison: JSON.parse(JSON.stringify(state.comparison)),
+  };
   
   // Set restoring flag to prevent recording
   dispatch(setRestoring(true));
   
   try {
-    // Pop from redo (this moves it back to undo)
-    dispatch({ type: 'history/popRedo' });
+    // Remove the snapshot from redo stack and push current state to undo
+    dispatch({ 
+      type: 'history/redoStackPop',
+      payload: { currentSnapshot }
+    });
     
-    // Restore the state
+    // Restore the state from the post-action snapshot
     if (snapshotToRestore.dependencies) {
       dispatch(loadSavedState(snapshotToRestore.dependencies as Parameters<typeof loadSavedState>[0]));
     }

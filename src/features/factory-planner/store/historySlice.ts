@@ -102,6 +102,7 @@ const historySlice = createSlice({
     /**
      * Pop the most recent snapshot from undo stack for restoration.
      * The current state should be pushed to redo stack before calling this.
+     * @deprecated Use undoStackPop instead for correct undo/redo behavior
      */
     popUndo: (state) => {
       if (state.undoStack.length === 0) {
@@ -124,6 +125,7 @@ const historySlice = createSlice({
 
     /**
      * Pop the most recent snapshot from redo stack for restoration.
+     * @deprecated Use redoStackPop instead for correct undo/redo behavior
      */
     popRedo: (state) => {
       if (state.redoStack.length === 0) {
@@ -142,6 +144,52 @@ const historySlice = createSlice({
       state.canRedo = state.redoStack.length > 0;
       
       logger.debug(`[History] Popped redo, stacks: undo=${state.undoStack.length}, redo=${state.redoStack.length}`);
+    },
+
+    /**
+     * Pop from undo stack and push CURRENT state to redo stack.
+     * This is the correct way to handle undo - saves current state for redo.
+     */
+    undoStackPop: (state, action: PayloadAction<{ currentSnapshot: HistorySnapshot }>) => {
+      if (state.undoStack.length === 0) {
+        logger.warn('[History] Cannot undo: undo stack is empty');
+        return;
+      }
+      
+      // Remove from undo stack (we're restoring this state)
+      state.undoStack.pop();
+      
+      // Push CURRENT state to redo stack (so redo can restore it)
+      state.redoStack.push(action.payload.currentSnapshot);
+      
+      // Update flags
+      state.canUndo = state.undoStack.length > 0;
+      state.canRedo = state.redoStack.length > 0;
+      
+      logger.debug(`[History] Undo: undo=${state.undoStack.length}, redo=${state.redoStack.length}`);
+    },
+
+    /**
+     * Pop from redo stack and push CURRENT state to undo stack.
+     * This is the correct way to handle redo - saves current state for undo.
+     */
+    redoStackPop: (state, action: PayloadAction<{ currentSnapshot: HistorySnapshot }>) => {
+      if (state.redoStack.length === 0) {
+        logger.warn('[History] Cannot redo: redo stack is empty');
+        return;
+      }
+      
+      // Remove from redo stack (we're restoring this state)
+      state.redoStack.pop();
+      
+      // Push CURRENT state to undo stack (so undo can restore it)
+      state.undoStack.push(action.payload.currentSnapshot);
+      
+      // Update flags
+      state.canUndo = state.undoStack.length > 0;
+      state.canRedo = state.redoStack.length > 0;
+      
+      logger.debug(`[History] Redo: undo=${state.undoStack.length}, redo=${state.redoStack.length}`);
     },
 
     /**
@@ -263,6 +311,8 @@ export const {
   pushSnapshot,
   popUndo,
   popRedo,
+  undoStackPop,
+  redoStackPop,
   setRestoring,
   clearHistory,
   setMaxStackSize,
