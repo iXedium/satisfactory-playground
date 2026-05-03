@@ -7,6 +7,7 @@ import { Item, DependencyNode, Recipe, Building } from '../../../types';
 import { 
   loadSavedState, 
   updateNodeProperties,
+  setManualTreeOrder as setManualTreeOrderAction,
   // Import clear actions if they exist, otherwise remove them below
   // clearAllTrees, 
   // clearRecipeSelections
@@ -102,6 +103,7 @@ export interface FactoryPlannerHookResult {
   viewDensity: ViewDensity;
   activeSetupName: string | null;
   manualTreeOrder: string[];
+  isRestoring: boolean;
 
   setSelectedItem: React.Dispatch<React.SetStateAction<string>>;
   setSelectedRecipe: React.Dispatch<React.SetStateAction<string>>;
@@ -223,19 +225,6 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   const isRestoring = useSelector((state: RootState) => state.history?.isRestoring ?? false);
   const wasRestoringRef = useRef(false);
   
-  // Sync local state maps from Redux when coming out of a restore (undo/redo)
-  useEffect(() => {
-    // Detect transition from restoring=true to restoring=false
-    if (wasRestoringRef.current && !isRestoring) {
-      console.log('[History] 🔄 Syncing local state maps after undo/redo restore');
-      const extracted = extractLocalStateMapsFromTrees(dependencies.dependencyTrees);
-      setExcessMap(extracted.excessMap);
-      setMachineCountMap(extracted.machineCountMap);
-      setMachineMultiplierMap(extracted.machineMultiplierMap);
-    }
-    wasRestoringRef.current = isRestoring;
-  }, [isRestoring, dependencies.dependencyTrees, setExcessMap, setMachineCountMap, setMachineMultiplierMap]);
-  
   const {
     items,
     selectedItem,
@@ -295,6 +284,35 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     }
   }, [manualTreeOrder]);
 
+  // Mirror manual order into Redux (ignored by history)
+  useEffect(() => {
+    if (isRestoring) return;
+    dispatch(setManualTreeOrderAction(manualTreeOrder));
+  }, [dispatch, manualTreeOrder, isRestoring]);
+
+  // Sync local state maps from Redux when coming out of a restore (undo/redo)
+  useEffect(() => {
+    // Detect transition from restoring=true to restoring=false
+    if (wasRestoringRef.current && !isRestoring) {
+      console.log('[History] 🔄 Syncing local state maps after undo/redo restore');
+      const extracted = extractLocalStateMapsFromTrees(dependencies.dependencyTrees);
+      setExcessMap(extracted.excessMap);
+      setMachineCountMap(extracted.machineCountMap);
+      setMachineMultiplierMap(extracted.machineMultiplierMap);
+      // Sync manual tree order to restored dependency tree order
+      const restoredManualOrder = dependencies.manualTreeOrder || [];
+      if (restoredManualOrder.length > 0) {
+        setManualTreeOrder(restoredManualOrder);
+      } else {
+        const restoredTreeIds = Object.keys(dependencies.dependencyTrees);
+        if (restoredTreeIds.length > 0) {
+          setManualTreeOrder(restoredTreeIds);
+        }
+      }
+    }
+    wasRestoringRef.current = isRestoring;
+  }, [isRestoring, dependencies.dependencyTrees, setExcessMap, setMachineCountMap, setMachineMultiplierMap, setManualTreeOrder]);
+
   // --- Create an Item Map for sorting by name --- 
   const itemsMap = useMemo(() => {
     const map: Record<string, Item> = {};
@@ -318,6 +336,13 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setMachineCountMap,
     setMachineMultiplierMap,
     autoImport,
+    onNewTreesCreated: (newTreeIds) => {
+      if (!newTreeIds.length) return;
+      setManualTreeOrder(prevOrder => {
+        const filteredPrev = prevOrder.filter(id => !newTreeIds.includes(id));
+        return [...newTreeIds, ...filteredPrev];
+      });
+    },
   });
   
   const {
@@ -582,6 +607,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     viewDensity,
     activeSetupName,
     manualTreeOrder,
+    isRestoring,
 
     setSelectedItem,
     setSelectedRecipe,

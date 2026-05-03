@@ -36,6 +36,7 @@ interface PlannerTreeCalculationProps {
   setMachineMultiplierMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   setExcessMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   autoImport: boolean;
+  onNewTreesCreated?: (newTreeIds: string[]) => void;
 }
 
 // Define the type for the createTreeFn used by convertToImportTree
@@ -143,6 +144,7 @@ export const usePlannerTreeCalculation = ({
   setMachineMultiplierMap,
   setExcessMap,
   autoImport,
+  onNewTreesCreated,
 }: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
   const dispatch = useDispatch<AppDispatch>();
   const { setExpandedNodes } = usePlannerNodeState();
@@ -200,6 +202,7 @@ export const usePlannerTreeCalculation = ({
       updateRecentItems(selectedItem);
       
       if (autoImport) {
+        const previousTreeIds = Object.keys(dependencies.dependencyTrees);
         // --- Pass a correctly typed lambda for createNewTreeStructure --- 
         const createStructureArg = async (
           itemId: string, amount: number, treeId?: string, recipeId?: string | null, 
@@ -219,6 +222,13 @@ export const usePlannerTreeCalculation = ({
           selectedRecipeId: selectedRecipe,
           generateTreeId,
         })).unwrap();
+
+        if (onNewTreesCreated) {
+          const newTreeIds = result.newRootIds.filter(id => !previousTreeIds.includes(id));
+          if (newTreeIds.length > 0) {
+            onNewTreesCreated(newTreeIds);
+          }
+        }
         
         
         // Set expanded state (Keep this part)
@@ -293,7 +303,7 @@ export const usePlannerTreeCalculation = ({
       logger.error("Error in handleCalculate:", error);
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
     }
-  }, [selectedItem, selectedRecipe, recipeSelections, updateRecentItems, generateTreeId, dispatch, setMachineCountMap, setMachineMultiplierMap, setExcessMap, autoImport, dependencies.dependencyTrees, setExpandedNodes]);
+  }, [selectedItem, selectedRecipe, recipeSelections, updateRecentItems, generateTreeId, dispatch, setMachineCountMap, setMachineMultiplierMap, setExcessMap, autoImport, dependencies.dependencyTrees, setExpandedNodes, onNewTreesCreated]);
 
   return {
     handleCalculate,

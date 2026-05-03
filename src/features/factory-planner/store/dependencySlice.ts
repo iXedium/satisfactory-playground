@@ -36,6 +36,7 @@ interface DependencyState {
   dependencyTrees: Record<string, DependencyNode>;  // Map of treeId to DependencyNode
   accumulatedDependencies: Record<string, AccumulatedNode>;
   highlightedNodeId: string | null;  // Node ID to highlight (e.g., when hovering import)
+  manualTreeOrder: string[]; // Manual display order for root trees
   // Additional properties for better state management
   errors: string[]; // Track errors like circular references
   lastUpdateTime: number;
@@ -48,6 +49,7 @@ const initialState: DependencyState = {
   dependencyTrees: {},
   accumulatedDependencies: {},
   highlightedNodeId: null,
+  manualTreeOrder: [],
   errors: [],
   lastUpdateTime: 0
 };
@@ -184,6 +186,13 @@ const dependencySlice = createSlice({
     ) => {
       state.accumulatedDependencies = action.payload;
       state.lastUpdateTime = Date.now();
+    },
+
+    setManualTreeOrder: (
+      state,
+      action: PayloadAction<string[]>
+    ) => {
+      state.manualTreeOrder = action.payload;
     },
     
     loadSavedState: (state, action: PayloadAction<DependencyState>) => {
@@ -397,6 +406,7 @@ export const {
   setDependencies, 
   deleteTree, 
   updateAccumulated, 
+  setManualTreeOrder,
   loadSavedState,
   updateNodeProperties,
   clearErrors,

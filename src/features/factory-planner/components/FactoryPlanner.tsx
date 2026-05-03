@@ -80,6 +80,7 @@ const FactoryPlanner: React.FC = () => {
     activeSetupName,
     manualTreeOrder, // Get from hook
     setManualTreeOrder, // Get from hook
+    isRestoring,
     // Get comparison functions
     showComparison,
     hasComparisonSnapshot,
@@ -221,6 +222,11 @@ const FactoryPlanner: React.FC = () => {
       // Return trees in the manually specified order, filtering out any potentially stale IDs
       return manualTreeOrder.map(id => treeMap[id]).filter(Boolean); 
     } else {
+      const manualOrderIndex = manualTreeOrder.reduce((acc, id, index) => {
+        acc[id] = index;
+        return acc;
+      }, {} as Record<string, number>);
+
       // Sort the filtered array based on the selected key and direction
       return [...validTrees].sort((a, b) => {
         let compareResult = 0;
@@ -231,6 +237,9 @@ const FactoryPlanner: React.FC = () => {
           compareResult = a.amount - b.amount;
         } else { // Default to originalDepth (Hierarchy)
           compareResult = (a.originalDepth ?? 0) - (b.originalDepth ?? 0);
+        }
+        if (compareResult === 0) {
+          compareResult = (manualOrderIndex[a.uniqueId] ?? 0) - (manualOrderIndex[b.uniqueId] ?? 0);
         }
         return treeSortDirection === 'asc' ? compareResult : -compareResult;
       });
@@ -307,6 +316,7 @@ const FactoryPlanner: React.FC = () => {
 
   // --- Synchronize manualTreeOrder with actual trees ---
   useEffect(() => {
+    if (isRestoring) return;
     const currentTreeIds = Object.keys(dependencies.dependencyTrees);
     
     // Add check: Only synchronize if trees have actually loaded
@@ -322,11 +332,11 @@ const FactoryPlanner: React.FC = () => {
       const existingOrder = prevOrder.filter(id => currentTreeIds.includes(id));
       // Find IDs that are in current trees but not in the order yet
       const newIds = currentTreeIds.filter(id => !existingOrder.includes(id));
-      // Add new IDs to the end
+      // Add new IDs to the end (batch insertion handled elsewhere)
       return [...existingOrder, ...newIds];
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dependencies.dependencyTrees]); // Rerun when trees change
+  }, [dependencies.dependencyTrees, isRestoring]); // Rerun when trees change
   // ----------------------------------------------------
 
   return (

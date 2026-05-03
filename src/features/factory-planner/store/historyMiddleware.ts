@@ -116,6 +116,7 @@ const IGNORED_ACTIONS: string[] = [
   
   // Dependency highlighting (UI only)
   'dependencies/setHighlightedNode',
+  'dependencies/setManualTreeOrder',
   
   // Data loading (not user actions)
   'data/setDataLoaded',
