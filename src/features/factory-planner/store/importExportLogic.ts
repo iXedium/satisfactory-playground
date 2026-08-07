@@ -1650,8 +1650,10 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
     }
 
 
-    // 3. Dispatch update only if the amount has changed
-    if (Math.abs(initialAmount - newRequiredAmount) > 1e-9) { // Use threshold for float comparison
+    // 3. Dispatch update if the amount has changed — OR always cascade when called
+    //    after an import/unimport so that downstream nodes get recalculated even
+    //    when the root amount was already set by a reducer (e.g. importNodeAction).
+    {
         // Update the root node's amount
         dispatch(updateForcedProduction({ 
             nodeId: rootNodeId, 
