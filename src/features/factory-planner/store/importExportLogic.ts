@@ -401,7 +401,7 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
         // Calculate *only* the children based on the recipe
         const calculatedNode = await calculateDependencyTree(
           updatedNodeState.id, 
-          updatedNodeState.amount, // Use the node's *current* amount after potential update
+          (updatedNodeState.amount || 0) + (updatedNodeState.excess || 0), // Total production = amount + excess
           recipeToUse.id, // Pass the correct recipe ID
           recipeSelections, 
           0, // Depth calculation might need adjustment if this isn't root
@@ -1541,8 +1541,8 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
                       throw new Error(`New root ${newRootId} disappeared after initial link/recalc.`);
                   }
                   
-                  // 5. Get the correct demand for children
-                  const demandForChildren = updatedNewRootNode.amount;
+                  // 5. Get the correct demand for children (total = amount + excess)
+                  const demandForChildren = (updatedNewRootNode.amount || 0) + (updatedNewRootNode.excess || 0);
 
                   // 6. Calculate children using the correct demand
                   const calculatedChildren = await calculateDependencyTree(

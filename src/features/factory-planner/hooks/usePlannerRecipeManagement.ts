@@ -70,7 +70,7 @@ export const usePlannerRecipeManagement = ({
 
       dispatch(setRecipeSelection({ nodeId, recipeId }));
 
-      const drivingAmount = excessMap[nodeId] || 0;
+      const drivingAmount = (nodeToUpdate.amount || 0) + (excessMap[nodeId] || 0);
       let newChildren: DependencyNode[] = [];
       try {
           const tempRecalculatedNode = await calculateDependencyTree(
