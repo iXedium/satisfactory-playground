@@ -38,6 +38,12 @@ interface TreeViewContainerProps {
   onManualSort: (result: DropResult) => void;
   viewDensity: ViewDensity;
   onOptimizeAllMachines?: () => void;
+  onDeleteAllTrees?: () => void;
+  onToggleAllHidden?: (targetHidden: boolean) => void;
+  onResetAllExcess?: () => void;
+  onMaxAllExcess?: () => void;
+  onToggleAllSelected?: (targetSelected: boolean) => void;
+  onToggleAllCompleted?: (targetCompleted: boolean) => void;
 }
 
 /**
@@ -51,7 +57,13 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
     onManualSort,
     handleToggleNodeExtensions,
     viewDensity,
-    onOptimizeAllMachines
+    onOptimizeAllMachines,
+    onDeleteAllTrees,
+    onToggleAllHidden,
+    onResetAllExcess,
+    onMaxAllExcess,
+    onToggleAllSelected,
+    onToggleAllCompleted
   },
   ref) => {
 
@@ -171,6 +183,12 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
                         isSelected={tree.isSelected}
                         isCompleted={tree.isCompleted}
                         onOptimizeAllMachines={onOptimizeAllMachines}
+                        onDeleteAllTrees={onDeleteAllTrees}
+                        onToggleAllHidden={onToggleAllHidden}
+                        onResetAllExcess={onResetAllExcess}
+                        onMaxAllExcess={onMaxAllExcess}
+                        onToggleAllSelected={onToggleAllSelected}
+                        onToggleAllCompleted={onToggleAllCompleted}
                       />
                     </div>
                   )}

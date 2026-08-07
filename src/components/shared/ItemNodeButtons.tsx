@@ -9,9 +9,11 @@ interface ItemNodeButtonsProps {
   isHidden?: boolean;
   itemId: string;
   onDelete?: () => void;
+  onDeleteAll?: () => void;
   onImport?: (nodeId: string) => void;
   onUnimport?: (nodeId: string) => void;
   onToggleHidden?: () => void;
+  onToggleHiddenAll?: (targetHidden: boolean) => void;
   containerStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
 }
@@ -22,9 +24,11 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
   isHidden = false,
   itemId,
   onDelete,
+  onDeleteAll,
   onImport,
   onUnimport,
   onToggleHidden,
+  onToggleHiddenAll,
   containerStyle,
   buttonStyle: customButtonStyle,
 }) => {
@@ -75,7 +79,11 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            if (e.shiftKey && onDeleteAll) {
+              onDeleteAll();
+            } else {
+              onDelete();
+            }
           }}
           style={{
             ...buttonBaseStyle,
@@ -103,6 +111,15 @@ const ItemNodeButtons: React.FC<ItemNodeButtonsProps> = ({
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault(); // Prevent text selection during drag
+            if (e.shiftKey) {
+              // Shift+Click: toggle this chain and apply the result to all chains (single undo)
+              if (onToggleHiddenAll) {
+                onToggleHiddenAll(!isHidden);
+              } else {
+                onToggleHidden();
+              }
+              return;
+            }
             // Start drag - target state is the opposite of current (what we're toggling TO)
             startDrag(!isHidden);
             // Also toggle this button immediately

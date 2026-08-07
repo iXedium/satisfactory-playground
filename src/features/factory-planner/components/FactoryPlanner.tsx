@@ -8,6 +8,8 @@ import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 import { logger } from "../../../utils/logger";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store";
 
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
@@ -71,6 +73,12 @@ const FactoryPlanner: React.FC = () => {
     clearSavedData,
     handleToggleNodeExtensions,
     handleOptimizeAllMachines,
+    handleDeleteAllTrees,
+    handleToggleAllHidden,
+    handleResetAllExcess,
+    handleMaxAllExcess,
+    handleToggleAllSelected,
+    handleToggleAllCompleted,
     // Get save/load functions
     getSaveNames,
     saveSetup,
@@ -317,6 +325,7 @@ const FactoryPlanner: React.FC = () => {
   // ----------------------------------------------
 
   // --- Synchronize manualTreeOrder with actual trees ---
+  const reduxManualTreeOrder = useSelector((state: RootState) => state.dependencies.manualTreeOrder || []);
   useEffect(() => {
     if (isRestoring) return;
     const currentTreeIds = Object.keys(dependencies.dependencyTrees);
@@ -330,15 +339,24 @@ const FactoryPlanner: React.FC = () => {
     // if (currentTreeIds.length === 0) return;
 
     setManualTreeOrder(prevOrder => {
+      // Prefer the Redux-managed order when available (e.g. restored from a
+      // history snapshot after undo/redo), so manual ordering survives restores.
+      const reduxOrder = reduxManualTreeOrder;
+      const baseOrder = reduxOrder && reduxOrder.length > 0 ? reduxOrder : prevOrder;
       // Filter out IDs that no longer exist
-      const existingOrder = prevOrder.filter(id => currentTreeIds.includes(id));
+      const existingOrder = baseOrder.filter(id => currentTreeIds.includes(id));
       // Find IDs that are in current trees but not in the order yet
       const newIds = currentTreeIds.filter(id => !existingOrder.includes(id));
       // Add new IDs to the end (batch insertion handled elsewhere)
-      return [...existingOrder, ...newIds];
+      const nextOrder = [...existingOrder, ...newIds];
+      // Avoid feedback loops: only update if the content actually changed
+      if (nextOrder.length === prevOrder.length && nextOrder.every((id, i) => id === prevOrder[i])) {
+        return prevOrder;
+      }
+      return nextOrder;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dependencies.dependencyTrees, isRestoring]); // Rerun when trees change
+  }, [dependencies.dependencyTrees, reduxManualTreeOrder, isRestoring]); // Rerun when trees change
   // ----------------------------------------------------
 
   return (
@@ -425,6 +443,12 @@ const FactoryPlanner: React.FC = () => {
           // Pass density state
           viewDensity={viewDensity}
           onOptimizeAllMachines={handleOptimizeAllMachines}
+          onDeleteAllTrees={handleDeleteAllTrees}
+          onToggleAllHidden={handleToggleAllHidden}
+          onResetAllExcess={handleResetAllExcess}
+          onMaxAllExcess={handleMaxAllExcess}
+          onToggleAllSelected={handleToggleAllSelected}
+          onToggleAllCompleted={handleToggleAllCompleted}
         />
       }
       sidebar={isSummaryVisible ? (

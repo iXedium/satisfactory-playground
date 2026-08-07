@@ -223,9 +223,11 @@ export const destroyNodeRecursiveThunk = createAsyncThunk<
     const unimportPromises = nodesToUnimport.map(consumerInfo => 
         dispatch(unimportNodeThunk(consumerInfo.consumerNodeId))
     );
-    // Wait for unimports to potentially finish their state updates? Might not be strictly necessary
-    // await Promise.all(unimportPromises); 
-    // Let's try dispatching without waiting first.
+    // Wait for unimports to finish their state updates BEFORE removing the node.
+    // This keeps all cascading updates inside the caller's history transaction so
+    // they are grouped into a single undo checkpoint instead of leaking as
+    // separate entries after the transaction commits.
+    await Promise.all(unimportPromises);
 
     // 4. Dispatch synchronous action to remove the node from state
     // logger.info(`[Thunk/Destroy V2] Dispatching removeNodeAction for ${nodeIdToDestroy}.`);

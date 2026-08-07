@@ -36,6 +36,12 @@ interface TreeNodeProps {
   isSelected?: boolean;
   isCompleted?: boolean;
   onOptimizeAllMachines?: () => void;
+  onDeleteAllTrees?: () => void;
+  onToggleAllHidden?: (targetHidden: boolean) => void;
+  onResetAllExcess?: () => void;
+  onMaxAllExcess?: () => void;
+  onToggleAllSelected?: (targetSelected: boolean) => void;
+  onToggleAllCompleted?: (targetCompleted: boolean) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -66,6 +72,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   isSelected = false,
   isCompleted = false,
   onOptimizeAllMachines,
+  onDeleteAllTrees,
+  onToggleAllHidden,
+  onResetAllExcess,
+  onMaxAllExcess,
+  onToggleAllSelected,
+  onToggleAllCompleted,
 }) => {
   // Default internal state to false (collapsed) initially
   const [isExpanded, setIsExpanded] = useState(false);
@@ -209,6 +221,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         isSelected={child.isSelected}
         isCompleted={child.isCompleted}
         onOptimizeAllMachines={onOptimizeAllMachines}
+        onDeleteAllTrees={onDeleteAllTrees}
+        onToggleAllHidden={onToggleAllHidden}
+        onResetAllExcess={onResetAllExcess}
+        onMaxAllExcess={onMaxAllExcess}
+        onToggleAllSelected={onToggleAllSelected}
+        onToggleAllCompleted={onToggleAllCompleted}
       />
     ));
   };
@@ -303,6 +321,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             viewDensity={viewDensity}
             size={viewDensity === "compact" ? "small" : "large"}
             onOptimizeAllMachines={onOptimizeAllMachines}
+            onDeleteAllTrees={onDeleteAllTrees}
+            onToggleAllHidden={onToggleAllHidden}
+            onResetAllExcess={onResetAllExcess}
+            onMaxAllExcess={onMaxAllExcess}
+            onToggleAllSelected={onToggleAllSelected}
+            onToggleAllCompleted={onToggleAllCompleted}
           />
         </div>
       </div>

@@ -14,7 +14,9 @@ import {
 } from '../store';
 import { 
   setRecipeSelection as setRecipeSelectionAction,
-  loadRecipeSelections
+  loadRecipeSelections,
+  beginHistoryTransaction,
+  commitHistoryTransaction,
 } from '../store';
 import { calculateDependencyTree, findNodeById } from '../../../utils';
 import { calculateAccumulatedFromTree } from '../../../utils';
@@ -29,6 +31,7 @@ import { usePlannerRecipeManagement } from './usePlannerRecipeManagement';
 import { usePlannerDataManagement } from './usePlannerDataManagement';
 import { usePlannerDebugTools } from './usePlannerDebugTools';
 import { usePlannerSaveLoad } from './usePlannerSaveLoad';
+import { usePlannerBulkActions } from './usePlannerBulkActions';
 import { usePlannerComparison } from './usePlannerComparison';
 import { unimportNodeThunk } from '../store/importExportLogic';
 import { createNewTreeStructure } from './usePlannerTreeCalculation';
@@ -138,6 +141,12 @@ export interface FactoryPlannerHookResult {
   handleToggleNodeExtensions?: (nodeId: string) => void;
   handleTreeRecipeChange: (nodeId: string, recipeId: string) => Promise<void>;
   handleOptimizeAllMachines: () => Promise<void>;
+  handleDeleteAllTrees: () => Promise<void>;
+  handleToggleAllHidden: (targetHidden: boolean) => void;
+  handleResetAllExcess: () => Promise<void>;
+  handleMaxAllExcess: () => Promise<void>;
+  handleToggleAllSelected: (targetSelected: boolean) => void;
+  handleToggleAllCompleted: (targetCompleted: boolean) => void;
   getSaveNames: () => string[];
   saveSetup: (name: string) => Promise<void>;
   loadSetup: (name: string) => Promise<void>;
@@ -222,6 +231,20 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     setNodeExtensionOverrides,
     clearStorage: clearNodeStateStorage,
   } = usePlannerNodeState();
+
+  // --- Bulk actions (Shift+Click applies to all nodes) ---
+  const {
+    handleDeleteAllTrees,
+    handleToggleAllHidden,
+    handleResetAllExcess,
+    handleMaxAllExcess,
+    handleToggleAllSelected,
+    handleToggleAllCompleted,
+  } = usePlannerBulkActions({
+    dependencyTrees: dependencies.dependencyTrees,
+    setExcessMap,
+  });
+  // ------------------------------------------------------
   
   // --- Subscribe to history isRestoring state for undo/redo sync ---
   const isRestoring = useSelector((state: RootState) => state.history?.isRestoring ?? false);
@@ -289,8 +312,25 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   // Mirror manual order into Redux (ignored by history)
   useEffect(() => {
     if (isRestoring) return;
+    // During/after an undo/redo restore, the Redux manualTreeOrder is the source
+    // of truth (restored from the history snapshot). The local state may be stale
+    // (e.g. emptied or partial while trees were deleted), so only mirror when the
+    // local order actually covers all current trees - otherwise we would clobber
+    // the freshly restored order back to a stale list.
+    const reduxOrder = dependencies.manualTreeOrder || [];
+    const currentTreeIds = Object.keys(dependencies.dependencyTrees);
+    if (reduxOrder.length > 0 && currentTreeIds.length > 0 && !currentTreeIds.every(id => manualTreeOrder.includes(id))) {
+      return;
+    }
+    if (reduxOrder.length === 0 && manualTreeOrder.length > 0 && currentTreeIds.length === 0) {
+      return;
+    }
+    // Avoid feedback loops: only mirror when the content actually differs.
+    if (reduxOrder.length === manualTreeOrder.length && reduxOrder.every((id, i) => id === manualTreeOrder[i])) {
+      return;
+    }
     dispatch(setManualTreeOrderAction(manualTreeOrder));
-  }, [dispatch, manualTreeOrder, isRestoring]);
+  }, [dispatch, manualTreeOrder, dependencies.manualTreeOrder, dependencies.dependencyTrees, isRestoring]);
 
   // Sync local state maps from Redux when coming out of a restore (undo/redo)
   useEffect(() => {
@@ -524,66 +564,71 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
 
   // --- Optimize All Machines Handler ---
   const handleOptimizeAllMachines = useCallback(async () => {
-    // console.log("[OptimizeAll] Starting...");
     const trees = dependencies.dependencyTrees;
 
-    const processNode = async (node: DependencyNode) => {
-      if (node.isByproduct || node.isImport || !node.recipe?.id || !node.id) {
-        return; // Skip nodes that cannot be optimized
-      }
+    dispatch(beginHistoryTransaction('Optimize all machines') as unknown as Parameters<typeof dispatch>[0]);
 
-      const currentAmount = node.amount || 0;
-      const currentExcess = excessMap[node.uniqueId] || 0;
-      const currentMultiplier = machineMultiplierMap[node.uniqueId] || 1;
-      const currentRecipeId = node.recipe.id;
-
-      try {
-        const machine = await getMachineForRecipe(currentRecipeId);
-        if (!machine) {
-          return;
+    try {
+      const processNode = async (node: DependencyNode) => {
+        if (node.isByproduct || node.isImport || !node.recipe?.id || !node.id) {
+          return; // Skip nodes that cannot be optimized
         }
 
-        let nominalRate = 0;
-        if (machine && node.recipe) {
-          const itemOut = node.recipe.out[node.id];
-          if (itemOut && node.recipe.time > 0 && machine.speed > 0) {
-            nominalRate = (60 / node.recipe.time) * itemOut * machine.speed;
+        const currentAmount = node.amount || 0;
+        const currentExcess = excessMap[node.uniqueId] || 0;
+        const currentMultiplier = machineMultiplierMap[node.uniqueId] || 1;
+        const currentRecipeId = node.recipe.id;
+
+        try {
+          const machine = await getMachineForRecipe(currentRecipeId);
+          if (!machine) {
+            return;
+          }
+
+          let nominalRate = 0;
+          if (machine && node.recipe) {
+            const itemOut = node.recipe.out[node.id];
+            if (itemOut && node.recipe.time > 0 && machine.speed > 0) {
+              nominalRate = (60 / node.recipe.time) * itemOut * machine.speed;
+            }
+          }
+
+          if (nominalRate <= 0) {
+            return;
+          }
+
+          const neededAmount = currentAmount + currentExcess;
+          const exactMachines = neededAmount / (nominalRate * currentMultiplier);
+          const optimalMachines = Math.max(1, Math.ceil(exactMachines));
+          const currentMachineCount = machineCountMap[node.uniqueId] || 1;
+
+          if (optimalMachines !== currentMachineCount) {
+            handleMachineCountChange(node.uniqueId, optimalMachines);
+          }
+        } catch (error) {
+          console.error(`[OptimizeAll] Error calculating optimization for node ${node.uniqueId}:`, error);
+        }
+
+        if (node.children) {
+          for (const child of node.children) {
+            await processNode(child);
           }
         }
+      };
 
-        if (nominalRate <= 0) {
-          return;
-        }
-
-        const neededAmount = currentAmount + currentExcess;
-        const exactMachines = neededAmount / (nominalRate * currentMultiplier);
-        const optimalMachines = Math.max(1, Math.ceil(exactMachines));
-        const currentMachineCount = machineCountMap[node.uniqueId] || 1;
-
-        if (optimalMachines !== currentMachineCount) {
-          handleMachineCountChange(node.uniqueId, optimalMachines);
-        }
-      } catch (error) {
-        console.error(`[OptimizeAll] Error calculating optimization for node ${node.uniqueId}:`, error);
-      }
-
-      if (node.children) {
-        for (const child of node.children) {
-          await processNode(child);
+      for (const treeId in trees) {
+        const tree = trees[treeId];
+        if (tree) {
+          await processNode(tree);
         }
       }
-    };
 
-    for (const treeId in trees) {
-      const tree = trees[treeId];
-      if (tree) {
-        await processNode(tree);
-      }
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch (error) {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+      console.error('[OptimizeAll] Error during optimize all:', error);
     }
-
-    // console.log("[OptimizeAll] Finished processing.");
-
-  }, [dependencies.dependencyTrees, excessMap, machineMultiplierMap, machineCountMap, handleMachineCountChange]);
+  }, [dependencies.dependencyTrees, excessMap, machineMultiplierMap, machineCountMap, handleMachineCountChange, dispatch]);
   // -------------------------------------
 
   return {
@@ -646,6 +691,12 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     handleToggleNodeExtensions,
     handleTreeRecipeChange,
     handleOptimizeAllMachines,
+    handleDeleteAllTrees,
+    handleToggleAllHidden,
+    handleResetAllExcess,
+    handleMaxAllExcess,
+    handleToggleAllSelected,
+    handleToggleAllCompleted,
 
     getSaveNames,
     saveSetup,

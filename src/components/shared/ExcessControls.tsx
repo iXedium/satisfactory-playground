@@ -9,6 +9,8 @@ interface ExcessControlsProps {
   onExcessChange: (value: number) => void;
   onMaxExcess: () => void;
   onResetExcess: () => void;
+  onMaxExcessAll?: () => void;
+  onResetExcessAll?: () => void;
   containerStyle?: React.CSSProperties;
   inputStyle?: React.CSSProperties;
   buttonStyle?: React.CSSProperties;
@@ -20,6 +22,8 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   onExcessChange,
   onMaxExcess,
   onResetExcess,
+  onMaxExcessAll,
+  onResetExcessAll,
   containerStyle,
   inputStyle,
   buttonStyle: customButtonStyle,
@@ -131,9 +135,13 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
         style={customButtonStyle}
         onClick={(e) => {
           e.stopPropagation();
-          onResetExcess();
+          if (e.shiftKey && onResetExcessAll) {
+            onResetExcessAll();
+          } else {
+            onResetExcess();
+          }
         }}
-        title="Reset excess to zero"
+        title="Reset excess to zero (Shift+Click for All)"
       >
         R
       </button>
@@ -198,9 +206,13 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
         style={customButtonStyle}
         onClick={(e) => {
           e.stopPropagation();
-          onMaxExcess();
+          if (e.shiftKey && onMaxExcessAll) {
+            onMaxExcessAll();
+          } else {
+            onMaxExcess();
+          }
         }}
-        title="Set excess for 100% efficiency"
+        title="Set excess for 100% efficiency (Shift+Click for All)"
       >
         M
       </button>

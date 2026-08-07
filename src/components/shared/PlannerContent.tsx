@@ -31,6 +31,12 @@ interface PlannerContentProps {
   treeSortDirection: SortDirection;
   viewDensity: ViewDensity;
   onOptimizeAllMachines?: () => void;
+  onDeleteAllTrees?: () => void;
+  onToggleAllHidden?: (targetHidden: boolean) => void;
+  onResetAllExcess?: () => void;
+  onMaxAllExcess?: () => void;
+  onToggleAllSelected?: (targetSelected: boolean) => void;
+  onToggleAllCompleted?: (targetCompleted: boolean) => void;
 }
 
 /**
@@ -63,6 +69,12 @@ const PlannerContent = forwardRef<HTMLDivElement, PlannerContentProps>((
     treeSortDirection,
     viewDensity,
     onOptimizeAllMachines,
+    onDeleteAllTrees,
+    onToggleAllHidden,
+    onResetAllExcess,
+    onMaxAllExcess,
+    onToggleAllSelected,
+    onToggleAllCompleted,
   },
   ref
 ) => {
@@ -101,6 +113,12 @@ const PlannerContent = forwardRef<HTMLDivElement, PlannerContentProps>((
         handleToggleNodeExtensions={handleToggleNodeExtensions}
         viewDensity={viewDensity}
         onOptimizeAllMachines={onOptimizeAllMachines}
+        onDeleteAllTrees={onDeleteAllTrees}
+        onToggleAllHidden={onToggleAllHidden}
+        onResetAllExcess={onResetAllExcess}
+        onMaxAllExcess={onMaxAllExcess}
+        onToggleAllSelected={onToggleAllSelected}
+        onToggleAllCompleted={onToggleAllCompleted}
       />
     </div>
   );

@@ -32,6 +32,8 @@ interface EfficiencySectionProps {
   onExcessChange?: (value: number) => void;
   onMaxExcess?: () => void;
   onResetExcess?: () => void;
+  onMaxExcessAll?: () => void;
+  onResetExcessAll?: () => void;
   // Import amount controls (reusing same pattern as excess)
   onImportAmountChange?: (value: number) => void;
   onMaxImport?: () => void;
@@ -70,6 +72,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   onExcessChange,
   onMaxExcess,
   onResetExcess,
+  onMaxExcessAll,
+  onResetExcessAll,
   onImportAmountChange,
   onMaxImport,
   onResetImport,
@@ -261,6 +265,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
                 onExcessChange={onExcessChange}
                 onMaxExcess={onMaxExcess}
                 onResetExcess={onResetExcess}
+                onMaxExcessAll={onMaxExcessAll}
+                onResetExcessAll={onResetExcessAll}
               />
               {showBaseline && baselineValues && !isNew && (
                 <span 

@@ -52,6 +52,12 @@ interface ItemNodeProps {
   onUnimport?: (nodeId: string) => void;
   viewDensity: ViewDensity;
   onOptimizeAllMachines?: () => void;
+  onDeleteAllTrees?: () => void;
+  onToggleAllHidden?: (targetHidden: boolean) => void;
+  onResetAllExcess?: () => void;
+  onMaxAllExcess?: () => void;
+  onToggleAllSelected?: (targetSelected: boolean) => void;
+  onToggleAllCompleted?: (targetCompleted: boolean) => void;
 }
 
 interface Machine {
@@ -94,6 +100,12 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onUnimport,
   viewDensity,
   onOptimizeAllMachines,
+  onDeleteAllTrees,
+  onToggleAllHidden,
+  onResetAllExcess,
+  onMaxAllExcess,
+  onToggleAllSelected,
+  onToggleAllCompleted,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -392,12 +404,22 @@ const ItemNode: React.FC<ItemNodeProps> = ({
 
   const densityClass = `item-node--${viewDensity}`;
 
-  const handleToggleSelected = () => {
-      dispatch(toggleNodeSelected({ treeId, nodeId: uniqueId }));
+  const handleToggleSelected = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e?.shiftKey && onToggleAllSelected) {
+      // Shift+Click: toggle this node and set all nodes to the result (single undo)
+      onToggleAllSelected(!isSelected);
+      return;
+    }
+    dispatch(toggleNodeSelected({ treeId, nodeId: uniqueId }));
   };
 
-  const handleToggleCompleted = () => {
-      dispatch(toggleNodeCompleted({ treeId, nodeId: uniqueId }));
+  const handleToggleCompleted = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e?.shiftKey && onToggleAllCompleted) {
+      // Shift+Click: toggle this node and set all nodes to the result (single undo)
+      onToggleAllCompleted(!isCompleted);
+      return;
+    }
+    dispatch(toggleNodeCompleted({ treeId, nodeId: uniqueId }));
   };
 
    return (
@@ -425,9 +447,11 @@ const ItemNode: React.FC<ItemNodeProps> = ({
           isHidden={nodeData?.isHidden}
           itemId={uniqueId}
           onDelete={onDelete}
+          onDeleteAll={onDeleteAllTrees}
           onImport={onImport}
           onUnimport={onUnimport}
           onToggleHidden={isRoot ? handleToggleHidden : undefined}
+          onToggleHiddenAll={isRoot && onToggleAllHidden ? onToggleAllHidden : undefined}
         />
 
         <div
@@ -510,6 +534,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             onExcessChange={onExcessChange ? handleExcessChange : undefined}
             onMaxExcess={onExcessChange ? handleMaxExcess : undefined}
             onResetExcess={onExcessChange ? handleResetExcess : undefined}
+            onMaxExcessAll={onMaxAllExcess}
+            onResetExcessAll={onResetAllExcess}
             onImportAmountChange={isImport && hasMultipleImportSources ? handleImportAmountChange : undefined}
             onMaxImport={isImport && hasMultipleImportSources ? handleMaxImportAmount : undefined}
             onResetImport={isImport && hasMultipleImportSources ? handleResetImportAmount : undefined}

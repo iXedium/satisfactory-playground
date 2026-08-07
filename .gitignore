@@ -27,3 +27,6 @@ dist-ssr
 planner-saves.db
 planner-saves.db-wal
 planner-saves.db-shm
+
+# Playwright MCP test artifacts
+.playwright-mcp/
