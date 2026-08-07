@@ -18,20 +18,6 @@ describe('saveService', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error(message));
   }
 
-  describe('isAvailable', () => {
-    it('returns true when API responds successfully', async () => {
-      mockFetch(200, { names: [] });
-      const result = await saveService.isAvailable();
-      expect(result).toBe(true);
-    });
-
-    it('returns false on network error', async () => {
-      mockFetchReject('Connection refused');
-      const result = await saveService.isAvailable();
-      expect(result).toBe(false);
-    });
-  });
-
   describe('getNames', () => {
     it('returns list of names', async () => {
       mockFetch(200, { names: ['Setup A', 'Setup B'] });
@@ -129,28 +115,5 @@ describe('saveService', () => {
       expect(result.ok).toBe(false);
     });
   });
-
-  describe('migrateFromLocalStorage', () => {
-    it('migrates setups from localStorage to API', async () => {
-      const setups = { 'Setup1': { test: 1 }, 'Setup2': { test: 2 } };
-      vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => {
-        if (key === 'plannerSetups') return JSON.stringify(setups);
-        if (key === 'plannerLastActiveSetupName') return 'Setup1';
-        return null;
-      });
-
-      mockFetch(200, { ok: true, name: 'Setup1' });
-
-      const result = await saveService.migrateFromLocalStorage();
-      expect(result.migrated).toBe(2);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    it('does nothing when localStorage is empty', async () => {
-      vi.spyOn(localStorage, 'getItem').mockReturnValue(null);
-      const result = await saveService.migrateFromLocalStorage();
-      expect(result.migrated).toBe(0);
-      expect(result.errors).toHaveLength(0);
-    });
-  });
 });
+

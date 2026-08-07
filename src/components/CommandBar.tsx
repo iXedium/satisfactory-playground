@@ -77,9 +77,6 @@ interface CommandBarProps {
   onClearSnapshot?: () => void;
   onToggleComparison?: () => void;
   onResetToSnapshot?: (removeNewNodes: boolean) => Promise<void>;
-  // Legacy migration props
-  hasLegacySaves?: boolean;
-  onMigrateLegacySaves?: () => Promise<{ migrated: number; errors: string[] }>;
 }
 
 /**
@@ -140,9 +137,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onClearSnapshot,
     onToggleComparison,
     onResetToSnapshot,
-    // Legacy migration
-    hasLegacySaves,
-    onMigrateLegacySaves,
   },
   ref
 ) => {
@@ -219,9 +213,6 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           activeSetupName={activeSetupName}
           saveError={saveError}
           onClearSaveError={onClearSaveError}
-          // Legacy migration props
-          hasLegacySaves={hasLegacySaves}
-          onMigrateLegacySaves={onMigrateLegacySaves}
           // Pass comparison props down
           showComparison={showComparison}
           hasComparisonSnapshot={hasComparisonSnapshot}

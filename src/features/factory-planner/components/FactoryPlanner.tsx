@@ -8,7 +8,6 @@ import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 import { logger } from "../../../utils/logger";
-import { saveService } from "../../../services/saveService";
 
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
@@ -116,14 +115,6 @@ const FactoryPlanner: React.FC = () => {
     }
   }, [isSummaryVisible]);
   // ----------------------------------------------------------
-
-  // --- Legacy migration handler ---
-  const hasLegacySaves = saveService.hasLegacySaves();
-
-  const handleMigrateLegacySaves = useCallback(async () => {
-    return await saveService.migrateFromLocalStorage();
-  }, []);
-  // ------------------------------
 
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
@@ -394,8 +385,6 @@ const FactoryPlanner: React.FC = () => {
           activeSetupName={activeSetupName}
           saveError={saveError}
           onClearSaveError={clearSaveError}
-          hasLegacySaves={hasLegacySaves}
-          onMigrateLegacySaves={handleMigrateLegacySaves}
           // Pass comparison props down
           showComparison={showComparison}
           hasComparisonSnapshot={hasComparisonSnapshot}

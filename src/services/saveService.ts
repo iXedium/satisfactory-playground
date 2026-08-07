@@ -26,26 +26,6 @@ function success<T>(data?: T): SaveResult<T> {
 }
 
 export const saveService = {
-  hasLegacySaves(): boolean {
-    const raw = localStorage.getItem('plannerSetups');
-    if (!raw) return false;
-    try {
-      const parsed = JSON.parse(raw);
-      return typeof parsed === 'object' && parsed !== null && Object.keys(parsed).length > 0;
-    } catch {
-      return false;
-    }
-  },
-
-  async isAvailable(): Promise<boolean> {
-    try {
-      const result = await apiFetch(API_BASE);
-      return result.ok || result.status === 404;
-    } catch {
-      return false;
-    }
-  },
-
   async getNames(): Promise<SaveResult<string[]>> {
     try {
       const result = await apiFetch(API_BASE);
@@ -141,32 +121,4 @@ export const saveService = {
     }
   },
 
-  async migrateFromLocalStorage(): Promise<{ migrated: number; errors: string[] }> {
-    const errors: string[] = [];
-    let migrated = 0;
-
-    const rawSetups = localStorage.getItem('plannerSetups');
-    if (rawSetups) {
-      try {
-        const setups: Record<string, unknown> = JSON.parse(rawSetups);
-        for (const [name, state] of Object.entries(setups)) {
-          const result = await this.save(name, JSON.stringify(state));
-          if (result.ok) {
-            migrated++;
-          } else {
-            errors.push(`"${name}": ${result.error}`);
-          }
-        }
-      } catch (err: unknown) {
-        errors.push(`Failed to parse plannerSetups: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    }
-
-    const activeName = localStorage.getItem('plannerLastActiveSetupName');
-    if (activeName) {
-      await this.setActiveName(activeName);
-    }
-
-    return { migrated, errors };
-  },
 };
