@@ -8,6 +8,7 @@ import {
   importNodeAction, 
   checkAndConvertNodeTypeThunk,
   autoImportNodeChildrenThunk,
+  recalculateAndUpdateRootAmountThunk,
   unimportNodeThunk,
   setImportAmountThunk,
   resetImportAmountThunk,
@@ -64,9 +65,13 @@ export const usePlannerImportExport = ({
     }));
 
     // Trigger children auto-import for the target tree AFTER the import action
+    // and recalculate the target tree's downstream node amounts.
     // Use setTimeout to allow state update from importNodeAction
     setTimeout(() => {
-      // console.log(`[IMPORT] Triggering auto-import for children of target: ${targetTreeId}`);
+      dispatch(recalculateAndUpdateRootAmountThunk({
+        rootNodeId: targetTreeId,
+        externalDemandChange: undefined,
+      }));
       dispatch(autoImportNodeChildrenThunk(targetTreeId));
     }, 0); // 0ms timeout queues it for the next event loop tick
 
