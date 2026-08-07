@@ -26,6 +26,9 @@ interface PlannerActionsProps {
   onDeleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean; // Add isDirty prop
   activeSetupName?: string | null; // Add activeSetupName prop
+  // Save/load error state
+  saveError?: string | null;
+  onClearSaveError?: () => void;
   // Comparison props
   showComparison?: boolean;
   hasComparisonSnapshot?: boolean;
@@ -34,8 +37,9 @@ interface PlannerActionsProps {
   onClearSnapshot?: () => void;
   onToggleComparison?: () => void;
   onResetToSnapshot?: (removeNewNodes: boolean) => Promise<void>;
-  // We might need getSaveNames to populate the load menu later
-  // getSaveNames?: () => string[]; 
+  // Legacy migration props
+  hasLegacySaves?: boolean;
+  onMigrateLegacySaves?: () => Promise<{ migrated: number; errors: string[] }>;
 }
 
 const PlannerActions: React.FC<PlannerActionsProps> = ({
@@ -59,6 +63,8 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onDeleteSetup,
   isDirty, // Destructure isDirty
   activeSetupName, // Destructure activeSetupName
+  saveError, // Destructure saveError
+  onClearSaveError, // Destructure onClearSaveError
   // Comparison props
   showComparison,
   hasComparisonSnapshot,
@@ -67,9 +73,13 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onClearSnapshot,
   onToggleComparison,
   onResetToSnapshot,
+  // Legacy migration
+  hasLegacySaves,
+  onMigrateLegacySaves,
 }) => {
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false); // State for save menu
+  const [migrationStatus, setMigrationStatus] = useState<{ type: 'idle' | 'migrating' | 'done' | 'error'; count?: number; error?: string }>({ type: 'idle' });
   const loadButtonRef = useRef<HTMLButtonElement>(null); // Ref for load button
   const loadMenuRef = useRef<HTMLDivElement>(null); // Ref for load menu
   const saveButtonRef = useRef<HTMLButtonElement>(null); // Ref for save button
@@ -237,6 +247,22 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
       onSaveSetup(name); // Overwrite existing save
       setIsSaveMenuOpen(false); // Close menu
     // }
+  };
+
+  const handleMigrateLegacyClick = async () => {
+    if (!onMigrateLegacySaves) return;
+    setMigrationStatus({ type: 'migrating' });
+    try {
+      const result = await onMigrateLegacySaves();
+      if (result.errors.length > 0) {
+        setMigrationStatus({ type: 'error', count: result.migrated, error: result.errors.join('; ') });
+      } else {
+        setMigrationStatus({ type: 'done', count: result.migrated });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setMigrationStatus({ type: 'error', error: message });
+    }
   };
 
   // --- Load Handlers ---
@@ -451,6 +477,79 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Legacy Migration Button */}
+      {hasLegacySaves && onMigrateLegacySaves && migrationStatus.type !== 'idle' && migrationStatus.type !== 'migrating' && (
+        <span
+          style={{
+            color: migrationStatus.type === 'done' ? '#4caf50' : theme.colors.danger,
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {migrationStatus.type === 'done'
+            ? `Imported ${migrationStatus.count} plan${migrationStatus.count !== 1 ? 's' : ''}`
+            : migrationStatus.error || 'Migration failed'}
+        </span>
+      )}
+      {hasLegacySaves && onMigrateLegacySaves && migrationStatus.type !== 'done' && (
+        <button
+          style={{
+            ...iconButtonStyle,
+            padding: '4px 10px',
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            minWidth: 'auto',
+            width: 'auto',
+            opacity: migrationStatus.type === 'migrating' ? 0.6 : 1,
+          }}
+          onClick={handleMigrateLegacyClick}
+          disabled={migrationStatus.type === 'migrating'}
+          title="Import legacy saved plans from this browser"
+        >
+          {migrationStatus.type === 'migrating' ? 'Importing...' : 'Import legacy saved plans from this browser'}
+        </button>
+      )}
+
+      {/* Save/Load Error Display */}
+      {saveError && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '4px 10px',
+            backgroundColor: 'rgba(255, 107, 107, 0.15)',
+            border: '1px solid rgba(255, 107, 107, 0.4)',
+            borderRadius: '4px',
+            color: '#ff6b6b',
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+          }}
+          title={saveError}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>
+            {saveError}
+          </span>
+          {onClearSaveError && (
+            <button
+              onClick={onClearSaveError}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ff6b6b',
+                cursor: 'pointer',
+                fontSize: '14px',
+                padding: '0 2px',
+                lineHeight: 1,
+              }}
+              title="Dismiss"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Settings Menu Button */}
       <SettingsMenu

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Planner data
+planner-saves.db
+planner-saves.db-wal
+planner-saves.db-shm

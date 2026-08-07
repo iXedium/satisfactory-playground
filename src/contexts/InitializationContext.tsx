@@ -26,12 +26,8 @@ export const InitializationProvider: React.FC<InitializationProviderProps> = ({ 
       setIsError(false);
       setErrorMessage(null);
       try {
-        // Inject theme variables first (usually synchronous)
         injectThemeVariables();
-        
-        // Initialize database (asynchronous)
         await populateDexie();
-        
         setIsLoading(false);
       } catch (error: unknown) {
         logger.error("Failed to initialize application:", error);
@@ -43,7 +39,7 @@ export const InitializationProvider: React.FC<InitializationProviderProps> = ({ 
     };
 
     initializeApp();
-  }, []); // Run once on mount
+  }, []);
 
   const value = {
     isLoading,

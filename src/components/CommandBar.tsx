@@ -66,6 +66,9 @@ interface CommandBarProps {
   deleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean;
   activeSetupName?: string | null;
+  // Save/load error state
+  saveError?: string | null;
+  onClearSaveError?: () => void;
   // Comparison props
   showComparison?: boolean;
   hasComparisonSnapshot?: boolean;
@@ -74,6 +77,9 @@ interface CommandBarProps {
   onClearSnapshot?: () => void;
   onToggleComparison?: () => void;
   onResetToSnapshot?: (removeNewNodes: boolean) => Promise<void>;
+  // Legacy migration props
+  hasLegacySaves?: boolean;
+  onMigrateLegacySaves?: () => Promise<{ migrated: number; errors: string[] }>;
 }
 
 /**
@@ -123,6 +129,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     deleteSetup,
     isDirty,
     activeSetupName,
+    // Save/load error state
+    saveError,
+    onClearSaveError,
     // Comparison props
     showComparison,
     hasComparisonSnapshot,
@@ -131,6 +140,9 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     onClearSnapshot,
     onToggleComparison,
     onResetToSnapshot,
+    // Legacy migration
+    hasLegacySaves,
+    onMigrateLegacySaves,
   },
   ref
 ) => {
@@ -205,6 +217,11 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onDeleteSetup={deleteSetup}
           isDirty={isDirty}
           activeSetupName={activeSetupName}
+          saveError={saveError}
+          onClearSaveError={onClearSaveError}
+          // Legacy migration props
+          hasLegacySaves={hasLegacySaves}
+          onMigrateLegacySaves={onMigrateLegacySaves}
           // Pass comparison props down
           showComparison={showComparison}
           hasComparisonSnapshot={hasComparisonSnapshot}

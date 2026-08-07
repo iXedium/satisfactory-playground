@@ -143,6 +143,8 @@ export interface FactoryPlannerHookResult {
   loadSetup: (name: string) => Promise<void>;
   deleteSetup: (name: string) => Promise<void>;
   isDirty: boolean;
+  saveError: string | null;
+  clearSaveError: () => void;
   // Comparison
   showComparison: boolean;
   hasComparisonSnapshot: boolean;
@@ -465,7 +467,9 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     loadSetup, 
     deleteSetup, 
     isDirty,
-    activeSetupName
+    activeSetupName,
+    saveError,
+    clearSaveError,
   } = usePlannerSaveLoad({
     // Pass setters
     setExcessMap,
@@ -648,6 +652,8 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     loadSetup,
     deleteSetup,
     isDirty,
+    saveError,
+    clearSaveError,
     // Comparison
     showComparison,
     hasComparisonSnapshot,
