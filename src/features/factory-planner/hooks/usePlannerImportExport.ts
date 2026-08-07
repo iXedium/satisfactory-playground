@@ -39,7 +39,7 @@ export const usePlannerImportExport = ({
   const dispatch = useDispatch<AppDispatch>();
 
   // Original handleImportNode logic (now internal)
-  const handleImportNodeInternal = useCallback(( 
+  const handleImportNodeInternal = useCallback(async ( 
     sourceNode: DependencyNode, 
     targetTreeId: string, 
     sourceTreeId: string
@@ -64,29 +64,17 @@ export const usePlannerImportExport = ({
       shouldImport: true
     }));
 
-    // Trigger children auto-import for the target tree AFTER the import action
-    // and recalculate the target tree's downstream node amounts.
-    // Use setTimeout to allow state update from importNodeAction
-    setTimeout(() => {
-      dispatch(recalculateAndUpdateRootAmountThunk({
-        rootNodeId: targetTreeId,
-        externalDemandChange: undefined,
-      }));
-      dispatch(autoImportNodeChildrenThunk(targetTreeId));
-    }, 0); // 0ms timeout queues it for the next event loop tick
-
-    // --- Trigger Node Type Check for ALL roots (Keep this, might be needed after amount changes) --- 
-    setTimeout(() => {
-      const currentState = dependencies; // Use closure state
-      Object.values(currentState.dependencyTrees).forEach(tree => {
-          if (tree.isRoot) {
-              dispatch(checkAndConvertNodeTypeThunk(tree.uniqueId));
-          }
-      });
-    }, 10); // Keep slightly longer delay maybe?
-    // ---------------------------------------------
-
-  }, [dispatch, dependencies.dependencyTrees]);
+    // Trigger children auto-import for the target tree and recalculate the
+    // target tree's downstream node amounts. Redux dispatch is synchronous,
+    // so the state from importNodeAction is already committed here — we can
+    // await these thunks directly (no setTimeout) to keep them inside the
+    // caller's history transaction as a single undo step.
+    await dispatch(recalculateAndUpdateRootAmountThunk({
+      rootNodeId: targetTreeId,
+      externalDemandChange: undefined,
+    }));
+    await dispatch(autoImportNodeChildrenThunk(targetTreeId));
+  }, [dispatch]);
 
   // Original importNodeForTree logic (now internal)
   const importNodeForTreeInternal = useCallback(async (nodeId: string) => {
@@ -130,15 +118,15 @@ export const usePlannerImportExport = ({
       }
     }
     
-    handleImportNodeInternal(foundNode, targetTreeId, foundTreeId);
+    await handleImportNodeInternal(foundNode, targetTreeId, foundTreeId);
 
   }, [dependencies.dependencyTrees, handleCreateNewTree, handleImportNodeInternal]);
 
   // Public handleUnimport: Dispatch the thunk with transaction
-  const handleUnimport = useCallback((nodeId: string) => {
+  const handleUnimport = useCallback(async (nodeId: string) => {
     dispatch(beginHistoryTransaction('Unimport node') as unknown as Parameters<typeof dispatch>[0]);
     try {
-      dispatch(unimportNodeThunk(nodeId));
+      await dispatch(unimportNodeThunk(nodeId));
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
     } catch (error) {
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
