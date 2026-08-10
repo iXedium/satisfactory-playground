@@ -185,7 +185,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '8px 12px',
+    padding: '0px 6px',
     color: theme.colors.text,
     cursor: 'pointer',
     borderBottom: `1px solid ${theme.colors.dropdown.border}`,
@@ -206,7 +206,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
     border: 'none',
     color: theme.colors.textSecondary,
     cursor: 'pointer',
-    padding: '2px',
+    padding: '0px',
     fontSize: '14px',
   };
 
