@@ -38,6 +38,7 @@ interface DependencyState {
   highlightedNodeId: string | null;  // Node ID to highlight (e.g., when hovering import)
   manualTreeOrder: string[]; // Manual display order for root trees
   externalImports: Record<string, true>; // Items sourced from external imports (no local root)
+  externalExcess: Record<string, number>; // Preserved excess values for restore from external
   // Additional properties for better state management
   errors: string[]; // Track errors like circular references
   lastUpdateTime: number;
@@ -52,6 +53,7 @@ const initialState: DependencyState = {
   highlightedNodeId: null,
   manualTreeOrder: [],
   externalImports: {},
+  externalExcess: {},
   errors: [],
   lastUpdateTime: 0
 };
@@ -197,9 +199,20 @@ const dependencySlice = createSlice({
       state.manualTreeOrder = action.payload;
     },
     
-    loadSavedState: (state, action: PayloadAction<DependencyState>) => {
-      // Replace the entire state with the saved state
-      return action.payload;
+    loadSavedState: (state, action: PayloadAction<Partial<DependencyState>>) => {
+      // Replace the entire state with the saved state, filling in defaults for
+      // fields that may be missing from older saves.
+      const p = action.payload;
+      return {
+        dependencyTrees: p.dependencyTrees || {},
+        accumulatedDependencies: p.accumulatedDependencies || {},
+        highlightedNodeId: p.highlightedNodeId ?? null,
+        manualTreeOrder: p.manualTreeOrder || [],
+        externalImports: p.externalImports || {},
+        externalExcess: p.externalExcess || {},
+        errors: p.errors || [],
+        lastUpdateTime: p.lastUpdateTime ?? 0,
+      };
     },
     
     toggleNodeSelected: (
@@ -250,6 +263,13 @@ const dependencySlice = createSlice({
       } else {
         delete state.externalImports[action.payload.itemId];
       }
+    },
+
+    setExternalExcess: (
+      state,
+      action: PayloadAction<{ itemId: string; excess: number }>
+    ) => {
+      state.externalExcess[action.payload.itemId] = action.payload.excess;
     },
     
     // Update machine count on a specific node
@@ -431,6 +451,7 @@ export const {
   setNodeMachineMultiplier,
   setNodeExcess,
   setExternalImports,
+  setExternalExcess,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

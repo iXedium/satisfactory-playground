@@ -3,6 +3,7 @@ import { Item } from '../../types';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
 import Icon from '../Icon';
+import StyledCheckbox from './StyledCheckbox';
 
 interface SummaryItem {
   itemId: string;
@@ -118,17 +119,6 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({
     marginRight: '4px',
   };
 
-  const toggleBtnStyle: React.CSSProperties = {
-    background: 'none',
-    border: 'none',
-    color: theme.colors.textSecondary,
-    cursor: 'pointer',
-    fontSize: '11px',
-    padding: '1px 3px',
-    lineHeight: 1,
-    flexShrink: 0,
-  };
-
   const renderSection = (title: string, items: SummaryItem[], rowStyle: React.CSSProperties, showToggle: boolean) => {
     if (items.length === 0) return null;
     return (
@@ -144,13 +134,10 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({
               <span style={nameStyle}>{item.name}</span>
               <span style={rateStyle}>{totalRate.toFixed(2)}</span>
               {showToggle && (
-                <button
-                  style={toggleBtnStyle}
-                  onClick={(e) => { e.stopPropagation(); onToggleExternalImport(itemId, !isExternal); }}
-                  title={isExternal ? 'Restore local production' : 'Source externally'}
-                >
-                  {isExternal ? '◀' : '▶'}
-                </button>
+                <StyledCheckbox
+                  checked={isExternal}
+                  onChange={(val) => onToggleExternalImport(itemId, val)}
+                />
               )}
             </div>
           );

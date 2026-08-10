@@ -259,7 +259,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* CONTROLS FIRST (for Grid) - Excess column */}
-          {onExcessChange && !isByproduct && !isImport && onMaxExcess && onResetExcess && (
+          {onExcessChange && !isByproduct && !isImport && !isExternal && onMaxExcess && onResetExcess && (
             <div className="efficiency-control-column efficiency-excess-column">
               <ExcessControls
                 className="efficiency-excess-controls"
@@ -328,6 +328,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
                 excess={excess}
                 isByproduct={isByproduct}
                 isImport={isImport}
+                isExternal={isExternal}
               />
               {showBaseline && baselineValues && !isNew && (
                 <span 

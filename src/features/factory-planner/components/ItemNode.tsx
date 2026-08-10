@@ -494,7 +494,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             viewDensity={viewDensity}
           />
 
-          {machine && !isByproduct && !isImport && showMachines && (
+          {machine && !isByproduct && !isImport && !isExternal && showMachines && (
             <div 
                className={`machine-details-wrapper ${!showMachineMultiplier ? 'no-multiplier' : ''}`.trim()}
             >

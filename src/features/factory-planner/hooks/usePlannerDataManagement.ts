@@ -72,7 +72,7 @@ export const usePlannerDataManagement = ({
 
     // 1. Clear Redux State (by loading empty state)
     console.log("[Clear Data] Clearing Redux state...");
-    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, highlightedNodeId: null, manualTreeOrder: [], externalImports: {}, errors: [], lastUpdateTime: 0 }));
+    dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, highlightedNodeId: null, manualTreeOrder: [], externalImports: {}, externalExcess: {}, errors: [], lastUpdateTime: 0 }));
     dispatch(loadRecipeSelections({}));
 
     // 2. Clear Local React State (by calling imported clear functions)

@@ -210,18 +210,19 @@ const FactoryPlanner: React.FC = () => {
 
     // console.log("Item Data Map (After Accumulation v4):", JSON.parse(JSON.stringify(itemDataMap))); 
 
-    // Convert map to array, including category
+    // Convert map to array, excluding externally imported items
     const summaryArray = Object.entries(itemDataMap)
+      .filter(([itemId]) => !externalImports[itemId])
       .map(([itemId, data]) => ({ 
           itemId,
           totalRate: data.totalRate,
-          category: data.category, // Include category
+          category: data.category,
           hasByproductSource: data.hasByproductSource 
       }));
 
     // console.log("Final Summary Array (v4):", summaryArray);
     return summaryArray;
-  }, [dependencies.dependencyTrees, excessMap, itemsMap]);
+  }, [dependencies.dependencyTrees, excessMap, itemsMap, externalImports]);
 
   // --- External Imports Summary ---
   const externalImportData = useMemo(() => {

@@ -15,7 +15,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies, setExternalImports, importNodeAction, removeNodeAction } from './dependencySlice';
+import { updateNodeProperties, setDependencies, setExternalImports, setExternalExcess, importNodeAction, removeNodeAction } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -1980,14 +1980,34 @@ export const toggleExternalImportThunk = createAsyncThunk<
     if (enable) {
       // Find the root tree producing this item
       let rootTreeId: string | null = null;
+      let rootNode: DependencyNode | null = null;
       for (const [treeId, tree] of Object.entries(trees)) {
         if (tree.isRoot && tree.id === itemId && !tree.isExternal) {
           rootTreeId = treeId;
+          rootNode = tree;
           break;
         }
       }
 
-      if (rootTreeId) {
+      if (rootTreeId && rootNode) {
+        // Preserve the root's excess so we can restore it when toggling back
+        dispatch(setExternalExcess({ itemId, excess: rootNode.excess || 0 }));
+
+        // Collect target tree IDs from the root's children that are import nodes,
+        // so we can trigger dependency checks after the root is removed.
+        const childTargetTreeIds: string[] = [];
+        const collectImportTargets = (node: DependencyNode) => {
+          const importRef = getImportReference(node);
+          if (importRef?.targetTreeId) {
+            childTargetTreeIds.push(importRef.targetTreeId);
+          }
+          node.children?.forEach(collectImportTargets);
+        };
+        rootNode.children?.forEach(collectImportTargets);
+
+        // Store original children for dependency checks after removal
+        const originalChildren = [...(rootNode.children || [])];
+
         // Find ALL consumers importing from this root across all trees
         const consumers = await findNodeConsumers(rootTreeId, trees);
 
@@ -2014,6 +2034,35 @@ export const toggleExternalImportThunk = createAsyncThunk<
 
         // Remove the root tree
         dispatch(removeNodeAction(rootTreeId));
+
+        // Trigger dependency checks on target trees that lost an importer
+        // (both the root's child import targets and any consumers of the root).
+        // This cascades reduced demand down through the full dependency chain.
+        const allTargetIds = new Set(childTargetTreeIds);
+        for (const targetId of allTargetIds) {
+          await dispatch(requestDependencyCheckThunk({
+            nodeIdToCheck: targetId,
+            disconnectedConsumerId: rootTreeId,
+          }));
+        }
+
+        // Also trigger checks on original children that may be orphaned roots
+        for (const childNode of originalChildren) {
+          if (childNode?.uniqueId) {
+            let checkId = childNode.uniqueId;
+            const childImportRef = getImportReference(childNode);
+            if (childImportRef?.targetTreeId) {
+              checkId = childImportRef.targetTreeId;
+            }
+            const childRoot = getState().dependencies.dependencyTrees[checkId];
+            if (childRoot?.isRoot) {
+              await dispatch(requestDependencyCheckThunk({
+                nodeIdToCheck: checkId,
+                disconnectedConsumerId: rootTreeId,
+              }));
+            }
+          }
+        }
       }
 
       dispatch(setExternalImports({ itemId, value: true }));
@@ -2045,6 +2094,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
       // Create a new root tree
       const totalDemand = externalNodes.reduce((sum, { node }) => sum + (node.amount || 0), 0);
       const newRootId = `${itemId}-${Date.now()}-external-restore`;
+      const preservedExcess = state.dependencies.externalExcess[itemId] || 0;
 
       const calculatedRoot = await calculateDependencyTree(
         itemId, 0, recipe.id, {}, 0, [], newRootId, {}, {}, trees
@@ -2053,7 +2103,8 @@ export const toggleExternalImportThunk = createAsyncThunk<
       if (calculatedRoot) {
         calculatedRoot.uniqueId = newRootId;
         calculatedRoot.isRoot = true;
-        calculatedRoot.amount = totalDemand;
+        calculatedRoot.amount = totalDemand + preservedExcess;
+        calculatedRoot.excess = preservedExcess;
 
         // Add the new root to the state
         dispatch(setDependencies({ treeId: newRootId, tree: calculatedRoot }));
@@ -2077,6 +2128,9 @@ export const toggleExternalImportThunk = createAsyncThunk<
           rootNodeId: newRootId,
           externalDemandChange: undefined,
         }));
+
+        // Trigger auto-import for the new root's children
+        await dispatch(autoImportNodeChildrenThunk(newRootId));
       }
 
       dispatch(setExternalImports({ itemId, value: false }));

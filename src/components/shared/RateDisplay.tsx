@@ -7,6 +7,7 @@ interface RateDisplayProps {
   excess: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  isExternal?: boolean;
   containerStyle?: React.CSSProperties;
   textStyle?: React.CSSProperties;
 }
@@ -16,6 +17,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
   excess,
   isByproduct = false,
   isImport = false,
+  isExternal = false,
   containerStyle,
   textStyle,
 }) => {
@@ -27,12 +29,14 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
   };
 
   let secondaryText = '';
-  if (excess > 1e-9 && !isByproduct && !isImport) {
+  if (excess > 1e-9 && !isByproduct && !isImport && !isExternal) {
     secondaryText = `(${formatNumber(excess)})`;
+  } else if (isExternal) {
+    secondaryText = `(external)`;
   } else if (isByproduct) {
     secondaryText = `(byproduct)`;
   } else if (isImport) {
-    secondaryText = `(import)`;
+    secondaryText = `(local)`;
   } 
   // else if (amount > 1e-9 && !isByproduct && !isImport) {
   //   secondaryText = `(f: ${formatNumber(amount)})`;
@@ -45,7 +49,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
         flexDirection: 'column',
         alignItems: 'flex-end',
         fontWeight: 'bold',
-        color: isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
+        color: isExternal ? theme.colors.nodeExternalImport : isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
         ...containerStyle,
       }}
     >
