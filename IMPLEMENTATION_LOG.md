@@ -169,3 +169,21 @@ Phase 3b — remaining 16 hooks and 13 thunks migration
 
 ### Next step
 Phase 3b — remaining 16 hooks and 13 thunks
+
+***
+
+## Phase 3b — Remaining thunks and hooks
+**Status:** Deferred — requires individual thunk conversions  
+**Estimated overall progress:** 18%
+
+### Finding
+Bulk text-replace of createAsyncThunk → createTabThunk fails because createTabThunk has a different type signature. Each of the 12 remaining thunks needs individual conversion preserving typed payload creator.
+
+### Pattern (proven in Phase 3a)
+- For thunks: add tabId to args interface, change createAsyncThunk to createTabThunk with Omit<Args, 'tabId' | 'description'>
+- For hooks: const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default' and pass tabId to dispatch
+
+### Legacy cleanup (after migration)
+- Remove legacyUndoAction / legacyRedoAction
+- Remove beginHistoryTransaction calls without tabId
+- Remove root-level selectors for planner state
