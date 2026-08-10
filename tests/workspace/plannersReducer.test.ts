@@ -48,4 +48,52 @@ describe('plannersReducer — tab isolation', () => {
     // Tab B has its own tree
     expect(state2['tab-b']!.dependencies.dependencyTrees).toEqual({ tree2: expect.objectContaining({ id: 'screw' }) });
   });
+
+  it('_planner/pushSnapshot routes to planners[tabId].history.undoStack', () => {
+    const snapshot = {
+      timestamp: Date.now(),
+      actionDescription: 'Test action',
+      dependencies: {},
+      recipeSelections: { selections: {} },
+      comparison: null,
+    };
+
+    const state = plannersReducer({}, {
+      type: '_planner/pushSnapshot',
+      payload: { snapshot },
+      meta: { tabId: 'tab-a' },
+    });
+
+    expect(state['tab-a']).toBeDefined();
+    expect(state['tab-a']!.history.undoStack).toHaveLength(1);
+    expect(state['tab-a']!.history.undoStack[0]).toEqual(snapshot);
+    expect(state['tab-a']!.history.redoStack).toHaveLength(0);
+    expect(state['tab-b']).toBeUndefined();
+  });
+
+  it('_planner/setRestoring manipulates per-tab isRestoring flag', () => {
+    // Set restoring
+    const s1 = plannersReducer({}, {
+      type: '_planner/setRestoring',
+      payload: { value: true },
+      meta: { tabId: 'tab-a' },
+    });
+    expect(s1['tab-a']!.history.isRestoring).toBe(true);
+
+    // Clear restoring
+    const s2 = plannersReducer(s1, {
+      type: '_planner/setRestoring',
+      payload: { value: false },
+      meta: { tabId: 'tab-a' },
+    });
+    expect(s2['tab-a']!.history.isRestoring).toBe(false);
+  });
+
+  it('does not route _planner/* actions without tabId', () => {
+    const state = plannersReducer({}, {
+      type: '_planner/pushSnapshot',
+      payload: { snapshot: {} },
+    });
+    expect(state).toEqual({});
+  });
 });
