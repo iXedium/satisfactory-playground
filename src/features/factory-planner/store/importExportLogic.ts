@@ -15,7 +15,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies, setExternalImports, setExternalExcess, importNodeAction, removeNodeAction } from './dependencySlice';
+import { updateNodeProperties, setDependencies, setExternalImports, importNodeAction, removeNodeAction } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -1990,9 +1990,6 @@ export const toggleExternalImportThunk = createAsyncThunk<
       }
 
       if (rootTreeId && rootNode) {
-        // Preserve the root's excess so we can restore it when toggling back
-        dispatch(setExternalExcess({ itemId, excess: rootNode.excess || 0 }));
-
         // Collect target tree IDs from the root's children that are import nodes,
         // so we can trigger dependency checks after the root is removed.
         const childTargetTreeIds: string[] = [];
@@ -2094,7 +2091,6 @@ export const toggleExternalImportThunk = createAsyncThunk<
       // Create a new root tree
       const totalDemand = externalNodes.reduce((sum, { node }) => sum + (node.amount || 0), 0);
       const newRootId = `${itemId}-${Date.now()}-external-restore`;
-      const preservedExcess = state.dependencies.externalExcess[itemId] || 0;
 
       const calculatedRoot = await calculateDependencyTree(
         itemId, 0, recipe.id, {}, 0, [], newRootId, {}, {}, trees
@@ -2103,8 +2099,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
       if (calculatedRoot) {
         calculatedRoot.uniqueId = newRootId;
         calculatedRoot.isRoot = true;
-        calculatedRoot.amount = totalDemand + preservedExcess;
-        calculatedRoot.excess = preservedExcess;
+        calculatedRoot.amount = totalDemand;
 
         // Add the new root to the state
         dispatch(setDependencies({ treeId: newRootId, tree: calculatedRoot }));
