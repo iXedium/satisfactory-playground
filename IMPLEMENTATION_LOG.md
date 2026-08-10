@@ -70,7 +70,42 @@ yarn lint: pre-existing warnings only
 - Legacy root slices and `plannersReducer` coexist — migration must handle `combineReducers` double-dispatch when `meta.tabId` is introduced
 
 ### Next step
-Phase 2 — per-tab history middleware, per-tab undo/redo, transaction map
+Phase 3 — hook and thunk migration (17 hooks, 14 thunks) to use tab-scoped dispatch and selectors
+
+***
+
+## Phase 2 — Per-tab history middleware
+**Status:** Complete  
+**Estimated overall progress:** 15%
+
+### Files created/modified
+| File | Change |
+|------|--------|
+| `src/features/factory-planner/store/historyMiddleware.ts` | **MAJOR REWRITE** — dual-mode middleware: legacy (no tabId, uses root-level `state.history`) + per-tab (reads `action.meta.tabId`, uses `state.planners[tabId].history`); per-tab `_planner/pushSnapshot`, `_planner/undoStackPop`, `_planner/redoStackPop`, `_planner/setRestoring` actions; `beginHistoryTransaction(desc, tabId?)` and `commitHistoryTransaction(tabId?)` with optional tabId; `undoAction(tabId)`/`redoAction(tabId)` for per-tab; `legacyUndoAction()`/`legacyRedoAction()` for backward compat |
+| `src/features/workspace/store/plannersReducer.ts` | **MODIFIED** — replaced `historyReducer` sub-slice with custom `perTabHistoryReducer` that handles `_planner/pushSnapshot`, `_planner/undoStackPop`, `_planner/redoStackPop`, `_planner/setRestoring`; removed unused `historyReducer` import |
+| `src/features/factory-planner/hooks/useUndoRedo.ts` | **MODIFIED** — switched to `legacyUndoAction`/`legacyRedoAction` (will migrate to per-tab in Phase 3) |
+| `tests/integration/undoRedo.test.ts` | **MODIFIED** — switched to `legacyUndoAction`/`legacyRedoAction` |
+
+### Legacy slice status
+| Slice | Status |
+|-------|--------|
+| `historySlice` | Active at root level (legacy — receives actions without tabId) |
+| `planners[tabId].history` | Ready for per-tab (receives `_planner/*` actions with tabId) |
+| All other slices | Unchanged |
+
+### Test results
+```
+yarn type-check: passes
+yarn test: 59 passed, 0 failed
+```
+
+### Open issues / deferred decisions
+- Legacy undo/redo exports (`legacyUndoAction`, `legacyRedoAction`) must be removed after Phase 3
+- `beginHistoryTransaction`/`commitHistoryTransaction` still called without tabId in hooks (legacy path) — Phase 3 adds tabId
+- Per-tab history stacks not yet exercised (no actions carry `meta.tabId`) — Phase 3 introduces tabId
+
+### Next step
+Phase 3 — hook and thunk migration (17 hooks, 14 thunks)
 
 ***
 

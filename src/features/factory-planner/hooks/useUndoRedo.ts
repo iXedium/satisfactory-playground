@@ -8,7 +8,7 @@ import {
   selectLastRedoAction,
   clearHistory,
 } from '../store/historySlice';
-import { undoAction, redoAction } from '../store/historyMiddleware';
+import { undoAction, redoAction, legacyUndoAction, legacyRedoAction } from '../store/historyMiddleware';
 import { logger } from '../../../utils/logger';
 
 /**
@@ -34,7 +34,7 @@ export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const handleUndo = useCallback(() => {
     if (canUndo) {
       logger.info('[useUndoRedo] Performing undo');
-      dispatch(undoAction() as unknown as Parameters<typeof dispatch>[0]);
+      dispatch(legacyUndoAction() as unknown as Parameters<typeof dispatch>[0]);
     }
   }, [dispatch, canUndo]);
   
@@ -42,7 +42,7 @@ export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const handleRedo = useCallback(() => {
     if (canRedo) {
       logger.info('[useUndoRedo] Performing redo');
-      dispatch(redoAction() as unknown as Parameters<typeof dispatch>[0]);
+      dispatch(legacyRedoAction() as unknown as Parameters<typeof dispatch>[0]);
     }
   }, [dispatch, canRedo]);
   

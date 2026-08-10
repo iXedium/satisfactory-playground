@@ -22,8 +22,8 @@ import {
 
 // Import actions and middleware directly for testing
 import { 
-  undoAction, 
-  redoAction,
+  legacyUndoAction, 
+  legacyRedoAction,
   beginHistoryTransaction,
   commitHistoryTransaction,
   cancelHistoryTransaction,
@@ -219,7 +219,7 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(store.getState())).toBe(2);
       
       // Undo
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       expect(getRedoStackSize(store.getState())).toBe(1);
       
@@ -247,7 +247,7 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(store.getState())).toBe(1);
       
       // Undo
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       // Should be back to clean state
       expect(getTreeCount(store.getState())).toBe(0);
@@ -258,7 +258,7 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(store.getState())).toBe(0);
       
       // Try to undo
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       // Should still be empty
       expect(getUndoStackSize(store.getState())).toBe(0);
@@ -276,11 +276,11 @@ describe('Undo/Redo System', () => {
       dispatch(setDependencies({ treeId: 'iron-plate-tree', tree }));
       
       // Undo
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(0);
       
       // Redo
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       // Should have tree back
       expect(getTreeCount(store.getState())).toBe(1);
@@ -295,7 +295,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(store.getState())).toBe(0);
       
       // Try to redo
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       // Should be unchanged
       expect(getTreeCount(store.getState())).toBe(1);
@@ -341,7 +341,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(0);
 
       // STEP 2: Undo Add (return to clean slate)
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       state = store.getState();
       expect(getTreeCount(state)).toBe(0);
@@ -349,7 +349,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(1);
 
       // STEP 3: Redo Add (restore IMAGE 1 exactly)
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage1(state, TREE_ID);
@@ -367,7 +367,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(0);
 
       // STEP 5: Undo excess change (return to IMAGE 1)
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage1(state, TREE_ID);
@@ -375,7 +375,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(1);
 
       // STEP 6: Redo excess change (restore IMAGE 2 exactly)
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage2(state, TREE_ID);
@@ -383,25 +383,25 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(0);
 
       // STEP 7: Undo excess change again (return to IMAGE 1)
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage1(state, TREE_ID);
 
       // STEP 8: Undo add (clean slate)
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       state = store.getState();
       expect(getTreeCount(state)).toBe(0);
 
       // STEP 9: Redo add (restore IMAGE 1)
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage1(state, TREE_ID);
 
       // STEP 10: Redo excess (restore IMAGE 2)
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       state = store.getState();
       assertStateMatchesImage2(state, TREE_ID);
@@ -421,26 +421,26 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(store.getState())).toBe(3);
       
       // Undo all
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(2);
       
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(1);
       
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(0);
       
       expect(getUndoStackSize(store.getState())).toBe(0);
       expect(getRedoStackSize(store.getState())).toBe(3);
       
       // Redo all
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(1);
       
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(2);
       
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(3);
       
       expect(getUndoStackSize(store.getState())).toBe(3);
@@ -512,7 +512,7 @@ describe('Undo/Redo System', () => {
       dispatch(setDependencies({ treeId: 'tree-2', tree: tree2 }));
       
       // Undo one
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       expect(getUndoStackSize(store.getState())).toBe(1);
       expect(getRedoStackSize(store.getState())).toBe(1);
@@ -549,7 +549,7 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(store.getState())).toBe(1);
       
       // Undo should restore to pre-transaction state (no trees)
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(0);
     });
 
@@ -602,11 +602,11 @@ describe('Undo/Redo System', () => {
       dispatch(setDependencies({ treeId: 'my-tree', tree: originalTree }));
       
       // Undo
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       expect(getTreeCount(store.getState())).toBe(0);
       
       // Redo
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       // Verify all values are restored exactly
       const restoredTree = store.getState().dependencies.dependencyTrees['my-tree'];
@@ -653,7 +653,7 @@ describe('Undo/Redo System', () => {
       expect(getUndoStackSize(state)).toBe(2);
       
       // Step 3: Undo should restore excess=0
-      dispatch(undoAction() as unknown as AnyAction);
+      dispatch(legacyUndoAction() as unknown as AnyAction);
       
       state = store.getState();
       expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(0);
@@ -661,7 +661,7 @@ describe('Undo/Redo System', () => {
       expect(getRedoStackSize(state)).toBe(1);
       
       // Step 4: Redo should restore excess=20
-      dispatch(redoAction() as unknown as AnyAction);
+      dispatch(legacyRedoAction() as unknown as AnyAction);
       
       state = store.getState();
       expect(state.dependencies.dependencyTrees[TREE_ID].excess).toBe(20);
