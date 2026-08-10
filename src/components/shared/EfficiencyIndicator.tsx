@@ -6,6 +6,7 @@ interface EfficiencyIndicatorProps {
   efficiency: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  isExternal?: boolean;
   containerStyle?: React.CSSProperties;
   textStyle?: React.CSSProperties;
 }
@@ -14,6 +15,7 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
   efficiency,
   isByproduct = false,
   isImport = false,
+  isExternal = false,
   containerStyle,
   textStyle,
 }) => {
@@ -32,6 +34,19 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
     setTimeout(() => setShowTooltip(false), 2000);
   };
 
+  if (isExternal) {
+    return (
+      <span style={{ 
+        color: theme.colors.nodeExternalImport,
+        fontWeight: "bold",
+        fontSize: sizes.fontSize.standard,
+        ...textStyle
+      }}>
+        External
+      </span>
+    );
+  }
+
   if (isImport) {
     return (
       <span style={{ 
@@ -40,7 +55,7 @@ const EfficiencyIndicator: React.FC<EfficiencyIndicatorProps> = ({
         fontSize: sizes.fontSize.standard,
         ...textStyle
       }}>
-        Imported
+        Local
       </span>
     );
   }

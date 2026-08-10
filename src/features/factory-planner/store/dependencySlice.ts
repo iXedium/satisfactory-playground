@@ -37,6 +37,7 @@ interface DependencyState {
   accumulatedDependencies: Record<string, AccumulatedNode>;
   highlightedNodeId: string | null;  // Node ID to highlight (e.g., when hovering import)
   manualTreeOrder: string[]; // Manual display order for root trees
+  externalImports: Record<string, true>; // Items sourced from external imports (no local root)
   // Additional properties for better state management
   errors: string[]; // Track errors like circular references
   lastUpdateTime: number;
@@ -50,6 +51,7 @@ const initialState: DependencyState = {
   accumulatedDependencies: {},
   highlightedNodeId: null,
   manualTreeOrder: [],
+  externalImports: {},
   errors: [],
   lastUpdateTime: 0
 };
@@ -238,6 +240,17 @@ const dependencySlice = createSlice({
     ) => {
       state.highlightedNodeId = action.payload;
     },
+
+    setExternalImports: (
+      state,
+      action: PayloadAction<{ itemId: string; value: boolean }>
+    ) => {
+      if (action.payload.value) {
+        state.externalImports[action.payload.itemId] = true;
+      } else {
+        delete state.externalImports[action.payload.itemId];
+      }
+    },
     
     // Update machine count on a specific node
     setNodeMachineCount: (
@@ -417,6 +430,7 @@ export const {
   setNodeMachineCount,
   setNodeMachineMultiplier,
   setNodeExcess,
+  setExternalImports,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

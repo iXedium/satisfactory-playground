@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import CommandBar from "../../../components/CommandBar";
 import { useFactoryPlanner, TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
 import FactoryPlannerLayout from "../../../components/shared/FactoryPlannerLayout";
@@ -8,8 +9,8 @@ import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 import { logger } from "../../../utils/logger";
-import { useSelector } from "react-redux";
-import { RootState } from "../../../store";
+import { RootState, AppDispatch } from "../../../store";
+import { toggleExternalImportThunk, beginHistoryTransaction, commitHistoryTransaction } from "../store";
 
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
@@ -101,6 +102,19 @@ const FactoryPlanner: React.FC = () => {
     resetToSnapshot,
   } = useFactoryPlanner();
   
+  const dispatch = useDispatch<AppDispatch>();
+  const externalImports = useSelector((state: RootState) => state.dependencies.externalImports || {});
+
+  const handleToggleExternalImport = useCallback(async (itemId: string, enable: boolean) => {
+    dispatch(beginHistoryTransaction(enable ? 'Externalize item' : 'Restore local production') as unknown as Parameters<typeof dispatch>[0]);
+    try {
+      await dispatch(toggleExternalImportThunk({ itemId, enable }));
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    } catch {
+      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    }
+  }, [dispatch]);
+  
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
   const [isSummaryVisible, setIsSummaryVisible] = useState<boolean>(() => {
     try {
@@ -169,11 +183,12 @@ const FactoryPlanner: React.FC = () => {
     });
     // ---------------------------------------------------
 
-    // --- Pass 2: Accumulate rates, skipping imports, tracking byproducts ---
+    // --- Pass 2: Accumulate rates, skipping imports and external nodes, tracking byproducts ---
     const accumulateRates = (node: DependencyNode) => {
       const isImportNode = node.isImport || node.importReference;
+      const isExternalNode = node.isExternal;
 
-      if (!isImportNode) {
+      if (!isImportNode && !isExternalNode) {
         const nodeExcess = excessMap[node.uniqueId] || 0;
         const currentAmount = (node.amount || 0) + nodeExcess;
         
@@ -206,7 +221,25 @@ const FactoryPlanner: React.FC = () => {
 
     // console.log("Final Summary Array (v4):", summaryArray);
     return summaryArray;
-  }, [dependencies.dependencyTrees, excessMap, itemsMap]); 
+  }, [dependencies.dependencyTrees, excessMap, itemsMap]);
+
+  // --- External Imports Summary ---
+  const externalImportData = useMemo(() => {
+    const dataMap: Record<string, number> = {};
+    const collectExternal = (node: DependencyNode) => {
+      if (node.isExternal) {
+        dataMap[node.id] = (dataMap[node.id] || 0) + (node.amount || 0);
+      }
+      node.children?.forEach(collectExternal);
+    };
+    Object.values(dependencies.dependencyTrees).forEach(tree => {
+      if (tree) collectExternal(tree);
+    });
+    return Object.entries(dataMap)
+      .map(([itemId, totalRate]) => ({ itemId, totalRate, category: itemsMap?.[itemId]?.category || 'unknown', hasByproductSource: false }))
+      .sort((a, b) => b.totalRate - a.totalRate);
+  }, [dependencies.dependencyTrees, itemsMap]);
+  // ---------------------------------
   // ----------------------------------------------------
 
   // --- Trees Array Memoization (with sorting and null filtering) ---
@@ -454,7 +487,10 @@ const FactoryPlanner: React.FC = () => {
       sidebar={isSummaryVisible ? (
         <SummarySidebar 
           summaryData={itemSummaryData}
-          itemsMap={itemsMap} 
+          externalImportData={externalImportData}
+          externalImports={externalImports}
+          itemsMap={itemsMap}
+          onToggleExternalImport={handleToggleExternalImport}
         />
       ) : undefined}
       contentContainerStyle={{}}

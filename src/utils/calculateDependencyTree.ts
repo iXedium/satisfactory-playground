@@ -32,7 +32,8 @@ export const calculateDependencyTree = async (
   excessMap: Record<string, number> = {},
   importMap: Record<string, { targetTreeId: string; amount: number }> = {},
   dependencyTrees?: Record<string, DependencyNode>,
-  visited: string[] = []
+  visited: string[] = [],
+  externalImports?: Record<string, true>
 ): Promise<DependencyNode | null> => {
   logger.verbose(`[calculateDependencyTree] ENTER: itemId=${itemId}, recipeArg=${rootRecipeId}, depth=${depth}`);
 
@@ -173,10 +174,24 @@ export const calculateDependencyTree = async (
     (amount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
 
   // Pass dependencyTrees to child calculations for import references
-  const childrenPromises = Object.entries(recipe.in).map(([inputItem, inputAmount]) =>
-    calculateDependencyTree(
+  const childrenPromises = Object.entries(recipe.in).map(([inputItem, inputAmount]) => {
+    const childAmount = (inputAmount ?? 0) * cyclesNeeded;
+
+    // If this input is externally imported, return a terminal leaf node
+    if (externalImports && externalImports[inputItem]) {
+      return Promise.resolve({
+        id: inputItem,
+        amount: childAmount,
+        uniqueId: `${nodeId}-${inputItem}-${depth + 1}`,
+        depth: depth + 1,
+        isExternal: true,
+        children: [],
+      } as DependencyNode);
+    }
+
+    return calculateDependencyTree(
       inputItem,
-      (inputAmount ?? 0) * cyclesNeeded,
+      childAmount,
       null, // Children determine their own recipe unless specified in recipeMap
       recipeMap,
       depth + 1,
@@ -187,7 +202,7 @@ export const calculateDependencyTree = async (
       dependencyTrees,
       newVisited // Pass the newVisited array with the current node added
     )
-  );
+  });
   const childrenResults = await Promise.all(childrenPromises);
   const children = childrenResults.filter(child => child !== null) as DependencyNode[]; // Filter out nulls from cycles
 

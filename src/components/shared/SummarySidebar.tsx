@@ -2,71 +2,72 @@ import React from 'react';
 import { Item } from '../../types';
 import { theme } from '../../styles/theme';
 import { sizes } from '../../styles/constants';
-import Icon from '../Icon'; // Assuming an Icon component exists
+import Icon from '../Icon';
 
-// Updated SummaryItem structure to use category
 interface SummaryItem {
   itemId: string;
   totalRate: number;
-  category: string; // Add category
+  category: string;
   hasByproductSource: boolean;
 }
 
 interface SummarySidebarProps {
   summaryData: SummaryItem[];
+  externalImportData: SummaryItem[];
+  externalImports: Record<string, true>;
   itemsMap: Record<string, Item>;
+  onToggleExternalImport: (itemId: string, enable: boolean) => void;
 }
 
-const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }) => {
-
-  // --- Filter and Sort Data using category --- 
+const SummarySidebar: React.FC<SummarySidebarProps> = ({
+  summaryData,
+  externalImportData,
+  externalImports,
+  itemsMap,
+  onToggleExternalImport,
+}) => {
   const byproducts = summaryData
     .filter(item => item.hasByproductSource)
     .sort((a, b) => b.totalRate - a.totalRate);
 
-  // Components are category 'components' and not byproducts
   const components = summaryData
     .filter(item => !item.hasByproductSource && item.category === 'components')
     .sort((a, b) => b.totalRate - a.totalRate);
 
-  // Raw materials are category 'parts' (as per user) and not byproducts
   const rawMaterials = summaryData
     .filter(item => !item.hasByproductSource && item.category === 'parts')
     .sort((a, b) => b.totalRate - a.totalRate);
-    
-  // Add a catch-all for other categories (e.g., 'unknown', 'equipment', etc.)
+
   const others = summaryData
     .filter(item => !item.hasByproductSource && item.category !== 'components' && item.category !== 'parts')
     .sort((a, b) => b.totalRate - a.totalRate);
-  // -------------------------------------------
 
-  // Styles
   const sidebarStyle: React.CSSProperties = {
-    width: '250px', 
+    width: '250px',
     borderLeft: `1px solid ${theme.colors.border}`,
     backgroundColor: theme.colors.darker,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    padding: `0 ${sizes.spacing.medium} ${sizes.spacing.medium} ${sizes.spacing.medium}`, // Remove top padding
+    padding: `0 ${sizes.spacing.medium} ${sizes.spacing.medium} ${sizes.spacing.medium}`,
     boxSizing: 'border-box',
     marginLeft: sizes.spacing.medium,
-    height: '100%', // Ensure the sidebar itself takes full available height
+    height: '100%',
   };
 
   const listContainerStyle: React.CSSProperties = {
-    flex: 1, // Allow list container to fill space
-    overflowY: 'auto', // Enable vertical scrolling for the whole content area
-    paddingTop: sizes.spacing.medium, // Add padding back for content
-    marginRight: '-8px', // Offset scrollbar slightly
-    paddingRight: '8px', // Add padding back
+    flex: 1,
+    overflowY: 'auto',
+    paddingTop: sizes.spacing.medium,
+    marginRight: '-8px',
+    paddingRight: '8px',
   };
 
   const sectionHeaderStyle: React.CSSProperties = {
     color: theme.colors.textSecondary,
     fontSize: sizes.fontSize.small,
     fontWeight: 'bold',
-    marginTop: sizes.spacing.medium, 
+    marginTop: sizes.spacing.medium,
     marginBottom: sizes.spacing.small,
     paddingBottom: sizes.spacing.xsmall,
     borderBottom: `1px solid ${theme.colors.border}`,
@@ -84,11 +85,14 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
 
   const byproductItemRowStyle: React.CSSProperties = {
     ...itemRowStyle,
-    // Use a border or background indication for byproducts
-    borderLeft: `3px solid ${theme.colors.nodeByproduct}`, 
-    paddingLeft: `calc(${sizes.spacing.small} - 3px)`, // Adjust padding for border
-    // Or maybe change background slightly:
-    // backgroundColor: theme.colors.nodeByproduct + '22', // Add alpha
+    borderLeft: `3px solid ${theme.colors.nodeByproduct}`,
+    paddingLeft: `calc(${sizes.spacing.small} - 3px)`,
+  };
+
+  const externalItemRowStyle: React.CSSProperties = {
+    ...itemRowStyle,
+    borderLeft: `3px solid ${theme.colors.nodeExternalImport}`,
+    paddingLeft: `calc(${sizes.spacing.small} - 3px)`,
   };
 
   const iconStyle: React.CSSProperties = {
@@ -111,29 +115,43 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
     fontSize: sizes.fontSize.small,
     fontWeight: 'bold',
     whiteSpace: 'nowrap',
+    marginRight: '4px',
   };
-  
-  // Helper function to render a list section
-  const renderSection = (title: string, items: SummaryItem[], style: React.CSSProperties) => {
+
+  const toggleBtnStyle: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    color: theme.colors.textSecondary,
+    cursor: 'pointer',
+    fontSize: '11px',
+    padding: '1px 3px',
+    lineHeight: 1,
+    flexShrink: 0,
+  };
+
+  const renderSection = (title: string, items: SummaryItem[], rowStyle: React.CSSProperties, showToggle: boolean) => {
     if (items.length === 0) return null;
     return (
       <>
         <h5 style={sectionHeaderStyle}>{title}</h5>
         {items.map(({ itemId, totalRate }) => {
           const item = itemsMap[itemId];
-          if (!item) {
-              //console.warn(`SummarySidebar: Item data not found in itemsMap for ID: ${itemId}`);
-              return null; 
-          }
+          if (!item) return null;
+          const isExternal = !!externalImports[itemId];
           return (
-            <div key={itemId} style={style} title={`${item.name}: ${totalRate.toFixed(2)}/min`}>
-              <Icon 
-                itemId={itemId} 
-                style={iconStyle} 
-                size="tiny" 
-              />
+            <div key={itemId} style={rowStyle} title={`${item.name}: ${totalRate.toFixed(2)}/min`}>
+              <Icon itemId={itemId} style={iconStyle} size="tiny" />
               <span style={nameStyle}>{item.name}</span>
               <span style={rateStyle}>{totalRate.toFixed(2)}</span>
+              {showToggle && (
+                <button
+                  style={toggleBtnStyle}
+                  onClick={(e) => { e.stopPropagation(); onToggleExternalImport(itemId, !isExternal); }}
+                  title={isExternal ? 'Restore local production' : 'Source externally'}
+                >
+                  {isExternal ? '◀' : '▶'}
+                </button>
+              )}
             </div>
           );
         })}
@@ -143,25 +161,24 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
 
   return (
     <div style={sidebarStyle}>
-      {/* Main Header */}
-      <h4 style={{ 
+      <h4 style={{
           color: theme.colors.text,
-          marginBottom: 0, // Remove bottom margin
-          marginTop: sizes.spacing.medium, // Add top margin
+          marginBottom: 0,
+          marginTop: sizes.spacing.medium,
           paddingBottom: sizes.spacing.small,
           borderBottom: `1px solid ${theme.colors.border}`,
       }}>Item Summary</h4>
-      
-      {/* Scrollable Content Area */}
+
       <div style={listContainerStyle}>
-        {summaryData.length === 0 ? (
+        {renderSection("External Imports", externalImportData, externalItemRowStyle, true)}
+        {summaryData.length === 0 && externalImportData.length === 0 ? (
           <p style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>No items to summarize.</p>
         ) : (
           <>
-            {renderSection("Raw Materials", rawMaterials, itemRowStyle)}
-            {renderSection("Components", components, itemRowStyle)}
-            {renderSection("Others", others, itemRowStyle)}
-            {renderSection("Byproducts", byproducts, byproductItemRowStyle)}
+            {renderSection("Raw Materials", rawMaterials, itemRowStyle, true)}
+            {renderSection("Components", components, itemRowStyle, true)}
+            {renderSection("Others", others, itemRowStyle, true)}
+            {renderSection("Byproducts", byproducts, byproductItemRowStyle, false)}
           </>
         )}
       </div>
@@ -169,4 +186,4 @@ const SummarySidebar: React.FC<SummarySidebarProps> = ({ summaryData, itemsMap }
   );
 };
 
-export default SummarySidebar; 
+export default SummarySidebar;

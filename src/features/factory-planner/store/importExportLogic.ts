@@ -15,7 +15,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies, importNodeAction, removeNodeAction } from './dependencySlice';
+import { updateNodeProperties, setDependencies, setExternalImports, importNodeAction, removeNodeAction } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -390,6 +390,7 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
         const stateAfterUpdate = getState(); // Get the state *after* recipe update
         const recipeSelections = stateAfterUpdate.recipeSelections.selections;
         const dependencyTrees = stateAfterUpdate.dependencies.dependencyTrees;
+        const externalImports = stateAfterUpdate.dependencies.externalImports;
         
         // Get the updated node state to use the correct amount for calculation
         const updatedNodeState = stateAfterUpdate.dependencies.dependencyTrees[targetTreeId];
@@ -409,7 +410,9 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
           targetTreeId, // Use tree ID as parentId so children have proper unique IDs
           {}, // Excess map might not be needed here, assuming root node calculation
           {}, // Empty import map
-          dependencyTrees // Pass existing trees for context
+          dependencyTrees, // Pass existing trees for context
+          [], // visited
+          externalImports
         );
         
         if (!calculatedNode) {
@@ -1328,6 +1331,7 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
   async (parentNodeId, { getState, dispatch }) => {
     const state = getState();
     const parentNode = state.dependencies.dependencyTrees[parentNodeId];
+    const externalImports = state.dependencies.externalImports;
 
     if (!parentNode) {
       logger.error(`[Thunk/AutoImportChildren] Parent node ${parentNodeId} not found.`);
@@ -1344,6 +1348,21 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
 
     for (const child of childrenToProcess) {
       if (child.isImport || child.importReference) continue;
+
+      // External imports: this item is sourced externally, no root needed
+      if (externalImports[child.id]) {
+        await dispatch(updateNodeProperties({
+          nodeId: child.uniqueId,
+          updatedNode: {
+            isExternal: true,
+            isImport: false,
+            importReference: undefined,
+            recipe: undefined,
+            children: [],
+          } as Partial<DependencyNode>,
+        }));
+        continue;
+      }
 
       let targetTreeId: string | null = null;
       let existingRootFound = false;
@@ -1550,8 +1569,10 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
                     demandForChildren, // <<< Use the correct demand
                     updatedNewRootNode.recipe?.id || null, 
                     stateAfterLinkAndRecalc.recipeSelections.selections, // Use latest selections
-                    0, [], newRootId, {}, {}, // Use newRootId as parentId
-                    stateAfterLinkAndRecalc.dependencies.dependencyTrees // Pass latest trees
+               0, [], newRootId, {}, {}, // Use newRootId as parentId
+                stateAfterLinkAndRecalc.dependencies.dependencyTrees, // Pass latest trees
+                [], // visited
+                stateAfterLinkAndRecalc.dependencies.externalImports
                   ).then(node => node?.children || []);
                   
                   // 7. Add children to the root node
@@ -1802,6 +1823,7 @@ export const unimportNodeThunk = createAsyncThunk<
     const state = getState();
     const trees = state.dependencies.dependencyTrees;
     const recipeSelections = state.recipeSelections.selections;
+    const externalImports = state.dependencies.externalImports;
     
     // 1. Find the node to unimport and its context
     const nodeInfo = findNodeInAnyTree(trees, nodeIdToUnimport);
@@ -1869,7 +1891,9 @@ export const unimportNodeThunk = createAsyncThunk<
           nodeToUnimport.uniqueId, 
           {}, 
           {}, 
-          trees 
+          trees,
+          [], // visited
+          externalImports
         );
         newChildren = calculatedNode?.children || [];
         
@@ -1934,5 +1958,128 @@ export const unimportNodeThunk = createAsyncThunk<
     */
     
     // logger.debug(`[Thunk/Unimport] Finished unimporting node: ${nodeIdToUnimport}`);
+  }
+);
+
+// --- THUNK: TOGGLE EXTERNAL IMPORT FOR AN ITEM ---
+interface ToggleExternalImportArgs {
+  itemId: string;
+  enable: boolean;
+}
+
+export const toggleExternalImportThunk = createAsyncThunk<
+  void,
+  ToggleExternalImportArgs,
+  { dispatch: AppDispatch; state: RootState }
+>(
+  'dependency/toggleExternalImport',
+  async ({ itemId, enable }, { getState, dispatch }) => {
+    const state = getState();
+    const trees = state.dependencies.dependencyTrees;
+
+    if (enable) {
+      // Find the root tree producing this item
+      let rootTreeId: string | null = null;
+      for (const [treeId, tree] of Object.entries(trees)) {
+        if (tree.isRoot && tree.id === itemId && !tree.isExternal) {
+          rootTreeId = treeId;
+          break;
+        }
+      }
+
+      if (rootTreeId) {
+        // Find ALL consumers importing from this root across all trees
+        const consumers = await findNodeConsumers(rootTreeId, trees);
+
+        // Convert each consumer's import node to an external terminal node
+        for (const { consumerNodeId } of consumers) {
+          const consumerNodeInfo = findNodeInAnyTree(trees, consumerNodeId);
+          if (!consumerNodeInfo) continue;
+
+          await dispatch(updateNodeProperties({
+            nodeId: consumerNodeId,
+            updatedNode: {
+              isImport: false,
+              importReference: undefined,
+              importedFrom: undefined,
+              isExternal: true,
+              recipe: undefined,
+              children: [],
+              excess: 0,
+              machineCount: undefined,
+              machineMultiplier: undefined,
+            },
+          }));
+        }
+
+        // Remove the root tree
+        dispatch(removeNodeAction(rootTreeId));
+      }
+
+      dispatch(setExternalImports({ itemId, value: true }));
+    } else {
+      // Find all external terminal nodes for this item across all trees
+      const externalNodes: { node: DependencyNode; treeId: string }[] = [];
+      for (const [treeId, tree] of Object.entries(trees)) {
+        const findExternal = (node: DependencyNode) => {
+          if (node.id === itemId && node.isExternal) {
+            externalNodes.push({ node, treeId });
+          }
+          node.children?.forEach(findExternal);
+        };
+        findExternal(tree);
+      }
+
+      if (externalNodes.length === 0) {
+        dispatch(setExternalImports({ itemId, value: false }));
+        return;
+      }
+
+      // Get default recipe for the item
+      const recipe = await getRecipeByOutput(itemId);
+      if (!recipe) {
+        logger.error(`[ExternalImport] No default recipe for ${itemId}`);
+        return;
+      }
+
+      // Create a new root tree
+      const totalDemand = externalNodes.reduce((sum, { node }) => sum + (node.amount || 0), 0);
+      const newRootId = `${itemId}-${Date.now()}-external-restore`;
+
+      const calculatedRoot = await calculateDependencyTree(
+        itemId, 0, recipe.id, {}, 0, [], newRootId, {}, {}, trees
+      );
+
+      if (calculatedRoot) {
+        calculatedRoot.uniqueId = newRootId;
+        calculatedRoot.isRoot = true;
+        calculatedRoot.amount = totalDemand;
+
+        // Add the new root to the state
+        dispatch(setDependencies({ treeId: newRootId, tree: calculatedRoot }));
+
+        // Convert each external node to an import node pointing to the new root
+        for (const { node } of externalNodes) {
+          await dispatch(updateNodeProperties({
+            nodeId: node.uniqueId,
+            updatedNode: {
+              isExternal: false,
+              importReference: { targetTreeId: newRootId, targetNodeId: newRootId },
+              isImport: true,
+              importedFrom: newRootId,
+              children: [],
+            },
+          }));
+        }
+
+        // Recalculate the new root's amount from all imports and cascade to children
+        await dispatch(recalculateAndUpdateRootAmountThunk({
+          rootNodeId: newRootId,
+          externalDemandChange: undefined,
+        }));
+      }
+
+      dispatch(setExternalImports({ itemId, value: false }));
+    }
   }
 ); 

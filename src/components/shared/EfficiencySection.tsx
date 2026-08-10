@@ -24,6 +24,7 @@ interface EfficiencySectionProps {
   excess: number;
   isByproduct?: boolean;
   isImport?: boolean;
+  isExternal?: boolean;
   parentNodeId?: string;           // Parent node ID (for import controls)
   hasMultipleImportSources?: boolean;  // True if multiple sources for same item
   nodeId: string;
@@ -64,6 +65,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   excess,
   isByproduct = false,
   isImport = false,
+  isExternal = false,
   parentNodeId,
   hasMultipleImportSources = false,
   nodeId,
@@ -300,7 +302,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
               <EfficiencyIndicator 
                 efficiency={efficiency} 
                 isByproduct={isByproduct} 
-                isImport={isImport} 
+                isImport={isImport}
+                isExternal={isExternal}
               />
               {showBaseline && baselineValues && !isNew && (
                 <span 

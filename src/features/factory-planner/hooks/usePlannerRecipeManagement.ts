@@ -83,7 +83,9 @@ export const usePlannerRecipeManagement = ({
               nodeToUpdate.uniqueId, // Use this node's uniqueId as parentId for children
               excessMap,
               {},                      
-              currentTrees            
+              currentTrees,
+              [], // visited
+              dependencies.externalImports
           );
           newChildren = tempRecalculatedNode?.children || [];
       } catch (error) {
