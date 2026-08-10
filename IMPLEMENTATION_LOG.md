@@ -70,4 +70,37 @@ yarn lint: pre-existing warnings only
 - Legacy root slices and `plannersReducer` coexist — migration must handle `combineReducers` double-dispatch when `meta.tabId` is introduced
 
 ### Next step
-Phase 1 — `createTabThunk` wrapper + tab-scoped dispatch and selectors
+Phase 2 — per-tab history middleware, per-tab undo/redo, transaction map
+
+***
+
+## Phase 1 — createTabThunk + tab-scoped dispatch
+**Status:** Complete  
+**Estimated overall progress:** 10%
+
+### Files created/modified
+| File | Change |
+|------|--------|
+| `src/features/workspace/store/createTabThunk.ts` | **NEW** — wrapper around `createAsyncThunk`: auto-generates operationId, dispatches `_planner/beginOperation`/`_planner/endOperation`, injects `tabId` into every inner dispatched action via `injectTabMeta()`, scopes `getState()` |
+| `src/features/workspace/context/TabDispatchContext.tsx` | **NEW** — `TabDispatchProvider` wraps `useDispatch` with `tabId` injection; `useTabDispatch()` hook returns `{ tabId, tabDispatch }` |
+| `src/features/workspace/hooks/useWorkspaceInit.ts` | **NEW** — creates a default tab (`tab-{timestamp}`) on first mount if no tabs exist |
+
+### Legacy slice status
+| Slice | Status |
+|-------|--------|
+| All 5 slices | Active at root level (unchanged — Phase 1 is infrastructure-only) |
+
+### Test results
+```
+yarn type-check: passes
+yarn test: 59 passed, 0 failed
+```
+
+### Open issues / deferred decisions
+- `createTabThunk` is defined but NOT yet applied to any existing thunk (Phase 3)
+- `TabDispatchContext` is defined but NOT yet wired into the component tree (Phase 5)
+- `useWorkspaceInit` creates a default tab but no component reads workspace state yet
+- When `meta.tabId` is introduced to real actions, `combineReducers` will call both legacy and `plannersReducer` — double-read must be managed
+
+### Next step
+Phase 2 — per-tab history middleware, per-tab undo/redo stacks, per-tab transaction map
