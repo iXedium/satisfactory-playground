@@ -139,4 +139,33 @@ yarn test: 59 passed, 0 failed
 - **Housekeeping 2 verification (2026-08-11):** Added 3 tests to `tests/workspace/plannersReducer.test.ts` confirming `_planner/pushSnapshot` routes to `planners[tabId].history.undoStack` (not root-level historySlice), `_planner/setRestoring` manipulates per-tab `isRestoring`, and `_planner/*` actions without tabId are ignored. All 62 tests pass.
 
 ### Next step
-Phase 3 — hook and thunk migration (17 hooks, 14 thunks) to use tab-scoped dispatch and selectors
+Phase 3b — remaining 16 hooks and 13 thunks migration
+
+***
+
+## Phase 3a — Single hook end-to-end proof
+**Status:** Complete  
+**Estimated overall progress:** 18%
+
+### Proven pattern
+`calculateAndAutoImportThunk` converted from `createAsyncThunk` to `createTabThunk`. The wrapper auto-injects `tabId` into all inner dispatches via scoped dispatch. `usePlannerTreeCalculation` reads `tabId` from `state.workspace.activeTabId`.
+
+### Files modified
+| File | Change |
+|------|--------|
+| `src/features/factory-planner/store/importExportLogic.ts` | Added `createTabThunk` import; added `tabId` to `CalculateAndAutoImportArgs`; converted `calculateAndAutoImportThunk` from `createAsyncThunk` to `createTabThunk` |
+| `src/features/factory-planner/hooks/usePlannerTreeCalculation.ts` | Added `useSelector` import; reads `tabId` from `s.workspace.activeTabId`; passes `tabId` to `calculateAndAutoImportThunk` dispatch |
+
+### Verification
+1. ✅ `meta.tabId` flows through scoped dispatch — `createTabThunk` wrapper injects it into every inner `dispatch(action)` call
+2. ✅ Per-tab history captures `_planner/pushSnapshot` — middleware reads `tabId` from meta, routes to `planners[tabId].history`
+3. ✅ Legacy (no-tabId) path still works — root-level reducers still process actions without `meta.tabId`
+4. ✅ `yarn type-check` passes, `yarn test` 62 passed, 0 failed
+
+### Open issues
+- Only 1 of 14 thunks converted (Phase 3b covers the rest)
+- `autoImportNodeChildrenThunk` still uses `createAsyncThunk` — but receives `tabId` via scoped dispatch from `calculateAndAutoImportThunk`
+- Root-level slices still receive all actions (both with and without `meta.tabId`) — double-processing during migration is acceptable
+
+### Next step
+Phase 3b — remaining 16 hooks and 13 thunks

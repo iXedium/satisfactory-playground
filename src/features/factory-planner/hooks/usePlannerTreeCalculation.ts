@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store';
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
@@ -147,6 +147,7 @@ export const usePlannerTreeCalculation = ({
   onNewTreesCreated,
 }: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   const { setExpandedNodes } = usePlannerNodeState();
 
   const generateTreeId = useCallback((itemId: string): string => {
@@ -218,6 +219,7 @@ export const usePlannerTreeCalculation = ({
         };
 
         const result = await dispatch(calculateAndAutoImportThunk({
+          tabId,
           selectedItem,
           selectedRecipeId: selectedRecipe,
           generateTreeId,

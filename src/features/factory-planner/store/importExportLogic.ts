@@ -9,6 +9,7 @@ import {
 } from '../../../utils/nodeReferenceUtils';
 import { findNodeById } from '../../../utils/treeUtils';
 import { createAsyncThunk } from '@reduxjs/toolkit';
+import { createTabThunk } from '../../workspace/store/createTabThunk';
 import { AppDispatch, RootState } from '../../../store';
 import { 
   getRecipeByOutput, 
@@ -65,9 +66,10 @@ export const findAndReplaceNode = (tree: WritableDraft<DependencyNode>, nodeId: 
 
 // --- Thunk Args Interface --- 
 interface CalculateAndAutoImportArgs {
+  tabId: string;
   selectedItem: string;
   selectedRecipeId: string;
-  generateTreeId: (itemId: string) => string; // Pass the ID generator function
+  generateTreeId: (itemId: string) => string;
 }
 
 // --- Thunk Return Type --- 
@@ -77,10 +79,9 @@ interface CalculateAndAutoImportResult {
 }
 
 // --- calculateAndAutoImportThunk Definition --- 
-export const calculateAndAutoImportThunk = createAsyncThunk<
+export const calculateAndAutoImportThunk = createTabThunk<
   CalculateAndAutoImportResult, // Return type
-  CalculateAndAutoImportArgs, // Argument type
-  { dispatch: AppDispatch; state: RootState } // ThunkApi config
+  Omit<CalculateAndAutoImportArgs, 'tabId' | 'description'> // Argument type (without tabId/description, added by createTabThunk)
 >(
   'dependency/calculateAndAutoImport',
   async (args, { getState, dispatch }) => {
