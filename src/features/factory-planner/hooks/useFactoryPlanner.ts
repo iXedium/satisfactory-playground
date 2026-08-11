@@ -75,12 +75,14 @@ function extractLocalStateMapsFromTrees(dependencyTrees: Record<string, Dependen
 export type TreeSortKey = 'originalDepth' | 'amount' | 'name' | 'nominalRate' | 'Manual';
 export type SortDirection = 'asc' | 'desc';
 
-// Define keys for local storage
+// UI-preference keys (non-tab-scoped — affect all tabs uniformly)
 const LS_SORT_KEY = 'lastSession_plannerTreeSortKey';
 const LS_SORT_DIRECTION = 'lastSession_plannerTreeSortDirection';
-const LS_DEPENDENCIES_KEY = 'lastSession_savedDependencies';
-const LS_RECIPES_KEY = 'lastSession_savedRecipeSelections';
 const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
+
+// Planner-state key generators (tab-scoped — one per tab)
+const lsDependenciesKey = (tabId: string) => `lastSession_${tabId}_savedDependencies`;
+const lsRecipesKey = (tabId: string) => `lastSession_${tabId}_savedRecipeSelections`;
 
 export interface FactoryPlannerHookResult {
   dependencies: { dependencyTrees: Record<string, DependencyNode | null> };
@@ -453,61 +455,48 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   
   // --- Load LAST SESSION Core Redux State on Initial Mount --- 
   useEffect(() => {
-    // console.log("Attempting to load last session Redux state...");
     try {
-      const savedDependencies = localStorage.getItem(LS_DEPENDENCIES_KEY);
+      const savedDependencies = localStorage.getItem(lsDependenciesKey(tabId));
       if (savedDependencies) {
-        // console.log("Found last session dependencies, loading...");
         const parsed = JSON.parse(savedDependencies);
         dispatch(loadSavedState(parsed));
-      } else {
-        // console.log("No last session dependencies found.");
       }
       
-      const savedRecipeSelections = localStorage.getItem(LS_RECIPES_KEY);
+      const savedRecipeSelections = localStorage.getItem(lsRecipesKey(tabId));
       if (savedRecipeSelections) {
-        // console.log("Found last session recipe selections, loading...");
         const parsed = JSON.parse(savedRecipeSelections);
         dispatch(loadRecipeSelections(parsed));
-      } else {
-        // console.log("No last session recipe selections found.");
       }
     } catch (error) {
       console.error("Error loading last session Redux state:", error);
-      // Clear potentially corrupted keys
-      localStorage.removeItem(LS_DEPENDENCIES_KEY);
-      localStorage.removeItem(LS_RECIPES_KEY);
+      localStorage.removeItem(lsDependenciesKey(tabId));
+      localStorage.removeItem(lsRecipesKey(tabId));
     }
-  }, [dispatch]); // Run only once on mount
+  }, [dispatch, tabId]);
   // ---------------------------------------------------------------------
 
   // --- Auto-save Core Redux State to LAST SESSION on Change ---
   useEffect(() => {
-    // Save dependencies
     if (dependencies && Object.keys(dependencies.dependencyTrees).length > 0) {
       try {
-        // console.log("Auto-saving dependencies to last session...");
-        localStorage.setItem(LS_DEPENDENCIES_KEY, JSON.stringify(dependencies));
+        localStorage.setItem(lsDependenciesKey(tabId), JSON.stringify(dependencies));
       } catch (error) {
         console.error("Error auto-saving last session dependencies:", error);
-        localStorage.removeItem(LS_DEPENDENCIES_KEY); // Clear on error
+        localStorage.removeItem(lsDependenciesKey(tabId));
       }
     } 
-    // Optional: Clear if state becomes empty? Might conflict with initial load.
-  }, [dependencies]);
+  }, [dependencies, tabId]);
 
   useEffect(() => {
-    // Save recipe selections
     if (recipeSelections && Object.keys(recipeSelections).length > 0) {
       try {
-        // console.log("Auto-saving recipe selections to last session...");
-        localStorage.setItem(LS_RECIPES_KEY, JSON.stringify(recipeSelections));
+        localStorage.setItem(lsRecipesKey(tabId), JSON.stringify(recipeSelections));
       } catch (error) {
         console.error("Error auto-saving last session recipe selections:", error);
-        localStorage.removeItem(LS_RECIPES_KEY); // Clear on error
+        localStorage.removeItem(lsRecipesKey(tabId));
       }
     } 
-  }, [recipeSelections]);
+  }, [recipeSelections, tabId]);
   // -------------------------------------------------------------
 
   // Call the Save/Load Hook

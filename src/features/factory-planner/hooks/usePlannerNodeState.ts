@@ -83,7 +83,7 @@ export const usePlannerNodeState = (tabId: string): PlannerNodeState => {
       localStorage.removeItem(lsExpandedNodes(tabId));
       localStorage.removeItem(lsNodeOverrides(tabId));
     }
-  }, []); // Run only on mount
+  }, [tabId]); // Re-run on mount and when tabId changes
 
   // Helper to check if an object is empty
   const isEmptyObject = (obj: Record<string, any>): boolean => {
