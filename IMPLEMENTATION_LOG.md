@@ -269,24 +269,37 @@ is transitive. `useUndoRedo` selectors switched to per-tab.
 - Legacy undo/redo exports retained (28 test call sites need migration — deferred)
 
 ### Key outstanding
-- `legacyUndoAction`/`legacyRedoAction` retained in historyMiddleware.ts
 - `beginHistoryTransaction`/`commitHistoryTransaction` called without `tabId` in test code
-- localStorage keys not yet scoped to `tabId`
+- 6 undoRedo tests need further transaction/restoration path migration
 
-### Phase 4b — Tab-scoped parity tests (complete)
-**File:** \	ests/integration/tabIsolation.test.ts\ (6 new tests)
+### Phase 4 cleanup (Item 1 & 2)
+**Status:** Complete (with 6 known remaining test failures)
+**Commit:** `e1ede23` / `d9bda5f`
 
-| Test | Result |
-|------|--------|
-| Tree creation with meta.tabId | Pass — planners[tid].dependencies.dependencyTrees populated |
-| Per-tab history stores snapshot | Pass — direct \_planner/pushSnapshot\ test |
-| Per-tab undoAction pops undo stack | Pass |
-| Per-tab redoAction pops redo stack | Pass |
-| Tab A operations do NOT affect Tab B | Pass — isolated dependencyTrees |
-| Active operations tracks begin/end | Pass |
+- **Item 1 — localStorage scoping**: `usePlannerNodeState` keys now use `lastSession_{tabId}_*` pattern.
+  Hook accepts `tabId` parameter. Callers updated.
+- **Item 2 — Legacy exports deleted**: `legacyUndoAction`/`legacyRedoAction` removed from historyMiddleware.
+  Test migrated to tab-scoped store with `td` wrapper and `TAB_ID`. Import fixed to `undoAction`/`redoAction`.
+  `td` wrapper correctly dispatches thunks as-is (no object spread).
+- **Middleware fixes**: `createSnapshot` returns empty defaults instead of null for uninitialized planners.
+  Removed early-return for non-existent `planners[tabId]` in middleware body.
 
-### Test results
-\\\
+### Test results (2026-08-11, after Phase 4 cleanup)
+```
+yarn type-check: passes
+yarn test: 62 passed, 6 failed (68 total)
+```
+6 remaining failures are in per-tab transaction grouping and undo/redo state restoration:
+- undo/redo cycle with exact state assertions
+- clearHistory with undo/redo stacks
+- transaction grouping / cancellation
+- isRestoring flag edge case
+- excess change state capture
+
+Legacy exports fully deleted. No code references to `legacyUndoAction`/`legacyRedoAction`.
+
+### Next step
+Phase 5 — multi-tab UI (TabBar, WorkspaceLayout, CommandBar adaptation, busy overlay)
 yarn type-check: passes
 yarn test: 68 passed (62 original + 6 new), 0 failed
 \\\
