@@ -324,13 +324,21 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   // Mirror manual order into Redux (ignored by history)
   useEffect(() => {
     if (isRestoring) return;
+    const reduxOrder = dependencies.manualTreeOrder || [];
+    const currentTreeIds = Object.keys(dependencies.dependencyTrees);
+
+    // If local state is empty (e.g. first mount, tab-scoped key missing)
+    // but Redux already has an order for this tab, seed local from Redux.
+    if (manualTreeOrder.length === 0 && reduxOrder.length > 0) {
+      setManualTreeOrder(reduxOrder);
+      return;
+    }
+
     // During/after an undo/redo restore, the Redux manualTreeOrder is the source
     // of truth (restored from the history snapshot). The local state may be stale
     // (e.g. emptied or partial while trees were deleted), so only mirror when the
     // local order actually covers all current trees - otherwise we would clobber
     // the freshly restored order back to a stale list.
-    const reduxOrder = dependencies.manualTreeOrder || [];
-    const currentTreeIds = Object.keys(dependencies.dependencyTrees);
     if (reduxOrder.length > 0 && currentTreeIds.length > 0 && !currentTreeIds.every(id => manualTreeOrder.includes(id))) {
       return;
     }
