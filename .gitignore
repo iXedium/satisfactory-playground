@@ -30,3 +30,6 @@ planner-saves.db-shm
 
 # Playwright MCP test artifacts
 .playwright-mcp/
+
+# Diagnostic screenshots (never commit)
+TEMP_SCREENSHOTS/
