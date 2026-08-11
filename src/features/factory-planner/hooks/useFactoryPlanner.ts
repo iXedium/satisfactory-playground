@@ -453,8 +453,16 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     handleExcessChange,
   });
   
-  // --- Load LAST SESSION Core Redux State on Initial Mount --- 
+  // --- Load LAST SESSION Core Redux State on Initial Mount ---
+  // Guard: skip load if this tabId already has dependency trees loaded in this
+  // session. Prevents the load-on-mount effect from overwriting live state with a
+  // stale localStorage snapshot when the user switches back to a previously-active tab.
+  const loadedTabsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
+    if (loadedTabsRef.current.has(tabId)) return;
+    loadedTabsRef.current.add(tabId);
+
     try {
       const savedDependencies = localStorage.getItem(lsDependenciesKey(tabId));
       if (savedDependencies) {
