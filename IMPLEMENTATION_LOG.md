@@ -179,11 +179,71 @@ Phase 3b — remaining 16 hooks and 13 thunks
 ### Finding
 Bulk text-replace of createAsyncThunk → createTabThunk fails because createTabThunk has a different type signature. Each of the 12 remaining thunks needs individual conversion preserving typed payload creator.
 
-### Pattern (proven in Phase 3a)
-- For thunks: add tabId to args interface, change createAsyncThunk to createTabThunk with Omit<Args, 'tabId' | 'description'>
-- For hooks: const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default' and pass tabId to dispatch
+### Conversion approach (adopted)
+Worked file-by-file, converting thunks first (one at a time), then hooks. Used optional `tabId?: string` for backward compatibility during incremental conversion. Each edit followed by `yarn type-check`.
 
-### Legacy cleanup (after migration)
-- Remove legacyUndoAction / legacyRedoAction
-- Remove beginHistoryTransaction calls without tabId
-- Remove root-level selectors for planner state
+***
+
+## Phase 3b — Hook and thunk migration (COMPLETE)
+**Status:** Complete  
+**Estimated overall progress:** 25%
+
+### Thunks converted (importExportLogic.ts)
+| Thunk | Change |
+|-------|--------|
+| `autoImportNodeChildrenThunk` | `createAsyncThunk<void, string>` → `createTabThunk<void, { parentNodeId: string }>` |
+| `setNodeAsImportThunk` | `createAsyncThunk<void, SetNodeAsImportArgs>` → `createTabThunk<void, Omit<SetNodeAsImportArgs, …>>` — added `tabId?: string` to interface |
+| `unimportNodeThunk` | `createAsyncThunk<void, string>` → `createTabThunk<void, { nodeId: string }>` |
+| `checkAndConvertNodeTypeThunk` | `createAsyncThunk<string, string>` → `createTabThunk<string, { rootNodeId: string }>` |
+| `destroyNodeRecursiveThunk` | `createAsyncThunk<void, string>` → `createTabThunk<void, { treeId: string }>` |
+| `requestDependencyCheckThunk` | `createAsyncThunk<void, RequestDependencyCheckArgs>` → `createTabThunk` — added `tabId?: string` to interface |
+| `recalculateAndUpdateRootAmountThunk` | `createAsyncThunk<void, RecalculateArgs>` → `createTabThunk` — added `tabId?: string` to interface |
+
+### Hooks updated (14 files)
+| Hook | Change |
+|------|--------|
+| `usePlannerRecipeManagement` | Added `tabId` selector; passes `tabId` to `autoImportNodeChildrenThunk`, `requestDependencyCheckThunk` |
+| `usePlannerNodeInteractions` | Added `tabId` selector only |
+| `usePlannerExcessHandling` | Added `tabId`; **`setTimeout` replaced with `await Promise.allSettled`** (eliminates 10ms gap) |
+| `usePlannerImportExport` | Added `tabId`; **removed 50ms delay**; **removed stale closure check**; passes `tabId` to all inner thunks |
+| `usePlannerSaveLoad` | Added `tabId` selector only |
+| `usePlannerNodeState` | Added `tabId` selector only |
+| `usePlannerDisplayOptions` | Added `tabId` selector only |
+| `usePlannerItemSelection` | Added `tabId` selector only |
+| `usePlannerBulkActions` | Added `tabId`; passes to `destroyNodeRecursiveThunk` |
+| `usePlannerDataManagement` | Added `tabId`; passes to `destroyNodeRecursiveThunk` |
+| `useUndoRedo` | Added `tabId`; **switched from `legacyUndoAction()`/`legacyRedoAction()` to `undoAction(tabId)`/`redoAction(tabId)`** |
+| `usePlannerComparison` | Added `tabId` selector only |
+| `useFactoryPlanner` | Added `tabId` selector (orchestrator) |
+| `usePlannerTreeCalculation` | Already had `tabId` from Phase 3a |
+
+### Infrastructure
+| File | Change |
+|------|--------|
+| `createTabThunk.ts` | `tabId` added to scoped API; `TabThunkArg.tabId` made optional (`tabId?: string`) |
+
+### Legacy slice status
+| Slice | Status |
+|-------|--------|
+| `historySlice` (root-level) | Still active — `legacyUndoAction`/`legacyRedoAction` retained for test backward-compatibility |
+| `planners[tabId].history` | Ready — receives `_planner/pushSnapshot` when `meta.tabId` is present |
+| `dependencySlice` (root-level) | Still active — hooks read root-level state (not yet scoped to `planners[tabId]`) |
+| `recipeSelectionsSlice` (root) | Still active |
+| `treeUiSlice` (root) | Still active |
+| `comparisonSlice` (root) | Still active |
+
+### Test results (2026-08-11)
+```
+yarn type-check: passes (clean)
+yarn test: 62 passed, 0 failed
+yarn build: not yet run (no component changes)
+```
+
+### Open issues
+- `legacyUndoAction`/`legacyRedoAction` retained in `historyMiddleware.ts` — needed by `tests/integration/undoRedo.test.ts` (28 call sites). Will remove in Phase 4 after tests are updated to use tab-scoped store.
+- `beginHistoryTransaction`/`commitHistoryTransaction` still called without `tabId` in hooks — legacy path still active. Migration after root-level slices removed.
+- Root-level selectors still active — migration to `state.planners[tabId].xxx` deferred to Phase 4.
+- localStorage keys not yet scoped to `tabId` (`lastSession_*`, `plannerManualTreeOrder`, etc.) — will be scoped in Phase 5 (multi-tab UI).
+
+### Next step
+Phase 4 — single-tab parity tests + component migration to tab-scoped selectors
