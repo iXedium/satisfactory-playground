@@ -129,7 +129,7 @@ export interface FactoryPlannerHookResult {
   setManualTreeOrder: React.Dispatch<React.SetStateAction<string[]>>;
 
   handleCalculate: () => Promise<void>;
-  handleExcessChange: (nodeId: string, excess: number) => Promise<void>;
+  handleExcessChange: (nodeId: string, excess: number) => void;
   handleMachineCountChange: (nodeId: string, count: number) => void;
   handleMachineMultiplierChange: (nodeId: string, multiplier: number) => void;
   handleExpandCollapseAll: (expand: boolean) => void;

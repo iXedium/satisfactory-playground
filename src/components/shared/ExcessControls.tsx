@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 // import { theme } from '../../styles/theme'; // No longer needed directly for base styles
 import { sizes } from '../../styles/constants'; // Re-import for zIndex
 import StyledInput from './StyledInput';
@@ -32,11 +32,18 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
   const [preciseExcess, setPreciseExcess] = useState(excess);
   const [isExcessFocused, setIsExcessFocused] = useState(false);
   const excessRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<number>(0);
 
   useEffect(() => {
-    // console.debug(`[EXCESS DEBUG] ExcessControls received new excess prop: ${excess}`);
     setPreciseExcess(excess);
   }, [excess]);
+
+  const debouncedOnExcessChange = useCallback((value: number) => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      onExcessChange(value);
+    }, 300) as unknown as number;
+  }, [onExcessChange]);
 
   // Format the excess value based on focus state
   const formattedExcess = isExcessFocused 
@@ -57,13 +64,12 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
     if (inputValue === "" || isNaN(parseFloat(inputValue))) {
       // console.debug('[EXCESS DEBUG] Empty or invalid input, setting excess to 0');
       setPreciseExcess(0);
-      onExcessChange(0);
+      debouncedOnExcessChange(0);
     } else {
       // Store the full precision number
       const numValue = parseFloat(inputValue);
-      // console.debug(`[EXCESS DEBUG] Setting excess to ${numValue}`);
       setPreciseExcess(numValue);
-      onExcessChange(numValue);
+      debouncedOnExcessChange(numValue);
     }
   };
 
@@ -162,7 +168,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
             preciseExcess,
             (val) => {
               setPreciseExcess(val);
-              onExcessChange?.(val);
+              debouncedOnExcessChange(val);
             },
             0.01 // Use a smaller step for excess
           );
@@ -175,7 +181,7 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
               preciseExcess,
               (val) => {
                 setPreciseExcess(val);
-                onExcessChange?.(val);
+                debouncedOnExcessChange(val);
               },
               0.1 // Larger step for wheel
             );

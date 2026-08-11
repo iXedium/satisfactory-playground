@@ -5,7 +5,7 @@ import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { AppDispatch, RootState } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
-    updateTreeProduction, 
+    cascadeExcessUpdate, 
     checkAndConvertNodeTypeThunk, 
     beginHistoryTransaction,
     commitHistoryTransaction
@@ -29,39 +29,34 @@ export const usePlannerExcessHandling = ({
   const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
-  const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
+  const handleExcessChange = useCallback((nodeId: string, excess: number) => {
     // Update local map immediately
     setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
 
-    // Step 1: Run the full cascading update with NO open transaction.
-    // All child updateForcedProduction dispatches reach the store unblocked.
-    if (dependencies.dependencyTrees[nodeId]) { 
-      const tree = dependencies.dependencyTrees[nodeId];
-      setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
-      await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess, undefined, tabId));
-    } else {
-      let foundTreeId = '';
-      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-        const node = findNodeById(tree, nodeId);
-        if (node) {
-          foundTreeId = treeId;
-          break;
-        }
+    // Determine the treeId
+    let treeId = nodeId;
+    if (!dependencies.dependencyTrees[nodeId]) {
+      let found = '';
+      for (const [tId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        if (findNodeById(tree, nodeId)) { found = tId; break; }
       }
-      if (!foundTreeId) return;
-      await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess, undefined, tabId));
+      if (!found) return;
+      treeId = found;
+    } else {
+      const tree = dependencies.dependencyTrees[nodeId];
+      setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess }));
+      treeId = tree.uniqueId;
     }
 
-    // Step 2: The cascade has fully settled. Capture a snapshot of the
-    // post-cascade state for the undo stack. Undoing this snapshot reverts
-    // to the previous undo entry (pre-cascade state).
-    dispatch(beginHistoryTransaction(`Set excess to ${excess}`) as unknown as Parameters<typeof dispatch>[0]);
-    dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+    // Synchronous cascade: begin → cascadeExcessUpdate → commit
+    dispatch(beginHistoryTransaction(`Set excess to ${excess}`, tabId) as unknown as Parameters<typeof dispatch>[0]);
+    dispatch(cascadeExcessUpdate({ nodeId, treeId, excess }) as unknown as Parameters<typeof dispatch>[0]);
+    dispatch(commitHistoryTransaction(tabId) as unknown as Parameters<typeof dispatch>[0]);
 
-    // Step 3: Trigger node type conversion checks (unchanged)
+    // Trigger node type conversion checks (async, after commit)
     const stateAfterChecks = { ...dependencies.dependencyTrees };
     const rootIdsToCheck = Object.keys(stateAfterChecks).filter(id => stateAfterChecks[id].isRoot);
-    await Promise.allSettled(
+    Promise.allSettled(
       rootIdsToCheck.map(rootId => 
         dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: rootId, tabId }))
       )

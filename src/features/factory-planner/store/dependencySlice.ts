@@ -261,6 +261,59 @@ const dependencySlice = createSlice({
         delete state.externalImports[action.payload.itemId];
       }
     },
+
+    // ------------------------------------------------------------------
+    // Synchronous excess cascade — sets node.excess then walks all children
+    // recalculating their amounts based on recipe ratios in a single Immer pass.
+    // ------------------------------------------------------------------
+    cascadeExcessUpdate: (
+      state,
+      action: PayloadAction<{ nodeId: string; treeId: string; excess: number }>
+    ) => {
+      const { nodeId, treeId, excess } = action.payload;
+      const tree = state.dependencyTrees[treeId];
+      if (!tree) return;
+
+      const recalcChildren = (node: DependencyNode): void => {
+        if (!node.recipe || !node.children || node.children.length === 0) return;
+        const totalProduction = (node.amount || 0) + (node.excess || 0);
+        const outputAmount = node.recipe.out[node.id] || 1;
+        const cyclesNeeded = totalProduction / outputAmount;
+
+        for (const child of node.children) {
+          let childAmount: number;
+          if (child.isByproduct) {
+            const recipeOutputAmount = node.recipe.out[child.id] || 0;
+            childAmount = -(recipeOutputAmount * cyclesNeeded);
+          } else {
+            const recipeInputAmount = node.recipe.in[child.id] || 0;
+            childAmount = recipeInputAmount * cyclesNeeded;
+          }
+
+          if (childAmount !== child.amount) {
+            child.amount = childAmount;
+            recalcChildren(child);
+          }
+        }
+      };
+
+      const findAndUpdate = (n: DependencyNode): boolean => {
+        if (n.uniqueId === nodeId) {
+          n.excess = excess;
+          recalcChildren(n);
+          return true;
+        }
+        return n.children?.some(findAndUpdate) || false;
+      };
+      findAndUpdate(tree);
+
+      const newAccumulated: Record<string, AccumulatedNode> = {};
+      Object.values(state.dependencyTrees).forEach(t => {
+        Object.assign(newAccumulated, calculateAccumulatedFromTree(t));
+      });
+      state.accumulatedDependencies = newAccumulated;
+      state.lastUpdateTime = Date.now();
+    },
     
     // Update machine count on a specific node
     setNodeMachineCount: (
@@ -441,6 +494,7 @@ export const {
   setNodeMachineMultiplier,
   setNodeExcess,
   setExternalImports,
+  cascadeExcessUpdate,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

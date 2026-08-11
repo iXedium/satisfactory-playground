@@ -10,7 +10,7 @@ interface DependencySliceStateForDebug {
 interface PlannerDebugToolsProps {
   dependencies: DependencySliceStateForDebug;
   excessMap: Record<string, number>;
-  handleExcessChange: (nodeId: string, excess: number) => Promise<void>; // Match signature from usePlannerExcessHandling
+  handleExcessChange: (nodeId: string, excess: number) => void;
 }
 
 export const usePlannerDebugTools = ({
