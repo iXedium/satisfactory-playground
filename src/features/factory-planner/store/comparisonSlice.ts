@@ -6,7 +6,7 @@ import { logger } from "../../../utils/logger";
 const COMPARISON_STORAGE_KEY = 'plannerComparisonSnapshot';
 
 // --- State Interface ---
-interface ComparisonState {
+export interface ComparisonState {
   /** The currently stored snapshot for comparison (null if none) */
   activeSnapshot: ComparisonSnapshot | null;
   /** Whether comparison display is enabled */

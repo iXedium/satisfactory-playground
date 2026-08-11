@@ -167,8 +167,8 @@ export interface FactoryPlannerHookResult {
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   const dispatch: AppDispatch = useDispatch();
   const tabId = useSelector((state: RootState) => state.workspace.activeTabId) || 'default';
-  const dependencies = useSelector((state: RootState) => state.dependencies);
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  const dependencies = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? state.recipeSelections.selections);
   
   // --- Define generateTreeId and createNewTreeStructure FIRST --- 
   const generateTreeId = useCallback((itemId: string): string => {
@@ -248,7 +248,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   // ------------------------------------------------------
   
   // --- Subscribe to history isRestoring state for undo/redo sync ---
-  const isRestoring = useSelector((state: RootState) => state.history?.isRestoring ?? false);
+  const isRestoring = useSelector((state: RootState) => state.planners[tabId]?.history.isRestoring ?? state.history?.isRestoring ?? false);
   const wasRestoringRef = useRef(false);
   
   const {

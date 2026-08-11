@@ -1,30 +1,20 @@
+import { DependencyState } from '../../factory-planner/store/dependencySlice';
+import { RecipeSelectionsState } from '../../factory-planner/store/recipeSelectionsSlice';
+import { ComparisonState } from '../../factory-planner/store/comparisonSlice';
+import { HistoryState } from '../../factory-planner/store/historySlice';
+import { TreeUiState } from '../../factory-planner/store/treeUiSlice';
+
 export interface ActiveOperation {
   description: string;
   startedAt: number;
 }
 
 export interface PlannerState {
-  dependencies: {
-    dependencyTrees: Record<string, unknown>;
-    accumulatedDependencies: Record<string, unknown>;
-    highlightedNodeId: string | null;
-    manualTreeOrder: string[];
-    externalImports: Record<string, true>;
-    errors: string[];
-    lastUpdateTime: number;
-  };
-  recipeSelections: { selections: Record<string, string> };
-  history: {
-    isRestoring: boolean;
-    undoStack: unknown[];
-    redoStack: unknown[];
-    pendingTransaction: unknown | null;
-  };
-  comparison: {
-    activeSnapshot: unknown;
-    showComparison: boolean;
-  };
-  treeUi: { expandedNodes: string[] };
+  dependencies: DependencyState;
+  recipeSelections: RecipeSelectionsState;
+  history: HistoryState;
+  comparison: ComparisonState;
+  treeUi: TreeUiState;
   activeOperations: Record<string, ActiveOperation>;
 }
 
@@ -44,12 +34,15 @@ export function createEmptyPlannerState(): PlannerState {
       isRestoring: false,
       undoStack: [],
       redoStack: [],
+      maxStackSize: 50,
       pendingTransaction: null,
-    },
+      canUndo: false,
+      canRedo: false,
+    } as HistoryState,
     comparison: {
       activeSnapshot: null,
       showComparison: false,
-    },
+    } as ComparisonState,
     treeUi: { expandedNodes: [] },
     activeOperations: {},
   };

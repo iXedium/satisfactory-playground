@@ -112,8 +112,9 @@ export const usePlannerSaveLoad = ({
     currentManualTreeOrder,
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
     const dispatch: AppDispatch = useDispatch();
-    const dependenciesState = useSelector((state: RootState) => state.dependencies);
-    const recipeSelectionsState = useSelector((state: RootState) => state.recipeSelections.selections);
+    const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
+    const dependenciesState = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? state.dependencies);
+    const recipeSelectionsState = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? state.recipeSelections.selections);
 
     const [saveNames, setSaveNames] = useState<string[]>([]);
     const [lastSavedStateInMemory, setLastSavedStateInMemory] = useState<SavedPlannerState | null>(null);

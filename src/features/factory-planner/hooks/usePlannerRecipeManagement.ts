@@ -33,8 +33,8 @@ export const usePlannerRecipeManagement = ({
 }: PlannerRecipeManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
-  const dependencies = useSelector((state: RootState) => state.dependencies);
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  const dependencies = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? state.dependencies);
+  const recipeSelections = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? state.recipeSelections.selections);
 
   const handleTreeRecipeChange = useCallback(async (nodeId: string, recipeId: string) => {
     const currentTrees = dependencies.dependencyTrees;

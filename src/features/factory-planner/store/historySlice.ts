@@ -35,7 +35,7 @@ interface PendingTransaction {
 }
 
 /** History state structure */
-interface HistoryState {
+export interface HistoryState {
   /** Stack of past states (most recent at end) */
   undoStack: HistorySnapshot[];
   /** Stack of future states for redo (most recent at end) */

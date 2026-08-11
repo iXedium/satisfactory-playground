@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface RecipeSelectionsState {
+export interface RecipeSelectionsState {
   selections: Record<string, string>;  // nodeId -> recipeId
 }
 

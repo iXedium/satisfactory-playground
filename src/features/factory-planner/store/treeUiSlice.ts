@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface TreeUiState {
+export interface TreeUiState {
   expandedNodes: string[];
 }
 
