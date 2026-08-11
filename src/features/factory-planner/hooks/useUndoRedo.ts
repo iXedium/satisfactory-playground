@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { AppDispatch, RootState } from '../../../store';
 import { undoAction, redoAction } from '../store/historyMiddleware';
 import { clearHistory } from '../store/historySlice';
@@ -16,7 +17,7 @@ import { logger } from '../../../utils/logger';
  * @returns Object with undo/redo state and handlers
  */
 export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   
   // Selectors (per-tab — read from planners[tabId].history)

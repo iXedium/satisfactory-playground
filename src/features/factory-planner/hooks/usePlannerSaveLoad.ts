@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { logger } from '../../../utils/logger';
 import { RootState, AppDispatch } from '../../../store';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { DependencyNode, Recipe } from '../../../types';
 import { loadSavedState, loadRecipeSelections } from '../store';
 import { usePlannerNodeState } from './usePlannerNodeState';
@@ -111,8 +112,8 @@ export const usePlannerSaveLoad = ({
     currentTreeSortDirection,
     currentManualTreeOrder,
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
-    const dispatch: AppDispatch = useDispatch();
-    const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
+    const { tabId: rawTabId, tabDispatch: dispatch } = useTabDispatch();
+    const tabId = (rawTabId as string) || 'default';
     const dependenciesState = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? {
       dependencyTrees: {},
       accumulatedDependencies: {},

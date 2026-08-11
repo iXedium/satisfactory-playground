@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { AppDispatch, RootState } from '../../../store';
 import { logger } from '../../../utils/logger';
 import { DependencyNode } from '../../../types';
@@ -36,7 +37,7 @@ export const usePlannerImportExport = ({
   dependencies,
   handleCreateNewTree,
 }: PlannerImportExportProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   // Original handleImportNode logic (now internal)

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { getRecipesForItem, getRecipeById, getRecipeByOutput, getAllItems, getMachineForRecipe } from '../../../data';
 import { Item, DependencyNode, Recipe, Building } from '../../../types';
 import { 
@@ -165,8 +166,8 @@ export interface FactoryPlannerHookResult {
 }
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
-  const dispatch: AppDispatch = useDispatch();
-  const tabId = useSelector((state: RootState) => state.workspace.activeTabId) || 'default';
+  const { tabId: rawTabId, tabDispatch: dispatch } = useTabDispatch();
+  const tabId = (rawTabId as string) || 'default';
   const dependencies = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? {
     dependencyTrees: {} as Record<string, DependencyNode | null>,
     accumulatedDependencies: {},

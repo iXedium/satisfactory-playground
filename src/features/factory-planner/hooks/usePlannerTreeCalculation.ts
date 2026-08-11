@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
@@ -146,7 +147,7 @@ export const usePlannerTreeCalculation = ({
   autoImport,
   onNewTreesCreated,
 }: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   const { setExpandedNodes } = usePlannerNodeState(tabId);
 

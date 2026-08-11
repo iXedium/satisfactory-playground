@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { AppDispatch, RootState } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
@@ -35,7 +36,7 @@ export const usePlannerDataManagement = ({
   clearDisplayOptionsStorage,
   // Destructure setters if added above
 }: PlannerDataManagementProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   const handleDeleteTree = useCallback(async (treeId: string) => {

@@ -1,5 +1,5 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch } from 'react-redux';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { AppDispatch } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { getMachineForRecipe } from '../../../data';
@@ -31,7 +31,7 @@ export const usePlannerBulkActions = ({
   dependencyTrees,
   setExcessMap,
 }: PlannerBulkActionsProps): PlannerBulkActions => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
 
   const collectAllNodes = useCallback((): DependencyNode[] => {
     const nodes: DependencyNode[] = [];

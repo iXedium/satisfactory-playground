@@ -1,5 +1,6 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { DependencyNode } from '../../../types';
 import { AppDispatch, RootState } from '../../../store';
 import { setNodeMachineCount, setNodeMachineMultiplier } from '../store/dependencySlice';
@@ -25,7 +26,7 @@ export const usePlannerNodeInteractions = ({
   setMachineMultiplierMap,
   setNodeExtensionOverrides,
 }: PlannerNodeInteractionsProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { tabDispatch: dispatch } = useTabDispatch();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   const handleExpandCollapseAll = useCallback((expand: boolean) => {

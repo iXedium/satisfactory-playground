@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store';
+import { useTabDispatch } from '../../workspace/context/TabDispatchContext';
 import { DependencyNode, ComparisonSnapshot, TreeSnapshot, NodeSnapshot, NodeComparisonResult } from '../../../types';
 import {
   storeSnapshot,
@@ -93,8 +94,8 @@ export function usePlannerComparison({
   setExcessMap,
   handleDeleteTree,
 }: UsePlannerComparisonProps): UsePlannerComparisonResult {
-  const dispatch = useDispatch<AppDispatch>();
-  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
+  const { tabId: rawTabId, tabDispatch: dispatch } = useTabDispatch();
+  const tabId = (rawTabId as string) || 'default';
   
   const activeSnapshot = useSelector(selectActiveSnapshot);
   const showComparison = useSelector(selectShowComparison);
