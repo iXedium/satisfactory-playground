@@ -267,29 +267,47 @@ export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<Pr
 // --- Thunk for Sequential Production Updates ---
 export const updateTreeProduction = 
   (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string) => 
-  async (dispatch: AppDispatch, getState: () => { dependencies: ProductionDependencyState }) => {
+  async (dispatch: AppDispatch, getState: () => {
+    dependencies: ProductionDependencyState;
+    planners: Record<string, { dependencies: ProductionDependencyState }>;
+    workspace: { activeTabId: string | null };
+  }) => {
     
-    const initialState = getState();
-    const initialTree = initialState.dependencies.dependencyTrees[treeId];
+    const rootState = getState();
+    const activeTabId = rootState.workspace.activeTabId || 'default';
+    const plannerDeps = rootState.planners[activeTabId]?.dependencies;
+    if (!plannerDeps) return;
+
+    const deps = (key: string) => plannerDeps.dependencyTrees[key];
+
+    // Wrap inner dispatch so actions carry meta.tabId — ensures producersReducer
+    // routes these actions to planners[activeTabId] instead of the legacy root slice.
+    const tabDispatch = (action: unknown): any => {
+      if (typeof action === 'function') return dispatch(action as any);
+      return dispatch({ ...(action as any), meta: { ...((action as any)?.meta || {}), tabId: activeTabId } });
+    };
+    
+    const initialTree = deps(treeId);
     if (!initialTree) {
-      // console.error(`[FATAL] Tree ${treeId} not found in state`);
       return;
     }
     
     const nodeToUpdate = findNodeById(initialTree, nodeId);
     if (!nodeToUpdate) {
-      // console.error(`[FATAL] Node ${nodeId} not found in tree ${treeId}`);
       return;
     }
     
     
     if (productionType === 'imported' && targetTreeId) {
-      dispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
-      await Promise.resolve(); // Ensure state update completes
+      tabDispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
+      await Promise.resolve(); 
       
       const stateAfterImportUpdate = getState();
+      const postImportDeps = stateAfterImportUpdate.planners[activeTabId]?.dependencies;
+      if (!postImportDeps) return;
+      
       const affectedNodesAfterImport = calculateAffectedNodes(
-        stateAfterImportUpdate.dependencies.dependencyTrees,
+        postImportDeps.dependencyTrees,
         treeId, 
         nodeId, 
         productionType,
@@ -297,7 +315,7 @@ export const updateTreeProduction =
       );
       
       for (const node of affectedNodesAfterImport) {
-        await dispatch(updateTreeProduction(
+        await tabDispatch(updateTreeProduction(
           node.nodeId,
           node.treeId,
           node.productionType,
@@ -311,16 +329,19 @@ export const updateTreeProduction =
     
     // Update non-import nodes
     if (productionType === 'excess') {
-      dispatch(updateExcessProduction({ nodeId, treeId, amount }));
+      tabDispatch(updateExcessProduction({ nodeId, treeId, amount }));
     } 
     else if (productionType === 'forced') {
-      dispatch(updateForcedProduction({ nodeId, treeId, amount }));
+      tabDispatch(updateForcedProduction({ nodeId, treeId, amount }));
     } 
     
-    await Promise.resolve(); // Ensure state update completes
+    await Promise.resolve(); 
     const stateAfterUpdate = getState();
+    const postUpdateDeps = stateAfterUpdate.planners[activeTabId]?.dependencies;
+    if (!postUpdateDeps) return;
+    
     const affectedNodesAfterUpdate = calculateAffectedNodes(
-      stateAfterUpdate.dependencies.dependencyTrees,
+      postUpdateDeps.dependencyTrees,
       treeId,
       nodeId,
       productionType,
@@ -328,7 +349,7 @@ export const updateTreeProduction =
     );
     
     for (const node of affectedNodesAfterUpdate) {
-      await dispatch(updateTreeProduction(
+      await tabDispatch(updateTreeProduction(
         node.nodeId,
         node.treeId,
         node.productionType,
@@ -338,15 +359,12 @@ export const updateTreeProduction =
     }
     
     // After updating children, trigger multi-source redistribution if needed
-    // This handles the case where excess changes on a parent and children need to redistribute imports
     if (productionType === 'excess' || productionType === 'forced') {
-      const nodeAfterUpdate = findNodeById(stateAfterUpdate.dependencies.dependencyTrees[treeId], nodeId);
+      const nodeAfterUpdate = findNodeById(postUpdateDeps.dependencyTrees[treeId], nodeId);
       if (nodeAfterUpdate && nodeAfterUpdate.children && nodeAfterUpdate.children.length > 0) {
-        // Check if any children are imports
         const hasImportChildren = nodeAfterUpdate.children.some(child => hasImportReference(child));
         if (hasImportChildren) {
-          // Trigger redistribution for this node's children
-          await dispatch(redistributeChildImportsThunk({ parentNodeId: nodeId, treeId }));
+          await tabDispatch(redistributeChildImportsThunk({ parentNodeId: nodeId, treeId }));
         }
       }
     }
