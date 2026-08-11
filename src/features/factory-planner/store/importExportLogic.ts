@@ -38,7 +38,19 @@ const nodeRecipeCache: Record<string, Recipe | undefined> = {};
 interface ImportExportDependencyState {
   dependencyTrees: Record<string, DependencyNode>;
   accumulatedDependencies: Record<string, AccumulatedNode>;
-  errors: string[]; // Keep consistent with original type
+  externalImports: Record<string, true>;
+  errors: string[];
+}
+
+/** Returns the per-tab dependencies slice for the active tab. */
+function tabDeps(state: RootState, tabId?: string): ImportExportDependencyState | undefined {
+  const id = tabId || (state.workspace?.activeTabId as string) || 'default';
+  return state.planners[id]?.dependencies as ImportExportDependencyState | undefined;
+}
+
+/** Convenience: reads activeTabId from workspace state. */
+function activeDeps(state: RootState): ImportExportDependencyState | undefined {
+  return tabDeps(state);
 }
 
 // Helper function to find and replace a node in a tree by its uniqueId (mutable - use with Immer)
@@ -96,7 +108,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
 
     try {
       const state = getState();
-      const existingTrees = state.dependencies.dependencyTrees;
+      const existingTrees = (activeDeps(getState())?.dependencyTrees ?? {});
 
       // 1. Calculate the basic structure for the new item
       const calculatedNewTree = await calculateDependencyTree(
@@ -162,7 +174,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: mainTreeId, externalDemandChange: undefined }));
 
       // --- Cleanup: Remove complex internal state management --- 
-      // const initialTreesState = { ...getState().dependencies.dependencyTrees };
+      // const initialTreesState = { ...(activeDeps(getState())?.dependencyTrees ?? {}) };
       // const newTreesCreated: Record<string, DependencyNode> = {};
       // const processedItemIds = new Set<string>(...);
       // const pendingCreations: Record<string, ...> = {};
@@ -246,7 +258,7 @@ export const destroyNodeRecursiveThunk = createTabThunk<
           }
           
           // Check if the target root still exists in the *current* state (after deletion)
-          const targetNodeState = getState().dependencies.dependencyTrees[nodeIdToActuallyCheck];
+          const targetNodeState = (activeDeps(getState())?.dependencyTrees ?? {})[nodeIdToActuallyCheck];
           if (targetNodeState && targetNodeState.isRoot) {
               // logger.info(`[Thunk/Destroy V2] Dispatching requestDependencyCheckThunk for original child's target: ${nodeIdToActuallyCheck}`);
               // Use await here as these checks might trigger further destructions/unimports
@@ -278,7 +290,7 @@ export const requestDependencyCheckThunk = createTabThunk<
   // Prefix unused parameter with underscore
   async ({ nodeIdToCheck, disconnectedConsumerId: _disconnectedConsumerId }, { getState, dispatch, tabId }) => { 
     const state = getState();
-    const nodeToCheck = state.dependencies.dependencyTrees[nodeIdToCheck];
+    const nodeToCheck = (activeDeps(getState())?.dependencyTrees ?? {})[nodeIdToCheck];
 
     if (!nodeToCheck || !nodeToCheck.isRoot) { // Only check root nodes
       return;
@@ -293,7 +305,7 @@ export const requestDependencyCheckThunk = createTabThunk<
 
     // 2. Check for other importers
     if (!isStillNeeded) {
-      for (const tree of Object.values(state.dependencies.dependencyTrees)) {
+      for (const tree of Object.values((activeDeps(getState())?.dependencyTrees ?? {}))) {
         const findImporter = (node: DependencyNode): boolean => {
            // Skip the consumer that just disconnected this specific node instance
            // if (node.uniqueId === disconnectedConsumerId) return false; 
@@ -341,7 +353,7 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
   'dependency/checkAndConvertNodeType',
   async ({ rootNodeId: targetTreeId }, { getState, dispatch, tabId }) => {
     const state = getState();
-    const targetNode = state.dependencies.dependencyTrees[targetTreeId];
+    const targetNode = (activeDeps(getState())?.dependencyTrees ?? {})[targetTreeId];
 
     if (!targetNode || !targetNode.isRoot) {
       return undefined; // Return undefined if no action taken
@@ -387,7 +399,7 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
       // --- STEP 2: Calculate and set children --- 
       try {
         const stateAfterUpdate = getState(); // Get the state *after* recipe update
-        const recipeSelections = stateAfterUpdate.recipeSelections.selections;
+        const recipeSelections = stateAfterUpdate.planners[tabId]?.recipeSelections?.selections ?? {};
         const dependencyTrees = stateAfterUpdate.dependencies.dependencyTrees;
         const externalImports = stateAfterUpdate.dependencies.externalImports;
         
@@ -469,7 +481,7 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
              // -------------------------------------------------------------------
 
              // Check if the node to check *still exists* in the state before dispatching
-             const nodeState = getState().dependencies.dependencyTrees[nodeIdToActuallyCheck];
+             const nodeState = (activeDeps(getState())?.dependencyTrees ?? {})[nodeIdToActuallyCheck];
              if (nodeState) {
                   await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: targetTreeId }));
              }
@@ -772,7 +784,7 @@ const applyDistributionPlan = async (
   getState: () => RootState
 ): Promise<void> => {
   const treeId = parentNodeId.split('-')[0] || parentNodeId;
-  const currentTree = getState().dependencies.dependencyTrees[treeId];
+  const currentTree = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
   if (!currentTree) return;
   
   const parentNode = findNodeById(currentTree, parentNodeId);
@@ -823,7 +835,7 @@ const applyDistributionPlan = async (
     
     // Remove old splits first
     if (existingSplitIds.length > 0) {
-      const currentParent = getState().dependencies.dependencyTrees[treeId];
+      const currentParent = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
       if (currentParent) {
         const parentNodeNow = findNodeById(currentParent, parentNodeId);
         if (parentNodeNow) {
@@ -855,7 +867,7 @@ const applyDistributionPlan = async (
       };
       
       // Add to parent
-      const currentParentTree = getState().dependencies.dependencyTrees[treeId];
+      const currentParentTree = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
       if (currentParentTree) {
         const parentNodeNow = findNodeById(currentParentTree, parentNodeId);
         if (parentNodeNow) {
@@ -892,7 +904,7 @@ export const redistributeChildImportsThunk = createAsyncThunk<
   'dependency/redistributeChildImports',
   async ({ parentNodeId, treeId }, { getState, dispatch }) => {
     const state = getState();
-    const trees = state.dependencies.dependencyTrees;
+    const trees = (activeDeps(getState())?.dependencyTrees ?? {});
     const parentTree = trees[treeId];
     
     if (!parentTree) {
@@ -935,7 +947,7 @@ export const redistributeChildImportsThunk = createAsyncThunk<
         
         // Clear demand on each split's target and remove split nodes
         if (existingSplitIds.length > 0) {
-          const currentTree = getState().dependencies.dependencyTrees[treeId];
+          const currentTree = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
           if (currentTree) {
             const parentNodeNow = findNodeById(currentTree, parentNodeId);
             if (parentNodeNow) {
@@ -969,7 +981,7 @@ export const redistributeChildImportsThunk = createAsyncThunk<
       }
       
       // Find all roots producing this item
-      const latestTrees = getState().dependencies.dependencyTrees;
+      const latestTrees = (activeDeps(getState())?.dependencyTrees ?? {});
       const allProducingRoots = findAllRootsProducingItem(child.id, latestTrees, true);
       
       if (allProducingRoots.length <= 1) {
@@ -1054,7 +1066,7 @@ export const redistributeChildImportsThunk = createAsyncThunk<
         
         // Remove old splits first
         if (existingSplitIds.length > 0) {
-          const currentParent = getState().dependencies.dependencyTrees[treeId];
+          const currentParent = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
           if (currentParent) {
             const parentNodeNow = findNodeById(currentParent, parentNodeId);
             if (parentNodeNow) {
@@ -1086,7 +1098,7 @@ export const redistributeChildImportsThunk = createAsyncThunk<
           };
           
           // Add to parent
-          const currentParent = getState().dependencies.dependencyTrees[treeId];
+          const currentParent = (activeDeps(getState())?.dependencyTrees ?? {})[treeId];
           if (currentParent) {
             const parentNodeNow = findNodeById(currentParent, parentNodeId);
             if (parentNodeNow) {
@@ -1135,7 +1147,7 @@ export const setImportAmountThunk = createAsyncThunk<
   'dependency/setImportAmount',
   async ({ importNodeId, parentNodeId, treeId, newAmount }, { getState, dispatch }) => {
     const state = getState();
-    const trees = state.dependencies.dependencyTrees;
+    const trees = (activeDeps(getState())?.dependencyTrees ?? {});
     const tree = trees[treeId];
     
     if (!tree) {
@@ -1271,7 +1283,7 @@ export const maxImportAmountThunk = createAsyncThunk<
   'dependency/maxImportAmount',
   async ({ importNodeId, parentNodeId, treeId }, { getState, dispatch }) => {
     const state = getState();
-    const trees = state.dependencies.dependencyTrees;
+    const trees = (activeDeps(getState())?.dependencyTrees ?? {});
     const tree = trees[treeId];
     
     if (!tree) return;
@@ -1328,8 +1340,8 @@ export const autoImportNodeChildrenThunk = createTabThunk<
   'dependency/autoImportNodeChildren',
   async ({ parentNodeId }, { getState, dispatch, tabId }) => {
     const state = getState();
-    const parentNode = state.dependencies.dependencyTrees[parentNodeId];
-    const externalImports = state.dependencies.externalImports;
+    const parentNode = (activeDeps(getState())?.dependencyTrees ?? {})[parentNodeId];
+    const externalImports = (activeDeps(getState())?.externalImports ?? {});
 
     if (!parentNode) {
       logger.error(`[Thunk/AutoImportChildren] Parent node ${parentNodeId} not found.`);
@@ -1364,7 +1376,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
 
       let targetTreeId: string | null = null;
       let existingRootFound = false;
-      const trees = getState().dependencies.dependencyTrees; // Get latest trees
+      const trees = (activeDeps(getState())?.dependencyTrees ?? {}); // Get latest trees
 
       // --- Handle Byproduct Children ---
       if (child.isByproduct) {
@@ -1391,7 +1403,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                       availableRecipes: await getRecipesForItem(child.id), 
                   };
                   await dispatch(setDependencies({ treeId: newRootId, tree: newRootNode }));
-                  if (!getState().dependencies.dependencyTrees[newRootId]) throw new Error("Byproduct root not found");
+                  if (!(activeDeps(getState())?.dependencyTrees ?? {})[newRootId]) throw new Error("Byproduct root not found");
                   targetTreeId = newRootId;
               } catch (error) { logger.error(`[AutoImport] Failed BYPRODUCT root for ${child.id}:`, error); continue; }
           }
@@ -1399,7 +1411,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
       // --- Handle Normal Children (ENHANCED for multi-source) ---
       else { 
           // Find ALL existing normal roots producing this item
-          const latestTrees = getState().dependencies.dependencyTrees;
+          const latestTrees = (activeDeps(getState())?.dependencyTrees ?? {});
           const allProducingRoots = findAllRootsProducingItem(child.id, latestTrees, true);
           
           if (allProducingRoots.length > 0) {
@@ -1484,7 +1496,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                 };
                 
                 // Add this new child to the parent
-                const currentParent = getState().dependencies.dependencyTrees[parentNodeId];
+                const currentParent = (activeDeps(getState())?.dependencyTrees ?? {})[parentNodeId];
                 if (currentParent) {
                   const updatedChildren = [...(currentParent.children || []), newChildNode];
                   await dispatch(updateNodeProperties({
@@ -1566,7 +1578,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                     updatedNewRootNode.id, 
                     demandForChildren, // <<< Use the correct demand
                     updatedNewRootNode.recipe?.id || null, 
-                    stateAfterLinkAndRecalc.recipeSelections.selections, // Use latest selections
+                    stateAfterLinkAndRecalc.planners[tabId]?.recipeSelections?.selections ?? {}, // Use latest selections
                0, [], newRootId, {}, {}, // Use newRootId as parentId
                 stateAfterLinkAndRecalc.dependencies.dependencyTrees, // Pass latest trees
                 [], // visited
@@ -1631,7 +1643,7 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
   'dependency/recalculateAndUpdateRootAmount',
   async ({ rootNodeId, externalDemandChange }, { getState, dispatch, tabId }) => {
     const state = getState();
-    const rootNode = state.dependencies.dependencyTrees[rootNodeId];
+    const rootNode = (activeDeps(getState())?.dependencyTrees ?? {})[rootNodeId];
 
     if (!rootNode) { /* ... null check ... */ return; }
     if (!rootNode.isRoot) { /* ... root check ... */ return; }
@@ -1640,7 +1652,7 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
     const initialAmount = rootNode.amount;
     
     // 1. Find all current importers and sum their demands
-    for (const tree of Object.values(state.dependencies.dependencyTrees)) {
+    for (const tree of Object.values((activeDeps(getState())?.dependencyTrees ?? {}))) {
         const findDemand = (node: DependencyNode): number => {
             let demand = 0;
             const importRef = getImportReference(node);
@@ -1753,7 +1765,7 @@ export const setNodeAsImportThunk = createTabThunk<
     const state = getState();
     // We need to find the child node. This requires iterating or a lookup map.
     // For now, assume updateNodeProperties can find it by uniqueId across trees.
-    const targetRootNode = state.dependencies.dependencyTrees[targetRootId];
+    const targetRootNode = (activeDeps(getState())?.dependencyTrees ?? {})[targetRootId];
     
     if (!targetRootNode) {
         // Still log errors
@@ -1816,9 +1828,9 @@ export const unimportNodeThunk = createTabThunk<
   async ({ nodeId: nodeIdToUnimport }, { getState, dispatch, tabId }) => {
     // logger.debug(`[Thunk/Unimport] Request to unimport node: ${nodeIdToUnimport}`);
     const state = getState();
-    const trees = state.dependencies.dependencyTrees;
-    const recipeSelections = state.recipeSelections.selections;
-    const externalImports = state.dependencies.externalImports;
+    const trees = (activeDeps(getState())?.dependencyTrees ?? {});
+    const recipeSelections = state.planners[tabId]?.recipeSelections?.selections ?? {};
+    const externalImports = (activeDeps(getState())?.externalImports ?? {});
     
     // 1. Find the node to unimport and its context
     const nodeInfo = findNodeInAnyTree(trees, nodeIdToUnimport);
@@ -1970,7 +1982,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
   'dependency/toggleExternalImport',
   async ({ itemId, enable }, { getState, dispatch }) => {
     const state = getState();
-    const trees = state.dependencies.dependencyTrees;
+    const trees = (activeDeps(getState())?.dependencyTrees ?? {});
 
     if (enable) {
       // Find the root tree producing this item
@@ -2046,7 +2058,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
             if (childImportRef?.targetTreeId) {
               checkId = childImportRef.targetTreeId;
             }
-            const childRoot = getState().dependencies.dependencyTrees[checkId];
+            const childRoot = (activeDeps(getState())?.dependencyTrees ?? {})[checkId];
             if (childRoot?.isRoot) {
               await dispatch(requestDependencyCheckThunk({
                 nodeIdToCheck: checkId,
