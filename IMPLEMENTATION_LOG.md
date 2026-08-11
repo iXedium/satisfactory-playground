@@ -254,11 +254,17 @@ Phase 4 — single-tab parity tests + component migration to tab-scoped selector
 **Status:** Partial complete  
 **Estimated overall progress:** 28%
 
-### Phase 4a — Selector migration (deferred)
-Root-level selectors (\state.dependencies\, \state.recipeSelections\, \state.history\) 
-cannot be migrated to \state.planners[tabId]\ until \PlannerState\ types use proper 
-\DependencyState\ instead of \Record<string, unknown>\. This requires a type fix 
-in the workspace package. Deferred to Phase 5.
+### Phase 4a — Selector migration (complete)
+Exported \`RecipeSelectionsState\`, \`ComparisonState\`, \`HistoryState\`, \`TreeUiState\`
+from their respective slices. Updated \`PlannerState\` to use proper imported types
+(no more \`Record<string, unknown>\`). Migrated 4 hooks to read from
+\`state.planners[tabId]\` with fallback to root-level: useFactoryPlanner,
+usePlannerComparison, usePlannerRecipeManagement, usePlannerSaveLoad.
+
+### Phase 4b — Test store update (partial)
+\`renderWithProviders.tsx\` now includes \`workspaceReducer\` and \`plannersReducer\`.
+Tab isolation tests (6) pass. Legacy undo/redo exports retained for test compat
+— full test migration deferred to Phase 5.
 
 ### Phase 4b — Tab-scoped parity tests (complete)
 **File:** \	ests/integration/tabIsolation.test.ts\ (6 new tests)
