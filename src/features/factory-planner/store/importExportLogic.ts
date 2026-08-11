@@ -1691,7 +1691,6 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
             treeId: rootNodeId, 
             amount: newRequiredAmount 
         }));
-        await Promise.resolve(); // Ensure state update completes
         
         // 4. Cascade updates to children
         // Get fresh state after root amount update
@@ -1714,7 +1713,6 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
                         treeId: update.treeId,
                         amount: update.amount
                     }));
-                    await Promise.resolve();
                     
                     // Check if this child has import reference - if so, recalculate that target
                     const freshState = getState();

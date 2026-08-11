@@ -289,7 +289,6 @@ export const updateTreeProduction =
 
     if (productionType === 'imported' && targetTreeId) {
       dispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
-      await Promise.resolve();
 
       const postImportState = getState();
       const postImportDeps = postImportState.planners[activeTabId]?.dependencies
@@ -324,7 +323,6 @@ export const updateTreeProduction =
       dispatch(updateForcedProduction({ nodeId, treeId, amount }));
     }
 
-    await Promise.resolve();
     const stateAfterUpdate = getState();
     const postUpdateDeps = stateAfterUpdate.planners[activeTabId]?.dependencies
                            ?? stateAfterUpdate.dependencies;
