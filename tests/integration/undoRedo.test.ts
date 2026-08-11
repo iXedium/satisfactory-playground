@@ -22,8 +22,8 @@ import {
 
 // Import actions and middleware directly for testing
 import { 
-  legacyUndoAction, 
-  legacyRedoAction,
+  undoAction, 
+  redoAction,
   beginHistoryTransaction,
   commitHistoryTransaction,
   cancelHistoryTransaction,
@@ -180,7 +180,10 @@ describe('Undo/Redo System', () => {
   beforeEach(() => {
     store = createTestStore();
     dispatch = store.dispatch as AppDispatch;
-    td = ((action: any) => store.dispatch({ ...action, meta: { ...(action.meta || {}), tabId: TAB_ID } })) as AppDispatch;
+    td = ((action: any) => {
+      if (typeof action === 'function') return store.dispatch(action);
+      return store.dispatch({ ...action, meta: { ...(action.meta || {}), tabId: TAB_ID } });
+    }) as AppDispatch;
     dispatch(addTab({ tabId: TAB_ID, name: 'Test' }));
     dispatch(clearHistory());
   });
