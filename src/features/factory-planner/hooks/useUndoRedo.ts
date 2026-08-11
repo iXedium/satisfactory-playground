@@ -1,14 +1,8 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store';
-import { 
-  selectCanUndo, 
-  selectCanRedo,
-  selectLastUndoAction,
-  selectLastRedoAction,
-  clearHistory,
-} from '../store/historySlice';
 import { undoAction, redoAction } from '../store/historyMiddleware';
+import { clearHistory } from '../store/historySlice';
 import { logger } from '../../../utils/logger';
 
 /**
@@ -25,11 +19,12 @@ export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const dispatch = useDispatch<AppDispatch>();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   
-  // Selectors
-  const canUndo = useSelector(selectCanUndo);
-  const canRedo = useSelector(selectCanRedo);
-  const lastUndoAction = useSelector(selectLastUndoAction);
-  const lastRedoAction = useSelector(selectLastRedoAction);
+  // Selectors (per-tab — read from planners[tabId].history)
+  const planners = useSelector((s: RootState) => s.planners[tabId]);
+  const canUndo = (planners?.history?.undoStack?.length ?? 0) > 0;
+  const canRedo = (planners?.history?.redoStack?.length ?? 0) > 0;
+  const lastUndoAction = canUndo ? planners!.history.undoStack[planners!.history.undoStack.length - 1]?.actionDescription ?? null : null;
+  const lastRedoAction = canRedo ? planners!.history.redoStack[planners!.history.redoStack.length - 1]?.actionDescription ?? null : null;
   
   // Undo handler
   const handleUndo = useCallback(() => {
