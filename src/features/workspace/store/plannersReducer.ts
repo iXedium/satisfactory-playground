@@ -69,6 +69,39 @@ const tabReducer = combineReducers({
 export type PlannersRoot = Record<string, PlannerState>;
 
 export function plannersReducer(state: PlannersRoot = {}, action: any): PlannersRoot {
+  // When a tab is added, pre-initialize an empty planner state so selectors
+  // never fall back to root-level slices for new tabs (fixes RC2 / RC3).
+  if (action.type === 'workspace/addTab' && action.payload?.tabId) {
+    const tId = action.payload.tabId;
+    if (state[tId]) return state;
+    return { ...state, [tId]: createEmptyPlannerState() };
+  }
+
+  // Clean up planner state when a tab is removed.
+  if (action.type === 'workspace/removeTab' && typeof action.payload === 'string') {
+    const tId = action.payload;
+    if (!state[tId]) return state;
+    const next = { ...state };
+    delete next[tId];
+    return next;
+  }
+
+  // When workspace is restored from persistence, ensure every restored tab
+  // has an initialized planner entry.
+  if (action.type === 'workspace/replaceWorkspace' && action.payload?.tabs) {
+    const tabs = action.payload.tabs as { tabId: string }[];
+    let changed = false;
+    const next = { ...state };
+    for (const tab of tabs) {
+      if (!next[tab.tabId]) {
+        next[tab.tabId] = createEmptyPlannerState();
+        changed = true;
+      }
+    }
+    if (changed) return next;
+    return state;
+  }
+
   const tabId = action?.meta?.tabId;
   if (!tabId) return state;
 
