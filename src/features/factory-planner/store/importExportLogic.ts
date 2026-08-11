@@ -149,7 +149,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       
       // Verify state immediately after setDependencies
       const stateAfterSetDep = getState();
-      const addedTreeFromState = stateAfterSetDep.dependencies.dependencyTrees[mainTreeId];
+      const addedTreeFromState = stateAfterSetDep.planners[tabId]?.dependencies.dependencyTrees[mainTreeId];
       if (addedTreeFromState) {
           // 
             } else {
@@ -187,7 +187,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       // 
       // The actual list of root IDs will now be whatever is in the state
       const finalState = getState();
-      const finalRootIds = Object.keys(finalState.dependencies.dependencyTrees);
+      const finalRootIds = Object.keys(finalState.planners[tabId]?.dependencies.dependencyTrees ?? {});
       
 
       return { mainTreeId, newRootIds: finalRootIds };
@@ -197,7 +197,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       logger.error("[Thunk/Calc&Import V2] Error during simplified calculateAndAutoImportThunk:", error);
       // Return minimal info on error
       const finalState = getState(); 
-      const finalRootIds = Object.keys(finalState.dependencies.dependencyTrees);
+      const finalRootIds = Object.keys(finalState.planners[tabId]?.dependencies.dependencyTrees ?? {});
       return { mainTreeId, newRootIds: finalRootIds }; 
     }
   }
@@ -400,11 +400,11 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
       try {
         const stateAfterUpdate = getState(); // Get the state *after* recipe update
         const recipeSelections = stateAfterUpdate.planners[tabId]?.recipeSelections?.selections ?? {};
-        const dependencyTrees = stateAfterUpdate.dependencies.dependencyTrees;
-        const externalImports = stateAfterUpdate.dependencies.externalImports;
+        const dependencyTrees = stateAfterUpdate.planners[tabId]?.dependencies.dependencyTrees ?? {};
+        const externalImports = stateAfterUpdate.planners[tabId]?.dependencies.externalImports ?? {};
         
         // Get the updated node state to use the correct amount for calculation
-        const updatedNodeState = stateAfterUpdate.dependencies.dependencyTrees[targetTreeId];
+        const updatedNodeState = stateAfterUpdate.planners[tabId]?.dependencies.dependencyTrees[targetTreeId];
         if (!updatedNodeState) {
            logger.error(`[Thunk/Convert B->N] Node ${targetTreeId} not found in state after initial update. Cannot calculate children.`);
            throw new Error(`Node ${targetTreeId} disappeared after initial update.`);
@@ -1564,7 +1564,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
 
                   // 4. Get the updated state AFTER the link and initial recalc
                   const stateAfterLinkAndRecalc = getState();
-                  const updatedNewRootNode = stateAfterLinkAndRecalc.dependencies.dependencyTrees[newRootId];
+                  const updatedNewRootNode = stateAfterLinkAndRecalc.planners[tabId]?.dependencies.dependencyTrees[newRootId];
                   if (!updatedNewRootNode) {
                       logger.error(`New root ${newRootId} disappeared after initial link/recalc.`); // Simplified error
                       throw new Error(`New root ${newRootId} disappeared after initial link/recalc.`);
@@ -1580,9 +1580,9 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                     updatedNewRootNode.recipe?.id || null, 
                     stateAfterLinkAndRecalc.planners[tabId]?.recipeSelections?.selections ?? {}, // Use latest selections
                0, [], newRootId, {}, {}, // Use newRootId as parentId
-                stateAfterLinkAndRecalc.dependencies.dependencyTrees, // Pass latest trees
+                stateAfterLinkAndRecalc.planners[tabId]?.dependencies.dependencyTrees ?? {}, // Pass latest trees
                 [], // visited
-                stateAfterLinkAndRecalc.dependencies.externalImports
+                stateAfterLinkAndRecalc.planners[tabId]?.dependencies.externalImports ?? {}
                   ).then(node => node?.children || []);
                   
                   // 7. Add children to the root node
@@ -1694,7 +1694,7 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
         // 4. Cascade updates to children
         // Get fresh state after root amount update
         const stateAfterRootUpdate = getState();
-        const updatedRootNode = stateAfterRootUpdate.dependencies.dependencyTrees[rootNodeId];
+        const updatedRootNode = stateAfterRootUpdate.planners[tabId]?.dependencies.dependencyTrees[rootNodeId];
         
         if (updatedRootNode) {
             // Calculate total production (amount + excess) for child calculations
@@ -1716,7 +1716,7 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
                     
                     // Check if this child has import reference - if so, recalculate that target
                     const freshState = getState();
-                    const tree = freshState.dependencies.dependencyTrees[update.treeId];
+                    const tree = freshState.planners[tabId]?.dependencies.dependencyTrees[update.treeId];
                     if (tree) {
                         const childNode = findNodeById(tree, update.nodeId);
                         if (childNode) {
@@ -1931,7 +1931,7 @@ export const unimportNodeThunk = createTabThunk<
 
     // <<< ADD LOGGING HERE >>>
     const stateAfterUpdate = getState();
-    const updatedNodeInfo = findNodeInAnyTree(stateAfterUpdate.dependencies.dependencyTrees, nodeIdToUnimport);
+    const updatedNodeInfo = findNodeInAnyTree(stateAfterUpdate.planners[tabId]?.dependencies.dependencyTrees ?? {}, nodeIdToUnimport);
     logger.debug(`[Thunk/Unimport DEBUG] State after updateNodeProperties for ${nodeIdToUnimport}:`);
     if (updatedNodeInfo) {
         logger.debug(`  - Found Node:`, updatedNodeInfo.node);
