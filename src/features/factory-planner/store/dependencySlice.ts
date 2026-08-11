@@ -309,51 +309,41 @@ const dependencySlice = createSlice({
       };
       findAndUpdate(tree);
 
-      // --- Import-target propagation using pre-tabs cascade logic ---
-      // calculateAffectedNodes already handles multi-importer aggregation
-      // (calculateImportTargetUpdate scans ALL trees for every importer)
-      // and child amount calculation (calculateChildProductionNeeds).
-      // Process one level at a time in a BFS loop so ALL importers' amounts
-      // are updated before their shared downstream targets are aggregated.
-      let queue: AffectedNodeUpdate[] = [{
-        nodeId, treeId, productionType: 'excess', amount: excess,
-      }];
-      const processed = new Set<string>();
+      const applyAffected = (updates: AffectedNodeUpdate[]) => {
+        for (const update of updates) {
+          const updateTree = state.dependencyTrees[update.treeId];
+          if (!updateTree) continue;
+          const updateNode = findNodeById(updateTree, update.nodeId);
+          if (!updateNode) continue;
 
-      while (queue.length > 0) {
-        const nextQueue: AffectedNodeUpdate[] = [];
-
-        for (const item of queue) {
-          const key = `${item.treeId}:${item.nodeId}`;
-          if (processed.has(key)) continue;
-          processed.add(key);
-
-          const itemTree = state.dependencyTrees[item.treeId];
-          if (!itemTree) continue;
-          const itemNode = findNodeById(itemTree, item.nodeId);
-          if (!itemNode) continue;
-
-          // Apply the production change
-          if (item.productionType === 'forced') {
-            if (Math.abs((itemNode.amount || 0) - item.amount) > 0.001) {
-              itemNode.amount = item.amount;
-              recalcChildren(itemNode);
-            }
+          if (Math.abs((updateNode.amount || 0) - update.amount) > 0.001) {
+            updateNode.amount = update.amount;
+            recalcChildren(updateNode);
           }
 
-          // Get downstream affected nodes (uses live Immer draft → sees
-          // amounts updated earlier in this same pass)
-          const affected = calculateAffectedNodes(
+          const downstream = calculateAffectedNodes(
             state.dependencyTrees as Record<string, DependencyNode>,
-            item.treeId, item.nodeId, item.productionType, item.amount,
+            update.treeId,
+            update.nodeId,
+            update.productionType,
+            update.amount,
           );
-
-          for (const a of affected) {
-            nextQueue.push(a);
-          }
+          applyAffected(downstream);
         }
+      };
 
-        queue = nextQueue;
+      const updatedNode = findNodeById(tree, nodeId);
+      if (updatedNode?.children) {
+        for (const child of updatedNode.children) {
+          const childUpdates = calculateAffectedNodes(
+            state.dependencyTrees as Record<string, DependencyNode>,
+            treeId,
+            child.uniqueId,
+            'forced',
+            child.amount || 0,
+          );
+          applyAffected(childUpdates);
+        }
       }
 
       // --- Recalculate accumulated ---
