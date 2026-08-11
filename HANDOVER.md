@@ -9,8 +9,8 @@ new-architecture
 ## 2. Last Commit
 
 ```
-SHA: 88a5459
-Message: Fix: WorkspaceLayout flexbox — TabBar now visible
+SHA: 1f9082f
+Message: Test(F): UI-level multi-tab integration tests
 Date: 2026-08-11
 ```
 
@@ -23,41 +23,35 @@ The project is being migrated from a single-planner app to a multi-tab workspace
 **Phase 2**: Dual-mode history middleware (legacy + per-tab), per-tab undo/redo stacks  
 **Phase 3**: All 14 thunks converted, all 17 hooks receive `tabId`  
 **Phase 4**: Selector migration to `state.planners[tabId]`, legacy undo exports deleted, 68/68 tests pass  
-**Phase 5**: `TabBar.tsx`, `WorkspaceLayout.tsx` (partial — CSS conflict with TabBar)
+**Phase 5**: `TabBar.tsx`, `WorkspaceLayout.tsx`, multi-tab isolation, persistence **— COMPLETE** (see §11)
 
-## 4. Current Broken State — TabBar CSS Conflict
+## 4. Fixed — TabBar CSS Conflict
 
-**What was attempted**: `WorkspaceLayout.tsx` wraps the entire viewport in `height: 100vh; display: flex; flex-direction: column` with TabBar at top and FactoryPlanner filling the remaining space.
+**RESOLVED** via commit 2067695. The TabBar is now rendered inside `FactoryPlannerLayout` between the fixed CommandBar and the planner content area. `WorkspaceLayout` is a thin compositional wrapper (TabDispatchProvider + FactoryPlanner with tabBar prop). No `height: 100vh` on the outer wrapper — only `FactoryPlannerLayout` manages the viewport height.
 
-**Symptom**: The TabBar was invisible in the browser despite being in the DOM. The `FactoryPlanner` component internally renders its own full-height layout (likely a `FactoryPlannerLayout` component), which overflows or overlaps the TabBar. With `flexShrink: 0` and `minHeight: 0` added, the TabBar became visible but the layout is fragile — it wraps the entire viewport in `100vh`, fighting FactoryPlanner's own layout assumptions.
+## 5. Fixed — Multi-Tab Runtime Failures (7 root causes)
 
-**What must NOT be done**: Do NOT apply `height: 100vh` to the outer WorkspaceLayout container. The `FactoryPlanner` / `FactoryPlannerLayout` already manages its own full-height layout internally.
+Diagnosed in `MULTITAB_RUNTIME_DIAGNOSIS.md`. All 7 root causes resolved across 6 commits:
 
-## 5. Likely Correct Fix
-
-The `TabBar` should be inserted **below** the existing `CommandBar` (the toolbar with save/load/undo/redo/add-item/sort controls), not wrap the entire viewport. The `WorkspaceLayout` should be a thin compositional layer that adds the TabBar between the CommandBar and the planner content — it should NOT impose its own height constraints.
-
-The target structure:
-
-```
-<FactoryPlannerLayout>       ← existing layout (manages height internally)
-  <CommandBar />             ← existing toolbar (save, load, undo, redo, add, sort)
-  <TabBar />                 ← NEW: inserted between CommandBar and content
-  <planner + summary area /> ← existing content area (flexes to fill remaining space)
-</FactoryPlannerLayout>
-```
-
-This requires reading `FactoryPlannerLayout.tsx` and understanding its internal flex layout, then inserting the `TabBar` as a new `flexShrink: 0` row between the CommandBar and the content area. The `TabBar` should only render when there are multiple tabs (or always, since there's always at least one default tab). The `TabDispatchProvider` wraps the planner content area (not the CommandBar, since commands should be tab-agnostic and dispatch to the active tab).
-
-Alternatively, if modifying FactoryPlannerLayout is undesirable, the TabBar can be placed absolutely positioned within its existing layout, but this is fragile.
+| Commit | Fix |
+|--------|-----|
+| `bb658ca` | Fix(A): `plannersReducer` pre-initializes `planners[tabId]` on `addTab`/`removeTab`/`replaceWorkspace` |
+| `09a52bb` | Fix(B): All 9 selector `??` fallbacks removed — tabs no longer leak root state |
+| `e757aef` | Fix(C): All 11 hooks use `useTabDispatch()` — actions carry `meta.tabId` |
+| `79c6fe9` | Fix(D): localStorage keys scoped per `tabId`; `usePlannerNodeState` re-loads on tab switch |
+| `c2daed6` | Fix(E): `useWorkspaceInit` persists/restores `workspace_tabs` to localStorage |
+| `1f9082f` | Test(F): 13 new UI-level integration tests (81 total, 0 failures) |
 
 ## 6. Remaining Phase 5 Work After TabBar Fix
 
-1. Verify TabBar renders by examining the DOM snapshot after the fix
-2. Verify tab switching works (add a second tab, click between them, confirm different state)
-3. Verify busy indicator (spinner prefix on tab) appears during async operations
-4. Confirm no console errors on page load or tab switching
-5. Update `IMPLEMENTATION_LOG.md` with Phase 5 completion
+1. ✅ TabBar renders — confirmed in DOM via Chrome DevTools MCP
+2. ✅ Tab switching works — each tab has independent empty planner state
+3. ✅ New tab starts blank — no data leakage from other tabs
+4. ✅ Workspace persists across reload — verified 2 tabs survive refresh
+5. ✅ 0 console errors on load and tab switching
+6. ✅ 81/81 tests pass (68 original + 13 new multi-tab tests)
+7. ✅ `yarn type-check` passes
+8. ✅ IMPLEMENTATION_LOG.md updated
 
 ## 7. Open Issues (from IMPLEMENTATION_LOG.md)
 
@@ -84,10 +78,10 @@ Alternatively, if modifying FactoryPlannerLayout is undesirable, the TabBar can 
 
 ```
 yarn type-check: passes
-yarn test: 68 passed, 0 failed (6 test files)
+yarn test: 81 passed, 0 failed (7 test files)
 ```
 
-All 18 undoRedo integration tests pass with tab-scoped store. 6 tab isolation tests pass. All changes must maintain this baseline — run `yarn test -- --run` after every commit.
+68 original tests + 13 new multi-tab integration tests. All 18 undoRedo integration tests pass with tab-scoped store. 6 tab isolation tests pass. All changes must maintain this baseline — run `yarn test -- --run` after every commit.
 
 ## 10. Key Files and Their Roles
 
@@ -108,3 +102,33 @@ All 18 undoRedo integration tests pass with tab-scoped store. 6 tab isolation te
 | `src/store/index.ts` | Root store: `workspace`, `planners`, legacy slices + `historyMiddleware` |
 | `src/features/workspace/components/FactoryPlanner.tsx` | Main planner component (exports default) |
 | `src/features/factory-planner/components/FactoryPlanner.tsx` | Main planner component (same as above — re-exports from feature directory) |
+| `tests/integration/multiTabUI.test.tsx` | 13 new UI-level multi-tab tests (planner init, tab isolation, TabDispatchProvider, localStorage scoping) |
+
+## 11. Phase 5 Verification (2026-08-11)
+
+All verification performed via Chrome DevTools MCP against isolated debug Chrome (`--remote-debugging-port=9222`). Screenshots in `TEMP_SCREENSHOTS/`.
+
+### Layout
+| Screenshot | Confirmation |
+|------------|-------------|
+| `subphase-g-persistence-verified.png` | 2 tabs (Planner 1 + Planner 2) visible, independent empty planners, "No items to summarize" |
+
+### Computed Layout
+- 100vh divs: **1** (FactoryPlannerLayout only — no double 100vh conflict)
+- CommandBar: position=fixed, z-index=100, top=0, h=123px
+- TabBar: top=135, h=37px, flexShrink=0 (correctly between CommandBar and content)
+
+### Runtime Behavior
+| Test | Result |
+|------|--------|
+| New tab starts empty | ✅ "No items to summarize", no data leakage |
+| Tabs survive refresh | ✅ 2 tabs restored correctly |
+| Console errors on load | ✅ 0 |
+| Console errors on tab switch | ✅ 0 |
+| Legacy root slices intact | ✅ All legacy reducers still in store |
+
+### Test Results
+```
+yarn type-check: passes
+yarn test: 81 passed, 0 failed (7 test files)
+```
