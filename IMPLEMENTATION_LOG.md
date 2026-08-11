@@ -287,16 +287,10 @@ is transitive. `useUndoRedo` selectors switched to per-tab.
 ### Test results (2026-08-11, after Phase 4 cleanup)
 ```
 yarn type-check: passes
-yarn test: 62 passed, 6 failed (68 total)
+yarn test: 67 passed, 1 failed (68 total)
 ```
-6 remaining failures are in per-tab transaction grouping and undo/redo state restoration:
-- undo/redo cycle with exact state assertions
-- clearHistory with undo/redo stacks
-- transaction grouping / cancellation
-- isRestoring flag edge case
-- excess change state capture
-
-Legacy exports fully deleted. No code references to `legacyUndoAction`/`legacyRedoAction`.
+1 remaining failure is in the `updateExcessProduction` per-tab routing path.
+All other undoRedo tests pass with tab-scoped store.
 
 ### Next step
 Phase 5 — multi-tab UI (TabBar, WorkspaceLayout, CommandBar adaptation, busy overlay)
