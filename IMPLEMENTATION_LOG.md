@@ -251,20 +251,27 @@ Phase 4 — single-tab parity tests + component migration to tab-scoped selector
 ***
 
 ## Phase 4 — Single-tab parity and selector migration
-**Status:** Partial complete  
-**Estimated overall progress:** 28%
+**Status:** Complete (selector migration)  
+**Estimated overall progress:** 32%
 
 ### Phase 4a — Selector migration (complete)
-Exported \`RecipeSelectionsState\`, \`ComparisonState\`, \`HistoryState\`, \`TreeUiState\`
-from their respective slices. Updated \`PlannerState\` to use proper imported types
-(no more \`Record<string, unknown>\`). Migrated 4 hooks to read from
-\`state.planners[tabId]\` with fallback to root-level: useFactoryPlanner,
-usePlannerComparison, usePlannerRecipeManagement, usePlannerSaveLoad.
+Exported `RecipeSelectionsState`, `ComparisonState`, `HistoryState`, `TreeUiState`
+from their respective slices. Updated `PlannerState` to use proper imported types
+(no more `Record<string, unknown>`). All 4 hooks with `useSelector` for planner state
+read from `state.planners[tabId]` with fallback to root-level:
+useFactoryPlanner, usePlannerComparison, usePlannerRecipeManagement, usePlannerSaveLoad.
+The remaining 9 hooks receive planner state as props from useFactoryPlanner — migration
+is transitive. `useUndoRedo` selectors switched to per-tab.
 
-### Phase 4b — Test store update (partial)
-\`renderWithProviders.tsx\` now includes \`workspaceReducer\` and \`plannersReducer\`.
-Tab isolation tests (6) pass. Legacy undo/redo exports retained for test compat
-— full test migration deferred to Phase 5.
+### Phase 4b — Tab-scoped parity tests (complete)
+- 6 tab isolation tests pass (tree creation, history, undo/redo, tab isolation, operations)
+- Test store updated with `workspaceReducer` + `plannersReducer`
+- Legacy undo/redo exports retained (28 test call sites need migration — deferred)
+
+### Key outstanding
+- `legacyUndoAction`/`legacyRedoAction` retained in historyMiddleware.ts
+- `beginHistoryTransaction`/`commitHistoryTransaction` called without `tabId` in test code
+- localStorage keys not yet scoped to `tabId`
 
 ### Phase 4b — Tab-scoped parity tests (complete)
 **File:** \	ests/integration/tabIsolation.test.ts\ (6 new tests)
