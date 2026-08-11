@@ -148,7 +148,7 @@ export const usePlannerTreeCalculation = ({
 }: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
   const dispatch = useDispatch<AppDispatch>();
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
-  const { setExpandedNodes } = usePlannerNodeState();
+  const { setExpandedNodes } = usePlannerNodeState(tabId);
 
   const generateTreeId = useCallback((itemId: string): string => {
     const timestamp = Date.now();

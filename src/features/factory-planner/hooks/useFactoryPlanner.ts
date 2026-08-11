@@ -231,7 +231,7 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     nodeExtensionOverrides,
     setNodeExtensionOverrides,
     clearStorage: clearNodeStateStorage,
-  } = usePlannerNodeState();
+  } = usePlannerNodeState(tabId);
 
   // --- Bulk actions (Shift+Click applies to all nodes) ---
   const {

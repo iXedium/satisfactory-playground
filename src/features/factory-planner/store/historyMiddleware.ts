@@ -96,7 +96,16 @@ function getTabId(action: AnyAction): string | null {
 function createSnapshot(state: any, description: string, tabId?: string): HistorySnapshot | null {
   if (tabId) {
     const planner = state.planners?.[tabId];
-    if (!planner) return null;
+    if (!planner) {
+      // Planner not yet initialized — use empty defaults for the snapshot
+      return {
+        timestamp: Date.now(),
+        actionDescription: description,
+        dependencies: { dependencyTrees: {}, accumulatedDependencies: {}, highlightedNodeId: null, manualTreeOrder: [], externalImports: {}, errors: [], lastUpdateTime: 0 },
+        recipeSelections: { selections: {} },
+        comparison: { activeSnapshot: null, showComparison: false },
+      };
+    }
     return {
       timestamp: Date.now(),
       actionDescription: description,
@@ -130,9 +139,8 @@ export const historyMiddleware: Middleware<object, any, Dispatch<AnyAction>> =
     if (tabId) {
       // Per-tab routing
       const planner = currentState.planners?.[tabId];
-      if (!planner) return next(typedAction);
 
-      if (planner.history?.isRestoring) {
+      if (planner?.history?.isRestoring) {
         return next(typedAction);
       }
 
@@ -373,81 +381,5 @@ export const withHistoryTransaction = <T>(
   } catch (error) {
     (dispatch as any)(cancelHistoryTransaction(tabId));
     throw error;
-  }
-};
-
-// --- Legacy undo/redo (no tabId — reads root-level history) ---
-// These are kept for backward compatibility during Phase 2/3 migration.
-// They will be removed once all hooks/components pass tabId to undoAction/redoAction.
-
-export const legacyUndoAction = () => (dispatch: Dispatch, getState: () => any) => {
-  const state = getState();
-  const { undoStack } = state.history;
-  if (undoStack.length === 0) return false;
-
-  const snapshotToRestore = undoStack[undoStack.length - 1];
-
-  const currentSnapshot: HistorySnapshot = {
-    timestamp: Date.now(),
-    actionDescription: snapshotToRestore.actionDescription,
-    dependencies: JSON.parse(JSON.stringify(state.dependencies)),
-    recipeSelections: JSON.parse(JSON.stringify(state.recipeSelections)),
-    comparison: JSON.parse(JSON.stringify(state.comparison)),
-  };
-
-  dispatch(setRootRestoring(true));
-
-  try {
-    dispatch({ 
-      type: 'history/undoStackPop',
-      payload: { currentSnapshot }
-    } as AnyAction);
-
-    if (snapshotToRestore.dependencies) {
-      dispatch(loadSavedState(snapshotToRestore.dependencies as any) as AnyAction);
-    }
-    if (snapshotToRestore.recipeSelections) {
-      dispatch(loadRecipeSelections(snapshotToRestore.recipeSelections as any) as AnyAction);
-    }
-
-    return true;
-  } finally {
-    dispatch(setRootRestoring(false));
-  }
-};
-
-export const legacyRedoAction = () => (dispatch: Dispatch, getState: () => any) => {
-  const state = getState();
-  const { redoStack } = state.history;
-  if (redoStack.length === 0) return false;
-
-  const snapshotToRestore = redoStack[redoStack.length - 1];
-
-  const currentSnapshot: HistorySnapshot = {
-    timestamp: Date.now(),
-    actionDescription: snapshotToRestore.actionDescription,
-    dependencies: JSON.parse(JSON.stringify(state.dependencies)),
-    recipeSelections: JSON.parse(JSON.stringify(state.recipeSelections)),
-    comparison: JSON.parse(JSON.stringify(state.comparison)),
-  };
-
-  dispatch(setRootRestoring(true));
-
-  try {
-    dispatch({ 
-      type: 'history/redoStackPop',
-      payload: { currentSnapshot }
-    } as AnyAction);
-
-    if (snapshotToRestore.dependencies) {
-      dispatch(loadSavedState(snapshotToRestore.dependencies as any) as AnyAction);
-    }
-    if (snapshotToRestore.recipeSelections) {
-      dispatch(loadRecipeSelections(snapshotToRestore.recipeSelections as any) as AnyAction);
-    }
-
-    return true;
-  } finally {
-    dispatch(setRootRestoring(false));
   }
 };
