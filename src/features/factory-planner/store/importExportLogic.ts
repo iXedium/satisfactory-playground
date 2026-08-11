@@ -171,7 +171,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       // 4. (Optional but Recommended) Recalculate amount for the main tree itself
       //    If it has excess applied via UI before full calculation
       // 
-      await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: mainTreeId, externalDemandChange: undefined }));
+      await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: mainTreeId, externalDemandChange: undefined, tabId }));
 
       // --- Cleanup: Remove complex internal state management --- 
       // const initialTreesState = { ...(activeDeps(getState())?.dependencyTrees ?? {}) };
@@ -233,7 +233,7 @@ export const destroyNodeRecursiveThunk = createTabThunk<
     //    Do this BEFORE deleting the node so the unimport logic can access its recipe.
     // logger.info(`[Thunk/Destroy V2] Dispatching unimport for ${nodesToUnimport.length} consumers...`);
     const unimportPromises = nodesToUnimport.map(consumerInfo => 
-        dispatch(unimportNodeThunk({ nodeId: consumerInfo.consumerNodeId }))
+        dispatch(unimportNodeThunk({ nodeId: consumerInfo.consumerNodeId, tabId }))
     );
     // Wait for unimports to finish their state updates BEFORE removing the node.
     // This keeps all cascading updates inside the caller's history transaction so
@@ -262,7 +262,7 @@ export const destroyNodeRecursiveThunk = createTabThunk<
           if (targetNodeState && targetNodeState.isRoot) {
               // logger.info(`[Thunk/Destroy V2] Dispatching requestDependencyCheckThunk for original child's target: ${nodeIdToActuallyCheck}`);
               // Use await here as these checks might trigger further destructions/unimports
-              await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: nodeIdToDestroy }));
+              await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: nodeIdToDestroy, tabId }));
       } else {
               // logger.info(`[Thunk/Destroy V2] Target ${nodeIdToActuallyCheck} for original child ${childNode.uniqueId} no longer exists or isn't a root. Skipping check.`);
       }
@@ -338,9 +338,9 @@ export const requestDependencyCheckThunk = createTabThunk<
 
 
     if (isStillNeeded) {
-      await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: nodeIdToCheck, externalDemandChange: undefined }));
+      await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: nodeIdToCheck, externalDemandChange: undefined, tabId }));
     } else {
-      await dispatch(destroyNodeRecursiveThunk({ treeId: nodeIdToCheck }));
+      await dispatch(destroyNodeRecursiveThunk({ treeId: nodeIdToCheck, tabId }));
     }
   }
 );
@@ -437,7 +437,7 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
         await dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: { children: newChildren } }));
         
         // --- STEP 3: Trigger auto-import for the new children --- 
-        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: targetTreeId }));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: targetTreeId, tabId }));
         
       } catch (error) {
         logger.error(`[Thunk/Convert B->N] Error during children calculation/update or auto-import dispatch for ${targetTreeId}:`, error);
@@ -483,7 +483,7 @@ export const checkAndConvertNodeTypeThunk = createTabThunk<
              // Check if the node to check *still exists* in the state before dispatching
              const nodeState = (activeDeps(getState())?.dependencyTrees ?? {})[nodeIdToActuallyCheck];
              if (nodeState) {
-                  await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: targetTreeId }));
+                  await dispatch(requestDependencyCheckThunk({ nodeIdToCheck: nodeIdToActuallyCheck, disconnectedConsumerId: targetTreeId, tabId }));
              }
           } else {
              logger.warn(`[Thunk/Convert] Invalid child node structure found while cleaning up ${targetTreeId}. Skipping check.`);
@@ -1558,7 +1558,8 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                   await dispatch(setNodeAsImportThunk({ 
                     childNodeId: child.uniqueId, 
                     targetRootId: newRootId, 
-                    importingAmount: child.amount // Pass the trigger amount
+                    importingAmount: child.amount, // Pass the trigger amount
+                    tabId,
                   }));
                   // This ^ call internally triggers recalculateAndUpdateRootAmountThunk(newRootId)
 
@@ -1594,7 +1595,7 @@ export const autoImportNodeChildrenThunk = createTabThunk<
                   targetTreeId = newRootId;
 
                   // 9. RECURSION: Process the *children we just added* 
-        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: newRootId }));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: newRootId, tabId }));
 
               } catch (error) {
                   logger.error(`[AutoImport] Failed NORMAL root for ${child.id}:`, error);
@@ -1616,7 +1617,8 @@ export const autoImportNodeChildrenThunk = createTabThunk<
         await dispatch(setNodeAsImportThunk({ 
           childNodeId: child.uniqueId, 
           targetRootId: targetTreeId, 
-          importingAmount: actualImportingAmount
+          importingAmount: actualImportingAmount,
+          tabId,
         }));
         // childrenModified = true; // No longer used
       }
@@ -1725,7 +1727,8 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
                                 // This child imports from another tree - recalculate that target
                                 await dispatch(recalculateAndUpdateRootAmountThunk({
                                     rootNodeId: childImportRef.targetTreeId,
-                                    externalDemandChange: undefined
+                                    externalDemandChange: undefined,
+                                    tabId,
                                 }));
                             } else if (childNode.children && childNode.children.length > 0) {
                                 // Not an import - recurse into this child's children
@@ -1741,7 +1744,7 @@ export const recalculateAndUpdateRootAmountThunk = createTabThunk<
             await cascadeChildUpdates(childUpdates);
         }
         
-        await dispatch(checkAndConvertNodeTypeThunk({ rootNodeId }));
+        await dispatch(checkAndConvertNodeTypeThunk({ rootNodeId, tabId }));
     }
   }
 ); 
@@ -1798,7 +1801,8 @@ export const setNodeAsImportThunk = createTabThunk<
             externalDemandChange: {
                 importerNodeId: childNodeId, 
                 amount: importingAmount
-            }
+            },
+            tabId,
         }));
     } catch (error) {
         // Still log errors
@@ -1947,20 +1951,22 @@ export const unimportNodeThunk = createTabThunk<
     // 6. Trigger amount recalculation for the *target* tree
     await dispatch(recalculateAndUpdateRootAmountThunk({ 
         rootNodeId: targetTreeId, 
-        externalDemandChange: undefined 
+        externalDemandChange: undefined,
+        tabId,
     }));
     
     // *** NEW STEP 6b: Trigger dependency check for the target tree ***
     await dispatch(requestDependencyCheckThunk({ 
         nodeIdToCheck: targetTreeId, 
-        disconnectedConsumerId: nodeIdToUnimport 
+        disconnectedConsumerId: nodeIdToUnimport,
+        tabId,
     }));
 
     // 7. Trigger auto-import for the children of the *now unimported* node (REMOVED)
     /*
     if (newChildren.length > 0) {
       // logger.debug(`[Thunk/Unimport] Triggering auto-import for new children of ${nodeIdToUnimport}`);
-      await dispatch(autoImportNodeChildrenThunk(nodeIdToUnimport));
+      await dispatch(autoImportNodeChildrenThunk({ parentNodeId: nodeIdToUnimport, tabId }));
     }
     */
     
