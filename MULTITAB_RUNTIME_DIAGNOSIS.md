@@ -2,8 +2,27 @@
 
 > **Branch**: `new-architecture`
 > **Date**: 2026-08-11
-> **Test baseline**: 68/68 tests pass, `yarn type-check` passes
-> **Status**: 4 confirmed runtime failures — root causes traced to selector fallback logic and missing state initialization
+> **Status**: **ALL 7 ROOT CAUSES RESOLVED** — Phase 5 complete
+
+## RESOLVED — Fix Summary
+
+| # | Root Cause | Fix Commit | Verification |
+|---|-----------|------------|-------------|
+| 1 | Selector `??` fallback reads root state | `09a52bb` Fix(B) | 9 fallback sites replaced with empty defaults |
+| 2 | `addTab` doesn't create `planners[tabId]` | `bb658ca` Fix(A) | `plannersReducer` handles `workspace/addTab` |
+| 3 | `plannersReducer` lazy init clobbers data | `bb658ca` Fix(A) | Pre-initialized planner state on addTab |
+| 4 | Workspace never persisted to storage | `c2daed6` Fix(E) | `useWorkspaceInit` saves/restores `workspace_tabs` |
+| 5 | Non-scoped localStorage keys | `79c6fe9` Fix(D) | Keys scoped to `lastSession_{tabId}_*` |
+| 6 | Load-on-mount dispatches missing `meta.tabId` | `e757aef` Fix(C) | All 11 hooks use `useTabDispatch()` |
+| 7 | `usePlannerNodeState` ignores `tabId` changes | `79c6fe9` Fix(D) | Added `[tabId]` dependency to load effect |
+
+### Final Verification
+- 81/81 tests pass (68 original + 13 new)
+- `yarn type-check` passes
+- 0 console errors in browser
+- Tabs persist across page reload
+- New tabs start blank (no data leakage)
+- TabBar correctly positioned between CommandBar and content
 
 ## Reproduction Steps
 
