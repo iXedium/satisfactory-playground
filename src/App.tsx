@@ -6,8 +6,11 @@ import { useInitialization, InitializationProvider } from "./contexts/Initializa
 import { HideToggleDragProvider } from "./contexts/HideToggleDragContext";
 import { TreeNavigationProvider } from "./contexts/TreeNavigationContext";
 
+import { useWorkspaceInit } from "./features/workspace/hooks/useWorkspaceInit";
+
 const App: React.FC = () => {
   const { isLoading, isError, errorMessage } = useInitialization();
+  useWorkspaceInit();
 
   useEffect(() => {
     const preventZoomOnInputs = (e: WheelEvent) => {
