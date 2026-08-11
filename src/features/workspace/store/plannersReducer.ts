@@ -51,6 +51,9 @@ const perTabHistoryReducer = (s: any = {}, action: any): any => {
   if (action.type === '_planner/setRestoring') {
     return { ...s, isRestoring: !!action.payload?.value };
   }
+  if (action.type === 'history/clearHistory') {
+    return { ...s, undoStack: [], redoStack: [], canUndo: false, canRedo: false };
+  }
   return s;
 };
 

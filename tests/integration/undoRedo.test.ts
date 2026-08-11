@@ -109,7 +109,7 @@ function assertStateMatchesImage1(state: RootState, treeId: string) {
   expect(getTreeCount(state)).toBe(1);
   
   // Get the tree
-  const tree = state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[treeId];
+  const tree = (state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[treeId];
   expect(tree).toBeDefined();
   
   // Iron Plate (root)
@@ -146,7 +146,7 @@ function assertStateMatchesImage2(state: RootState, treeId: string) {
   expect(getTreeCount(state)).toBe(1);
   
   // Get the tree
-  const tree = state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[treeId];
+  const tree = (state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[treeId];
   expect(tree).toBeDefined();
   
   // Iron Plate (root) - EXCESS CHANGED TO 20
@@ -585,13 +585,13 @@ describe('Undo/Redo System', () => {
       td(setDependencies({ treeId: 'tree-1', tree }));
       
       // Set restoring flag (simulates already in undo operation)
-      td({ type: 'history/setRestoring', payload: true });
+      td({ type: '_planner/setRestoring', payload: { value: true } });
       
       // Try to add another tree
       const tree2 = createMockTree('Desc_IronIngot_C', { treeId: 'tree-2' });
       td(setDependencies({ treeId: 'tree-2', tree: tree2 }));
       
-      td({ type: 'history/setRestoring', payload: false });
+      td({ type: '_planner/setRestoring', payload: { value: false } });
       
       // Second add should NOT be recorded (only 1 undo checkpoint)
       expect(getUndoStackSize(store.getState())).toBe(1);
@@ -645,8 +645,8 @@ describe('Undo/Redo System', () => {
       td(setDependencies({ treeId: TREE_ID, tree }));
       
       let state = store.getState();
-      expect(state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[TREE_ID].uniqueId).toBe(NODE_ID);
-      expect(state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[TREE_ID].excess).toBe(0);
+      expect((state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[TREE_ID].uniqueId).toBe(NODE_ID);
+      expect((state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[TREE_ID].excess).toBe(0);
       expect(getUndoStackSize(state)).toBe(1);
       
       // Step 2: Set excess to 20 using the same action the UI uses
@@ -657,14 +657,16 @@ describe('Undo/Redo System', () => {
       }));
       
       state = store.getState();
-      expect(state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[TREE_ID].excess).toBe(20);
+      const trees = state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {};
+      const treeExcess = trees[TREE_ID]?.excess ?? 0;
+      expect(treeExcess).toBe(20);
       expect(getUndoStackSize(state)).toBe(2);
       
       // Step 3: Undo should restore excess=0
       td(undoAction(TAB_ID) as unknown as AnyAction);
       
       state = store.getState();
-      expect(state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[TREE_ID].excess).toBe(0);
+      expect((state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[TREE_ID]?.excess ?? 0).toBe(0);
       expect(getUndoStackSize(state)).toBe(1);
       expect(getRedoStackSize(state)).toBe(1);
       

@@ -198,8 +198,8 @@ export const beginHistoryTransaction = (description: string, tabId?: string) =>
     if (tabId) {
       // Per-tab routing
       const planner = state.planners?.[tabId];
-      if (!planner) return false;
-      if (planner.history?.isRestoring) return false;
+
+      if (planner?.history?.isRestoring) return false;
       if (getActiveTransaction(tabId)) {
         console.log(`[History:${tabId}] ⚠️ Already in transaction, skipping nested "${description}"`);
         return false;
