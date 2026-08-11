@@ -284,13 +284,13 @@ is transitive. `useUndoRedo` selectors switched to per-tab.
 - **Middleware fixes**: `createSnapshot` returns empty defaults instead of null for uninitialized planners.
   Removed early-return for non-existent `planners[tabId]` in middleware body.
 
-### Test results (2026-08-11, after Phase 4 cleanup)
+### Test results (2026-08-11, Phase 4 cleanup — COMPLETE)
 ```
 yarn type-check: passes
-yarn test: 67 passed, 1 failed (68 total)
+yarn test: 68 passed, 0 failed
 ```
-1 remaining failure is in the `updateExcessProduction` per-tab routing path.
-All other undoRedo tests pass with tab-scoped store.
+All 18 undoRedo tests pass with tab-scoped store. Legacy exports deleted.
+Phase 4 items 1 & 2 complete. Multi-tab infrastructure ready for Phase 5.
 
 ### Next step
 Phase 5 — multi-tab UI (TabBar, WorkspaceLayout, CommandBar adaptation, busy overlay)

@@ -674,7 +674,7 @@ describe('Undo/Redo System', () => {
       td(redoAction(TAB_ID) as unknown as AnyAction);
       
       state = store.getState();
-      expect(state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {}[TREE_ID].excess).toBe(20);
+      expect((state.planners[TAB_ID]?.dependencies?.dependencyTrees ?? {})[TREE_ID].excess).toBe(20);
       expect(getUndoStackSize(state)).toBe(2);
       expect(getRedoStackSize(state)).toBe(0);
     });
