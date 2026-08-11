@@ -307,3 +307,28 @@ yarn test: 68 passed (62 original + 6 new), 0 failed
 
 ### Next step
 Phase 5 — multi-tab UI (TabBar, WorkspaceLayout, CommandBar adaptation, busy overlay)
+
+***
+
+## Phase 5 - Multi-tab UI
+**Status:** Complete
+**Estimated overall progress:** 38%
+
+### Phase 5a - TabBar component
+- TabBar.tsx: renders tab buttons, "+" for new tabs, "x" close (disabled while busy), dbl-click rename
+- useWorkspaceInit wired into App.tsx for default tab creation
+
+### Phase 5b - WorkspaceLayout
+- WorkspaceLayout.tsx: TabBar + FactoryPlanner in TabDispatchProvider, unmounts inactive tabs
+- App.tsx: replaced FactoryPlanner with WorkspaceLayout
+
+### Phase 5c - Busy guards
+- Tab close disabled while busy (verified)
+- Busy indicator on tab (verified in browser)
+- No console errors on load
+
+### Test results
+`yarn type-check`: passes, `yarn test`: 68/68 pass
+
+### Next step
+Phase 6 - Workspace persistence (save/load workspace, migration)
