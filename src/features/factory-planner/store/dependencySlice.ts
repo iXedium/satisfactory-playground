@@ -307,6 +307,65 @@ const dependencySlice = createSlice({
       };
       findAndUpdate(tree);
 
+      // --- Import-target propagation ---
+      // After updating direct children, propagate changed amounts to root
+      // nodes that are imported into the modified tree. This reads the
+      // already-mutated Immer draft so import child amounts updated above
+      // are reflected in the demand sum.
+      const processedTargets = new Set<string>();
+      processedTargets.add(treeId);
+
+      const propagateFromTree = (startTreeId: string): void => {
+        const t = state.dependencyTrees[startTreeId];
+        if (!t) return;
+
+        const collectImportTargets = (n: DependencyNode): Set<string> => {
+          const ids = new Set<string>();
+          const ref = getImportReference(n);
+          if (ref?.targetTreeId) ids.add(ref.targetTreeId);
+          if (n.children) n.children.forEach(c => {
+            collectImportTargets(c).forEach(id => ids.add(id));
+          });
+          return ids;
+        };
+
+        const targetIds = collectImportTargets(t);
+
+        for (const targetId of targetIds) {
+          if (processedTargets.has(targetId)) continue;
+          processedTargets.add(targetId);
+
+          const targetRoot = state.dependencyTrees[targetId];
+          if (!targetRoot) continue;
+
+          // Sum demand from ALL importers across all trees for this target.
+          // Uses the live Immer draft → includes amounts just updated above.
+          let totalDemand = 0;
+          const sumImportDemand = (n: DependencyNode): number => {
+            let sum = 0;
+            const ref = getImportReference(n);
+            if (ref?.targetTreeId === targetId) sum += n.amount || 0;
+            if (n.children) n.children.forEach(c => { sum += sumImportDemand(c); });
+            return sum;
+          };
+          for (const anyTree of Object.values(state.dependencyTrees)) {
+            totalDemand += sumImportDemand(anyTree);
+          }
+
+          if (totalDemand !== targetRoot.amount) {
+            targetRoot.amount = totalDemand;
+            recalcChildren(targetRoot);
+          }
+
+          // Continue cascading from this target root
+          // (its children may import other targets, e.g. Iron Ingot → Iron Ore)
+          propagateFromTree(targetId);
+        }
+      };
+
+      propagateFromTree(treeId);
+
+      // --- Recalculate accumulated ---
       const newAccumulated: Record<string, AccumulatedNode> = {};
       Object.values(state.dependencyTrees).forEach(t => {
         Object.assign(newAccumulated, calculateAccumulatedFromTree(t));
