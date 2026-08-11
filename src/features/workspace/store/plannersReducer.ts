@@ -102,6 +102,32 @@ export function plannersReducer(state: PlannersRoot = {}, action: any): Planners
     return state;
   }
 
+  // Route loadSavedState directly into the correct tab slot without
+  // going through the root dependencyReducer (which has a guard).
+  if (
+    action.type === 'dependencies/loadSavedState' &&
+    action?.meta?.tabId
+  ) {
+    const tId = action.meta.tabId as string;
+    const existing = state[tId] || createEmptyPlannerState();
+    const updated = tabReducer(existing, action);
+    if (updated === existing) return state;
+    return { ...state, [tId]: updated as PlannerState };
+  }
+
+  // Route loadRecipeSelections directly into the correct tab slot.
+  if (
+    action.type === 'recipeSelections/loadRecipeSelections' &&
+    action?.meta?.tabId
+  ) {
+    const tId = action.meta.tabId as string;
+    const existing = state[tId] || createEmptyPlannerState();
+    const updated = tabReducer(existing, action);
+    if (updated === existing) return state;
+    return { ...state, [tId]: updated as PlannerState };
+  }
+
+  // --- Legacy tabId routing (fallback for all other tab-scoped actions) ---
   const tabId = action?.meta?.tabId;
   if (!tabId) return state;
 
