@@ -1331,6 +1331,71 @@ export const maxImportAmountThunk = createAsyncThunk<
   }
 );
 
+// --- Pure async helper: pre-calculate all new roots needed for a parent node's children ---
+// Runs all DB queries and tree calculations in parallel, without any Redux dispatches.
+// Returns a flat Map<newRootId, { root, children }> for all roots that need to be created
+// across the entire subtree (including grandchildren recursively).
+async function preCalculateRequiredRoots(
+  children: DependencyNode[],
+  existingTrees: Record<string, DependencyNode>,
+  externalImports: Record<string, true>,
+  recipeSelections: Record<string, string>,
+  generateTreeId: (itemId: string) => string,
+): Promise<Map<string, { root: DependencyNode; children: DependencyNode[] }>> {
+  const newRoots = new Map<string, { root: DependencyNode; children: DependencyNode[] }>();
+
+  const childProcessing = children
+    .filter(c => !c.isImport && !c.importReference && !externalImports[c.id])
+    .map(async (child) => {
+      // Check if a root already produces this item
+      const allTrees = { ...existingTrees };
+      for (const [k, v] of newRoots) allTrees[k] = v.root;
+      const existingRoots = findAllRootsProducingItem(child.id, allTrees, true);
+      if (existingRoots.length > 0) return;
+
+      // Check for byproduct root
+      const byproductRoots = Object.values(allTrees).filter(t => t.isRoot && t.id === child.id && t.isByproduct);
+      if (byproductRoots.length > 0) return;
+
+      const defaultRecipe = await getRecipeByOutput(child.id);
+      const availableRecipes = await getRecipesForItem(child.id);
+      const newRootId = generateTreeId(child.id);
+
+      const newRoot: DependencyNode = {
+        id: child.id, uniqueId: newRootId, amount: 0, isRoot: true,
+        recipe: defaultRecipe, children: [], depth: 0, availableRecipes,
+      };
+
+      // Calculate children if recipe exists
+      let calculatedChildren: DependencyNode[] = [];
+      if (defaultRecipe) {
+        try {
+          const node = await calculateDependencyTree(
+            child.id, child.amount || 0, defaultRecipe.id,
+            recipeSelections, 0, [], newRootId, {}, {},
+            allTrees, [], externalImports,
+          );
+          calculatedChildren = node?.children || [];
+        } catch { /* calculation failure — keep empty children */ }
+      }
+
+      newRoots.set(newRootId, { root: newRoot, children: calculatedChildren });
+
+      // Recurse into the new root's children
+      if (calculatedChildren.length > 0) {
+        const grandchildRoots = await preCalculateRequiredRoots(
+          calculatedChildren, allTrees, externalImports, recipeSelections, generateTreeId,
+        );
+        for (const [k, v] of grandchildRoots) {
+          if (!newRoots.has(k)) newRoots.set(k, v);
+        }
+      }
+    });
+
+  await Promise.all(childProcessing);
+  return newRoots;
+}
+
 // --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN (Restored from 1ce0b34) ---
 // ENHANCED: Now supports multi-source imports - distributing demand across multiple roots
 export const autoImportNodeChildrenThunk = createTabThunk<
@@ -1339,292 +1404,53 @@ export const autoImportNodeChildrenThunk = createTabThunk<
 >(
   'dependency/autoImportNodeChildren',
   async ({ parentNodeId }, { getState, dispatch, tabId }) => {
-    const state = getState();
-    const parentNode = (activeDeps(getState())?.dependencyTrees ?? {})[parentNodeId];
-    const externalImports = (activeDeps(getState())?.externalImports ?? {});
+    const deps = activeDeps(getState());
+    const trees = deps?.dependencyTrees ?? {};
+    const extImports = (deps?.externalImports ?? {}) as Record<string, true>;
+    const parentNode = trees[parentNodeId];
 
-    if (!parentNode) {
-      logger.error(`[Thunk/AutoImportChildren] Parent node ${parentNodeId} not found.`);
-      return;
+    if (!parentNode || !parentNode.children || parentNode.children.length === 0) return;
+
+    const recipeSelections = getState().planners[tabId]?.recipeSelections?.selections ?? {};
+    const generateTreeId = (itemId: string) =>
+      `tree-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1e7)}`;
+
+    // Phase 1: Pre-calculate ALL new roots needed (pure async, no Redux)
+    const newRoots = await preCalculateRequiredRoots(
+      parentNode.children, trees, extImports, recipeSelections, generateTreeId,
+    );
+
+    // Phase 2: Single Redux commit — dispatch all new trees + link imports
+    for (const [rootId, { root, children }] of newRoots) {
+      dispatch(setDependencies({ treeId: rootId, tree: root }));
+      if (children.length > 0) {
+        dispatch(updateNodeProperties({ nodeId: rootId, updatedNode: { children } }));
+      }
     }
 
-    if (!parentNode.children || parentNode.children.length === 0) {
-      return;
-    }
-
-    const childrenToProcess = parentNode.children ? [...parentNode.children] : []; // Safer copy
-
-    const generateTreeId = (itemId: string) => `tree-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1e7)}`;
-
-    for (const child of childrenToProcess) {
+    // Link import references for children
+    const freshTrees = (activeDeps(getState())?.dependencyTrees ?? {});
+    for (const child of parentNode.children) {
       if (child.isImport || child.importReference) continue;
-
-      // External imports: this item is sourced externally, no root needed
-      if (externalImports[child.id]) {
-        await dispatch(updateNodeProperties({
+      if (extImports[child.id]) {
+        dispatch(updateNodeProperties({
           nodeId: child.uniqueId,
-          updatedNode: {
-            isExternal: true,
-            isImport: false,
-            importReference: undefined,
-            recipe: undefined,
-            children: [],
-          } as Partial<DependencyNode>,
+          updatedNode: { isExternal: true, isImport: false, importReference: undefined, recipe: undefined, children: [] } as Partial<DependencyNode>,
         }));
         continue;
       }
 
-      let targetTreeId: string | null = null;
-      let existingRootFound = false;
-      const trees = (activeDeps(getState())?.dependencyTrees ?? {}); // Get latest trees
-
-      // --- Handle Byproduct Children ---
-      if (child.isByproduct) {
-          // 1a. Find ANY Existing Root
-          const existingRoot = Object.values(trees).find(t => t?.isRoot && t.id === child.id);
-          if (existingRoot) {
-              targetTreeId = existingRoot.uniqueId;
-              existingRootFound = true;
-          } else {
-              // 2a. Create New BYPRODUCT Root if None Found
-              const newRootId = generateTreeId(child.id);
-              try {
-                  // Create a minimal BYPRODUCT root structure
-                  const newRootNode: DependencyNode = {
-                      id: child.id,
-                      uniqueId: newRootId,
-                      amount: 0,
-                      isRoot: true,
-                      isByproduct: true,
-                      recipe: undefined,
-                      children: [],
-                      depth: 0,
-                      // Always fetch available recipes
-                      availableRecipes: await getRecipesForItem(child.id), 
-                  };
-                  await dispatch(setDependencies({ treeId: newRootId, tree: newRootNode }));
-                  if (!(activeDeps(getState())?.dependencyTrees ?? {})[newRootId]) throw new Error("Byproduct root not found");
-                  targetTreeId = newRootId;
-              } catch (error) { logger.error(`[AutoImport] Failed BYPRODUCT root for ${child.id}:`, error); continue; }
-          }
-      } 
-      // --- Handle Normal Children (ENHANCED for multi-source) ---
-      else { 
-          // Find ALL existing normal roots producing this item
-          const latestTrees = (activeDeps(getState())?.dependencyTrees ?? {});
-          const allProducingRoots = findAllRootsProducingItem(child.id, latestTrees, true);
-          
-          if (allProducingRoots.length > 0) {
-            const requiredAmount = child.amount || 0;
-            
-            // Log multi-source info for debugging
-            if (allProducingRoots.length > 1) {
-              logger.info(`[AutoImport Multi-Source] Found ${allProducingRoots.length} roots producing ${child.id}, need ${requiredAmount}:`);
-              allProducingRoots.forEach((r, idx) => {
-                logger.info(`  [${idx}] ${r.root.uniqueId} (recipe: ${r.root.recipe?.id || 'none'}): currentDemand=${r.currentDemand}, excess=${r.excess}`);
-              });
-            }
-            
-            // Distribution strategy for multiple sources:
-            // 1. First, use available excess from roots that have it
-            // 2. Then distribute remaining demand proportionally across all roots
-            let remainingToDistribute = requiredAmount;
-            const distributionPlan: { rootId: string; amount: number }[] = [];
-            
-            // Phase 1: Use available excess from each root first
-            for (const rootInfo of allProducingRoots) {
-              if (remainingToDistribute <= 0) break;
-              
-              const excessAvailable = rootInfo.excess;
-              if (excessAvailable > 0) {
-                const takeFromExcess = Math.min(remainingToDistribute, excessAvailable);
-                distributionPlan.push({ rootId: rootInfo.root.uniqueId, amount: takeFromExcess });
-                remainingToDistribute -= takeFromExcess;
-                logger.info(`[AutoImport Multi-Source] Using ${takeFromExcess} excess from ${rootInfo.root.uniqueId}, remaining: ${remainingToDistribute}`);
-              }
-            }
-            
-            // Phase 2: Distribute remaining demand equally across all roots
-            if (remainingToDistribute > 0 && allProducingRoots.length > 0) {
-              const perRootShare = remainingToDistribute / allProducingRoots.length;
-              
-              for (const rootInfo of allProducingRoots) {
-                const existingEntry = distributionPlan.find(p => p.rootId === rootInfo.root.uniqueId);
-                if (existingEntry) {
-                  existingEntry.amount += perRootShare;
-                } else {
-                  distributionPlan.push({ rootId: rootInfo.root.uniqueId, amount: perRootShare });
-                }
-              }
-              logger.info(`[AutoImport Multi-Source] Distributed remaining ${remainingToDistribute} equally (${perRootShare} each) across ${allProducingRoots.length} roots`);
-            }
-            
-            // If only one target in distribution plan, use simple single-source logic
-            if (distributionPlan.length <= 1) {
-              targetTreeId = distributionPlan.length === 1 ? distributionPlan[0].rootId : allProducingRoots[0].root.uniqueId;
-              existingRootFound = true;
-            } else {
-              // MULTI-SOURCE: Create additional child nodes for each source beyond the first
-              logger.info(`[AutoImport Multi-Source] Creating distribution plan with ${distributionPlan.length} sources`);
-              
-              // Handle first source with the original child node
-              const firstSource = distributionPlan[0];
-              targetTreeId = firstSource.rootId;
-              existingRootFound = true;
-              
-              // Update the original child's amount to only be what this source provides
-              await dispatch(updateNodeProperties({ 
-                nodeId: child.uniqueId, 
-                updatedNode: { amount: firstSource.amount } 
-              }));
-              
-              // Create additional child nodes for remaining sources
-              for (let i = 1; i < distributionPlan.length; i++) {
-                const source = distributionPlan[i];
-                const newChildId = `${child.uniqueId}-split-${i}-${Date.now()}`;
-                
-                // Create a new child node that imports from this source
-                const newChildNode: DependencyNode = {
-                  id: child.id,
-                  uniqueId: newChildId,
-                  amount: source.amount,
-                  depth: child.depth,
-                  isImport: true,
-                  importReference: { targetTreeId: source.rootId, targetNodeId: source.rootId },
-                  children: [],
-                  recipe: undefined,
-                };
-                
-                // Add this new child to the parent
-                const currentParent = (activeDeps(getState())?.dependencyTrees ?? {})[parentNodeId];
-                if (currentParent) {
-                  const updatedChildren = [...(currentParent.children || []), newChildNode];
-                  await dispatch(updateNodeProperties({
-                    nodeId: parentNodeId,
-                    updatedNode: { children: updatedChildren }
-                  }));
-                  
-                  // Trigger recalculation for this target root
-                  await dispatch(recalculateAndUpdateRootAmountThunk({
-                    rootNodeId: source.rootId,
-                    externalDemandChange: { importerNodeId: newChildId, amount: source.amount }
-                  }));
-                  
-                  logger.info(`[AutoImport Multi-Source] Created split child ${newChildId} importing ${source.amount} from ${source.rootId}`);
-                }
-              }
-            }
-          } else {
-            // No NORMAL roots, check for EXISTING BYPRODUCT root
-            const existingByproductRoot = Object.values(latestTrees).find(
-              t => t.isRoot && t.id === child.id && t.isByproduct
-            );
-            
-            if (existingByproductRoot) {
-                // Found BYPRODUCT root -> Convert it to NORMAL
-                try {
-                    await dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: existingByproductRoot.uniqueId, tabId }));
-                    targetTreeId = existingByproductRoot.uniqueId;
-                    existingRootFound = true;
-                } catch (error) {
-                    logger.error(`[Thunk/AutoImportChildren] Error during B->N conversion dispatch for ${existingByproductRoot.uniqueId}:`, error);
-                    continue;
-                }
-            }
-          }
-          
-          // Create New NORMAL Root if no existing roots found
-          if (!existingRootFound) {
-              const newRootId = generateTreeId(child.id);
-              try {
-                 // 1. Create node structure (amount starts at 0)
-                  const defaultRecipe = await getRecipeByOutput(child.id);
-                  // ALWAYS fetch all available recipes
-                  const availableRecipes = await getRecipesForItem(child.id);
-                  
-                  const newRootNode: DependencyNode = {
-                      id: child.id, uniqueId: newRootId, amount: 0, isRoot: true,
-                      recipe: defaultRecipe, // Keep default recipe if found
-                      children: [], depth: 0,
-                      // Assign ALL fetched recipes
-                      availableRecipes: availableRecipes, 
-                  };
-                  
-                  // 2. Add the root to the state
-                  await dispatch(setDependencies({ treeId: newRootId, tree: newRootNode }));
-                  
-                  // 3. Immediately link the *triggering child* to establish initial demand
-                  // Use the amount from the child node in the loop's context
-                  await dispatch(setNodeAsImportThunk({ 
-                    childNodeId: child.uniqueId, 
-                    targetRootId: newRootId, 
-                    importingAmount: child.amount, // Pass the trigger amount
-                    tabId,
-                  }));
-                  // This ^ call internally triggers recalculateAndUpdateRootAmountThunk(newRootId)
-
-                  // 4. Get the updated state AFTER the link and initial recalc
-                  const stateAfterLinkAndRecalc = getState();
-                  const updatedNewRootNode = stateAfterLinkAndRecalc.planners[tabId]?.dependencies.dependencyTrees[newRootId];
-                  if (!updatedNewRootNode) {
-                      logger.error(`New root ${newRootId} disappeared after initial link/recalc.`); // Simplified error
-                      throw new Error(`New root ${newRootId} disappeared after initial link/recalc.`);
-                  }
-                  
-                  // 5. Get the correct demand for children (total = amount + excess)
-                  const demandForChildren = (updatedNewRootNode.amount || 0) + (updatedNewRootNode.excess || 0);
-
-                  // 6. Calculate children using the correct demand
-                  const calculatedChildren = await calculateDependencyTree(
-                    updatedNewRootNode.id, 
-                    demandForChildren, // <<< Use the correct demand
-                    updatedNewRootNode.recipe?.id || null, 
-                    stateAfterLinkAndRecalc.planners[tabId]?.recipeSelections?.selections ?? {}, // Use latest selections
-               0, [], newRootId, {}, {}, // Use newRootId as parentId
-                stateAfterLinkAndRecalc.planners[tabId]?.dependencies.dependencyTrees ?? {}, // Pass latest trees
-                [], // visited
-                stateAfterLinkAndRecalc.planners[tabId]?.dependencies.externalImports ?? {}
-                  ).then(node => node?.children || []);
-                  
-                  // 7. Add children to the root node
-                  if (calculatedChildren.length > 0) {
-                      await dispatch(updateNodeProperties({ nodeId: newRootId, updatedNode: { children: calculatedChildren }}));
-                  }
-
-                  // 8. Set target for subsequent steps (if any)
-                  targetTreeId = newRootId;
-
-                  // 9. RECURSION: Process the *children we just added* 
-        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: newRootId, tabId }));
-
-              } catch (error) {
-                  logger.error(`[AutoImport] Failed NORMAL root for ${child.id}:`, error);
-                  continue;
-              }
-          }
-      }
-      
-      // Ensure targetTreeId is set from the block above before the final linking step
-      // <<< UNCOMMENT START >>>
-      // 3. Set Import Reference (Common Logic for Both Byproduct & Normal Children)
-      if (targetTreeId) {
-        // Get the child node's current amount FROM THE STATE after any updates
-        const latestState = getState();
-        const latestParentNode = findNodeById(latestState.dependencies.dependencyTrees[parentNodeId], parentNodeId);
-        const latestChildState = latestParentNode?.children?.find(c => c.uniqueId === child.uniqueId);
-        const actualImportingAmount = latestChildState?.amount || 0;
-
-        await dispatch(setNodeAsImportThunk({ 
-          childNodeId: child.uniqueId, 
-          targetRootId: targetTreeId, 
-          importingAmount: actualImportingAmount,
+      const allRoots = findAllRootsProducingItem(child.id, freshTrees, true);
+      if (allRoots.length > 0) {
+        const targetTreeId = allRoots[0].root.uniqueId;
+        dispatch(setNodeAsImportThunk({
+          childNodeId: child.uniqueId,
+          targetRootId: targetTreeId,
+          importingAmount: child.amount || 0,
           tabId,
         }));
-        // childrenModified = true; // No longer used
       }
-      // <<< UNCOMMENT END >>>
     }
-    
   }
 ); 
 
