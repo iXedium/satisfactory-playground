@@ -9,9 +9,11 @@ const WorkspaceLayout: React.FC = () => {
   const activeTabId = useSelector((s: RootState) => s.workspace.activeTabId);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <TabBar />
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div style={{ flexShrink: 0 }}>
+        <TabBar />
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {activeTabId ? (
           <TabDispatchProvider tabId={activeTabId}>
             <FactoryPlanner />
