@@ -113,8 +113,16 @@ export const usePlannerSaveLoad = ({
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
     const dispatch: AppDispatch = useDispatch();
     const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
-    const dependenciesState = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? state.dependencies);
-    const recipeSelectionsState = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? state.recipeSelections.selections);
+    const dependenciesState = useSelector((state: RootState) => state.planners[tabId]?.dependencies ?? {
+      dependencyTrees: {},
+      accumulatedDependencies: {},
+      highlightedNodeId: null,
+      manualTreeOrder: [],
+      externalImports: {},
+      errors: [],
+      lastUpdateTime: 0,
+    } as any);
+    const recipeSelectionsState = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? {});
 
     const [saveNames, setSaveNames] = useState<string[]>([]);
     const [lastSavedStateInMemory, setLastSavedStateInMemory] = useState<SavedPlannerState | null>(null);

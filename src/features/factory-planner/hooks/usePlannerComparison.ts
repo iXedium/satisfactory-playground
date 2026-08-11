@@ -98,8 +98,8 @@ export function usePlannerComparison({
   
   const activeSnapshot = useSelector(selectActiveSnapshot);
   const showComparison = useSelector(selectShowComparison);
-  const dependencyTrees = useSelector((state: RootState) => state.planners[tabId]?.dependencies.dependencyTrees ?? state.dependencies.dependencyTrees);
-  const recipeSelections = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? state.recipeSelections.selections);
+  const dependencyTrees = useSelector((state: RootState) => state.planners[tabId]?.dependencies.dependencyTrees ?? {});
+  const recipeSelections = useSelector((state: RootState) => state.planners[tabId]?.recipeSelections.selections ?? {});
 
   const hasSnapshot = activeSnapshot !== null;
 
