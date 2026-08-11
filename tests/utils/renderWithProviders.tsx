@@ -19,6 +19,8 @@ import treeUiReducer from '../../src/features/factory-planner/store/treeUiSlice'
 import comparisonReducer from '../../src/features/factory-planner/store/comparisonSlice';
 import historyReducer from '../../src/features/factory-planner/store/historySlice';
 import { historyMiddleware } from '../../src/features/factory-planner/store/historyMiddleware';
+import workspaceReducer from '../../src/features/workspace/store/workspaceSlice';
+import { plannersReducer } from '../../src/features/workspace/store/plannersReducer';
 
 // Create the root reducer for test store
 const rootReducer = combineReducers({
@@ -28,6 +30,8 @@ const rootReducer = combineReducers({
   treeUi: treeUiReducer,
   comparison: comparisonReducer,
   history: historyReducer,
+  workspace: workspaceReducer,
+  planners: plannersReducer,
 });
 
 // Type for the test store
