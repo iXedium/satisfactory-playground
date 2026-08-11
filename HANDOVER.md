@@ -9,8 +9,8 @@ new-architecture
 ## 2. Last Commit
 
 ```
-SHA: 1f9082f
-Message: Test(F): UI-level multi-tab integration tests
+SHA: 7d1e8cd
+Message: Fix: Ex-import state survives tab switch and reload
 Date: 2026-08-11
 ```
 
