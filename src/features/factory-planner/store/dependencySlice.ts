@@ -424,6 +424,95 @@ const dependencySlice = createSlice({
       state.accumulatedDependencies = newAccumulated2;
       state.lastUpdateTime = Date.now();
     },
+
+    // --- Batch tree creation + import linking + full amount recalc ---
+    // Replaces N individual setDependencies + setNodeAsImportThunk calls
+    // with a single Immer pass. Builds an importer index once (O(nodes)),
+    // then does O(1) lookups per root instead of O(n²) tree walks.
+    setDependenciesBatch: (
+      state,
+      action: PayloadAction<{
+        trees: Record<string, DependencyNode>;
+        importLinks: Array<{
+          nodeId: string;
+          targetTreeId: string;
+          amount: number;
+        }>;
+      }>
+    ) => {
+      // Step 1: Add all new trees at once (no accumulated recalc yet)
+      for (const [treeId, tree] of Object.entries(action.payload.trees)) {
+        state.dependencyTrees[treeId] = tree;
+      }
+
+      // Step 2: Set all import references in one Immer pass
+      for (const link of action.payload.importLinks) {
+        for (const treeId in state.dependencyTrees) {
+          const tree = state.dependencyTrees[treeId];
+          const node = findNodeById(tree, link.nodeId);
+          if (node) {
+            node.importReference = {
+              targetTreeId: link.targetTreeId,
+              targetNodeId: link.targetTreeId,
+            };
+            node.isImport = true;
+            node.children = [];
+            node.recipe = undefined;
+            node.amount = link.amount;
+            break;
+          }
+        }
+      }
+
+      // Step 3: Build importer index once — O(nodes), not O(n²)
+      const importerIndex = new Map<string, Map<string, number>>();
+      const indexNode = (node: DependencyNode): void => {
+        const ref = node.importReference;
+        if (ref?.targetTreeId) {
+          const targetId = ref.targetTreeId;
+          if (!importerIndex.has(targetId)) importerIndex.set(targetId, new Map());
+          importerIndex.get(targetId)!.set(node.uniqueId, node.amount || 0);
+        }
+        if (node.children) for (const child of node.children) indexNode(child);
+      };
+      for (const tree of Object.values(state.dependencyTrees)) indexNode(tree);
+
+      // Step 4: Update all root amounts using O(1) index lookups
+      const recalcChildren = (node: DependencyNode): void => {
+        if (!node.recipe || !node.children?.length) return;
+        const total = (node.amount || 0) + (node.excess || 0);
+        const outputAmt = node.recipe.out[node.id] || 1;
+        const cycles = total / outputAmt;
+        for (const child of node.children) {
+          if (child.importReference || child.isImport) {
+            child.amount = (node.recipe.in?.[child.id] || 0) * cycles;
+          } else if (child.isByproduct) {
+            child.amount = -((node.recipe.out[child.id] || 0) * cycles);
+          } else {
+            child.amount = (node.recipe.in?.[child.id] || 0) * cycles;
+            recalcChildren(child);
+          }
+        }
+      };
+
+      for (const rootId in state.dependencyTrees) {
+        const root = state.dependencyTrees[rootId];
+        if (!root.isRoot) continue;
+        const importers = importerIndex.get(rootId);
+        root.amount = importers
+          ? Array.from(importers.values()).reduce((s, a) => s + a, 0)
+          : 0;
+        recalcChildren(root);
+      }
+
+      // Step 5: Recalculate accumulated ONCE at the end
+      const newAccumulated: Record<string, AccumulatedNode> = {};
+      Object.values(state.dependencyTrees).forEach(t => {
+        Object.assign(newAccumulated, calculateAccumulatedFromTree(t));
+      });
+      state.accumulatedDependencies = newAccumulated;
+      state.lastUpdateTime = Date.now();
+    },
     
     // Update machine count on a specific node
     setNodeMachineCount: (
@@ -538,9 +627,9 @@ const dependencySlice = createSlice({
           return node.children?.some(updateNodeInTree) || false;
         };
         
-       // Just run the update function (no accumulated calc here)
+        // Just run the update function (no accumulated calc here)
        if (updateNodeInTree(tree)) {
-         // break; // Optional break
+         break;
        }
       }
       if (!treeUpdated) {
@@ -606,6 +695,7 @@ export const {
   setExternalImports,
   cascadeExcessUpdate,
   recalculateTreeAmounts,
+  setDependenciesBatch,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 

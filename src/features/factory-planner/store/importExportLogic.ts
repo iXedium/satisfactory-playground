@@ -16,7 +16,7 @@ import {
   getRecipesForItem
 } from "../../../data/dbQueries";
 import { calculateDependencyTree } from "../../../utils/calculateDependencyTree";
-import { updateNodeProperties, setDependencies, setExternalImports, importNodeAction, removeNodeAction, recalculateTreeAmounts } from './dependencySlice';
+import { updateNodeProperties, setDependencies, setDependenciesBatch, setExternalImports, importNodeAction, removeNodeAction, recalculateTreeAmounts } from './dependencySlice';
 import { calculateAccumulatedFromTree } from '../../../utils/calculateAccumulatedFromTree';
 import { 
   AccumulatedNode 
@@ -1420,37 +1420,32 @@ export const autoImportNodeChildrenThunk = createTabThunk<
       parentNode.children, trees, extImports, recipeSelections, generateTreeId,
     );
 
-    // Phase 2: Single Redux commit — dispatch all new trees + link imports
-    for (const [rootId, { root, children }] of newRoots) {
-      dispatch(setDependencies({ treeId: rootId, tree: root }));
-      if (children.length > 0) {
-        dispatch(updateNodeProperties({ nodeId: rootId, updatedNode: { children } }));
-      }
-    }
+    // Phase 2: Single Redux commit — one dispatch for all trees + import links + recalc
+    const importLinks: Array<{ nodeId: string; targetTreeId: string; amount: number }> = [];
 
-    // Link import references for children
-    const freshTrees = (activeDeps(getState())?.dependencyTrees ?? {});
     for (const child of parentNode.children) {
       if (child.isImport || child.importReference) continue;
-      if (extImports[child.id]) {
-        dispatch(updateNodeProperties({
-          nodeId: child.uniqueId,
-          updatedNode: { isExternal: true, isImport: false, importReference: undefined, recipe: undefined, children: [] } as Partial<DependencyNode>,
-        }));
-        continue;
-      }
+      if (extImports[child.id]) continue;
 
-      const allRoots = findAllRootsProducingItem(child.id, freshTrees, true);
+      const allRoots = findAllRootsProducingItem(child.id, trees, true);
       if (allRoots.length > 0) {
-        const targetTreeId = allRoots[0].root.uniqueId;
-        dispatch(setNodeAsImportThunk({
-          childNodeId: child.uniqueId,
-          targetRootId: targetTreeId,
-          importingAmount: child.amount || 0,
-          tabId,
-        }));
+        importLinks.push({
+          nodeId: child.uniqueId,
+          targetTreeId: allRoots[0].root.uniqueId,
+          amount: child.amount || 0,
+        });
       }
     }
+
+    const treesPayload: Record<string, DependencyNode> = {};
+    for (const [k, v] of newRoots) {
+      treesPayload[k] = v.root;
+    }
+
+    dispatch(setDependenciesBatch({
+      trees: treesPayload,
+      importLinks,
+    }));
   }
 ); 
 
