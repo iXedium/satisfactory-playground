@@ -78,11 +78,11 @@ export type SortDirection = 'asc' | 'desc';
 // UI-preference keys (non-tab-scoped — affect all tabs uniformly)
 const LS_SORT_KEY = 'lastSession_plannerTreeSortKey';
 const LS_SORT_DIRECTION = 'lastSession_plannerTreeSortDirection';
-const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder';
 
 // Planner-state key generators (tab-scoped — one per tab)
 const lsDependenciesKey = (tabId: string) => `lastSession_${tabId}_savedDependencies`;
 const lsRecipesKey = (tabId: string) => `lastSession_${tabId}_savedRecipeSelections`;
+const lsManualOrderKey = (tabId: string) => `lastSession_${tabId}_manualTreeOrder`;
 
 export interface FactoryPlannerHookResult {
   dependencies: { dependencyTrees: Record<string, DependencyNode | null> };
@@ -301,10 +301,10 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   }, [treeSortDirection]);
   // -----------------------------------------------------------
 
-  // --- State for Manual Tree Order (Moved from FactoryPlanner.tsx) ---
+  // --- State for Manual Tree Order (tab-scoped) ---
   const [manualTreeOrder, setManualTreeOrder] = useState<string[]>(() => {
     try {
-      const savedOrder = localStorage.getItem(LS_MANUAL_ORDER_KEY);
+      const savedOrder = localStorage.getItem(lsManualOrderKey(tabId));
       return savedOrder ? JSON.parse(savedOrder) : [];
     } catch (error) {
       console.error("Error loading manual tree order from localStorage:", error);
@@ -312,14 +312,14 @@ export const useFactoryPlanner = (): FactoryPlannerHookResult => {
     }
   });
 
-  // --- Auto-save sort state to LAST SESSION Local Storage ---
+  // --- Auto-save manual tree order (tab-scoped) ---
   useEffect(() => {
     try {
-      localStorage.setItem(LS_MANUAL_ORDER_KEY, JSON.stringify(manualTreeOrder));
+      localStorage.setItem(lsManualOrderKey(tabId), JSON.stringify(manualTreeOrder));
     } catch (error) {
       console.error("Error saving manual tree order to localStorage:", error);
     }
-  }, [manualTreeOrder]);
+  }, [manualTreeOrder, tabId]);
 
   // Mirror manual order into Redux (ignored by history)
   useEffect(() => {
