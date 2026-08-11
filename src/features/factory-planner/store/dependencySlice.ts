@@ -354,6 +354,76 @@ const dependencySlice = createSlice({
       state.accumulatedDependencies = newAccumulated;
       state.lastUpdateTime = Date.now();
     },
+
+    // --- Synchronous tree amount recalculation ---
+    // Recalculates root amount from import demand sum, then cascades
+    // child amounts via recipe ratios in a single Immer pass.
+    recalculateTreeAmounts: (
+      state,
+      action: PayloadAction<{
+        rootNodeId: string;
+        externalDemandChange?: { importerNodeId: string; amount: number };
+      }>
+    ) => {
+      const { rootNodeId, externalDemandChange } = action.payload;
+      const trees = state.dependencyTrees as Record<string, DependencyNode>;
+
+      // --- Step 1: Sum all demand on this root from importers ---
+      let newRequiredAmount = 0;
+      for (const tree of Object.values(trees)) {
+        const findDemand = (node: DependencyNode): number => {
+          let demand = 0;
+          const importRef = node.importReference;
+          if (importRef?.targetTreeId === rootNodeId) {
+            demand += (externalDemandChange?.importerNodeId === node.uniqueId)
+              ? externalDemandChange.amount
+              : (node.amount || 0);
+          }
+          if (node.children) {
+            for (const child of node.children) demand += findDemand(child);
+          }
+          return demand;
+        };
+        newRequiredAmount += findDemand(tree);
+      }
+
+      // --- Step 2: Update root amount ---
+      const rootNode = trees[rootNodeId];
+      if (!rootNode || !rootNode.isRoot) return;
+      rootNode.amount = newRequiredAmount;
+
+      // --- Step 3: Cascade child amounts using recipe ratios ---
+      const recalcChildren = (node: DependencyNode): void => {
+        if (!node.recipe || !node.children || node.children.length === 0) return;
+        const totalProduction = (node.amount || 0) + (node.excess || 0);
+        const outputAmount = node.recipe.out[node.id] || 1;
+        const cyclesNeeded = totalProduction / outputAmount;
+
+        for (const child of node.children) {
+          if (child.isImport || child.importReference) {
+            const recipeInputAmount = node.recipe.in?.[child.id] || 0;
+            child.amount = recipeInputAmount * cyclesNeeded;
+          } else if (child.isByproduct) {
+            const recipeOutputAmount = node.recipe.out[child.id] || 0;
+            child.amount = -(recipeOutputAmount * cyclesNeeded);
+          } else {
+            const recipeInputAmount = node.recipe.in?.[child.id] || 0;
+            child.amount = recipeInputAmount * cyclesNeeded;
+            recalcChildren(child);
+          }
+        }
+      };
+
+      recalcChildren(rootNode);
+
+      // --- Step 4: Recalculate accumulated ---
+      const newAccumulated2: Record<string, AccumulatedNode> = {};
+      Object.values(trees).forEach(t => {
+        Object.assign(newAccumulated2, calculateAccumulatedFromTree(t));
+      });
+      state.accumulatedDependencies = newAccumulated2;
+      state.lastUpdateTime = Date.now();
+    },
     
     // Update machine count on a specific node
     setNodeMachineCount: (
@@ -535,6 +605,7 @@ export const {
   setNodeExcess,
   setExternalImports,
   cascadeExcessUpdate,
+  recalculateTreeAmounts,
   // DO NOT export _internalRemoveNodeActionReducer or removeNodeAction here
 } = dependencySlice.actions;
 
