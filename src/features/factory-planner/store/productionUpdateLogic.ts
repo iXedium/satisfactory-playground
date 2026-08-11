@@ -266,80 +266,68 @@ export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<Pr
 
 // --- Thunk for Sequential Production Updates ---
 export const updateTreeProduction = 
-  (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string) => 
+  (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string, tabId?: string) => 
   async (dispatch: AppDispatch, getState: () => {
     dependencies: ProductionDependencyState;
-    planners: Record<string, { dependencies: ProductionDependencyState }>;
-    workspace: { activeTabId: string | null };
+    planners: Record<string, { dependencies: ProductionDependencyState } | undefined>;
   }) => {
-    
-    const rootState = getState();
-    const activeTabId = rootState.workspace.activeTabId || 'default';
-    const plannerDeps = rootState.planners[activeTabId]?.dependencies;
-    if (!plannerDeps) return;
 
-    const deps = (key: string) => plannerDeps.dependencyTrees[key];
+    const activeTabId = tabId || 'default';
+    const tabDeps = getState().planners[activeTabId]?.dependencies
+                    ?? getState().dependencies;
 
-    // Wrap inner dispatch so actions carry meta.tabId — ensures producersReducer
-    // routes these actions to planners[activeTabId] instead of the legacy root slice.
-    const tabDispatch = (action: unknown): any => {
-      if (typeof action === 'function') return dispatch(action as any);
-      return dispatch({ ...(action as any), meta: { ...((action as any)?.meta || {}), tabId: activeTabId } });
-    };
-    
-    const initialTree = deps(treeId);
+    const initialTree = tabDeps.dependencyTrees[treeId];
     if (!initialTree) {
       return;
     }
-    
+
     const nodeToUpdate = findNodeById(initialTree, nodeId);
     if (!nodeToUpdate) {
       return;
     }
-    
-    
+
+
     if (productionType === 'imported' && targetTreeId) {
-      tabDispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
-      await Promise.resolve(); 
-      
-      const stateAfterImportUpdate = getState();
-      const postImportDeps = stateAfterImportUpdate.planners[activeTabId]?.dependencies;
-      if (!postImportDeps) return;
-      
+      dispatch(updateImportedProduction({ nodeId, treeId, targetTreeId, amount }));
+      await Promise.resolve();
+
+      const postImportState = getState();
+      const postImportDeps = postImportState.planners[activeTabId]?.dependencies
+                             ?? postImportState.dependencies;
       const affectedNodesAfterImport = calculateAffectedNodes(
         postImportDeps.dependencyTrees,
-        treeId, 
-        nodeId, 
+        treeId,
+        nodeId,
         productionType,
-        amount 
+        amount
       );
-      
+
       for (const node of affectedNodesAfterImport) {
-        await tabDispatch(updateTreeProduction(
+        await dispatch(updateTreeProduction(
           node.nodeId,
           node.treeId,
           node.productionType,
           node.amount,
-          node.targetTreeId
+          node.targetTreeId,
+          tabId
         ));
       }
-      
+
       return;
     }
-    
+
     // Update non-import nodes
     if (productionType === 'excess') {
-      tabDispatch(updateExcessProduction({ nodeId, treeId, amount }));
-    } 
+      dispatch(updateExcessProduction({ nodeId, treeId, amount }));
+    }
     else if (productionType === 'forced') {
-      tabDispatch(updateForcedProduction({ nodeId, treeId, amount }));
-    } 
-    
-    await Promise.resolve(); 
+      dispatch(updateForcedProduction({ nodeId, treeId, amount }));
+    }
+
+    await Promise.resolve();
     const stateAfterUpdate = getState();
-    const postUpdateDeps = stateAfterUpdate.planners[activeTabId]?.dependencies;
-    if (!postUpdateDeps) return;
-    
+    const postUpdateDeps = stateAfterUpdate.planners[activeTabId]?.dependencies
+                           ?? stateAfterUpdate.dependencies;
     const affectedNodesAfterUpdate = calculateAffectedNodes(
       postUpdateDeps.dependencyTrees,
       treeId,
@@ -347,24 +335,25 @@ export const updateTreeProduction =
       productionType,
       amount
     );
-    
+
     for (const node of affectedNodesAfterUpdate) {
-      await tabDispatch(updateTreeProduction(
+      await dispatch(updateTreeProduction(
         node.nodeId,
         node.treeId,
         node.productionType,
         node.amount,
-        node.targetTreeId
+        node.targetTreeId,
+        tabId
       ));
     }
-    
+
     // After updating children, trigger multi-source redistribution if needed
     if (productionType === 'excess' || productionType === 'forced') {
       const nodeAfterUpdate = findNodeById(postUpdateDeps.dependencyTrees[treeId], nodeId);
       if (nodeAfterUpdate && nodeAfterUpdate.children && nodeAfterUpdate.children.length > 0) {
         const hasImportChildren = nodeAfterUpdate.children.some(child => hasImportReference(child));
         if (hasImportChildren) {
-          await tabDispatch(redistributeChildImportsThunk({ parentNodeId: nodeId, treeId }));
+          await dispatch(redistributeChildImportsThunk({ parentNodeId: nodeId, treeId }));
         }
       }
     }

@@ -41,7 +41,7 @@ export const usePlannerExcessHandling = ({
         const tree = dependencies.dependencyTrees[nodeId];
         setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
         // AWAIT the thunk to ensure all cascading updates complete before transaction commits
-        await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess));
+        await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess, undefined, tabId));
       } else {
         let foundTreeId = '';
         for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
@@ -56,7 +56,7 @@ export const usePlannerExcessHandling = ({
           return;
         }
         // AWAIT the thunk to ensure all cascading updates complete before transaction commits
-        await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess));
+        await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess, undefined, tabId));
       }
 
       // Commit transaction AFTER all cascading updates are complete
