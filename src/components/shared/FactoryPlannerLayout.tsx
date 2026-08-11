@@ -3,9 +3,10 @@ import React, { ReactNode } from 'react';
 
 interface FactoryPlannerLayoutProps {
   commandBar: ReactNode;
+  tabBar?: ReactNode;
   content: ReactNode;
-  sidebar?: ReactNode; // Add optional sidebar prop
-  commandBarHeight: number; // Add prop for height
+  sidebar?: ReactNode;
+  commandBarHeight: number;
   containerStyle?: React.CSSProperties;
   commandBarContainerStyle?: React.CSSProperties;
   contentContainerStyle?: React.CSSProperties;
@@ -17,9 +18,10 @@ interface FactoryPlannerLayoutProps {
  */
 const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
   commandBar,
+  tabBar,
   content,
-  sidebar, // Destructure sidebar prop
-  commandBarHeight, // Destructure prop
+  sidebar,
+  commandBarHeight,
   containerStyle,
   commandBarContainerStyle,
   contentContainerStyle
@@ -40,31 +42,48 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
         top: 0,
         left: 0,
         width: '100%',
-        zIndex: 100, 
+        zIndex: 100,
         ...commandBarContainerStyle
       }}>
         {commandBar}
       </div>
-      
-      {/* Main Content Area (Flex Container below Command Bar) */}
+
+      {/* Below-CommandBar region: TabBar (optional) + Content + Sidebar */}
       <div style={{
         display: 'flex',
-        flex: 1, // Grow to fill remaining vertical space
-        marginTop: `${commandBarHeight}px`, 
-        overflow: 'hidden', // Prevent this container from scrolling, children handle it
-        ...contentContainerStyle // Apply outer styles here
+        flexDirection: 'column',
+        flex: 1,
+        marginTop: `${commandBarHeight}px`,
+        overflow: 'hidden',
+        ...contentContainerStyle,
       }}>
-        {/* Content (Tree View) */}
-        <div style={{ flex: 1, minWidth: 0, height: '100%' }}> {/* Allow shrinking, ensure height */}
-            {content} {/* PlannerContent goes here, handles its own scroll */} 
-        </div>
-        
-        {/* Sidebar (Conditionally Rendered) */}
-        {sidebar && (
-            <div style={{ height: '100%' }}> {/* Ensure sidebar takes full height */} 
-                {sidebar} {/* SummarySidebar goes here, handles its own scroll */} 
-            </div>
+        {/* Tab Bar - Below Command Bar */}
+        {tabBar && (
+          <div style={{
+            flexShrink: 0,
+            width: '100%',
+            zIndex: 99,
+          }}>
+            {tabBar}
+          </div>
         )}
+
+        {/* Main Content Area (horizontal flex: content + sidebar) */}
+        <div style={{
+          display: 'flex',
+          flex: 1,
+          overflow: 'hidden',
+        }}>
+          <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
+            {content}
+          </div>
+
+          {sidebar && (
+            <div style={{ height: '100%' }}>
+              {sidebar}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

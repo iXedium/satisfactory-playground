@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import CommandBar from "../../../components/CommandBar";
 import { useFactoryPlanner, TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
@@ -20,7 +20,7 @@ const LS_SUMMARY_VISIBLE_KEY = 'plannerSummaryVisible'; // Key for summary visib
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const FactoryPlanner: React.FC = () => {
+const FactoryPlanner: React.FC<{ tabBar?: ReactNode }> = ({ tabBar }) => {
   const {
     // State
     dependencies,
@@ -395,6 +395,7 @@ const FactoryPlanner: React.FC = () => {
 
   return (
     <FactoryPlannerLayout
+      tabBar={tabBar}
       commandBar={
         <CommandBar
           ref={commandBarRef}
