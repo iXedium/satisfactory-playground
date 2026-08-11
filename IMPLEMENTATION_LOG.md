@@ -247,3 +247,43 @@ yarn build: not yet run (no component changes)
 
 ### Next step
 Phase 4 — single-tab parity tests + component migration to tab-scoped selectors
+
+***
+
+## Phase 4 — Single-tab parity and selector migration
+**Status:** Partial complete  
+**Estimated overall progress:** 28%
+
+### Phase 4a — Selector migration (deferred)
+Root-level selectors (\state.dependencies\, \state.recipeSelections\, \state.history\) 
+cannot be migrated to \state.planners[tabId]\ until \PlannerState\ types use proper 
+\DependencyState\ instead of \Record<string, unknown>\. This requires a type fix 
+in the workspace package. Deferred to Phase 5.
+
+### Phase 4b — Tab-scoped parity tests (complete)
+**File:** \	ests/integration/tabIsolation.test.ts\ (6 new tests)
+
+| Test | Result |
+|------|--------|
+| Tree creation with meta.tabId | Pass — planners[tid].dependencies.dependencyTrees populated |
+| Per-tab history stores snapshot | Pass — direct \_planner/pushSnapshot\ test |
+| Per-tab undoAction pops undo stack | Pass |
+| Per-tab redoAction pops redo stack | Pass |
+| Tab A operations do NOT affect Tab B | Pass — isolated dependencyTrees |
+| Active operations tracks begin/end | Pass |
+
+### Test results
+\\\
+yarn type-check: passes
+yarn test: 68 passed (62 original + 6 new), 0 failed
+\\\
+
+### Open issues
+- \legacyUndoAction\/\legacyRedoAction\ retained — used by 28 call sites in 
+  \	ests/integration/undoRedo.test.ts\ which uses root-level store
+- Selector migration deferred (PlannerState type limitation)
+- localStorage keys not yet scoped to tabId (deferred to Phase 5)
+- No multi-tab UI yet
+
+### Next step
+Phase 5 — multi-tab UI (TabBar, WorkspaceLayout, CommandBar adaptation, busy overlay)
