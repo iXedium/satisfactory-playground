@@ -9,8 +9,8 @@ new-architecture
 ## 2. Last Commit
 
 ```
-SHA: 7d1e8cd
-Message: Fix: Ex-import state survives tab switch and reload
+SHA: 10c8cc5
+Message: Fix: Manual tree order initializes from Redux on tab mount
 Date: 2026-08-11
 ```
 
