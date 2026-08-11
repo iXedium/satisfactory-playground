@@ -30,52 +30,43 @@ export const usePlannerExcessHandling = ({
   const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    dispatch(beginHistoryTransaction(`Set excess to ${excess}`) as unknown as Parameters<typeof dispatch>[0]);
-    
-    try {
-      // Update local map immediately
-      setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
-      
-      // Determine the treeId and rootNode's uniqueId
-      if (dependencies.dependencyTrees[nodeId]) { 
-        const tree = dependencies.dependencyTrees[nodeId];
-        setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
-        // AWAIT the thunk to ensure all cascading updates complete before transaction commits
-        await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess, undefined, tabId));
-      } else {
-        let foundTreeId = '';
-        for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
-          const node = findNodeById(tree, nodeId);
-          if (node) {
-            foundTreeId = treeId;
-            break;
-          }
-        }
-        if (!foundTreeId) {
-          dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
-          return;
-        }
-        // AWAIT the thunk to ensure all cascading updates complete before transaction commits
-        await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess, undefined, tabId));
-      }
+    // Update local map immediately
+    setExcessMap(prevMap => ({ ...prevMap, [nodeId]: excess }));
 
-      // Commit transaction AFTER all cascading updates are complete
-      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
-      
-      // --- Trigger Node Type Conversion Check (runs after transaction commit) ---
-      const stateBeforeChecks = { ...dependencies.dependencyTrees };
-      const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
-      const checkPromises = rootIdsToCheck.map(rootId => 
-          dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: rootId, tabId }))
-      );
-      await Promise.allSettled(checkPromises);
-      
-    } catch (error) {
-      // On error, still commit to avoid leaving transaction open
-      dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
-      throw error;
+    // Step 1: Run the full cascading update with NO open transaction.
+    // All child updateForcedProduction dispatches reach the store unblocked.
+    if (dependencies.dependencyTrees[nodeId]) { 
+      const tree = dependencies.dependencyTrees[nodeId];
+      setExcessMap(prevMap => ({ ...prevMap, [tree.uniqueId]: excess })); 
+      await dispatch(updateTreeProduction(tree.uniqueId, nodeId, 'excess', excess, undefined, tabId));
+    } else {
+      let foundTreeId = '';
+      for (const [treeId, tree] of Object.entries(dependencies.dependencyTrees)) {
+        const node = findNodeById(tree, nodeId);
+        if (node) {
+          foundTreeId = treeId;
+          break;
+        }
+      }
+      if (!foundTreeId) return;
+      await dispatch(updateTreeProduction(nodeId, foundTreeId, 'excess', excess, undefined, tabId));
     }
-  }, [dependencies, dispatch, setExcessMap]);
+
+    // Step 2: The cascade has fully settled. Capture a snapshot of the
+    // post-cascade state for the undo stack. Undoing this snapshot reverts
+    // to the previous undo entry (pre-cascade state).
+    dispatch(beginHistoryTransaction(`Set excess to ${excess}`) as unknown as Parameters<typeof dispatch>[0]);
+    dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
+
+    // Step 3: Trigger node type conversion checks (unchanged)
+    const stateAfterChecks = { ...dependencies.dependencyTrees };
+    const rootIdsToCheck = Object.keys(stateAfterChecks).filter(id => stateAfterChecks[id].isRoot);
+    await Promise.allSettled(
+      rootIdsToCheck.map(rootId => 
+        dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: rootId, tabId }))
+      )
+    );
+  }, [dependencies, dispatch, setExcessMap, tabId]);
 
   return {
     handleExcessChange,
