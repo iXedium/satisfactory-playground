@@ -32,6 +32,7 @@ export const usePlannerRecipeManagement = ({
   excessMap,
 }: PlannerRecipeManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
 
@@ -107,7 +108,7 @@ export const usePlannerRecipeManagement = ({
       
       if (autoImportEnabled) {
           try {
-              await dispatch(autoImportNodeChildrenThunk(nodeId));
+              await dispatch(autoImportNodeChildrenThunk({ parentNodeId: nodeId, tabId }));
           } catch (error) {
               logger.error(`[Recipe Change] Error during autoImportNodeChildrenThunk for ${nodeId}:`, error);
           }
@@ -117,6 +118,7 @@ export const usePlannerRecipeManagement = ({
       for (const oldTargetId of oldImportTargetIds) {
           try {
               dispatch(requestDependencyCheckThunk({ 
+                  tabId,
                   nodeIdToCheck: oldTargetId, 
                   disconnectedConsumerId: nodeId
               }));

@@ -84,7 +84,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
   Omit<CalculateAndAutoImportArgs, 'tabId' | 'description'> // Argument type (without tabId/description, added by createTabThunk)
 >(
   'dependency/calculateAndAutoImport',
-  async (args, { getState, dispatch }) => {
+  async (args, { getState, dispatch, tabId }) => {
     const { 
       selectedItem, 
       selectedRecipeId,
@@ -149,7 +149,7 @@ export const calculateAndAutoImportThunk = createTabThunk<
       // 3. Trigger Auto-Import for the children of the newly added tree
       // 
       try {
-        await dispatch(autoImportNodeChildrenThunk(mainTreeId));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: mainTreeId, tabId }));
         // 
       } catch (err) {
         // Still log errors during dispatch
@@ -192,13 +192,12 @@ export const calculateAndAutoImportThunk = createTabThunk<
 );
 
 // --- Thunk for Destroying a Node and its Dependencies ---
-export const destroyNodeRecursiveThunk = createAsyncThunk<
+export const destroyNodeRecursiveThunk = createTabThunk<
   void,
-  string, // Argument: nodeIdToDestroy
-  { dispatch: AppDispatch; state: RootState }
+  { treeId: string }
 >(
   'dependency/destroyNodeRecursive',
-  async (nodeIdToDestroy, { getState, dispatch }) => {
+  async ({ treeId: nodeIdToDestroy }, { getState, dispatch, tabId }) => {
     const stateBeforeDelete = getState();
     const allTrees = stateBeforeDelete.dependencies.dependencyTrees;
     const nodeToDestroy = allTrees[nodeIdToDestroy];
@@ -222,7 +221,7 @@ export const destroyNodeRecursiveThunk = createAsyncThunk<
     //    Do this BEFORE deleting the node so the unimport logic can access its recipe.
     // logger.info(`[Thunk/Destroy V2] Dispatching unimport for ${nodesToUnimport.length} consumers...`);
     const unimportPromises = nodesToUnimport.map(consumerInfo => 
-        dispatch(unimportNodeThunk(consumerInfo.consumerNodeId))
+        dispatch(unimportNodeThunk({ nodeId: consumerInfo.consumerNodeId }))
     );
     // Wait for unimports to finish their state updates BEFORE removing the node.
     // This keeps all cascading updates inside the caller's history transaction so
@@ -267,17 +266,17 @@ export const destroyNodeRecursiveThunk = createAsyncThunk<
 
 // --- Thunk for Checking Dependency Need After Disconnect ---
 interface RequestDependencyCheckArgs {
+    tabId?: string;
     nodeIdToCheck: string;
     disconnectedConsumerId: string;
 }
-export const requestDependencyCheckThunk = createAsyncThunk<
+export const requestDependencyCheckThunk = createTabThunk<
   void,
-  RequestDependencyCheckArgs,
-  { dispatch: AppDispatch; state: RootState }
+  Omit<RequestDependencyCheckArgs, 'tabId' | 'description'>
 >(
   'dependency/requestDependencyCheck',
   // Prefix unused parameter with underscore
-  async ({ nodeIdToCheck, disconnectedConsumerId: _disconnectedConsumerId }, { getState, dispatch }) => { 
+  async ({ nodeIdToCheck, disconnectedConsumerId: _disconnectedConsumerId }, { getState, dispatch, tabId }) => { 
     const state = getState();
     const nodeToCheck = state.dependencies.dependencyTrees[nodeIdToCheck];
 
@@ -329,19 +328,18 @@ export const requestDependencyCheckThunk = createAsyncThunk<
     if (isStillNeeded) {
       await dispatch(recalculateAndUpdateRootAmountThunk({ rootNodeId: nodeIdToCheck, externalDemandChange: undefined }));
     } else {
-      await dispatch(destroyNodeRecursiveThunk(nodeIdToCheck));
+      await dispatch(destroyNodeRecursiveThunk({ treeId: nodeIdToCheck }));
     }
   }
 );
 
 // --- Thunk for Checking and Converting Node Type --- 
-export const checkAndConvertNodeTypeThunk = createAsyncThunk<
-  string | undefined, // Return the ID of the node if converted B->N, else undefined
-  string, // Argument: targetTreeId
-  { dispatch: AppDispatch; state: RootState }
+export const checkAndConvertNodeTypeThunk = createTabThunk<
+  string | undefined,
+  { rootNodeId: string }
 >(
-  'dependency/checkAndConvertNodeType', // Renamed action type
-  async (targetTreeId, { getState, dispatch }) => {
+  'dependency/checkAndConvertNodeType',
+  async ({ rootNodeId: targetTreeId }, { getState, dispatch, tabId }) => {
     const state = getState();
     const targetNode = state.dependencies.dependencyTrees[targetTreeId];
 
@@ -427,7 +425,7 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
         await dispatch(updateNodeProperties({ nodeId: targetTreeId, updatedNode: { children: newChildren } }));
         
         // --- STEP 3: Trigger auto-import for the new children --- 
-        await dispatch(autoImportNodeChildrenThunk(targetTreeId));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: targetTreeId }));
         
       } catch (error) {
         logger.error(`[Thunk/Convert B->N] Error during children calculation/update or auto-import dispatch for ${targetTreeId}:`, error);
@@ -1323,13 +1321,12 @@ export const maxImportAmountThunk = createAsyncThunk<
 
 // --- THUNK TO APPLY AUTO-IMPORT TO CHILDREN (Restored from 1ce0b34) ---
 // ENHANCED: Now supports multi-source imports - distributing demand across multiple roots
-export const autoImportNodeChildrenThunk = createAsyncThunk<
+export const autoImportNodeChildrenThunk = createTabThunk<
   void,
-  string, // parentNodeId
-  { dispatch: AppDispatch; state: RootState }
+  { parentNodeId: string }
 >(
   'dependency/autoImportNodeChildren',
-  async (parentNodeId, { getState, dispatch }) => {
+  async ({ parentNodeId }, { getState, dispatch, tabId }) => {
     const state = getState();
     const parentNode = state.dependencies.dependencyTrees[parentNodeId];
     const externalImports = state.dependencies.externalImports;
@@ -1514,7 +1511,7 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
             if (existingByproductRoot) {
                 // Found BYPRODUCT root -> Convert it to NORMAL
                 try {
-                    await dispatch(checkAndConvertNodeTypeThunk(existingByproductRoot.uniqueId));
+                    await dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: existingByproductRoot.uniqueId, tabId }));
                     targetTreeId = existingByproductRoot.uniqueId;
                     existingRootFound = true;
                 } catch (error) {
@@ -1585,7 +1582,7 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
                   targetTreeId = newRootId;
 
                   // 9. RECURSION: Process the *children we just added* 
-                  await dispatch(autoImportNodeChildrenThunk(newRootId));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: newRootId }));
 
               } catch (error) {
                   logger.error(`[AutoImport] Failed NORMAL root for ${child.id}:`, error);
@@ -1619,22 +1616,20 @@ export const autoImportNodeChildrenThunk = createAsyncThunk<
 
 // Define Args Interface for Recalculate Thunk
 interface RecalculateArgs {
+  tabId?: string;
   rootNodeId: string;
-  // Optional: Provide the demand from a specific importer that just changed/connected
   externalDemandChange?: { 
-    importerNodeId: string; // uniqueId of the node now importing
-    amount: number;          // the amount this specific importer requires
+    importerNodeId: string;
+    amount: number;
   };
 }
 
-// --- THUNK TO RECALCULATE AND UPDATE ROOT NODE AMOUNT --- 
-export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
+export const recalculateAndUpdateRootAmountThunk = createTabThunk<
   void, 
-  RecalculateArgs, // Use the new args interface
-  { dispatch: AppDispatch; state: RootState }
+  Omit<RecalculateArgs, 'tabId' | 'description'>
 >(
   'dependency/recalculateAndUpdateRootAmount',
-  async ({ rootNodeId, externalDemandChange }, { getState, dispatch }) => { // Destructure args
+  async ({ rootNodeId, externalDemandChange }, { getState, dispatch, tabId }) => {
     const state = getState();
     const rootNode = state.dependencies.dependencyTrees[rootNodeId];
 
@@ -1734,25 +1729,25 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
             await cascadeChildUpdates(childUpdates);
         }
         
-        await dispatch(checkAndConvertNodeTypeThunk(rootNodeId));
+        await dispatch(checkAndConvertNodeTypeThunk({ rootNodeId }));
     }
   }
 ); 
 
 // --- THUNK TO SET A NODE AS AN IMPORT AND UPDATE TARGET AMOUNT --- 
 interface SetNodeAsImportArgs {
+  tabId?: string;
   childNodeId: string;
   targetRootId: string;
-  importingAmount: number; // Add the amount being imported
+  importingAmount: number;
 }
 
-export const setNodeAsImportThunk = createAsyncThunk<
+export const setNodeAsImportThunk = createTabThunk<
   void,
-  SetNodeAsImportArgs, // Use updated interface
-  { dispatch: AppDispatch; state: RootState }
+  Omit<SetNodeAsImportArgs, 'tabId' | 'description'>
 >(
   'dependency/setNodeAsImport',
-  async ({ childNodeId, targetRootId, importingAmount }, { getState, dispatch }) => { 
+  async ({ childNodeId, targetRootId, importingAmount }, { getState, dispatch, tabId }) => { 
 
     // 1. Get current state to verify nodes exist (optional, but good practice)
     const state = getState();
@@ -1813,13 +1808,12 @@ const findNodeInAnyTree = (trees: Record<string, DependencyNode>, nodeId: string
 };
 
 // --- THUNK TO UNIMPORT A NODE --- 
-export const unimportNodeThunk = createAsyncThunk<
+export const unimportNodeThunk = createTabThunk<
   void, 
-  string, // nodeIdToUnimport
-  { dispatch: AppDispatch; state: RootState }
+  { nodeId: string }
 >(
   'dependency/unimportNode',
-  async (nodeIdToUnimport, { getState, dispatch }) => {
+  async ({ nodeId: nodeIdToUnimport }, { getState, dispatch, tabId }) => {
     // logger.debug(`[Thunk/Unimport] Request to unimport node: ${nodeIdToUnimport}`);
     const state = getState();
     const trees = state.dependencies.dependencyTrees;
@@ -2126,7 +2120,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
         }));
 
         // Trigger auto-import for the new root's children
-        await dispatch(autoImportNodeChildrenThunk(newRootId));
+        await dispatch(autoImportNodeChildrenThunk({ parentNodeId: newRootId }));
       }
 
       dispatch(setExternalImports({ itemId, value: false }));

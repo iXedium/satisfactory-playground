@@ -166,6 +166,7 @@ export interface FactoryPlannerHookResult {
 
 export const useFactoryPlanner = (): FactoryPlannerHookResult => {
   const dispatch: AppDispatch = useDispatch();
+  const tabId = useSelector((state: RootState) => state.workspace.activeTabId) || 'default';
   const dependencies = useSelector((state: RootState) => state.dependencies);
   const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
   

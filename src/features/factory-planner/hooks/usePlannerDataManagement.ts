@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
   deleteTree, 
@@ -36,12 +36,13 @@ export const usePlannerDataManagement = ({
   // Destructure setters if added above
 }: PlannerDataManagementProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   const handleDeleteTree = useCallback(async (treeId: string) => {
     // Start history transaction for delete
     dispatch(beginHistoryTransaction(`Delete tree`) as unknown as Parameters<typeof dispatch>[0]);
     try {
-      await dispatch(destroyNodeRecursiveThunk(treeId));
+      await dispatch(destroyNodeRecursiveThunk({ treeId }));
       // Commit transaction
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
     } catch (error) {

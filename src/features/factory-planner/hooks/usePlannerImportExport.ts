@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store';
 import { logger } from '../../../utils/logger';
 import { DependencyNode } from '../../../types';
 import { DependencyState } from '../store/dependencySlice';
@@ -37,6 +37,7 @@ export const usePlannerImportExport = ({
   handleCreateNewTree,
 }: PlannerImportExportProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   // Original handleImportNode logic (now internal)
   const handleImportNodeInternal = useCallback(async ( 
@@ -50,13 +51,6 @@ export const usePlannerImportExport = ({
     }
     
     
-    const targetTree = dependencies.dependencyTrees[targetTreeId];
-    if (!targetTree) {
-      logger.warn(`[IMPORT WARNING] Target tree ${targetTreeId} not found in current state. This may be expected if the tree was just created.`);
-    } else {
-      // ... (optional debug logging for existing imports) ...
-    }
-    
     dispatch(importNodeAction({
       nodeId: sourceNode.uniqueId,
       sourceTreeId,
@@ -64,17 +58,13 @@ export const usePlannerImportExport = ({
       shouldImport: true
     }));
 
-    // Trigger children auto-import for the target tree and recalculate the
-    // target tree's downstream node amounts. Redux dispatch is synchronous,
-    // so the state from importNodeAction is already committed here — we can
-    // await these thunks directly (no setTimeout) to keep them inside the
-    // caller's history transaction as a single undo step.
     await dispatch(recalculateAndUpdateRootAmountThunk({
+      tabId,
       rootNodeId: targetTreeId,
       externalDemandChange: undefined,
     }));
-    await dispatch(autoImportNodeChildrenThunk(targetTreeId));
-  }, [dispatch]);
+    await dispatch(autoImportNodeChildrenThunk({ parentNodeId: targetTreeId, tabId }));
+  }, [dispatch, tabId]);
 
   // Original importNodeForTree logic (now internal)
   const importNodeForTreeInternal = useCallback(async (nodeId: string) => {
@@ -109,8 +99,6 @@ export const usePlannerImportExport = ({
       const newTreeId = `${foundNode.id}-${Date.now()}`; // Simple ID generation for now
       try {
         await handleCreateNewTree(foundNode.id, foundNode.amount, newTreeId, foundNode.recipe?.id || null, true);
-        // Wait a moment for state update? This is tricky.
-        await new Promise(res => setTimeout(res, 50)); 
         targetTreeId = newTreeId;
       } catch (error) {
          logger.error("[IMPORT ERROR] Failed to create new tree during import:", error);
@@ -126,13 +114,13 @@ export const usePlannerImportExport = ({
   const handleUnimport = useCallback(async (nodeId: string) => {
     dispatch(beginHistoryTransaction('Unimport node') as unknown as Parameters<typeof dispatch>[0]);
     try {
-      await dispatch(unimportNodeThunk(nodeId));
+      await dispatch(unimportNodeThunk({ nodeId, tabId }));
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
     } catch (error) {
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
       throw error;
     }
-  }, [dispatch]);
+  }, [dispatch, tabId]);
 
   // Public handleImportNode: Make this async to match expected return type
   const handleImportNodeById = useCallback(async (nodeId: string) => {

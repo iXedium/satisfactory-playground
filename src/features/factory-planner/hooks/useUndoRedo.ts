@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { AppDispatch, RootState } from '../../../store';
 import { 
   selectCanUndo, 
   selectCanRedo,
@@ -8,7 +8,7 @@ import {
   selectLastRedoAction,
   clearHistory,
 } from '../store/historySlice';
-import { undoAction, redoAction, legacyUndoAction, legacyRedoAction } from '../store/historyMiddleware';
+import { undoAction, redoAction } from '../store/historyMiddleware';
 import { logger } from '../../../utils/logger';
 
 /**
@@ -23,6 +23,7 @@ import { logger } from '../../../utils/logger';
  */
 export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
   
   // Selectors
   const canUndo = useSelector(selectCanUndo);
@@ -34,7 +35,7 @@ export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const handleUndo = useCallback(() => {
     if (canUndo) {
       logger.info('[useUndoRedo] Performing undo');
-      dispatch(legacyUndoAction() as unknown as Parameters<typeof dispatch>[0]);
+      dispatch(undoAction(tabId) as unknown as Parameters<typeof dispatch>[0]);
     }
   }, [dispatch, canUndo]);
   
@@ -42,7 +43,7 @@ export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
   const handleRedo = useCallback(() => {
     if (canRedo) {
       logger.info('[useUndoRedo] Performing redo');
-      dispatch(legacyRedoAction() as unknown as Parameters<typeof dispatch>[0]);
+      dispatch(redoAction(tabId) as unknown as Parameters<typeof dispatch>[0]);
     }
   }, [dispatch, canRedo]);
   

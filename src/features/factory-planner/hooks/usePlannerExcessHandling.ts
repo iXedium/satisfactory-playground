@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store';
 import { DependencyNode } from '../../../types';
 import { 
     updateTreeProduction, 
@@ -26,9 +26,9 @@ export const usePlannerExcessHandling = ({
   setExcessMap,
 }: PlannerExcessHandlingProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const tabId = useSelector((s: RootState) => s.workspace.activeTabId) || 'default';
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
-    // Start transaction for the entire excess change operation
     dispatch(beginHistoryTransaction(`Set excess to ${excess}`) as unknown as Parameters<typeof dispatch>[0]);
     
     try {
@@ -61,17 +61,13 @@ export const usePlannerExcessHandling = ({
       // Commit transaction AFTER all cascading updates are complete
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
       
-      // --- Trigger Node Type Conversion Check (OUTSIDE transaction - these are follow-up effects) --- 
-      setTimeout(async () => {
-          const stateBeforeChecks = { ...dependencies.dependencyTrees };
-          const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
-
-          const checkPromises = rootIdsToCheck.map(rootId => 
-              dispatch(checkAndConvertNodeTypeThunk(rootId))
-          );
-
-          await Promise.allSettled(checkPromises);
-      }, 10);
+      // --- Trigger Node Type Conversion Check (runs after transaction commit) ---
+      const stateBeforeChecks = { ...dependencies.dependencyTrees };
+      const rootIdsToCheck = Object.keys(stateBeforeChecks).filter(id => stateBeforeChecks[id].isRoot);
+      const checkPromises = rootIdsToCheck.map(rootId => 
+          dispatch(checkAndConvertNodeTypeThunk({ rootNodeId: rootId, tabId }))
+      );
+      await Promise.allSettled(checkPromises);
       
     } catch (error) {
       // On error, still commit to avoid leaving transaction open

@@ -3,7 +3,7 @@ import { AppDispatch, RootState } from '../../../store';
 import { generateOperationId } from './operationTracking';
 
 export interface TabThunkArg {
-  tabId: string;
+  tabId?: string;
   description?: string;
 }
 

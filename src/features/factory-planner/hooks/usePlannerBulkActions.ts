@@ -56,7 +56,7 @@ export const usePlannerBulkActions = ({
     dispatch(beginHistoryTransaction('Delete all chains') as unknown as Parameters<typeof dispatch>[0]);
     try {
       for (const treeId of treeIds) {
-        await dispatch(destroyNodeRecursiveThunk(treeId));
+        await dispatch(destroyNodeRecursiveThunk({ treeId }));
       }
       dispatch(commitHistoryTransaction() as unknown as Parameters<typeof dispatch>[0]);
     } catch {
