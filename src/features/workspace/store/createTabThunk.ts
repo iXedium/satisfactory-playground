@@ -17,7 +17,7 @@ export function createTabThunk<Returned, ThunkArg extends Record<string, unknown
   typePrefix: string,
   payloadCreator: (
     arg: ThunkArg,
-    api: { dispatch: AppDispatch; getState: () => RootState }
+    api: { dispatch: AppDispatch; getState: () => RootState; tabId: string }
   ) => Promise<Returned>
 ) {
   return createAsyncThunk<Returned, ThunkArg & TabThunkArg>(
@@ -40,6 +40,7 @@ export function createTabThunk<Returned, ThunkArg extends Record<string, unknown
         const scoped = {
           dispatch: scopedDispatch,
           getState: () => rawAPI.getState() as RootState,
+          tabId,
         };
         return await payloadCreator(rest as ThunkArg, scoped);
       } finally {
