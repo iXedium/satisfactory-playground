@@ -180,7 +180,7 @@ export function calculateChildProductionNeeds(
 }
 
 // Refactored: Calculates which nodes are affected by a production change on a specific node.
-function calculateAffectedNodes(
+export function calculateAffectedNodes(
   trees: Record<string, DependencyNode>,
   treeId: string,
   nodeId: string,

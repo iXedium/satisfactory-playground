@@ -13,7 +13,9 @@ import {
 } from './importExportLogic';
 import {
   productionSliceExtraReducers,
+  calculateAffectedNodes,
 } from './productionUpdateLogic';
+import type { AffectedNodeUpdate } from './productionUpdateLogic';
 import { logger } from '../../../utils/logger';
 
 // --- Define Actions needed by thunks/reducers --- 
@@ -307,63 +309,52 @@ const dependencySlice = createSlice({
       };
       findAndUpdate(tree);
 
-      // --- Import-target propagation ---
-      // After updating direct children, propagate changed amounts to root
-      // nodes that are imported into the modified tree. This reads the
-      // already-mutated Immer draft so import child amounts updated above
-      // are reflected in the demand sum.
-      const processedTargets = new Set<string>();
-      processedTargets.add(treeId);
+      // --- Import-target propagation using pre-tabs cascade logic ---
+      // calculateAffectedNodes already handles multi-importer aggregation
+      // (calculateImportTargetUpdate scans ALL trees for every importer)
+      // and child amount calculation (calculateChildProductionNeeds).
+      // Process one level at a time in a BFS loop so ALL importers' amounts
+      // are updated before their shared downstream targets are aggregated.
+      let queue: AffectedNodeUpdate[] = [{
+        nodeId, treeId, productionType: 'excess', amount: excess,
+      }];
+      const processed = new Set<string>();
 
-      const propagateFromTree = (startTreeId: string): void => {
-        const t = state.dependencyTrees[startTreeId];
-        if (!t) return;
+      while (queue.length > 0) {
+        const nextQueue: AffectedNodeUpdate[] = [];
 
-        const collectImportTargets = (n: DependencyNode): Set<string> => {
-          const ids = new Set<string>();
-          const ref = getImportReference(n);
-          if (ref?.targetTreeId) ids.add(ref.targetTreeId);
-          if (n.children) n.children.forEach(c => {
-            collectImportTargets(c).forEach(id => ids.add(id));
-          });
-          return ids;
-        };
+        for (const item of queue) {
+          const key = `${item.treeId}:${item.nodeId}`;
+          if (processed.has(key)) continue;
+          processed.add(key);
 
-        const targetIds = collectImportTargets(t);
+          const itemTree = state.dependencyTrees[item.treeId];
+          if (!itemTree) continue;
+          const itemNode = findNodeById(itemTree, item.nodeId);
+          if (!itemNode) continue;
 
-        for (const targetId of targetIds) {
-          if (processedTargets.has(targetId)) continue;
-          processedTargets.add(targetId);
-
-          const targetRoot = state.dependencyTrees[targetId];
-          if (!targetRoot) continue;
-
-          // Sum demand from ALL importers across all trees for this target.
-          // Uses the live Immer draft → includes amounts just updated above.
-          let totalDemand = 0;
-          const sumImportDemand = (n: DependencyNode): number => {
-            let sum = 0;
-            const ref = getImportReference(n);
-            if (ref?.targetTreeId === targetId) sum += n.amount || 0;
-            if (n.children) n.children.forEach(c => { sum += sumImportDemand(c); });
-            return sum;
-          };
-          for (const anyTree of Object.values(state.dependencyTrees)) {
-            totalDemand += sumImportDemand(anyTree);
+          // Apply the production change
+          if (item.productionType === 'forced') {
+            if (Math.abs((itemNode.amount || 0) - item.amount) > 0.001) {
+              itemNode.amount = item.amount;
+              recalcChildren(itemNode);
+            }
           }
 
-          if (totalDemand !== targetRoot.amount) {
-            targetRoot.amount = totalDemand;
-            recalcChildren(targetRoot);
-          }
+          // Get downstream affected nodes (uses live Immer draft → sees
+          // amounts updated earlier in this same pass)
+          const affected = calculateAffectedNodes(
+            state.dependencyTrees as Record<string, DependencyNode>,
+            item.treeId, item.nodeId, item.productionType, item.amount,
+          );
 
-          // Continue cascading from this target root
-          // (its children may import other targets, e.g. Iron Ingot → Iron Ore)
-          propagateFromTree(targetId);
+          for (const a of affected) {
+            nextQueue.push(a);
+          }
         }
-      };
 
-      propagateFromTree(treeId);
+        queue = nextQueue;
+      }
 
       // --- Recalculate accumulated ---
       const newAccumulated: Record<string, AccumulatedNode> = {};
