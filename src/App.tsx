@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
-import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner";
+import WorkspaceLayout from "./features/workspace/components/WorkspaceLayout";
 import "./styles/App.css";
 import { useInitialization, InitializationProvider } from "./contexts/InitializationContext";
 import { HideToggleDragProvider } from "./contexts/HideToggleDragContext";
@@ -84,7 +84,7 @@ const App: React.FC = () => {
 
   return (
     <div>
-      <FactoryPlanner />
+      <WorkspaceLayout />
     </div>
   );
 };
