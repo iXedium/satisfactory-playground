@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
-import FactoryPlanner from "./features/factory-planner/components/FactoryPlanner";
+import WorkspaceLayout from "./features/factory-planner/components/shell/WorkspaceLayout";
 import "./styles/App.css";
 import { useInitialization, InitializationProvider } from "./contexts/InitializationContext";
-import { HideToggleDragProvider } from "./contexts/HideToggleDragContext";
-import { TreeNavigationProvider } from "./contexts/TreeNavigationContext";
 
 const App: React.FC = () => {
   const { isLoading, isError, errorMessage } = useInitialization();
@@ -79,20 +77,12 @@ const App: React.FC = () => {
     );
   }
 
-  return (
-    <div>
-      <FactoryPlanner />
-    </div>
-  );
+  return <WorkspaceLayout />;
 };
 
 const AppWithProvider: React.FC = () => (
   <InitializationProvider>
-    <HideToggleDragProvider>
-      <TreeNavigationProvider>
-        <App />
-      </TreeNavigationProvider>
-    </HideToggleDragProvider>
+    <App />
   </InitializationProvider>
 );
 
