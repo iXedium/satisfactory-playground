@@ -21,3 +21,7 @@ export * from './consumptionUtils';
 // Add exports for the new utility files
 export * from './treeCalculationCache';
 export * from './importNodeLogic';export * from './logger';
+
+export function getNamespacedKey(baseKey: string, tabId: string): string {
+  return `lastSession_${tabId}_${baseKey}`;
+}

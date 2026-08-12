@@ -9,7 +9,7 @@ import {
 } from '../../../utils/nodeReferenceUtils';
 import { findNodeById } from '../../../utils/treeUtils';
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { AppDispatch, RootState } from '../../../store';
+import { PlannerAppDispatch, PlannerRootState } from '../../../store/plannerStore';
 import { 
   getRecipeByOutput, 
   getRecipesForItem
@@ -28,10 +28,10 @@ import {
   AffectedNodeUpdate 
 } from './productionUpdateLogic';
 
-// Store the last known recipes for nodes that were converted to byproduct
-// This will be used to restore the recipe when converting back to normal
-// Use undefined instead of null for consistency with DependencyNode type
-const nodeRecipeCache: Record<string, Recipe | undefined> = {};
+// Node recipe cache is now passed via createAsyncThunk extra argument
+// to support per-store isolation in multi-tab mode.
+// Use createImportLogic(cache: Map) to create a cache Map and pass it
+// as the store's thunk extraArgument.
 
 // --- Define the expected Slice State Shape locally --- 
 interface ImportExportDependencyState {
@@ -80,7 +80,7 @@ interface CalculateAndAutoImportResult {
 export const calculateAndAutoImportThunk = createAsyncThunk<
   CalculateAndAutoImportResult, // Return type
   CalculateAndAutoImportArgs, // Argument type
-  { dispatch: AppDispatch; state: RootState } // ThunkApi config
+  { dispatch: PlannerAppDispatch; state: PlannerRootState } // ThunkApi config
 >(
   'dependency/calculateAndAutoImport',
   async (args, { getState, dispatch }) => {
@@ -194,7 +194,7 @@ export const calculateAndAutoImportThunk = createAsyncThunk<
 export const destroyNodeRecursiveThunk = createAsyncThunk<
   void,
   string, // Argument: nodeIdToDestroy
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/destroyNodeRecursive',
   async (nodeIdToDestroy, { getState, dispatch }) => {
@@ -272,7 +272,7 @@ interface RequestDependencyCheckArgs {
 export const requestDependencyCheckThunk = createAsyncThunk<
   void,
   RequestDependencyCheckArgs,
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/requestDependencyCheck',
   // Prefix unused parameter with underscore
@@ -335,12 +335,12 @@ export const requestDependencyCheckThunk = createAsyncThunk<
 
 // --- Thunk for Checking and Converting Node Type --- 
 export const checkAndConvertNodeTypeThunk = createAsyncThunk<
-  string | undefined, // Return the ID of the node if converted B->N, else undefined
-  string, // Argument: targetTreeId
-  { dispatch: AppDispatch; state: RootState }
+  string | undefined,
+  string,
+  { dispatch: PlannerAppDispatch; state: PlannerRootState; extra: Map<string, Recipe | undefined> }
 >(
-  'dependency/checkAndConvertNodeType', // Renamed action type
-  async (targetTreeId, { getState, dispatch }) => {
+  'dependency/checkAndConvertNodeType',
+  async (targetTreeId, { getState, dispatch, extra: nodeRecipeCache }) => {
     const state = getState();
     const targetNode = state.dependencies.dependencyTrees[targetTreeId];
 
@@ -351,18 +351,15 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
     // --- Scenario 1: Convert Byproduct to Normal --- 
     if (targetNode.isByproduct && targetNode.amount > 0) { 
       
-      // Try to use cached recipe first, fall back to default recipe if needed
-      let recipeToUse = nodeRecipeCache[targetTreeId];
+      let recipeToUse = nodeRecipeCache.get(targetTreeId);
       
       if (!recipeToUse) {
-        // Fall back to default recipe if no cached recipe available
       const defaultRecipe = await getRecipeByOutput(targetNode.id);
         if (defaultRecipe) {
           recipeToUse = defaultRecipe;
         }
       } else {
-        // Remove from cache after using
-        delete nodeRecipeCache[targetTreeId];
+        nodeRecipeCache.delete(targetTreeId);
       }
       
       if (!recipeToUse) {
@@ -443,7 +440,7 @@ export const checkAndConvertNodeTypeThunk = createAsyncThunk<
       if (targetNode.recipe) {
         //logger.info(`[Thunk/Convert] Caching recipe ${targetNode.recipe.id} for ${targetTreeId} for potential future B->N conversion.`);
         // Ensure undefined is stored if recipe is undefined (though check prevents this)
-        nodeRecipeCache[targetTreeId] = targetNode.recipe || undefined; 
+        nodeRecipeCache.set(targetTreeId, targetNode.recipe || undefined); 
       }
 
       // Store original children *before* clearing them
@@ -769,8 +766,8 @@ const applyDistributionPlan = async (
   distributionPlan: { rootId: string; amount: number }[],
   importRef: { targetTreeId: string; targetNodeId: string },
   parentNodeId: string,
-  dispatch: AppDispatch,
-  getState: () => RootState
+  dispatch: PlannerAppDispatch,
+  getState: () => PlannerRootState
 ): Promise<void> => {
   const treeId = parentNodeId.split('-')[0] || parentNodeId;
   const currentTree = getState().dependencies.dependencyTrees[treeId];
@@ -888,7 +885,7 @@ interface RedistributeImportsArgs {
 export const redistributeChildImportsThunk = createAsyncThunk<
   void,
   RedistributeImportsArgs,
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/redistributeChildImports',
   async ({ parentNodeId, treeId }, { getState, dispatch }) => {
@@ -1131,7 +1128,7 @@ interface SetImportAmountArgs {
 export const setImportAmountThunk = createAsyncThunk<
   void,
   SetImportAmountArgs,
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/setImportAmount',
   async ({ importNodeId, parentNodeId, treeId, newAmount }, { getState, dispatch }) => {
@@ -1244,7 +1241,7 @@ export const setImportAmountThunk = createAsyncThunk<
 export const resetImportAmountThunk = createAsyncThunk<
   void,
   { importNodeId: string; parentNodeId: string; treeId: string },
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/resetImportAmount',
   async ({ importNodeId, parentNodeId, treeId }, { dispatch }) => {
@@ -1267,7 +1264,7 @@ interface MaxImportAmountArgs {
 export const maxImportAmountThunk = createAsyncThunk<
   void,
   MaxImportAmountArgs,
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/maxImportAmount',
   async ({ importNodeId, parentNodeId, treeId }, { getState, dispatch }) => {
@@ -1325,7 +1322,7 @@ export const maxImportAmountThunk = createAsyncThunk<
 export const autoImportNodeChildrenThunk = createAsyncThunk<
   void,
   string, // parentNodeId
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/autoImportNodeChildren',
   async (parentNodeId, { getState, dispatch }) => {
@@ -1630,7 +1627,7 @@ interface RecalculateArgs {
 export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
   void, 
   RecalculateArgs, // Use the new args interface
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/recalculateAndUpdateRootAmount',
   async ({ rootNodeId, externalDemandChange }, { getState, dispatch }) => { // Destructure args
@@ -1748,7 +1745,7 @@ interface SetNodeAsImportArgs {
 export const setNodeAsImportThunk = createAsyncThunk<
   void,
   SetNodeAsImportArgs, // Use updated interface
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/setNodeAsImport',
   async ({ childNodeId, targetRootId, importingAmount }, { getState, dispatch }) => { 
@@ -1815,7 +1812,7 @@ const findNodeInAnyTree = (trees: Record<string, DependencyNode>, nodeId: string
 export const unimportNodeThunk = createAsyncThunk<
   void, 
   string, // nodeIdToUnimport
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/unimportNode',
   async (nodeIdToUnimport, { getState, dispatch }) => {
@@ -1970,7 +1967,7 @@ interface ToggleExternalImportArgs {
 export const toggleExternalImportThunk = createAsyncThunk<
   void,
   ToggleExternalImportArgs,
-  { dispatch: AppDispatch; state: RootState }
+  { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/toggleExternalImport',
   async ({ itemId, enable }, { getState, dispatch }) => {
@@ -2132,3 +2129,7 @@ export const toggleExternalImportThunk = createAsyncThunk<
     }
   }
 ); 
+
+export function createImportLogic(cache: Map<string, Recipe | undefined>) {
+  return { cache };
+}

@@ -1,17 +1,9 @@
-/**
- * Test Utilities - Render with Redux Provider
- * 
- * This file provides a custom render function that wraps components
- * with all necessary providers (Redux, etc.) for testing.
- */
-
 import React, { PropsWithChildren } from 'react';
 import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import type { RootState, AppDispatch } from '../../src/store';
+import type { PlannerRootState, PlannerAppDispatch } from '../../src/store/plannerStore';
 
-// Import all reducers
 import dataReducer from '../../src/store/dataSlice';
 import dependencyReducer from '../../src/features/factory-planner/store/dependencySlice';
 import recipeSelectionsReducer from '../../src/features/factory-planner/store/recipeSelectionsSlice';
@@ -19,8 +11,9 @@ import treeUiReducer from '../../src/features/factory-planner/store/treeUiSlice'
 import comparisonReducer from '../../src/features/factory-planner/store/comparisonSlice';
 import historyReducer from '../../src/features/factory-planner/store/historySlice';
 import { historyMiddleware } from '../../src/features/factory-planner/store/historyMiddleware';
+import { createImportLogic } from '../../src/features/factory-planner/store/importExportLogic';
+import { Recipe } from '../../src/types';
 
-// Create the root reducer for test store
 const rootReducer = combineReducers({
   data: dataReducer,
   dependencies: dependencyReducer,
@@ -30,73 +23,39 @@ const rootReducer = combineReducers({
   history: historyReducer,
 });
 
-// Type for the test store
+export type TestRootState = PlannerRootState & { data: ReturnType<typeof dataReducer> };
+
 export type TestStore = ReturnType<typeof createTestStore>;
 
-/**
- * Creates a test store with optional preloaded state
- */
-export function createTestStore(preloadedState?: Partial<RootState>) {
+export function createTestStore(preloadedState?: Partial<TestRootState>) {
+  const importLogic = createImportLogic(new Map<string, Recipe | undefined>());
   return configureStore({
     reducer: rootReducer,
-    preloadedState: preloadedState as RootState,
+    preloadedState: preloadedState as TestRootState,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {
           ignoredActions: ['history/pushSnapshot'],
           ignoredPaths: ['history.undoStack', 'history.redoStack'],
         },
+        thunk: {
+          extraArgument: importLogic.cache,
+        },
       }).concat(historyMiddleware),
   });
 }
 
-/**
- * Extended render options that include store configuration
- */
 interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
-  /** Initial Redux state (partial, will be merged with defaults) */
-  preloadedState?: Partial<RootState>;
-  /** Provide a custom store instance (overrides preloadedState) */
+  preloadedState?: Partial<TestRootState>;
   store?: TestStore;
 }
 
-/**
- * Extended render result that includes store access
- */
 interface ExtendedRenderResult extends RenderResult {
-  /** The Redux store instance used in this render */
   store: TestStore;
-  /** Helper to get current state */
-  getState: () => RootState;
-  /** Helper to dispatch actions */
-  dispatch: AppDispatch;
+  getState: () => TestRootState;
+  dispatch: PlannerAppDispatch;
 }
 
-/**
- * Custom render function that wraps components with all necessary providers.
- * 
- * @example
- * ```tsx
- * // Basic usage
- * const { getByText, store } = renderWithProviders(<MyComponent />);
- * 
- * // With preloaded state
- * const { getByText, getState } = renderWithProviders(<MyComponent />, {
- *   preloadedState: {
- *     dependencies: {
- *       dependencyTrees: { 'tree-1': mockTree },
- *       accumulatedDependencies: {},
- *       highlightedNodeId: null,
- *       errors: [],
- *       lastUpdateTime: 0,
- *     },
- *   },
- * });
- * 
- * // Assert on state
- * expect(getState().dependencies.dependencyTrees).toHaveProperty('tree-1');
- * ```
- */
 export function renderWithProviders(
   ui: React.ReactElement,
   {
@@ -105,7 +64,6 @@ export function renderWithProviders(
     ...renderOptions
   }: ExtendedRenderOptions = {}
 ): ExtendedRenderResult {
-  // Wrapper component with all providers
   function Wrapper({ children }: PropsWithChildren<object>): React.JSX.Element {
     return <Provider store={store}>{children}</Provider>;
   }
@@ -120,10 +78,5 @@ export function renderWithProviders(
   };
 }
 
-/**
- * Re-export everything from @testing-library/react for convenience
- */
 export * from '@testing-library/react';
-
-// Export userEvent for interaction testing
 export { default as userEvent } from '@testing-library/user-event';
