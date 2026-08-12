@@ -1,6 +1,6 @@
-import React, { forwardRef, useImperativeHandle, useEffect, useRef, useCallback } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { useStore } from 'react-redux';
-import FactoryPlanner from '../FactoryPlanner';
+import FactoryPlanner, { FactoryPlannerRef } from '../FactoryPlanner';
 import { SavedPlannerState } from '../../hooks/usePlannerSaveLoad';
 import type { PlannerRootState } from '../../../../store/plannerStore';
 
@@ -9,15 +9,18 @@ interface FactoryPlannerShellProps {
   isActive: boolean;
   initialState?: SavedPlannerState;
   onDirtyChange?: (dirty: boolean) => void;
+  onLinkedSetupChange?: (name: string | null) => void;
 }
 
 export interface FactoryPlannerShellRef {
   getFullState(): SavedPlannerState | null;
+  unlinkSetup(): void;
 }
 
 const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShellProps>(
-  ({ tabId, isActive, initialState, onDirtyChange }, ref) => {
+  ({ tabId, isActive, initialState, onDirtyChange, onLinkedSetupChange }, ref) => {
     const store = useStore<PlannerRootState>();
+    const plannerRef = useRef<FactoryPlannerRef>(null);
 
     const getFullState = useCallback((): SavedPlannerState | null => {
       const state = store.getState();
@@ -49,11 +52,18 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
 
     useImperativeHandle(ref, () => ({
       getFullState,
+      unlinkSetup: () => plannerRef.current?.unlinkSetup(),
     }), [getFullState]);
 
     return (
       <div style={{ display: isActive ? undefined : 'none', height: '100%' }}>
-        <FactoryPlanner tabId={tabId} isActive={isActive} />
+        <FactoryPlanner
+          ref={plannerRef}
+          tabId={tabId}
+          isActive={isActive}
+          onDirtyChange={onDirtyChange}
+          onLinkedSetupChange={onLinkedSetupChange}
+        />
       </div>
     );
   }

@@ -17,7 +17,7 @@ function generateTabId(): string {
 }
 
 function generateTabName(): string {
-  return `Tab ${nextTabNumber++}`;
+  return `Planner ${nextTabNumber++}`;
 }
 
 function loadWorkspaceState(): WorkspaceState {
@@ -27,7 +27,7 @@ function loadWorkspaceState(): WorkspaceState {
       const parsed = JSON.parse(stored);
       if (parsed && Array.isArray(parsed.tabs)) {
         const maxTabNumber = parsed.tabs.reduce((max: number, t: TabInfo) => {
-          const match = t.name?.match(/^Tab (\d+)$/);
+          const match = t.name?.match(/^(?:Tab|Planner) (\d+)$/);
           return match ? Math.max(max, parseInt(match[1], 10)) : max;
         }, 0);
         if (maxTabNumber > 0) {

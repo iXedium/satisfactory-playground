@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import CommandBar from "../../../components/CommandBar";
 import { useFactoryPlanner, TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
@@ -16,16 +16,22 @@ import { toggleExternalImportThunk, beginHistoryTransaction, commitHistoryTransa
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
 
+export interface FactoryPlannerRef {
+  unlinkSetup(): void;
+}
+
 interface FactoryPlannerProps {
   tabId: string;
   isActive: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+  onLinkedSetupChange?: (name: string | null) => void;
 }
 
 /**
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const FactoryPlanner: React.FC<FactoryPlannerProps> = ({ tabId, isActive }) => {
+const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tabId, isActive, onDirtyChange, onLinkedSetupChange }, ref) => {
   const {
     // State
     dependencies,
@@ -105,7 +111,12 @@ const FactoryPlanner: React.FC<FactoryPlannerProps> = ({ tabId, isActive }) => {
     clearActiveSnapshot,
     toggleComparison,
     resetToSnapshot,
-  } = useFactoryPlanner(tabId, isActive);
+    unlinkSetup,
+  } = useFactoryPlanner(tabId, isActive, onDirtyChange, onLinkedSetupChange);
+  
+  useImperativeHandle(ref, () => ({
+    unlinkSetup,
+  }), [unlinkSetup]);
   
   const dispatch = useDispatch<PlannerAppDispatch>();
   const externalImports = useSelector((state: PlannerRootState) => state.dependencies.externalImports || {});
@@ -500,6 +511,8 @@ const FactoryPlanner: React.FC<FactoryPlannerProps> = ({ tabId, isActive }) => {
       contentContainerStyle={{}}
     />
   );
-};
+});
+
+FactoryPlanner.displayName = 'FactoryPlanner';
 
 export default FactoryPlanner; 

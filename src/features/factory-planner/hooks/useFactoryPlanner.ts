@@ -146,6 +146,7 @@ export interface FactoryPlannerHookResult {
   loadSetup: (name: string) => Promise<void>;
   deleteSetup: (name: string) => Promise<void>;
   isDirty: boolean;
+  unlinkSetup: () => void;
   saveError: string | null;
   clearSaveError: () => void;
   // Comparison
@@ -158,7 +159,7 @@ export interface FactoryPlannerHookResult {
   resetToSnapshot: (removeNewNodes: boolean) => Promise<void>;
 }
 
-export const useFactoryPlanner = (tabId: string, isActive: boolean): FactoryPlannerHookResult => {
+export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChange?: (dirty: boolean) => void, onLinkedSetupChange?: (name: string | null) => void): FactoryPlannerHookResult => {
   const dispatch: PlannerAppDispatch = useDispatch();
 
   const lsSortKey = useMemo(() => getNamespacedKey('plannerTreeSortKey', tabId), [tabId]);
@@ -511,6 +512,7 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean): FactoryPlan
     activeSetupName,
     saveError,
     clearSaveError,
+    unlinkSetup,
   } = usePlannerSaveLoad({
     tabId,
     // Pass setters
@@ -544,6 +546,22 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean): FactoryPlan
     currentTreeSortDirection: treeSortDirection,
     currentManualTreeOrder: manualTreeOrder,
   });
+
+  const isInitialMountForLink = useRef(true);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+
+  useEffect(() => {
+    onDirtyChangeRef.current?.(isDirty);
+  }, [isDirty]);
+
+  useEffect(() => {
+    if (isInitialMountForLink.current) {
+      isInitialMountForLink.current = false;
+      return;
+    }
+    onLinkedSetupChange?.(activeSetupName);
+  }, [activeSetupName]);
 
   // Call the Comparison Hook
   const {
@@ -705,6 +723,7 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean): FactoryPlan
     loadSetup,
     deleteSetup,
     isDirty,
+    unlinkSetup,
     saveError,
     clearSaveError,
     // Comparison

@@ -46,6 +46,7 @@ export interface UsePlannerSaveLoadResult {
     activeSetupName: string | null;
     saveError: string | null;
     clearSaveError: () => void;
+    unlinkSetup: () => void;
 }
 
 interface UsePlannerSaveLoadProps {
@@ -81,10 +82,7 @@ interface UsePlannerSaveLoadProps {
 }
 
 const LS_ACTIVE_NAME_PREFIX = 'activeSetupName_';
-
-function makeTabPrefix(tabId: string): string {
-    return `tab:${tabId}:`;
-}
+const WORKSPACE_PREFIX = 'workspace:';
 
 export const usePlannerSaveLoad = ({
     tabId,
@@ -127,21 +125,21 @@ export const usePlannerSaveLoad = ({
     const [activeSetupName, setActiveSetupName] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    const prefix = makeTabPrefix(tabId);
-
     useEffect(() => {
         let cancelled = false;
         async function init() {
             const namesResult = await saveService.getNames();
             if (!cancelled && namesResult.ok && namesResult.data) {
-                const filtered = namesResult.data
-                    .filter(name => name.startsWith(prefix))
-                    .map(name => name.slice(prefix.length));
+                const filtered = namesResult.data.filter(name => !name.startsWith(WORKSPACE_PREFIX));
                 setSaveNames(filtered);
             }
             const storedActive = localStorage.getItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
             if (!cancelled && storedActive) {
                 setActiveSetupName(storedActive);
+                const activeResult = await saveService.get(storedActive);
+                if (!cancelled && activeResult.ok && activeResult.data) {
+                    setLastSavedStateInMemory(JSON.parse(activeResult.data));
+                }
             }
         }
         init();
@@ -217,12 +215,10 @@ export const usePlannerSaveLoad = ({
     const refreshNames = useCallback(async () => {
         const result = await saveService.getNames();
         if (result.ok && result.data) {
-            const filtered = result.data
-                .filter(name => name.startsWith(prefix))
-                .map(name => name.slice(prefix.length));
+            const filtered = result.data.filter(name => !name.startsWith(WORKSPACE_PREFIX));
             setSaveNames(filtered);
         }
-    }, [prefix]);
+    }, []);
 
     const saveSetup = useCallback(async (name: string) => {
         if (!name?.trim()) {
@@ -231,8 +227,7 @@ export const usePlannerSaveLoad = ({
         }
 
         const currentState = gatherCurrentState();
-        const prefixedName = `${prefix}${name}`;
-        const result = await saveService.save(prefixedName, JSON.stringify(currentState));
+        const result = await saveService.save(name, JSON.stringify(currentState));
 
         if (!result.ok) {
             setSaveError(result.error || `Failed to save "${name}"`);
@@ -249,11 +244,10 @@ export const usePlannerSaveLoad = ({
             if (prev.includes(name)) return prev;
             return [...prev, name].sort();
         });
-    }, [gatherCurrentState, prefix, tabId]);
+    }, [gatherCurrentState, tabId]);
 
     const loadSetup = useCallback(async (name: string) => {
-        const prefixedName = `${prefix}${name}`;
-        const result = await saveService.get(prefixedName);
+        const result = await saveService.get(name);
 
         if (!result.ok || !result.data) {
             setSaveError(result.error || `Setup "${name}" not found`);
@@ -306,7 +300,7 @@ export const usePlannerSaveLoad = ({
             setSaveError(`Failed to load "${name}": data may be corrupted`);
         }
     }, [
-        dispatch, prefix, tabId,
+        dispatch, tabId,
         setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides,
         setViewDensity, setShowExtensions, setAccumulateExtensions, setShowMachines, setShowMachineMultiplier, setAutoImport,
         setTreeSortKey, setTreeSortDirection,
@@ -314,8 +308,7 @@ export const usePlannerSaveLoad = ({
     ]);
 
     const deleteSetup = useCallback(async (name: string) => {
-        const prefixedName = `${prefix}${name}`;
-        const result = await saveService.delete(prefixedName);
+        const result = await saveService.delete(name);
 
         if (!result.ok) {
             setSaveError(result.error || `Failed to delete "${name}"`);
@@ -329,12 +322,19 @@ export const usePlannerSaveLoad = ({
             localStorage.removeItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
             setLastSavedStateInMemory(null);
             setActiveSetupName(null);
-            setIsDirty(true);
+            setIsDirty(false);
         }
 
         setSaveNames(prev => prev.filter(n => n !== name));
         setSaveError(null);
-    }, [prefix, tabId]);
+    }, [tabId]);
+
+    const unlinkSetup = useCallback(() => {
+        localStorage.removeItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
+        setActiveSetupName(null);
+        setLastSavedStateInMemory(null);
+        setIsDirty(false);
+    }, [tabId]);
 
     return {
         getSaveNames,
@@ -345,5 +345,6 @@ export const usePlannerSaveLoad = ({
         activeSetupName,
         saveError,
         clearSaveError,
+        unlinkSetup,
     };
 };
