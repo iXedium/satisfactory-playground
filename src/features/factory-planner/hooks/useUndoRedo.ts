@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { 
   selectCanUndo, 
   selectCanRedo,
@@ -22,7 +22,7 @@ import { logger } from '../../../utils/logger';
  * @returns Object with undo/redo state and handlers
  */
 export function useUndoRedo(enableKeyboardShortcuts: boolean = true) {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
   
   // Selectors
   const canUndo = useSelector(selectCanUndo);

@@ -5,7 +5,7 @@ import { sizes } from '../../styles/constants';
 import { ConsumerInfo } from '../../utils/consumptionUtils'; // Import the type
 import Icon from '../Icon';
 import { setHighlightedNode } from '../../features/factory-planner/store/dependencySlice';
-import { AppDispatch } from '../../store';
+import { PlannerAppDispatch } from '../../store/plannerStore';
 import { logger } from '../../utils/logger';
 import { useTreeNavigation } from '../../contexts/TreeNavigationContext';
 
@@ -74,7 +74,7 @@ const ConsumptionReportPopup: React.FC<ConsumptionReportPopupProps> = ({
   isPersistent = false,
   onItemClick,
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
   const { requestNavigateToNode } = useTreeNavigation();
 
   const sectionStyle: React.CSSProperties = {

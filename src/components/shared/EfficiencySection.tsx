@@ -1,7 +1,7 @@
 import React, { useState, useRef, MouseEvent, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { PlannerRootState } from '../../store/plannerStore';
 import EfficiencyIndicator from './EfficiencyIndicator';
 import RateDisplay from './RateDisplay';
 import ExcessControls from './ExcessControls';
@@ -85,10 +85,10 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   changes,
   isNew = false,
 }) => {
-  const allTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
+  const allTrees = useSelector((state: PlannerRootState) => state.dependencies.dependencyTrees);
   
   // Find the specific node using treeId and nodeId
-  const node = useSelector((state: RootState) => {
+  const node = useSelector((state: PlannerRootState) => {
     const tree = state.dependencies.dependencyTrees[treeId];
     if (!tree) return null;
     return findNodeById(tree, nodeId);

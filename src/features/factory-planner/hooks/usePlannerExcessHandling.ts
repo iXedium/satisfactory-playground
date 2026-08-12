@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { DependencyNode } from '../../../types';
 import { 
     updateTreeProduction, 
@@ -25,7 +25,7 @@ export const usePlannerExcessHandling = ({
   dependencies,
   setExcessMap,
 }: PlannerExcessHandlingProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   const handleExcessChange = useCallback(async (nodeId: string, excess: number) => {
     // Start transaction for the entire excess change operation

@@ -2,7 +2,7 @@
 import { ActionReducerMapBuilder, createAction } from '@reduxjs/toolkit';
 import { DependencyNode } from '../../../types';
 import { findNodeById, AccumulatedNode } from '../../../utils';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { 
   getImportReference, 
   hasImportReference 
@@ -267,7 +267,7 @@ export const productionSliceExtraReducers = (builder: ActionReducerMapBuilder<Pr
 // --- Thunk for Sequential Production Updates ---
 export const updateTreeProduction = 
   (nodeId: string, treeId: string, productionType: 'excess' | 'forced' | 'imported', amount: number, targetTreeId?: string) => 
-  async (dispatch: AppDispatch, getState: () => { dependencies: ProductionDependencyState }) => {
+  async (dispatch: PlannerAppDispatch, getState: () => { dependencies: ProductionDependencyState }) => {
     
     const initialState = getState();
     const initialTree = initialState.dependencies.dependencyTrees[treeId];

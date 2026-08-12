@@ -13,7 +13,7 @@ import { ViewDensity } from '../hooks/usePlannerDisplayOptions';
 import { toggleNodeSelected, toggleNodeCompleted, toggleNodeHidden, setHighlightedNode } from '../store/dependencySlice';
 import { selectActiveSnapshot, selectShowComparison } from '../store/comparisonSlice';
 import { setImportAmountThunk, resetImportAmountThunk, maxImportAmountThunk } from '../store/importExportLogic';
-import { RootState, AppDispatch } from '../../../store';
+import { PlannerRootState, PlannerAppDispatch } from '../../../store/plannerStore';
 import BookmarkAddOutlinedIcon from '@mui/icons-material/BookmarkAddOutlined';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
@@ -107,9 +107,9 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   onToggleAllSelected,
   onToggleAllCompleted,
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
-  const nodeData = useSelector((state: RootState) => {
+  const nodeData = useSelector((state: PlannerRootState) => {
     const tree = state.dependencies.dependencyTrees[treeId];
     if (!tree) return null;
     
@@ -136,7 +136,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   // Comparison state - get from Redux
   const showComparison = useSelector(selectShowComparison);
   const activeSnapshot = useSelector(selectActiveSnapshot);
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  const recipeSelections = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
 
   const [item, setItem] = useState<Item | null>(null);
   const [localExcess, setLocalExcess] = useState(excess);

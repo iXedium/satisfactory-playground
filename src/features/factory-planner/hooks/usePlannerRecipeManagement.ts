@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store';
+import { PlannerAppDispatch, PlannerRootState } from '../../../store/plannerStore';
 import { logger } from '../../../utils/logger';
 import { getRecipeById } from '../../../data';
 import { DependencyNode } from '../../../types';
@@ -31,9 +31,9 @@ export const usePlannerRecipeManagement = ({
   autoImportEnabled,
   excessMap,
 }: PlannerRecipeManagementProps) => {
-  const dispatch = useDispatch<AppDispatch>();
-  const dependencies = useSelector((state: RootState) => state.dependencies);
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  const dispatch = useDispatch<PlannerAppDispatch>();
+  const dependencies = useSelector((state: PlannerRootState) => state.dependencies);
+  const recipeSelections = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
 
   const handleTreeRecipeChange = useCallback(async (nodeId: string, recipeId: string) => {
     const currentTrees = dependencies.dependencyTrees;

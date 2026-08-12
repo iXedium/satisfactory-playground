@@ -6,7 +6,7 @@ import { theme } from "../../../styles/theme";
 import { toggleChildrenVisibility } from "../../../utils/nodeReferenceUtils";
 import { TreeSortKey, SortDirection } from "../hooks/useFactoryPlanner";
 import { ViewDensity } from "../hooks/usePlannerDisplayOptions";
-import { RootState } from "../../../store";
+import { PlannerRootState } from "../../../store/plannerStore";
 
 interface TreeNodeProps {
   node: DependencyNode;
@@ -95,8 +95,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   }, [node.isImport, node.id, siblingNodes]);
 
   // Get source root's recipe name for import nodes
-  const dependencyTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
-  const highlightedNodeId = useSelector((state: RootState) => state.dependencies.highlightedNodeId);
+  const dependencyTrees = useSelector((state: PlannerRootState) => state.dependencies.dependencyTrees);
+  const highlightedNodeId = useSelector((state: PlannerRootState) => state.dependencies.highlightedNodeId);
   
   const importSourceRecipeName = useMemo(() => {
     if (!node.isImport || !node.importReference) return undefined;

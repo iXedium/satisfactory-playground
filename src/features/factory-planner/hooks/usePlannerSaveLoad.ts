@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { logger } from '../../../utils/logger';
-import { RootState, AppDispatch } from '../../../store';
+import { PlannerRootState, PlannerAppDispatch } from '../../../store/plannerStore';
 import { DependencyNode, Recipe } from '../../../types';
 import { loadSavedState, loadRecipeSelections } from '../store';
 import { usePlannerNodeState } from './usePlannerNodeState';
@@ -13,7 +12,7 @@ import _isEqual from 'lodash/isEqual';
 import { useDebouncedCallback } from 'use-debounce';
 import { saveService } from '../../../services/saveService';
 
-interface SavedPlannerState {
+export interface SavedPlannerState {
     dependencies: DependencyState;
     recipeSelections: Record<string, string>;
     nodeState: {
@@ -50,6 +49,7 @@ export interface UsePlannerSaveLoadResult {
 }
 
 interface UsePlannerSaveLoadProps {
+    tabId: string;
     setExcessMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
     setMachineCountMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
     setMachineMultiplierMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
@@ -80,8 +80,14 @@ interface UsePlannerSaveLoadProps {
     currentManualTreeOrder: string[];
 }
 
+const LS_ACTIVE_NAME_PREFIX = 'activeSetupName_';
+
+function makeTabPrefix(tabId: string): string {
+    return `tab:${tabId}:`;
+}
 
 export const usePlannerSaveLoad = ({
+    tabId,
     setExcessMap,
     setMachineCountMap,
     setMachineMultiplierMap,
@@ -111,9 +117,9 @@ export const usePlannerSaveLoad = ({
     currentTreeSortDirection,
     currentManualTreeOrder,
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
-    const dispatch: AppDispatch = useDispatch();
-    const dependenciesState = useSelector((state: RootState) => state.dependencies);
-    const recipeSelectionsState = useSelector((state: RootState) => state.recipeSelections.selections);
+    const dispatch: PlannerAppDispatch = useDispatch();
+    const dependenciesState = useSelector((state: PlannerRootState) => state.dependencies);
+    const recipeSelectionsState = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
 
     const [saveNames, setSaveNames] = useState<string[]>([]);
     const [lastSavedStateInMemory, setLastSavedStateInMemory] = useState<SavedPlannerState | null>(null);
@@ -121,21 +127,26 @@ export const usePlannerSaveLoad = ({
     const [activeSetupName, setActiveSetupName] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
 
+    const prefix = makeTabPrefix(tabId);
+
     useEffect(() => {
         let cancelled = false;
         async function init() {
             const namesResult = await saveService.getNames();
             if (!cancelled && namesResult.ok && namesResult.data) {
-                setSaveNames(namesResult.data);
+                const filtered = namesResult.data
+                    .filter(name => name.startsWith(prefix))
+                    .map(name => name.slice(prefix.length));
+                setSaveNames(filtered);
             }
-            const activeResult = await saveService.getActiveName();
-            if (!cancelled && activeResult.ok && activeResult.data) {
-                setActiveSetupName(activeResult.data);
+            const storedActive = localStorage.getItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
+            if (!cancelled && storedActive) {
+                setActiveSetupName(storedActive);
             }
         }
         init();
         return () => { cancelled = true; };
-    }, []);
+    }, [tabId]);
 
     const getSaveNames = useCallback((): string[] => {
         return saveNames;
@@ -206,9 +217,12 @@ export const usePlannerSaveLoad = ({
     const refreshNames = useCallback(async () => {
         const result = await saveService.getNames();
         if (result.ok && result.data) {
-            setSaveNames(result.data);
+            const filtered = result.data
+                .filter(name => name.startsWith(prefix))
+                .map(name => name.slice(prefix.length));
+            setSaveNames(filtered);
         }
-    }, []);
+    }, [prefix]);
 
     const saveSetup = useCallback(async (name: string) => {
         if (!name?.trim()) {
@@ -217,14 +231,15 @@ export const usePlannerSaveLoad = ({
         }
 
         const currentState = gatherCurrentState();
-        const result = await saveService.save(name, JSON.stringify(currentState));
+        const prefixedName = `${prefix}${name}`;
+        const result = await saveService.save(prefixedName, JSON.stringify(currentState));
 
         if (!result.ok) {
             setSaveError(result.error || `Failed to save "${name}"`);
             return;
         }
 
-        await saveService.setActiveName(name);
+        localStorage.setItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`, name);
         setLastSavedStateInMemory(currentState);
         setActiveSetupName(name);
         setIsDirty(false);
@@ -234,10 +249,11 @@ export const usePlannerSaveLoad = ({
             if (prev.includes(name)) return prev;
             return [...prev, name].sort();
         });
-    }, [gatherCurrentState]);
+    }, [gatherCurrentState, prefix, tabId]);
 
     const loadSetup = useCallback(async (name: string) => {
-        const result = await saveService.get(name);
+        const prefixedName = `${prefix}${name}`;
+        const result = await saveService.get(prefixedName);
 
         if (!result.ok || !result.data) {
             setSaveError(result.error || `Setup "${name}" not found`);
@@ -279,7 +295,7 @@ export const usePlannerSaveLoad = ({
                 setManualTreeOrder(stateToLoad.manualTreeOrder);
             }
 
-            await saveService.setActiveName(name);
+            localStorage.setItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`, name);
             setLastSavedStateInMemory(stateToLoad);
             setActiveSetupName(name);
             setIsDirty(false);
@@ -290,7 +306,7 @@ export const usePlannerSaveLoad = ({
             setSaveError(`Failed to load "${name}": data may be corrupted`);
         }
     }, [
-        dispatch,
+        dispatch, prefix, tabId,
         setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides,
         setViewDensity, setShowExtensions, setAccumulateExtensions, setShowMachines, setShowMachineMultiplier, setAutoImport,
         setTreeSortKey, setTreeSortDirection,
@@ -298,18 +314,19 @@ export const usePlannerSaveLoad = ({
     ]);
 
     const deleteSetup = useCallback(async (name: string) => {
-        const result = await saveService.delete(name);
+        const prefixedName = `${prefix}${name}`;
+        const result = await saveService.delete(prefixedName);
 
         if (!result.ok) {
             setSaveError(result.error || `Failed to delete "${name}"`);
             return;
         }
 
-        const activeResult = await saveService.getActiveName();
-        const wasActive = activeResult.ok && activeResult.data === name;
+        const storedActive = localStorage.getItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
+        const wasActive = storedActive === name;
 
         if (wasActive) {
-            await saveService.setActiveName('');
+            localStorage.removeItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
             setLastSavedStateInMemory(null);
             setActiveSetupName(null);
             setIsDirty(true);
@@ -317,11 +334,7 @@ export const usePlannerSaveLoad = ({
 
         setSaveNames(prev => prev.filter(n => n !== name));
         setSaveError(null);
-    }, []);
-
-    useEffect(() => {
-        // isDirty change log placeholder
-    }, [isDirty]);
+    }, [prefix, tabId]);
 
     return {
         getSaveNames,

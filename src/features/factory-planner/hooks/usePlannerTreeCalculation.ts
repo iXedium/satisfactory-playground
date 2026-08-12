@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { getRecipeById, getRecipeByOutput, getRecipesForItem } from '../../../data';
 import { DependencyNode } from '../../../types';
 import { 
@@ -11,7 +11,6 @@ import {
   setNodeExcess,
 } from '../store';
 import { calculateDependencyTree, calculateAccumulatedFromTree, AccumulatedNode } from '../../../utils';
-import { usePlannerNodeState } from './usePlannerNodeState';
 import { calculateAndAutoImportThunk } from '../store/importExportLogic';
 import { 
   beginHistoryTransaction, 
@@ -37,6 +36,7 @@ interface PlannerTreeCalculationProps {
   setExcessMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   autoImport: boolean;
   onNewTreesCreated?: (newTreeIds: string[]) => void;
+  setExpandedNodes: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
 // Define the type for the createTreeFn used by convertToImportTree
@@ -145,9 +145,9 @@ export const usePlannerTreeCalculation = ({
   setExcessMap,
   autoImport,
   onNewTreesCreated,
+  setExpandedNodes,
 }: Omit<PlannerTreeCalculationProps, 'excessMap'>) => { 
-  const dispatch = useDispatch<AppDispatch>();
-  const { setExpandedNodes } = usePlannerNodeState();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   const generateTreeId = useCallback((itemId: string): string => {
     const timestamp = Date.now();

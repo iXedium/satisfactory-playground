@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { logger } from '../../../utils/logger';
 import { DependencyNode } from '../../../types';
 import { DependencyState } from '../store/dependencySlice';
@@ -36,7 +36,7 @@ export const usePlannerImportExport = ({
   dependencies,
   handleCreateNewTree,
 }: PlannerImportExportProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   // Original handleImportNode logic (now internal)
   const handleImportNodeInternal = useCallback(async ( 

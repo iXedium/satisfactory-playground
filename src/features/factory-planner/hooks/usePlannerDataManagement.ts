@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { DependencyNode } from '../../../types';
 import { 
   deleteTree, 
@@ -35,7 +35,7 @@ export const usePlannerDataManagement = ({
   clearDisplayOptionsStorage,
   // Destructure setters if added above
 }: PlannerDataManagementProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   const handleDeleteTree = useCallback(async (treeId: string) => {
     // Start history transaction for delete

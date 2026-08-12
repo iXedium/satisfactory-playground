@@ -9,18 +9,23 @@ import SummarySidebar from "../../../components/shared/SummarySidebar";
 import { DependencyNode } from "../../../types";
 import { DropResult } from "@hello-pangea/dnd";
 import { logger } from "../../../utils/logger";
-import { RootState, AppDispatch } from "../../../store";
+import { PlannerRootState, PlannerAppDispatch } from "../../../store/plannerStore";
+import { getNamespacedKey } from "../../../utils";
 import { toggleExternalImportThunk, beginHistoryTransaction, commitHistoryTransaction } from "../store";
 
 // Define key for local storage
 // const LS_MANUAL_ORDER_KEY = 'plannerManualTreeOrder'; // Moved to useFactoryPlanner
-const LS_SUMMARY_VISIBLE_KEY = 'plannerSummaryVisible'; // Key for summary visibility
+
+interface FactoryPlannerProps {
+  tabId: string;
+  isActive: boolean;
+}
 
 /**
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const FactoryPlanner: React.FC = () => {
+const FactoryPlanner: React.FC<FactoryPlannerProps> = ({ tabId, isActive }) => {
   const {
     // State
     dependencies,
@@ -100,10 +105,10 @@ const FactoryPlanner: React.FC = () => {
     clearActiveSnapshot,
     toggleComparison,
     resetToSnapshot,
-  } = useFactoryPlanner();
+  } = useFactoryPlanner(tabId, isActive);
   
-  const dispatch = useDispatch<AppDispatch>();
-  const externalImports = useSelector((state: RootState) => state.dependencies.externalImports || {});
+  const dispatch = useDispatch<PlannerAppDispatch>();
+  const externalImports = useSelector((state: PlannerRootState) => state.dependencies.externalImports || {});
 
   const handleToggleExternalImport = useCallback(async (itemId: string, enable: boolean) => {
     dispatch(beginHistoryTransaction(enable ? 'Externalize item' : 'Restore local production') as unknown as Parameters<typeof dispatch>[0]);
@@ -116,27 +121,25 @@ const FactoryPlanner: React.FC = () => {
   }, [dispatch]);
   
   // --- State for Sidebar Visibility (Load from Local Storage, default true) ---
+  const summaryVisibleKey = useMemo(() => `plannerSummaryVisible_${tabId}`, [tabId]);
   const [isSummaryVisible, setIsSummaryVisible] = useState<boolean>(() => {
     try {
-      const savedValue = localStorage.getItem(LS_SUMMARY_VISIBLE_KEY);
-      // Default to true if nothing is saved or value is invalid
+      const savedValue = localStorage.getItem(summaryVisibleKey);
       return savedValue !== null ? JSON.parse(savedValue) : true; 
     } catch (error) {
       logger.error("Error loading summary visibility state:", error);
-      return true; // Default to true on error
+      return true;
     }
   });
-  // ------------------------------------------------------------------------
 
   // --- Save Summary Visibility to Local Storage on Change ---
   useEffect(() => {
     try {
-      localStorage.setItem(LS_SUMMARY_VISIBLE_KEY, JSON.stringify(isSummaryVisible));
+      localStorage.setItem(summaryVisibleKey, JSON.stringify(isSummaryVisible));
     } catch (error) {
       logger.error("Error saving summary visibility state:", error);
     }
-  }, [isSummaryVisible]);
-  // ----------------------------------------------------------
+  }, [isSummaryVisible, summaryVisibleKey]);
 
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
@@ -359,7 +362,7 @@ const FactoryPlanner: React.FC = () => {
   // ----------------------------------------------
 
   // --- Synchronize manualTreeOrder with actual trees ---
-  const reduxManualTreeOrder = useSelector((state: RootState) => state.dependencies.manualTreeOrder || []);
+  const reduxManualTreeOrder = useSelector((state: PlannerRootState) => state.dependencies.manualTreeOrder || []);
   useEffect(() => {
     if (isRestoring) return;
     const currentTreeIds = Object.keys(dependencies.dependencyTrees);

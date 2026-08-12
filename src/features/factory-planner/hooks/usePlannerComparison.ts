@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../../store';
+import { PlannerRootState, PlannerAppDispatch } from '../../../store/plannerStore';
 import { DependencyNode, ComparisonSnapshot, TreeSnapshot, NodeSnapshot, NodeComparisonResult } from '../../../types';
 import {
   storeSnapshot,
@@ -93,12 +93,12 @@ export function usePlannerComparison({
   setExcessMap,
   handleDeleteTree,
 }: UsePlannerComparisonProps): UsePlannerComparisonResult {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
   
   const activeSnapshot = useSelector(selectActiveSnapshot);
   const showComparison = useSelector(selectShowComparison);
-  const dependencyTrees = useSelector((state: RootState) => state.dependencies.dependencyTrees);
-  const recipeSelections = useSelector((state: RootState) => state.recipeSelections.selections);
+  const dependencyTrees = useSelector((state: PlannerRootState) => state.dependencies.dependencyTrees);
+  const recipeSelections = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
 
   const hasSnapshot = activeSnapshot !== null;
 

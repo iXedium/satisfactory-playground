@@ -7,7 +7,7 @@ import {
   getImportReference, 
 } from "../../../utils/nodeReferenceUtils";
 import { getRecipeById, getRecipeByOutput } from "../../../data";
-import { AppDispatch } from "../../../store";
+import { PlannerAppDispatch } from "../../../store/plannerStore";
 import {
   handleNodeImportReducer,
 } from './importExportLogic';
@@ -456,7 +456,7 @@ export const setExcess = createAction<{
 // Keep Recipe Loading Thunk
 export const loadNodeRecipe = 
   (nodeId: string, treeId: string) => 
-  async (dispatch: AppDispatch, getState: () => { dependencies: DependencyState }) => {
+  async (dispatch: PlannerAppDispatch, getState: () => { dependencies: DependencyState }) => {
     
     const state = getState();
     // Check if dependencies state exists

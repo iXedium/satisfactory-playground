@@ -1,7 +1,7 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
 import { DependencyNode } from '../../../types';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { setNodeMachineCount, setNodeMachineMultiplier } from '../store/dependencySlice';
 
 // Define the expected shape of the dependencies state slice locally
@@ -25,7 +25,7 @@ export const usePlannerNodeInteractions = ({
   setMachineMultiplierMap,
   setNodeExtensionOverrides,
 }: PlannerNodeInteractionsProps) => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   const handleExpandCollapseAll = useCallback((expand: boolean) => {
     const newExpandedNodes: Record<string, boolean> = {};

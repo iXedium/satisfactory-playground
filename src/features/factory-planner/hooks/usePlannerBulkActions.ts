@@ -1,6 +1,6 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
+import { PlannerAppDispatch } from '../../../store/plannerStore';
 import { DependencyNode } from '../../../types';
 import { getMachineForRecipe } from '../../../data';
 import { findNodeById } from '../../../utils';
@@ -31,7 +31,7 @@ export const usePlannerBulkActions = ({
   dependencyTrees,
   setExcessMap,
 }: PlannerBulkActionsProps): PlannerBulkActions => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
 
   const collectAllNodes = useCallback((): DependencyNode[] => {
     const nodes: DependencyNode[] = [];

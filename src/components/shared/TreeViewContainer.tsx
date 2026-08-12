@@ -3,7 +3,7 @@ import React, { forwardRef, useEffect } from 'react';
 import { DependencyNode, Item } from '../../types';
 import DependencyTree from '../../features/factory-planner/components/DependencyTree';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
+import { PlannerRootState, PlannerAppDispatch } from '../../store/plannerStore';
 import { TreeSortKey, SortDirection } from '../../features/factory-planner/hooks/useFactoryPlanner';
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import TreeNode from '../../features/factory-planner/components/TreeNode';
@@ -67,7 +67,7 @@ const TreeViewContainer: React.ForwardRefRenderFunction<HTMLDivElement, TreeView
   },
   ref) => {
 
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<PlannerAppDispatch>();
   const { navigationRequest, clearNavigationRequest } = useTreeNavigation();
 
   // Handle navigation requests - expand path and scroll to target
