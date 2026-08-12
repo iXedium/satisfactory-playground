@@ -30,16 +30,16 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
       flexDirection: 'column',
       width: '100%',
       position: 'relative',
-      height: '100vh', // Ensure layout takes full viewport height
-      overflow: 'hidden', // Prevent body scroll
+      height: '100%',
+      overflow: 'hidden',
       ...containerStyle
     }}>
-      {/* Command Bar Container - Fixed Position */}
+      {/* Command Bar Container - Absolute within layout */}
       <div style={{
-        position: 'fixed',
+        position: 'absolute',
         top: 0,
         left: 0,
-        width: '100%',
+        right: 0,
         zIndex: 100, 
         ...commandBarContainerStyle
       }}>
