@@ -7979,6 +7979,38 @@
             "out": { "power": 2.5, "uranium-waste": 10 },
             "row": 3,
             "category": "power"
+        }        ,
+        {
+            "id": "power-fuel-generator-rocket-fuel",
+            "name": "Rocket Fuel",
+            "producers": [
+                "fuel-generator"
+            ],
+            "time": 60,
+            "in": {
+                "rocket-fuel": 4.166666666666667
+            },
+            "out": {
+                "power": 0.25
+            },
+            "row": 0,
+            "category": "power"
+        },
+        {
+            "id": "power-fuel-generator-ionized-fuel",
+            "name": "Ionized Fuel",
+            "producers": [
+                "fuel-generator"
+            ],
+            "time": 60,
+            "in": {
+                "ionized-fuel": 3
+            },
+            "out": {
+                "power": 0.25
+            },
+            "row": 0,
+            "category": "power"
         },
         {
             "id": "power-nuclear-plutonium",

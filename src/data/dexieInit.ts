@@ -2,7 +2,7 @@ import { db } from "./dexieDB";
 import { Item } from "../types";
 
 const DB_VERSION_KEY = 'satisfactory-db-version';
-const CURRENT_VERSION = 17;
+const CURRENT_VERSION = 20;
 
 export async function populateDexie() {
     try {
