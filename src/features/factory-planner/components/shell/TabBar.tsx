@@ -11,6 +11,24 @@ interface TabBarProps {
   onUnlinkTab: (tabId: string) => void;
 }
 
+function getDraggableTabStyle(
+  style: React.CSSProperties | undefined,
+  isDragging: boolean
+): React.CSSProperties | undefined {
+  if (!style) return style;
+  if (!isDragging || !style.transform) return style;
+
+  // Lock Y-axis movement to 0px so the dragged tab stays strictly inside the tab switcher bar
+  const transform = style.transform
+    .replace(/translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*\)/g, 'translate($1px, 0px)')
+    .replace(/translate3d\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*,\s*([^)]+)\)/g, 'translate3d($1px, 0px, $3)');
+
+  return {
+    ...style,
+    transform,
+  };
+}
+
 const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlinkTab }) => {
   const dispatch = useDispatch<AppDispatch>();
   const tabs = useSelector((state: RootState) => state.workspace.tabs);
@@ -212,7 +230,7 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                         boxShadow: snapshot.isDragging ? '0 4px 12px rgba(0,0,0,0.5)' : undefined,
                         zIndex: snapshot.isDragging ? 100 : undefined,
                         transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
-                        ...providedDraggable.draggableProps.style,
+                        ...getDraggableTabStyle(providedDraggable.draggableProps.style, snapshot.isDragging),
                       }}
                     >
             {dirtyMap[tab.tabId] && (
