@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../../store';
 import { addTab, removeTab, setActiveTab, renameTab } from '../../../../store/workspaceSlice';
@@ -17,7 +17,22 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [nameConflict, setNameConflict] = useState(false);
+  const [confirmCloseTabId, setConfirmCloseTabId] = useState<string | null>(null);
   const [unlinkClickTimers, setUnlinkClickTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(() => {
+    if (!confirmCloseTabId) return;
+    const handleOutside = () => setConfirmCloseTabId(null);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setConfirmCloseTabId(null);
+    };
+    window.addEventListener('click', handleOutside);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('click', handleOutside);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [confirmCloseTabId]);
 
   const handleAddTab = () => {
     dispatch(addTab());
@@ -25,6 +40,16 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
 
   const handleCloseTab = (tabId: string) => {
     dispatch(removeTab(tabId));
+  };
+
+  const requestCloseTab = (tabId: string) => {
+    const isLinked = linkedMap[tabId] !== null && linkedMap[tabId] !== undefined;
+    const isDirty = !!dirtyMap[tabId];
+    if (isLinked && isDirty) {
+      setConfirmCloseTabId(tabId);
+      return;
+    }
+    handleCloseTab(tabId);
   };
 
   const handleSelectTab = (tabId: string) => {
@@ -69,6 +94,7 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   };
 
   const handleLinkIconClick = (tabId: string) => {
+    handleSelectTab(tabId);
     const existing = unlinkClickTimers[tabId];
     if (existing) {
       clearTimeout(existing);
@@ -106,6 +132,20 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
           <div
             key={tab.tabId}
             onClick={() => handleSelectTab(tab.tabId)}
+            onMouseDown={(e) => {
+              if (e.button === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (tabs.length > 1) {
+                  if (editingTabId === tab.tabId) {
+                    setEditingTabId(null);
+                    setNameConflict(false);
+                  } else {
+                    requestCloseTab(tab.tabId);
+                  }
+                }
+              }
+            }}
             onDoubleClick={() => handleDoubleClick(tab.tabId, tab.name)}
             title={
               isLinked && editingTabId !== tab.tabId
@@ -187,11 +227,71 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
             ) : (
               <span>{tab.name}</span>
             )}
-            {tabs.length > 1 && (
+            {confirmCloseTabId === tab.tabId ? (
+              <span
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#3a1e1e',
+                  border: '1px solid #ff6b6b',
+                  borderRadius: '3px',
+                  padding: '1px 5px',
+                  fontSize: '11px',
+                  color: '#fff',
+                  marginLeft: '4px',
+                  zIndex: 10,
+                }}
+              >
+                <span>Unsaved! Close?</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCloseTab(tab.tabId);
+                    setConfirmCloseTabId(null);
+                  }}
+                  style={{
+                    background: '#e74c3c',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: '2px',
+                    padding: '0 4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmCloseTabId(null);
+                  }}
+                  style={{
+                    background: '#555',
+                    border: 'none',
+                    color: '#ccc',
+                    borderRadius: '2px',
+                    padding: '0 4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                  }}
+                >
+                  No
+                </button>
+              </span>
+            ) : tabs.length > 1 && (
               <span
                 onClick={e => {
                   e.stopPropagation();
-                  handleCloseTab(tab.tabId);
+                  if (editingTabId === tab.tabId) {
+                    setEditingTabId(null);
+                    setNameConflict(false);
+                    return;
+                  }
+                  requestCloseTab(tab.tabId);
                 }}
                 style={{
                   marginLeft: '4px',
@@ -200,7 +300,7 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                   cursor: 'pointer',
                   lineHeight: 1,
                 }}
-                title="Close tab"
+                title={editingTabId === tab.tabId ? "Cancel rename (Esc)" : "Close tab"}
               >×</span>
             )}
           </div>
