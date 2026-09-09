@@ -30,6 +30,7 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
   const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null);
   const [confirmPendingLoadName, setConfirmPendingLoadName] = useState<string | null>(null);
   const [confirmNewWorkspace, setConfirmNewWorkspace] = useState(false);
+  const [confirmRevertWorkspace, setConfirmRevertWorkspace] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const saveInputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +70,8 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
           setConfirmPendingLoadName(null);
         } else if (confirmNewWorkspace) {
           setConfirmNewWorkspace(false);
+        } else if (confirmRevertWorkspace) {
+          setConfirmRevertWorkspace(false);
         } else if (isOpen) {
           setIsOpen(false);
           setConfirmDeleteName(null);
@@ -76,7 +79,7 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
       }
     };
 
-    if (isOpen || showSaveDialog || confirmPendingLoadName || confirmNewWorkspace) {
+    if (isOpen || showSaveDialog || confirmPendingLoadName || confirmNewWorkspace || confirmRevertWorkspace) {
       window.addEventListener('mousedown', handleOutsideClick);
       window.addEventListener('keydown', handleKeyDown);
     }
@@ -85,7 +88,7 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
       window.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, showSaveDialog, confirmPendingLoadName, confirmNewWorkspace]);
+  }, [isOpen, showSaveDialog, confirmPendingLoadName, confirmNewWorkspace, confirmRevertWorkspace]);
 
   // Auto focus input when save dialog opens
   useEffect(() => {
@@ -333,6 +336,29 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
               <span style={{ fontSize: '13px' }}>➕</span>
               <span>New Blank Workspace</span>
             </div>
+
+            {activeWorkspaceName && (
+              <div
+                onClick={() => {
+                  setConfirmRevertWorkspace(true);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: isAnyTabDirty ? '#ff6b6b' : '#ccc',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#721c24')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                title={`Discard changes and reload workspace "${activeWorkspaceName}"`}
+              >
+                <span style={{ fontSize: '13px' }}>↺</span>
+                <span>Revert Workspace</span>
+              </div>
+            )}
           </div>
 
           <div style={{ height: '1px', background: '#383838', margin: '2px 0' }} />
@@ -726,6 +752,80 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
                 }}
               >
                 Reset Workspace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Revert Workspace */}
+      {confirmRevertWorkspace && activeWorkspaceName && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setConfirmRevertWorkspace(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#252526',
+              border: '1px solid #454545',
+              borderRadius: '6px',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7)',
+              width: '380px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              color: '#fff',
+            }}
+          >
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>↺</span>
+              <span>Revert Workspace</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#ccc', lineHeight: 1.5 }}>
+              Are you sure you want to revert workspace <strong>"{activeWorkspaceName}"</strong>? All unsaved changes in all open tabs will be discarded and reloaded to the saved state.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+              <button
+                onClick={() => setConfirmRevertWorkspace(false)}
+                style={{
+                  background: '#3a3a3a',
+                  border: '1px solid #555',
+                  color: '#ccc',
+                  borderRadius: '4px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setConfirmRevertWorkspace(false);
+                  await onLoadWorkspace(activeWorkspaceName);
+                }}
+                style={{
+                  background: '#e74c3c',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '4px',
+                  padding: '6px 16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Revert Workspace
               </button>
             </div>
           </div>

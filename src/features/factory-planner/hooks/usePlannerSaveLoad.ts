@@ -51,6 +51,7 @@ export interface UsePlannerSaveLoadResult {
     saveError: string | null;
     clearSaveError: () => void;
     unlinkSetup: () => void;
+    revertSetup: () => Promise<void>;
     gatherCurrentState: () => SavedPlannerState;
 }
 
@@ -184,9 +185,9 @@ export const usePlannerSaveLoad = ({
                 direction: currentTreeSortDirection,
             },
             manualTreeOrder: JSON.parse(JSON.stringify(currentManualTreeOrder)),
-            comparison: comparisonState ? {
-                activeSnapshot: comparisonState.activeSnapshot ? JSON.parse(JSON.stringify(comparisonState.activeSnapshot)) : null,
-                showComparison: comparisonState.showComparison,
+            comparison: comparisonState?.activeSnapshot ? {
+                activeSnapshot: JSON.parse(JSON.stringify(comparisonState.activeSnapshot)),
+                showComparison: !!comparisonState.showComparison,
             } : undefined,
         };
     }, [
@@ -206,7 +207,18 @@ export const usePlannerSaveLoad = ({
             return;
         }
         const currentState = gatherCurrentState();
-        const areEqual = _isEqual(currentState, lastSavedStateInMemory);
+
+        // Helper to normalize planner state so empty/missing comparison states match identically
+        const normalize = (s: SavedPlannerState | null) => {
+            if (!s) return null;
+            const copy = JSON.parse(JSON.stringify(s));
+            if (!copy.comparison?.activeSnapshot) {
+                delete copy.comparison;
+            }
+            return copy;
+        };
+
+        const areEqual = _isEqual(normalize(currentState), normalize(lastSavedStateInMemory));
         setIsDirty(!areEqual);
     }, 500);
 
@@ -353,6 +365,11 @@ export const usePlannerSaveLoad = ({
         setIsDirty(false);
     }, [tabId]);
 
+    const revertSetup = useCallback(async () => {
+        if (!activeSetupName) return;
+        await loadSetup(activeSetupName);
+    }, [activeSetupName, loadSetup]);
+
     return {
         getSaveNames,
         saveSetup,
@@ -363,6 +380,7 @@ export const usePlannerSaveLoad = ({
         saveError,
         clearSaveError,
         unlinkSetup,
+        revertSetup,
         gatherCurrentState,
     };
 };

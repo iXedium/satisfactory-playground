@@ -17,6 +17,7 @@ interface FactoryPlannerShellProps {
 export interface FactoryPlannerShellRef {
   getFullState(): SavedPlannerState | null;
   unlinkSetup(): void;
+  revertSetup(): void;
 }
 
 const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShellProps>(
@@ -28,6 +29,7 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
     useImperativeHandle(ref, () => ({
       getFullState: () => plannerRef.current?.getFullState() ?? null,
       unlinkSetup: () => plannerRef.current?.unlinkSetup(),
+      revertSetup: () => plannerRef.current?.revertSetup(),
     }), []);
 
     return (

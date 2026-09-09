@@ -61,6 +61,10 @@ const WorkspaceLayout: React.FC = () => {
     shellRefs.current.get(tabId)?.unlinkSetup();
   }, []);
 
+  const handleRevertTab = useCallback((tabId: string) => {
+    shellRefs.current.get(tabId)?.revertSetup();
+  }, []);
+
   const handleDuplicateTab = useCallback((sourceTabId: string) => {
     const sourceTab = tabs.find(t => t.tabId === sourceTabId);
     if (!sourceTab) return;
@@ -110,6 +114,7 @@ const WorkspaceLayout: React.FC = () => {
         linkedMap={linkedMap}
         saveNames={saveNames}
         onUnlinkTab={handleUnlinkTab}
+        onRevertTab={handleRevertTab}
         onDuplicateTab={handleDuplicateTab}
         onCloseOtherTabs={handleCloseOtherTabs}
         activeWorkspaceName={activeWorkspaceName}

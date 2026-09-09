@@ -11,6 +11,7 @@ interface TabBarProps {
   linkedMap: Record<string, string | null>;
   saveNames: string[];
   onUnlinkTab: (tabId: string) => void;
+  onRevertTab: (tabId: string) => void;
   onDuplicateTab: (tabId: string) => void;
   onCloseOtherTabs: (tabId: string) => void;
   activeWorkspaceName: string | null;
@@ -26,6 +27,7 @@ const TabBar: React.FC<TabBarProps> = ({
   linkedMap,
   saveNames,
   onUnlinkTab,
+  onRevertTab,
   onDuplicateTab,
   onCloseOtherTabs,
   activeWorkspaceName,
@@ -42,6 +44,7 @@ const TabBar: React.FC<TabBarProps> = ({
   const [editName, setEditName] = useState('');
   const [nameConflict, setNameConflict] = useState(false);
   const [confirmCloseTabId, setConfirmCloseTabId] = useState<string | null>(null);
+  const [confirmRevertTabId, setConfirmRevertTabId] = useState<string | null>(null);
   const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
   const [hoveredCloseTabId, setHoveredCloseTabId] = useState<string | null>(null);
   const [hoveredDuplicateTabId, setHoveredDuplicateTabId] = useState<string | null>(null);
@@ -82,10 +85,16 @@ const TabBar: React.FC<TabBarProps> = ({
   };
 
   useEffect(() => {
-    if (!confirmCloseTabId) return;
-    const handleOutside = () => setConfirmCloseTabId(null);
+    if (!confirmCloseTabId && !confirmRevertTabId) return;
+    const handleOutside = () => {
+      setConfirmCloseTabId(null);
+      setConfirmRevertTabId(null);
+    };
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setConfirmCloseTabId(null);
+      if (e.key === 'Escape') {
+        setConfirmCloseTabId(null);
+        setConfirmRevertTabId(null);
+      }
     };
     window.addEventListener('click', handleOutside);
     window.addEventListener('keydown', handleKey);
@@ -93,7 +102,7 @@ const TabBar: React.FC<TabBarProps> = ({
       window.removeEventListener('click', handleOutside);
       window.removeEventListener('keydown', handleKey);
     };
-  }, [confirmCloseTabId]);
+  }, [confirmCloseTabId, confirmRevertTabId]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -441,6 +450,61 @@ const TabBar: React.FC<TabBarProps> = ({
                   No
                 </button>
               </span>
+            ) : confirmRevertTabId === tab.tabId ? (
+              <span
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#3a1e1e',
+                  border: '1px solid #ff6b6b',
+                  borderRadius: '3px',
+                  padding: '1px 5px',
+                  fontSize: '11px',
+                  color: '#fff',
+                  marginLeft: '4px',
+                  zIndex: 10,
+                }}
+              >
+                <span>Revert?</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRevertTab(tab.tabId);
+                    setConfirmRevertTabId(null);
+                  }}
+                  style={{
+                    background: '#e74c3c',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: '2px',
+                    padding: '0 4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmRevertTabId(null);
+                  }}
+                  style={{
+                    background: '#555',
+                    border: 'none',
+                    color: '#ccc',
+                    borderRadius: '2px',
+                    padding: '0 4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                  }}
+                >
+                  No
+                </button>
+              </span>
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
                 <span
@@ -657,6 +721,30 @@ const TabBar: React.FC<TabBarProps> = ({
             >
               <span style={{ fontSize: '13px' }}>🔗</span>
               <span>Unlink Setup</span>
+            </div>
+          )}
+
+          {/* Revert Tab Changes (when linked) */}
+          {isLinked && (
+            <div
+              onClick={() => {
+                setConfirmRevertTabId(targetTab.tabId);
+                setContextMenu(null);
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#721c24')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              style={{
+                padding: '6px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#ff6b6b',
+              }}
+              title="Discard changes and reload saved setup"
+            >
+              <span style={{ fontSize: '13px' }}>↺</span>
+              <span>Revert Changes</span>
             </div>
           )}
 
