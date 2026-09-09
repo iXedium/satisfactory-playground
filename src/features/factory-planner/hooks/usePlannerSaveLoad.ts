@@ -47,6 +47,7 @@ export interface UsePlannerSaveLoadResult {
     saveError: string | null;
     clearSaveError: () => void;
     unlinkSetup: () => void;
+    gatherCurrentState: () => SavedPlannerState;
 }
 
 interface UsePlannerSaveLoadProps {
@@ -346,5 +347,6 @@ export const usePlannerSaveLoad = ({
         saveError,
         clearSaveError,
         unlinkSetup,
+        gatherCurrentState,
     };
 };

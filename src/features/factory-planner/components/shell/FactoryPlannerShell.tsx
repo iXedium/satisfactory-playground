@@ -23,38 +23,10 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
     const store = useStore<PlannerRootState>();
     const plannerRef = useRef<FactoryPlannerRef>(null);
 
-    const getFullState = useCallback((): SavedPlannerState | null => {
-      const state = store.getState();
-      return {
-        dependencies: JSON.parse(JSON.stringify(state.dependencies)),
-        recipeSelections: JSON.parse(JSON.stringify(state.recipeSelections?.selections ?? {})),
-        nodeState: {
-          excessMap: {},
-          machineCountMap: {},
-          machineMultiplierMap: {},
-          expandedNodes: {},
-          nodeExtensionOverrides: {},
-        },
-        displayOptions: {
-          viewDensity: 'compact',
-          showExtensions: false,
-          accumulateExtensions: true,
-          showMachines: true,
-          showMachineMultiplier: false,
-          autoImport: true,
-        },
-        sortOptions: {
-          key: 'originalDepth',
-          direction: 'asc',
-        },
-        manualTreeOrder: [],
-      };
-    }, [store]);
-
     useImperativeHandle(ref, () => ({
-      getFullState,
+      getFullState: () => plannerRef.current?.getFullState() ?? null,
       unlinkSetup: () => plannerRef.current?.unlinkSetup(),
-    }), [getFullState]);
+    }), []);
 
     return (
       <div style={{ display: isActive ? undefined : 'none', height: '100%' }}>

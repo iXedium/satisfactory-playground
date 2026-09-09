@@ -149,6 +149,7 @@ export interface FactoryPlannerHookResult {
   unlinkSetup: () => void;
   saveError: string | null;
   clearSaveError: () => void;
+  getFullState: () => import('./usePlannerSaveLoad').SavedPlannerState;
   // Comparison
   showComparison: boolean;
   hasComparisonSnapshot: boolean;
@@ -513,6 +514,7 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
     saveError,
     clearSaveError,
     unlinkSetup,
+    gatherCurrentState,
   } = usePlannerSaveLoad({
     tabId,
     // Pass setters
@@ -726,6 +728,7 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
     unlinkSetup,
     saveError,
     clearSaveError,
+    getFullState: gatherCurrentState,
     // Comparison
     showComparison,
     hasComparisonSnapshot,
