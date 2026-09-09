@@ -25,6 +25,12 @@ interface EfficiencySectionProps {
   isByproduct?: boolean;
   isImport?: boolean;
   isExternal?: boolean;
+  isCyclicReference?: boolean;
+  cycleResolution?: {
+    grossRequirement: number;
+    netRequirement: number;
+    recirculated: number;
+  };
   parentNodeId?: string;           // Parent node ID (for import controls)
   hasMultipleImportSources?: boolean;  // True if multiple sources for same item
   nodeId: string;
@@ -66,6 +72,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   isByproduct = false,
   isImport = false,
   isExternal = false,
+  isCyclicReference = false,
+  cycleResolution,
   parentNodeId,
   hasMultipleImportSources = false,
   nodeId,
@@ -368,6 +376,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
                 isByproduct={isByproduct}
                 isImport={isImport}
                 isExternal={isExternal}
+                isCyclicReference={isCyclicReference}
+                cycleResolution={cycleResolution}
               />
               {showBaseline && baselineValues && !isNew && (
                 <span 

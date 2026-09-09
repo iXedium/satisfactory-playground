@@ -21,6 +21,7 @@ export const theme = {
     nodeByproduct: '#ff3333', // Sharp red for byproducts
     nodeImport: '#0096ff', // Bright blue for imports
     nodeExternalImport: '#00bcd4', // Cyan for external imports
+    nodeCyclicRecycle: '#26a69a', // Teal-green for cyclic/recycling nodes ♻️
     nodeDefault: '#8c9baa', // Neutral industrial gray
     
     // Efficiency colors - Bolder theme

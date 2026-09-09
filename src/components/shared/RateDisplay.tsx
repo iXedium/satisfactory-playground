@@ -8,6 +8,12 @@ interface RateDisplayProps {
   isByproduct?: boolean;
   isImport?: boolean;
   isExternal?: boolean;
+  isCyclicReference?: boolean;
+  cycleResolution?: {
+    grossRequirement: number;
+    netRequirement: number;
+    recirculated: number;
+  };
   containerStyle?: React.CSSProperties;
   textStyle?: React.CSSProperties;
 }
@@ -18,6 +24,8 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
   isByproduct = false,
   isImport = false,
   isExternal = false,
+  isCyclicReference = false,
+  cycleResolution,
   containerStyle,
   textStyle,
 }) => {
@@ -29,7 +37,9 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
   };
 
   let secondaryText = '';
-  if (excess > 1e-9 && !isByproduct && !isImport && !isExternal) {
+  if (isCyclicReference && cycleResolution) {
+    secondaryText = `♻️ ${formatNumber(cycleResolution.recirculated)}/min recirculated`;
+  } else if (excess > 1e-9 && !isByproduct && !isImport && !isExternal) {
     secondaryText = `(${formatNumber(excess)})`;
   } else if (isExternal) {
     secondaryText = `(external)`;
@@ -38,9 +48,15 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
   } else if (isImport) {
     secondaryText = `(local)`;
   } 
-  // else if (amount > 1e-9 && !isByproduct && !isImport) {
-  //   secondaryText = `(f: ${formatNumber(amount)})`;
-  // }
+
+  // Determine text color — cyclic nodes get teal-green
+  const getColor = () => {
+    if (isCyclicReference) return theme.colors.nodeCyclicRecycle;
+    if (isExternal) return theme.colors.nodeExternalImport;
+    if (isByproduct) return theme.colors.nodeByproduct;
+    if (isImport) return theme.colors.nodeImport;
+    return theme.colors.text;
+  };
 
   return (
     <div
@@ -49,7 +65,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
         flexDirection: 'column',
         alignItems: 'flex-end',
         fontWeight: 'bold',
-        color: isExternal ? theme.colors.nodeExternalImport : isByproduct ? theme.colors.nodeByproduct : isImport ? theme.colors.nodeImport : theme.colors.text,
+        color: getColor(),
         ...containerStyle,
       }}
     >
@@ -65,7 +81,7 @@ const RateDisplay: React.FC<RateDisplayProps> = ({
          <span
            style={{
              fontSize: sizes.fontSize.small,
-             color: theme.colors.textSecondary,
+             color: isCyclicReference ? theme.colors.nodeCyclicRecycle : theme.colors.textSecondary,
              marginTop: '-2px',
            }}
          >

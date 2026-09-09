@@ -132,6 +132,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const isSelected = nodeData?.isSelected ?? false;
   const isCompleted = nodeData?.isCompleted ?? false;
   const isExternal = nodeData?.isExternal ?? false;
+  const isCyclicReference = nodeData?.isCyclicReference ?? false;
+  const cycleResolution = nodeData?.cycleResolution;
 
   // Comparison state - get from Redux
   const showComparison = useSelector(selectShowComparison);
@@ -346,6 +348,7 @@ const ItemNode: React.FC<ItemNodeProps> = ({
   const getItemColor = () => {
     if (isRoot) return theme.colors.nodeRoot;
     if (isByproduct) return theme.colors.nodeByproduct;
+    if (isCyclicReference) return theme.colors.nodeCyclicRecycle;
     if (isExternal) return theme.colors.nodeExternalImport;
     if (isImport) return theme.colors.nodeImport;
     return theme.colors.nodeDefault;
@@ -528,6 +531,8 @@ const ItemNode: React.FC<ItemNodeProps> = ({
             isByproduct={isByproduct}
             isImport={isImport}
             isExternal={isExternal}
+            isCyclicReference={isCyclicReference}
+            cycleResolution={cycleResolution}
             parentNodeId={parentNodeId}
             hasMultipleImportSources={hasMultipleImportSources}
             excess={localExcess}
