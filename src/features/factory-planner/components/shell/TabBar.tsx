@@ -57,6 +57,14 @@ const TabBar: React.FC<TabBarProps> = ({
   } | null>(null);
   const [unlinkClickTimers, setUnlinkClickTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (editingTabId) {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }
+  }, [editingTabId]);
 
   useEffect(() => {
     const el = tabsScrollRef.current;
@@ -363,15 +371,13 @@ const TabBar: React.FC<TabBarProps> = ({
             {editingTabId === tab.tabId ? (
               <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <input
+                  ref={renameInputRef}
                   value={editName}
                   onChange={e => {
                     setEditName(e.target.value);
                     setNameConflict(false);
                   }}
                   onKeyDown={handleRenameKeyDown}
-                  autoFocus
-                  onFocus={e => e.target.select()}
-                  ref={el => el?.select()}
                   style={{
                     background: '#3d3d3d',
                     border: `1px solid ${nameConflict ? '#ff6b6b' : '#555'}`,
