@@ -9,6 +9,7 @@ import TabBar from './TabBar';
 import FactoryPlannerShell, { FactoryPlannerShellRef } from './FactoryPlannerShell';
 import TabStoreProvider from './TabStoreProvider';
 import { cloneTabState, getDuplicateTabName } from './workspaceHelpers';
+import { useWorkspaceSaveLoad } from './useWorkspaceSaveLoad';
 export { cloneTabState };
 
 
@@ -83,6 +84,15 @@ const WorkspaceLayout: React.FC = () => {
     dispatch(closeOtherTabs(keepTabId));
   }, [dispatch]);
 
+  const {
+    activeWorkspaceName,
+    getWorkspaceNames,
+    saveWorkspace,
+    loadWorkspace,
+    deleteWorkspace,
+    newWorkspace,
+  } = useWorkspaceSaveLoad(tabs, activeTabId, shellRefs);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <TabBar
@@ -92,6 +102,12 @@ const WorkspaceLayout: React.FC = () => {
         onUnlinkTab={handleUnlinkTab}
         onDuplicateTab={handleDuplicateTab}
         onCloseOtherTabs={handleCloseOtherTabs}
+        activeWorkspaceName={activeWorkspaceName}
+        onSaveWorkspace={saveWorkspace}
+        onLoadWorkspace={loadWorkspace}
+        onDeleteWorkspace={deleteWorkspace}
+        onNewWorkspace={newWorkspace}
+        getWorkspaceNames={getWorkspaceNames}
       />
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         {tabs.map(tab => (

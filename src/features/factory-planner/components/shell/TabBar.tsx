@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../../store';
 import { addTab, removeTab, setActiveTab, renameTab, reorderTabs } from '../../../../store/workspaceSlice';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import WorkspaceMenu from './WorkspaceMenu';
 
 interface TabBarProps {
   dirtyMap: Record<string, boolean>;
@@ -11,9 +12,28 @@ interface TabBarProps {
   onUnlinkTab: (tabId: string) => void;
   onDuplicateTab: (tabId: string) => void;
   onCloseOtherTabs: (tabId: string) => void;
+  activeWorkspaceName: string | null;
+  onSaveWorkspace: (name: string) => Promise<boolean>;
+  onLoadWorkspace: (name: string) => Promise<boolean>;
+  onDeleteWorkspace: (name: string) => Promise<boolean>;
+  onNewWorkspace: () => void;
+  getWorkspaceNames: () => Promise<string[]>;
 }
 
-const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlinkTab, onDuplicateTab, onCloseOtherTabs }) => {
+const TabBar: React.FC<TabBarProps> = ({
+  dirtyMap,
+  linkedMap,
+  saveNames,
+  onUnlinkTab,
+  onDuplicateTab,
+  onCloseOtherTabs,
+  activeWorkspaceName,
+  onSaveWorkspace,
+  onLoadWorkspace,
+  onDeleteWorkspace,
+  onNewWorkspace,
+  getWorkspaceNames,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
   const tabs = useSelector((state: RootState) => state.workspace.tabs);
   const activeTabId = useSelector((state: RootState) => state.workspace.activeTabId);
@@ -157,22 +177,31 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
 
   return (
     <>
-      <DragDropContext onDragEnd={handleDragEnd}>
-      <Droppable droppableId="tab-bar" direction="horizontal">
-        {(providedDroppable) => (
-          <div
-            ref={providedDroppable.innerRef}
-            {...providedDroppable.droppableProps}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: '#1e1e1e',
-              borderBottom: '1px solid #333',
-              padding: '4px 8px 0',
-              gap: '2px',
-              flexWrap: 'wrap',
-            }}
-          >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#1e1e1e',
+          borderBottom: '1px solid #333',
+          padding: '4px 8px 0',
+          gap: '8px',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+          <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="tab-bar" direction="horizontal">
+            {(providedDroppable) => (
+              <div
+                ref={providedDroppable.innerRef}
+                {...providedDroppable.droppableProps}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  flexWrap: 'nowrap',
+                }}
+              >
             {tabs.map((tab, index) => {
               const isLinked = linkedMap[tab.tabId] !== null && linkedMap[tab.tabId] !== undefined;
               const isSelected = tab.tabId === activeTabId;
@@ -450,10 +479,24 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                 ⚠ {tabs.length} tabs open
               </span>
             )}
-          </div>
-        )}
-      </Droppable>
-    </DragDropContext>
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+        </div>
+
+        <div style={{ flexShrink: 0, paddingBottom: '4px' }}>
+          <WorkspaceMenu
+            activeWorkspaceName={activeWorkspaceName}
+            dirtyMap={dirtyMap}
+            onSaveWorkspace={onSaveWorkspace}
+            onLoadWorkspace={onLoadWorkspace}
+            onDeleteWorkspace={onDeleteWorkspace}
+            onNewWorkspace={onNewWorkspace}
+            getWorkspaceNames={getWorkspaceNames}
+          />
+        </div>
+      </div>
     {contextMenu && (() => {
       const targetTab = tabs.find(t => t.tabId === contextMenu.tabId);
       if (!targetTab) return null;

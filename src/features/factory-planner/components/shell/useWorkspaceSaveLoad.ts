@@ -1,21 +1,23 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../../store';
-import { setWorkspaceTabs } from '../../../../store/workspaceSlice';
+import { setWorkspaceTabs, generateTabId } from '../../../../store/workspaceSlice';
 import { saveService } from '../../../../services/saveService';
 import { SavedPlannerState } from '../../hooks/usePlannerSaveLoad';
 import { FactoryPlannerShellRef } from './FactoryPlannerShell';
 import { cloneTabState } from './workspaceHelpers';
 
 const WORKSPACE_PREFIX = 'workspace:';
+const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceName';
 
-interface WorkspaceEntry {
+export interface WorkspaceEntry {
   tabId: string;
   name: string;
+  linkedSetupName?: string | null;
   plannerState: SavedPlannerState;
 }
 
-interface SaveWorkspacePayload {
+export interface SaveWorkspacePayload {
   version: 1;
   tabs: WorkspaceEntry[];
   activeTabIndex: number;
@@ -27,19 +29,28 @@ export function useWorkspaceSaveLoad(
   shellRefs: React.MutableRefObject<Map<string, FactoryPlannerShellRef>>
 ) {
   const dispatch = useDispatch<AppDispatch>();
+  const [activeWorkspaceName, setActiveWorkspaceName] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+    } catch {
+      return null;
+    }
+  });
 
   const getWorkspaceNames = useCallback(async (): Promise<string[]> => {
     const result = await saveService.getNames();
     if (result.ok && result.data) {
       return result.data
         .filter(name => name.startsWith(WORKSPACE_PREFIX))
-        .map(name => name.slice(WORKSPACE_PREFIX.length));
+        .map(name => name.slice(WORKSPACE_PREFIX.length))
+        .sort((a, b) => a.localeCompare(b));
     }
     return [];
   }, []);
 
   const saveWorkspace = useCallback(async (name: string): Promise<boolean> => {
-    if (!name?.trim()) return false;
+    const trimmed = name?.trim();
+    if (!trimmed) return false;
 
     const entries: WorkspaceEntry[] = [];
     const activeIndex = tabs.findIndex(t => t.tabId === activeTabId);
@@ -47,10 +58,12 @@ export function useWorkspaceSaveLoad(
     for (const tab of tabs) {
       const ref = shellRefs.current.get(tab.tabId);
       const plannerState = ref?.getFullState();
+      const linkedSetupName = localStorage.getItem(`activeSetupName_${tab.tabId}`) || null;
       if (plannerState) {
         entries.push({
           tabId: tab.tabId,
           name: tab.name,
+          linkedSetupName,
           plannerState,
         });
       }
@@ -63,34 +76,68 @@ export function useWorkspaceSaveLoad(
     };
 
     const result = await saveService.save(
-      `${WORKSPACE_PREFIX}${name}`,
+      `${WORKSPACE_PREFIX}${trimmed}`,
       JSON.stringify(payload)
     );
 
-    return result.ok;
+    if (result.ok) {
+      setActiveWorkspaceName(trimmed);
+      try {
+        localStorage.setItem(ACTIVE_WORKSPACE_KEY, trimmed);
+      } catch {
+        // ignore storage errors
+      }
+      return true;
+    }
+
+    return false;
   }, [tabs, activeTabId, shellRefs]);
 
   const loadWorkspace = useCallback(async (name: string): Promise<boolean> => {
-    const result = await saveService.get(`${WORKSPACE_PREFIX}${name}`);
+    const trimmed = name?.trim();
+    if (!trimmed) return false;
 
+    const result = await saveService.get(`${WORKSPACE_PREFIX}${trimmed}`);
     if (!result.ok || !result.data) return false;
 
     try {
       const payload: SaveWorkspacePayload = JSON.parse(result.data);
-
-      if (payload.version !== 1 || !payload.tabs) return false;
-
-      // Seed localStorage for each tab before mounting
-      for (const t of payload.tabs) {
-        if (t.plannerState) {
-          cloneTabState(t.tabId, t.plannerState);
-        }
+      if (payload.version !== 1 || !Array.isArray(payload.tabs) || payload.tabs.length === 0) {
+        return false;
       }
 
+      // Generate fresh tab IDs to ensure clean component remounts and stores
+      const loadedTabs = payload.tabs.map(t => {
+        const freshTabId = generateTabId();
+        if (t.plannerState) {
+          cloneTabState(freshTabId, t.plannerState);
+        }
+        if (t.linkedSetupName) {
+          localStorage.setItem(`activeSetupName_${freshTabId}`, t.linkedSetupName);
+        } else {
+          localStorage.removeItem(`activeSetupName_${freshTabId}`);
+        }
+        return {
+          tabId: freshTabId,
+          name: t.name,
+        };
+      });
+
+      const targetActiveIndex = (payload.activeTabIndex >= 0 && payload.activeTabIndex < loadedTabs.length)
+        ? payload.activeTabIndex
+        : 0;
+
       dispatch(setWorkspaceTabs({
-        tabs: payload.tabs.map(t => ({ tabId: t.tabId, name: t.name })),
-        activeTabId: payload.tabs[payload.activeTabIndex]?.tabId ?? payload.tabs[0]?.tabId ?? null,
+        tabs: loadedTabs,
+        activeTabId: loadedTabs[targetActiveIndex]?.tabId ?? loadedTabs[0]?.tabId ?? null,
       }));
+
+      setActiveWorkspaceName(trimmed);
+      try {
+        localStorage.setItem(ACTIVE_WORKSPACE_KEY, trimmed);
+      } catch {
+        // ignore storage errors
+      }
 
       return true;
     } catch {
@@ -99,9 +146,45 @@ export function useWorkspaceSaveLoad(
   }, [dispatch]);
 
   const deleteWorkspace = useCallback(async (name: string): Promise<boolean> => {
-    const result = await saveService.delete(`${WORKSPACE_PREFIX}${name}`);
-    return result.ok;
-  }, []);
+    const trimmed = name?.trim();
+    if (!trimmed) return false;
 
-  return { getWorkspaceNames, saveWorkspace, loadWorkspace, deleteWorkspace };
+    const result = await saveService.delete(`${WORKSPACE_PREFIX}${trimmed}`);
+    if (result.ok) {
+      if (activeWorkspaceName === trimmed) {
+        setActiveWorkspaceName(null);
+        try {
+          localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+        } catch {
+          // ignore
+        }
+      }
+      return true;
+    }
+    return false;
+  }, [activeWorkspaceName]);
+
+  const newWorkspace = useCallback((): void => {
+    const freshTabId = generateTabId();
+    dispatch(setWorkspaceTabs({
+      tabs: [{ tabId: freshTabId, name: 'Planner 1' }],
+      activeTabId: freshTabId,
+    }));
+    setActiveWorkspaceName(null);
+    try {
+      localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+    } catch {
+      // ignore
+    }
+  }, [dispatch]);
+
+  return {
+    activeWorkspaceName,
+    setActiveWorkspaceName,
+    getWorkspaceNames,
+    saveWorkspace,
+    loadWorkspace,
+    deleteWorkspace,
+    newWorkspace,
+  };
 }
