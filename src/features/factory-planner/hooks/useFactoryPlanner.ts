@@ -16,6 +16,7 @@ import {
 import { 
   setRecipeSelection as setRecipeSelectionAction,
   loadRecipeSelections,
+  loadComparisonState,
   beginHistoryTransaction,
   commitHistoryTransaction,
 } from '../store';
@@ -167,9 +168,11 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
   const lsSortDir = useMemo(() => getNamespacedKey('plannerTreeSortDirection', tabId), [tabId]);
   const lsDepsKey = useMemo(() => getNamespacedKey('savedDependencies', tabId), [tabId]);
   const lsRecipesKey = useMemo(() => getNamespacedKey('savedRecipeSelections', tabId), [tabId]);
+  const lsComparisonKey = useMemo(() => getNamespacedKey('savedComparison', tabId), [tabId]);
   const lsManualOrderKey = useMemo(() => `plannerManualTreeOrder_${tabId}`, [tabId]);
   const dependencies = useSelector((state: PlannerRootState) => state.dependencies);
   const recipeSelections = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
+  const comparisonState = useSelector((state: PlannerRootState) => state.comparison);
   
   // --- Define generateTreeId and createNewTreeStructure FIRST --- 
   const generateTreeId = useCallback((itemId: string): string => {
@@ -465,11 +468,18 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
       } else {
         // console.log("No last session recipe selections found.");
       }
+
+      const savedComparison = localStorage.getItem(lsComparisonKey);
+      if (savedComparison) {
+        const parsed = JSON.parse(savedComparison);
+        dispatch(loadComparisonState(parsed));
+      }
     } catch (error) {
       console.error("Error loading last session Redux state:", error);
       // Clear potentially corrupted keys
       localStorage.removeItem(lsDepsKey);
       localStorage.removeItem(lsRecipesKey);
+      localStorage.removeItem(lsComparisonKey);
     }
   }, [dispatch]); // Run only once on mount
   // ---------------------------------------------------------------------
@@ -501,6 +511,20 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
       }
     } 
   }, [recipeSelections]);
+
+  useEffect(() => {
+    // Save comparison state
+    if (comparisonState && (comparisonState.activeSnapshot || comparisonState.showComparison)) {
+      try {
+        localStorage.setItem(lsComparisonKey, JSON.stringify(comparisonState));
+      } catch (error) {
+        console.error("Error auto-saving last session comparison:", error);
+        localStorage.removeItem(lsComparisonKey);
+      }
+    } else {
+      localStorage.removeItem(lsComparisonKey);
+    }
+  }, [comparisonState, lsComparisonKey]);
   // -------------------------------------------------------------
 
   // Call the Save/Load Hook

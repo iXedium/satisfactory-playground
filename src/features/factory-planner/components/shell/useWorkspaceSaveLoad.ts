@@ -5,6 +5,7 @@ import { setWorkspaceTabs } from '../../../../store/workspaceSlice';
 import { saveService } from '../../../../services/saveService';
 import { SavedPlannerState } from '../../hooks/usePlannerSaveLoad';
 import { FactoryPlannerShellRef } from './FactoryPlannerShell';
+import { cloneTabState } from './workspaceHelpers';
 
 const WORKSPACE_PREFIX = 'workspace:';
 
@@ -78,6 +79,13 @@ export function useWorkspaceSaveLoad(
       const payload: SaveWorkspacePayload = JSON.parse(result.data);
 
       if (payload.version !== 1 || !payload.tabs) return false;
+
+      // Seed localStorage for each tab before mounting
+      for (const t of payload.tabs) {
+        if (t.plannerState) {
+          cloneTabState(t.tabId, t.plannerState);
+        }
+      }
 
       dispatch(setWorkspaceTabs({
         tabs: payload.tabs.map(t => ({ tabId: t.tabId, name: t.name })),

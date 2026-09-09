@@ -2,51 +2,19 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ComparisonSnapshot, TreeSnapshot, NodeSnapshot } from "../../../types";
 import { logger } from "../../../utils/logger";
 
-// --- Local Storage Key ---
-const COMPARISON_STORAGE_KEY = 'plannerComparisonSnapshot';
-
 // --- State Interface ---
-interface ComparisonState {
+export interface ComparisonState {
   /** The currently stored snapshot for comparison (null if none) */
   activeSnapshot: ComparisonSnapshot | null;
   /** Whether comparison display is enabled */
   showComparison: boolean;
 }
 
-// --- Load from localStorage ---
-const loadFromStorage = (): ComparisonState => {
-  try {
-    const stored = localStorage.getItem(COMPARISON_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return {
-        activeSnapshot: parsed.activeSnapshot || null,
-        showComparison: parsed.showComparison ?? false,
-      };
-    }
-  } catch (error) {
-    logger.warn('[comparisonSlice] Failed to load from localStorage:', error);
-  }
-  return {
-    activeSnapshot: null,
-    showComparison: false,
-  };
-};
-
-// --- Save to localStorage ---
-const saveToStorage = (state: ComparisonState): void => {
-  try {
-    localStorage.setItem(COMPARISON_STORAGE_KEY, JSON.stringify({
-      activeSnapshot: state.activeSnapshot,
-      showComparison: state.showComparison,
-    }));
-  } catch (error) {
-    logger.warn('[comparisonSlice] Failed to save to localStorage:', error);
-  }
-};
-
 // --- Initial State ---
-const initialState: ComparisonState = loadFromStorage();
+const initialState: ComparisonState = {
+  activeSnapshot: null,
+  showComparison: false,
+};
 
 // --- Slice Definition ---
 const comparisonSlice = createSlice({
@@ -58,7 +26,6 @@ const comparisonSlice = createSlice({
       state.activeSnapshot = action.payload;
       // Auto-enable comparison when storing
       state.showComparison = true;
-      saveToStorage(state);
       logger.info('[comparisonSlice] Snapshot stored:', action.payload.name);
     },
 
@@ -66,28 +33,24 @@ const comparisonSlice = createSlice({
     clearSnapshot: (state) => {
       state.activeSnapshot = null;
       state.showComparison = false;
-      saveToStorage(state);
       logger.info('[comparisonSlice] Snapshot cleared');
     },
 
     /** Toggle comparison display on/off */
     toggleComparisonDisplay: (state) => {
       state.showComparison = !state.showComparison;
-      saveToStorage(state);
       logger.debug('[comparisonSlice] Comparison display:', state.showComparison);
     },
 
     /** Set comparison display explicitly */
     setComparisonDisplay: (state, action: PayloadAction<boolean>) => {
       state.showComparison = action.payload;
-      saveToStorage(state);
     },
 
     /** Update a single tree in the snapshot (for partial updates) */
     updateSnapshotTree: (state, action: PayloadAction<TreeSnapshot>) => {
       if (state.activeSnapshot) {
         state.activeSnapshot.trees[action.payload.treeId] = action.payload;
-        saveToStorage(state);
       }
     },
 
@@ -100,8 +63,19 @@ const comparisonSlice = createSlice({
           state.activeSnapshot = null;
           state.showComparison = false;
         }
-        saveToStorage(state);
       }
+    },
+
+    /** Load or restore complete comparison state (from saved setup, workspace, or session) */
+    loadComparisonState: (state, action: PayloadAction<{ activeSnapshot: ComparisonSnapshot | null; showComparison?: boolean } | null | undefined>) => {
+      if (!action.payload) {
+        state.activeSnapshot = null;
+        state.showComparison = false;
+      } else {
+        state.activeSnapshot = action.payload.activeSnapshot || null;
+        state.showComparison = action.payload.showComparison ?? (action.payload.activeSnapshot !== null);
+      }
+      logger.info('[comparisonSlice] State loaded:', state.activeSnapshot?.name ?? 'none');
     },
   },
 });
@@ -114,6 +88,7 @@ export const {
   setComparisonDisplay,
   updateSnapshotTree,
   removeSnapshotTree,
+  loadComparisonState,
 } = comparisonSlice.actions;
 
 export default comparisonSlice.reducer;

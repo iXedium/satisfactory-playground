@@ -2,12 +2,12 @@ import { useCallback, useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { logger } from '../../../utils/logger';
 import { PlannerRootState, PlannerAppDispatch } from '../../../store/plannerStore';
-import { DependencyNode, Recipe } from '../../../types';
-import { loadSavedState, loadRecipeSelections } from '../store';
+import { DependencyNode, Recipe, ComparisonSnapshot } from '../../../types';
+import { loadSavedState, loadRecipeSelections, DependencyState } from '../store';
+import { loadComparisonState } from '../store/comparisonSlice';
 import { usePlannerNodeState } from './usePlannerNodeState';
 import { usePlannerDisplayOptions, ViewDensity } from './usePlannerDisplayOptions';
 import { TreeSortKey, SortDirection } from './useFactoryPlanner';
-import { DependencyState } from '../store';
 import _isEqual from 'lodash/isEqual';
 import { useDebouncedCallback } from 'use-debounce';
 import { saveService } from '../../../services/saveService';
@@ -35,6 +35,10 @@ export interface SavedPlannerState {
         direction: string;
     };
     manualTreeOrder: string[];
+    comparison?: {
+        activeSnapshot: ComparisonSnapshot | null;
+        showComparison: boolean;
+    };
 }
 
 export interface UsePlannerSaveLoadResult {
@@ -119,6 +123,7 @@ export const usePlannerSaveLoad = ({
     const dispatch: PlannerAppDispatch = useDispatch();
     const dependenciesState = useSelector((state: PlannerRootState) => state.dependencies);
     const recipeSelectionsState = useSelector((state: PlannerRootState) => state.recipeSelections.selections);
+    const comparisonState = useSelector((state: PlannerRootState) => state.comparison);
 
     const [saveNames, setSaveNames] = useState<string[]>([]);
     const [lastSavedStateInMemory, setLastSavedStateInMemory] = useState<SavedPlannerState | null>(null);
@@ -179,6 +184,10 @@ export const usePlannerSaveLoad = ({
                 direction: currentTreeSortDirection,
             },
             manualTreeOrder: JSON.parse(JSON.stringify(currentManualTreeOrder)),
+            comparison: comparisonState ? {
+                activeSnapshot: comparisonState.activeSnapshot ? JSON.parse(JSON.stringify(comparisonState.activeSnapshot)) : null,
+                showComparison: comparisonState.showComparison,
+            } : undefined,
         };
     }, [
         dependenciesState, recipeSelectionsState,
@@ -188,6 +197,7 @@ export const usePlannerSaveLoad = ({
         currentShowMachines, currentShowMachineMultiplier, currentAutoImport,
         currentTreeSortKey, currentTreeSortDirection,
         currentManualTreeOrder,
+        comparisonState,
     ]);
 
     const checkDirtyState = useDebouncedCallback(() => {
@@ -211,6 +221,7 @@ export const usePlannerSaveLoad = ({
         currentTreeSortKey, currentTreeSortDirection,
         checkDirtyState,
         currentManualTreeOrder,
+        comparisonState,
     ]);
 
     const refreshNames = useCallback(async () => {
@@ -288,6 +299,11 @@ export const usePlannerSaveLoad = ({
             }
             if (stateToLoad.manualTreeOrder) {
                 setManualTreeOrder(stateToLoad.manualTreeOrder);
+            }
+            if (stateToLoad.comparison) {
+                dispatch(loadComparisonState(stateToLoad.comparison));
+            } else {
+                dispatch(loadComparisonState(null));
             }
 
             localStorage.setItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`, name);
