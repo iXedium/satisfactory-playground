@@ -5,7 +5,7 @@ import { setWorkspaceTabs, generateTabId } from '../../../../store/workspaceSlic
 import { saveService } from '../../../../services/saveService';
 import { SavedPlannerState } from '../../hooks/usePlannerSaveLoad';
 import { FactoryPlannerShellRef } from './FactoryPlannerShell';
-import { cloneTabState } from './workspaceHelpers';
+import { cloneTabState, purgeOrphanedTabState, cleanupSingleTabState } from './workspaceHelpers';
 
 const WORKSPACE_PREFIX = 'workspace:';
 const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceName';
@@ -106,6 +106,12 @@ export function useWorkspaceSaveLoad(
         return false;
       }
 
+      // Clean up previous tabs' storage before loading new workspace
+      for (const oldTab of tabs) {
+        cleanupSingleTabState(oldTab.tabId);
+      }
+      purgeOrphanedTabState([]);
+
       // Generate fresh tab IDs to ensure clean component remounts and stores
       const loadedTabs = payload.tabs.map(t => {
         const freshTabId = generateTabId();
@@ -143,7 +149,7 @@ export function useWorkspaceSaveLoad(
     } catch {
       return false;
     }
-  }, [dispatch]);
+  }, [tabs, dispatch]);
 
   const deleteWorkspace = useCallback(async (name: string): Promise<boolean> => {
     const trimmed = name?.trim();
@@ -165,6 +171,10 @@ export function useWorkspaceSaveLoad(
   }, [activeWorkspaceName]);
 
   const newWorkspace = useCallback((): void => {
+    for (const tab of tabs) {
+      cleanupSingleTabState(tab.tabId);
+    }
+    purgeOrphanedTabState([]);
     const freshTabId = generateTabId();
     dispatch(setWorkspaceTabs({
       tabs: [{ tabId: freshTabId, name: 'Planner 1' }],
@@ -176,7 +186,7 @@ export function useWorkspaceSaveLoad(
     } catch {
       // ignore
     }
-  }, [dispatch]);
+  }, [tabs, dispatch]);
 
   return {
     activeWorkspaceName,

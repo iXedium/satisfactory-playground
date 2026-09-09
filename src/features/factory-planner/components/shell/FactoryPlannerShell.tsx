@@ -3,6 +3,7 @@ import { useStore } from 'react-redux';
 import FactoryPlanner, { FactoryPlannerRef } from '../FactoryPlanner';
 import { SavedPlannerState } from '../../hooks/usePlannerSaveLoad';
 import type { PlannerRootState } from '../../../../store/plannerStore';
+import { consumeTabInitialState } from './workspaceHelpers';
 
 interface FactoryPlannerShellProps {
   tabId: string;
@@ -22,6 +23,7 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
   ({ tabId, tabName, isActive, initialState, onDirtyChange, onLinkedSetupChange }, ref) => {
     const store = useStore<PlannerRootState>();
     const plannerRef = useRef<FactoryPlannerRef>(null);
+    const initialRef = useRef<SavedPlannerState | undefined>(initialState ?? consumeTabInitialState(tabId));
 
     useImperativeHandle(ref, () => ({
       getFullState: () => plannerRef.current?.getFullState() ?? null,
@@ -35,6 +37,7 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
           tabId={tabId}
           tabName={tabName}
           isActive={isActive}
+          initialState={initialRef.current}
           onDirtyChange={onDirtyChange}
           onLinkedSetupChange={onLinkedSetupChange}
         />

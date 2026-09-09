@@ -161,7 +161,13 @@ export interface FactoryPlannerHookResult {
   resetToSnapshot: (removeNewNodes: boolean) => Promise<void>;
 }
 
-export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChange?: (dirty: boolean) => void, onLinkedSetupChange?: (name: string | null) => void): FactoryPlannerHookResult => {
+export const useFactoryPlanner = (
+  tabId: string,
+  isActive: boolean,
+  onDirtyChange?: (dirty: boolean) => void,
+  onLinkedSetupChange?: (name: string | null) => void,
+  initialState?: import('./usePlannerSaveLoad').SavedPlannerState
+): FactoryPlannerHookResult => {
   const dispatch: PlannerAppDispatch = useDispatch();
 
   const lsSortKey = useMemo(() => getNamespacedKey('plannerTreeSortKey', tabId), [tabId]);
@@ -447,39 +453,78 @@ export const useFactoryPlanner = (tabId: string, isActive: boolean, onDirtyChang
     handleExcessChange,
   });
   
-  // --- Load LAST SESSION Core Redux State on Initial Mount --- 
+  // --- Load Initial State (from Workspace/Clone or Last Session localStorage) --- 
   useEffect(() => {
-    // console.log("Attempting to load last session Redux state...");
+    if (initialState) {
+      if (initialState.dependencies) {
+        dispatch(loadSavedState(initialState.dependencies));
+      }
+      if (initialState.recipeSelections) {
+        dispatch(loadRecipeSelections(initialState.recipeSelections));
+      }
+      if (initialState.comparison) {
+        dispatch(loadComparisonState(initialState.comparison));
+      } else {
+        dispatch(loadComparisonState(null));
+      }
+      if (initialState.nodeState) {
+        setExcessMap(initialState.nodeState.excessMap || {});
+        setMachineCountMap(initialState.nodeState.machineCountMap || {});
+        setMachineMultiplierMap(initialState.nodeState.machineMultiplierMap || {});
+        setExpandedNodes(initialState.nodeState.expandedNodes || {});
+        setNodeExtensionOverrides(initialState.nodeState.nodeExtensionOverrides || {});
+      }
+      if (initialState.displayOptions) {
+        setViewDensity(initialState.displayOptions.viewDensity as ViewDensity);
+        setShowExtensions(initialState.displayOptions.showExtensions);
+        setAccumulateExtensions(initialState.displayOptions.accumulateExtensions);
+        setShowMachines(initialState.displayOptions.showMachines);
+        setShowMachineMultiplier(initialState.displayOptions.showMachineMultiplier);
+        setAutoImport(initialState.displayOptions.autoImport);
+      }
+      if (initialState.sortOptions) {
+        if (initialState.sortOptions.key) setTreeSortKey(initialState.sortOptions.key as TreeSortKey);
+        if (initialState.sortOptions.direction) setTreeSortDirection(initialState.sortOptions.direction as SortDirection);
+      }
+      if (initialState.manualTreeOrder) {
+        setManualTreeOrder(initialState.manualTreeOrder);
+      }
+      return;
+    }
+
     try {
       const savedDependencies = localStorage.getItem(lsDepsKey);
       if (savedDependencies) {
-        // console.log("Found last session dependencies, loading...");
         const parsed = JSON.parse(savedDependencies);
         dispatch(loadSavedState(parsed));
-      } else {
-        // console.log("No last session dependencies found.");
       }
       
       const savedRecipeSelections = localStorage.getItem(lsRecipesKey);
       if (savedRecipeSelections) {
-        // console.log("Found last session recipe selections, loading...");
         const parsed = JSON.parse(savedRecipeSelections);
         dispatch(loadRecipeSelections(parsed));
-      } else {
-        // console.log("No last session recipe selections found.");
       }
 
       const savedComparison = localStorage.getItem(lsComparisonKey);
       if (savedComparison) {
         const parsed = JSON.parse(savedComparison);
         dispatch(loadComparisonState(parsed));
+      } else {
+        // Fallback: check legacy un-namespaced snapshot from before multi-tab migration
+        try {
+          const legacy = localStorage.getItem('plannerComparisonSnapshot');
+          if (legacy) {
+            const parsed = JSON.parse(legacy);
+            if (parsed?.activeSnapshot) {
+              dispatch(loadComparisonState(parsed));
+            }
+          }
+        } catch {
+          // ignore
+        }
       }
     } catch (error) {
       console.error("Error loading last session Redux state:", error);
-      // Clear potentially corrupted keys
-      localStorage.removeItem(lsDepsKey);
-      localStorage.removeItem(lsRecipesKey);
-      localStorage.removeItem(lsComparisonKey);
     }
   }, [dispatch]); // Run only once on mount
   // ---------------------------------------------------------------------

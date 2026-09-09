@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../../store';
 import { addTab, removeTab, setActiveTab, renameTab, reorderTabs } from '../../../../store/workspaceSlice';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import WorkspaceMenu from './WorkspaceMenu';
+import { cleanupSingleTabState } from './workspaceHelpers';
 
 interface TabBarProps {
   dirtyMap: Record<string, boolean>;
@@ -50,6 +51,24 @@ const TabBar: React.FC<TabBarProps> = ({
     y: number;
   } | null>(null);
   const [unlinkClickTimers, setUnlinkClickTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -98,6 +117,7 @@ const TabBar: React.FC<TabBarProps> = ({
   };
 
   const handleCloseTab = (tabId: string) => {
+    cleanupSingleTabState(tabId);
     dispatch(removeTab(tabId));
   };
 
@@ -177,6 +197,18 @@ const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <>
+      <style>{`
+        .tab-bar-scroll-container::-webkit-scrollbar {
+          height: 3px;
+        }
+        .tab-bar-scroll-container::-webkit-scrollbar-thumb {
+          background: #444;
+          border-radius: 2px;
+        }
+        .tab-bar-scroll-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+      `}</style>
       <div
         style={{
           display: 'flex',
@@ -184,11 +216,29 @@ const TabBar: React.FC<TabBarProps> = ({
           justifyContent: 'space-between',
           background: '#1e1e1e',
           borderBottom: '1px solid #333',
-          padding: '4px 8px 0',
+          padding: '0 8px',
+          height: '38px',
+          minHeight: '38px',
+          maxHeight: '38px',
           gap: '8px',
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+        <div
+          ref={tabsScrollRef}
+          className="tab-bar-scroll-container"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'flex-end',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#444 transparent',
+          }}
+        >
           <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="tab-bar" direction="horizontal">
             {(providedDroppable) => (
@@ -197,9 +247,10 @@ const TabBar: React.FC<TabBarProps> = ({
                 {...providedDroppable.droppableProps}
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-end',
                   gap: '2px',
                   flexWrap: 'nowrap',
+                  height: '100%',
                 }}
               >
             {tabs.map((tab, index) => {
@@ -467,25 +518,39 @@ const TabBar: React.FC<TabBarProps> = ({
                 padding: '2px 8px',
                 borderRadius: '4px',
                 lineHeight: 1,
+                marginBottom: '4px',
               }}
               title="Add new tab"
             >+</button>
-            {showWarning && (
-              <span style={{
-                marginLeft: '8px',
-                color: '#ff9f43',
-                fontSize: '12px',
-              }}>
-                ⚠ {tabs.length} tabs open
-              </span>
-            )}
               </div>
             )}
           </Droppable>
         </DragDropContext>
         </div>
 
-        <div style={{ flexShrink: 0, paddingBottom: '4px' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', height: '100%' }}>
+          {showWarning && (
+            <span
+              style={{
+                color: '#ff9f43',
+                fontSize: '11px',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                background: 'rgba(255, 159, 67, 0.12)',
+                border: '1px solid rgba(255, 159, 67, 0.3)',
+                borderRadius: '3px',
+                padding: '3px 7px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                userSelect: 'none',
+              }}
+              title={`${tabs.length} tabs open`}
+            >
+              <span>⚠</span>
+              <span>{tabs.length} tabs</span>
+            </span>
+          )}
           <WorkspaceMenu
             activeWorkspaceName={activeWorkspaceName}
             dirtyMap={dirtyMap}

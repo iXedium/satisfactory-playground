@@ -25,6 +25,7 @@ interface FactoryPlannerProps {
   tabId: string;
   tabName?: string;
   isActive: boolean;
+  initialState?: import('../hooks/usePlannerSaveLoad').SavedPlannerState;
   onDirtyChange?: (dirty: boolean) => void;
   onLinkedSetupChange?: (name: string | null) => void;
 }
@@ -33,7 +34,7 @@ interface FactoryPlannerProps {
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tabId, tabName, isActive, onDirtyChange, onLinkedSetupChange }, ref) => {
+const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tabId, tabName, isActive, initialState, onDirtyChange, onLinkedSetupChange }, ref) => {
   const {
     // State
     dependencies,
@@ -115,7 +116,7 @@ const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tab
     resetToSnapshot,
     unlinkSetup,
     getFullState,
-  } = useFactoryPlanner(tabId, isActive, onDirtyChange, onLinkedSetupChange);
+  } = useFactoryPlanner(tabId, isActive, onDirtyChange, onLinkedSetupChange, initialState);
   
   useImperativeHandle(ref, () => ({
     unlinkSetup,

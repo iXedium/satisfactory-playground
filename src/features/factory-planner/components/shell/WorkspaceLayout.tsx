@@ -8,7 +8,7 @@ import { saveService } from '../../../../services/saveService';
 import TabBar from './TabBar';
 import FactoryPlannerShell, { FactoryPlannerShellRef } from './FactoryPlannerShell';
 import TabStoreProvider from './TabStoreProvider';
-import { cloneTabState, getDuplicateTabName } from './workspaceHelpers';
+import { cloneTabState, getDuplicateTabName, purgeOrphanedTabState, cleanupSingleTabState } from './workspaceHelpers';
 import { useWorkspaceSaveLoad } from './useWorkspaceSaveLoad';
 export { cloneTabState };
 
@@ -80,9 +80,19 @@ const WorkspaceLayout: React.FC = () => {
     }));
   }, [tabs, dispatch]);
 
+  // Automatically purge dead tab storage keys on startup and tab changes
+  useEffect(() => {
+    purgeOrphanedTabState(tabs.map(t => t.tabId));
+  }, [tabs]);
+
   const handleCloseOtherTabs = useCallback((keepTabId: string) => {
+    for (const t of tabs) {
+      if (t.tabId !== keepTabId) {
+        cleanupSingleTabState(t.tabId);
+      }
+    }
     dispatch(closeOtherTabs(keepTabId));
-  }, [dispatch]);
+  }, [tabs, dispatch]);
 
   const {
     activeWorkspaceName,
