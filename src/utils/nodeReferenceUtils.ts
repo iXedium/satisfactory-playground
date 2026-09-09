@@ -262,8 +262,9 @@ function preservePropertiesInChildren(children: DependencyNode[]) {
 }
 
 /**
- * Detect circular import references
- * Returns true if adding the given reference would create a circular dependency
+ * Detect circular import references using BFS traversal.
+ * Returns true if adding an import from sourceTreeId → targetTreeId would create a cycle.
+ * Handles multi-hop chains: A→B→C→A.
  */
 export const wouldCreateCircularReference = (
   trees: Record<string, DependencyNode>,
@@ -275,31 +276,61 @@ export const wouldCreateCircularReference = (
     return true;
   }
   
-  // Check if the target tree is already importing from the source (reverse dependency)
-  const targetTree = trees[targetTreeId];
-  if (!targetTree) return false;
+  // BFS: starting from targetTree, follow all import references outward.
+  // If we can reach sourceTreeId, then adding sourceTree→targetTree would close a cycle.
+  const visited = new Set<string>();
+  const queue: string[] = [targetTreeId];
   
-  // Helper function to check if any node in the tree has a reference to the source tree
-  const hasReferenceToSource = (node: DependencyNode): boolean => {
-    // Check if this node imports from the source
-    const reference = getImportReference(node);
-    if (reference && reference.targetTreeId === sourceTreeId) {
+  while (queue.length > 0) {
+    const currentTreeId = queue.shift()!;
+    if (visited.has(currentTreeId)) continue;
+    visited.add(currentTreeId);
+    
+    const currentTree = trees[currentTreeId];
+    if (!currentTree) continue;
+    
+    // Collect all tree IDs that this tree imports from
+    const collectImportTargets = (node: DependencyNode): void => {
+      const reference = getImportReference(node);
+      if (reference) {
+        const refTarget = reference.targetTreeId;
+        // If following imports from targetTree leads back to sourceTree, it's circular
+        if (refTarget === sourceTreeId) {
+          return; // We'll check via the found flag below
+        }
+        if (!visited.has(refTarget)) {
+          queue.push(refTarget);
+        }
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          collectImportTargets(child);
+        }
+      }
+    };
+    
+    // Check if any node in this tree directly imports from sourceTree
+    const hasDirectImport = (node: DependencyNode): boolean => {
+      const reference = getImportReference(node);
+      if (reference && reference.targetTreeId === sourceTreeId) {
+        return true;
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          if (hasDirectImport(child)) return true;
+        }
+      }
+      return false;
+    };
+    
+    if (hasDirectImport(currentTree)) {
       return true;
     }
     
-    // Check children
-    if (node.children) {
-      for (const child of node.children) {
-        if (hasReferenceToSource(child)) {
-          return true;
-        }
-      }
-    }
-    
-    return false;
-  };
+    collectImportTargets(currentTree);
+  }
   
-  return hasReferenceToSource(targetTree);
+  return false;
 };
 
 /**

@@ -53,6 +53,20 @@ export interface DependencyNode {
   originalDepth?: number; // Original depth in the parent tree before becoming an import root
   isHidden?: boolean; // True if this node is hidden (shy layer)
   isCyclicReference?: boolean; // True if this node represents a circular dependency
+  cycleResolution?: {
+    /** ID of the cycle group this node belongs to */
+    cycleGroupId: string;
+    /** Gross (total) requirement before accounting for recirculation */
+    grossRequirement: number;
+    /** Net external requirement (what the user must supply) */
+    netRequirement: number;
+    /** Amount recirculated within the cycle */
+    recirculated: number;
+    /** Whether the solver converged */
+    converged: boolean;
+    /** Item IDs involved in this cycle */
+    involvedItems: string[];
+  };
   isExternal?: boolean; // True if this node is an external import terminal leaf
 }
 

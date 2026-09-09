@@ -16,6 +16,14 @@ import { createImportNode } from "./importNodeLogic";
 import { findNodeByIdInAllTrees } from "./treeUtils";
 // Import logger
 import { logger } from "./logger";
+// Import cycle resolution utilities
+import { 
+  resolveSelfLoops,
+  getCycleDetectionResult,
+  getCycleGroupForItem,
+  solveCycle,
+  buildCycleResolutionMeta
+} from "./cycleResolution";
 
 // FindNodeById likely comes from calculateDependencyTree itself or should be imported correctly
 // Let's assume it should be defined locally for now, uncommenting the local version
@@ -33,7 +41,8 @@ export const calculateDependencyTree = async (
   importMap: Record<string, { targetTreeId: string; amount: number }> = {},
   dependencyTrees?: Record<string, DependencyNode>,
   visited: string[] = [],
-  externalImports?: Record<string, true>
+  externalImports?: Record<string, true>,
+  activeCycleResolution?: any // Type will be CycleResolution | undefined
 ): Promise<DependencyNode | null> => {
   logger.verbose(`[calculateDependencyTree] ENTER: itemId=${itemId}, recipeArg=${rootRecipeId}, depth=${depth}`);
 
@@ -54,15 +63,24 @@ export const calculateDependencyTree = async (
 
   const visitedKey = `${itemId}_${recipeIdForCycleKey || 'any_recipe'}`;
   if (visited.includes(visitedKey)) {
-    logger.warn(`[CIRCULAR DEPENDENCY] Detected for ${itemId} with effective recipe key ${visitedKey}. Depth: ${depth}. Returning leaf node.`);
+    logger.warn(`[CIRCULAR DEPENDENCY] Detected for ${itemId} with effective recipe key ${visitedKey}. Depth: ${depth}. Resolving cycle...`);
     const availableRecipesForCyclic = await getRecipesForItem(itemId);
+    
+    let leafAmount = amount;
+    if (activeCycleResolution) {
+      const variable = activeCycleResolution.variables.find((v: any) => v.itemId === itemId);
+      if (variable) {
+        leafAmount = variable.recirculated; // For a back-edge leaf, the amount is the internally recirculated amount
+      }
+    }
+
     return {
       id: itemId,
-      amount,
+      amount: leafAmount,
       uniqueId: parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`,
       depth: depth,
       availableRecipes: availableRecipesForCyclic,
-      children: [],
+      children: [], // Internal cycle nodes aren't expanded further
       excess: excessMap[parentId ? `${parentId}-${itemId}-${depth}` : `${itemId}-${depth}`] || 0,
       isCyclicReference: true,
     };
@@ -169,12 +187,46 @@ export const calculateDependencyTree = async (
     };
   }
 
+  // --- Self-loop resolution: detect items in both recipe.in and recipe.out ---
+  const selfLoopResult = resolveSelfLoops(recipe, itemId);
+  const effectiveInputs = selfLoopResult.hasSelfLoops ? selfLoopResult.netInputs : recipe.in;
+  const effectiveOutputs = selfLoopResult.hasSelfLoops ? selfLoopResult.netOutputs : recipe.out;
+
+  if (selfLoopResult.hasSelfLoops) {
+    logger.info(`[calculateDependencyTree] Self-loop detected in recipe ${recipe.id} for ${itemId}. ` +
+      `Recirculated items: ${Object.keys(selfLoopResult.recirculatedItems).join(', ')}`);
+  }
+
+  // --- Multi-Recipe Cycle Resolution (Entry Point) ---
+  const { result: cycleDetectionResult, recipesMap: globalRecipesMap } = await getCycleDetectionResult();
+  const cycleGroup = getCycleGroupForItem(itemId, cycleDetectionResult);
+  
+  let currentCycleResolution = activeCycleResolution;
+  let cycleMeta;
+  let effectiveAmount = amount;
+
+  if (cycleGroup) {
+    if (!currentCycleResolution || currentCycleResolution.cycleGroupId !== cycleGroup.id) {
+      // Entering a NEW cycle group!
+      logger.info(`[calculateDependencyTree] Entering cycle group ${cycleGroup.id} at ${itemId}. Solving...`);
+      currentCycleResolution = solveCycle(cycleGroup, { [itemId]: amount + (excessMap[itemId] || excessMap[nodeId] || 0) }, recipeMap, globalRecipesMap);
+    }
+    
+    // We are inside an active cycle. Find our variable.
+    const variable = currentCycleResolution.variables.find((v: any) => v.itemId === itemId);
+    if (variable) {
+      effectiveAmount = variable.grossRequirement;
+      cycleMeta = buildCycleResolutionMeta(cycleGroup, currentCycleResolution, itemId);
+    }
+  }
+
   const outputAmount = recipe.out[itemId] ?? 1;
   const cyclesNeeded =
-    (amount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
+    (effectiveAmount + (excessMap[itemId] || excessMap[nodeId] || 0)) / outputAmount;
 
   // Pass dependencyTrees to child calculations for import references
-  const childrenPromises = Object.entries(recipe.in).map(([inputItem, inputAmount]) => {
+  // Use effectiveInputs (self-loop adjusted) instead of raw recipe.in
+  const childrenPromises = Object.entries(effectiveInputs).map(([inputItem, inputAmount]) => {
     const childAmount = (inputAmount ?? 0) * cyclesNeeded;
 
     // If this input is externally imported, return a terminal leaf node
@@ -200,14 +252,16 @@ export const calculateDependencyTree = async (
       excessMap,
       importMap,
       dependencyTrees,
-      newVisited // Pass the newVisited array with the current node added
+      newVisited, // Pass the newVisited array with the current node added
+      externalImports,
+      currentCycleResolution
     )
   });
   const childrenResults = await Promise.all(childrenPromises);
   const children = childrenResults.filter(child => child !== null) as DependencyNode[]; // Filter out nulls from cycles
 
-  // Calculate byproducts initially
-  const calculatedByproducts = Object.entries(recipe.out)
+  // Calculate byproducts using effectiveOutputs (excludes self-loop resolved items)
+  const calculatedByproducts = Object.entries(effectiveOutputs)
     .filter(([outputItem]) => outputItem !== itemId)
     .map(
       ([outputItem, outputAmount]) => {
@@ -252,7 +306,7 @@ export const calculateDependencyTree = async (
 
   const result: DependencyNode = {
     id: itemId,
-    amount,
+    amount: effectiveAmount,
     uniqueId: nodeId,
     depth: depth, // Assign depth here
     isRoot: depth === 0,
@@ -261,6 +315,7 @@ export const calculateDependencyTree = async (
     // Combine the modified children list and the remaining byproducts
     children: [...finalChildren, ...remainingByproducts],
     excess: excessMap[itemId] || excessMap[nodeId] || 0,
+    ...(cycleMeta ? { cycleResolution: cycleMeta } : {})
   };
 
   // Store result in cache

@@ -9,6 +9,13 @@ export interface AccumulatedNode {
   recipeId?: string;
   depth?: number;
   isImport?: boolean;
+  isCyclicReference?: boolean;
+  /** If this node was cycle-resolved, contains the resolution metadata */
+  cycleResolution?: {
+    grossRequirement: number;
+    netRequirement: number;
+    recirculated: number;
+  };
 }
 
 export const calculateAccumulatedFromTree = (
@@ -37,10 +44,23 @@ export const calculateAccumulatedFromTree = (
         isExtension: false,
         recipeId: node.recipe?.id,
         depth: depth,
-        isImport: node.isImport || false
+        isImport: node.isImport || false,
+        isCyclicReference: node.isCyclicReference || false,
       };
     }
-    accumulated[key].amount += node.amount;
+
+    // For cycle-resolved nodes, use netRequirement (what the user actually needs to supply)
+    if (node.cycleResolution) {
+      accumulated[key].amount += node.cycleResolution.netRequirement;
+      accumulated[key].cycleResolution = {
+        grossRequirement: node.cycleResolution.grossRequirement,
+        netRequirement: node.cycleResolution.netRequirement,
+        recirculated: node.cycleResolution.recirculated,
+      };
+    } else if (!node.isCyclicReference) {
+      accumulated[key].amount += node.amount;
+    }
+
     accumulated[key].depth = Math.min(accumulated[key].depth ?? Infinity, depth);
 
     if (!node.isByproduct && node.children && node.children.length > 0) {
@@ -51,3 +71,4 @@ export const calculateAccumulatedFromTree = (
   traverse(tree);
   return accumulated;
 };
+

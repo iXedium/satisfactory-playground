@@ -1621,6 +1621,9 @@ interface RecalculateArgs {
     importerNodeId: string; // uniqueId of the node now importing
     amount: number;          // the amount this specific importer requires
   };
+  // Cycle guard: set of root node IDs already visited in this recalculation cascade.
+  // Prevents infinite recursion when trees import from each other (e.g. Plastic ↔ Rubber).
+  _visitedRoots?: string[];
 }
 
 // --- THUNK TO RECALCULATE AND UPDATE ROOT NODE AMOUNT --- 
@@ -1630,7 +1633,15 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
   { dispatch: PlannerAppDispatch; state: PlannerRootState }
 >(
   'dependency/recalculateAndUpdateRootAmount',
-  async ({ rootNodeId, externalDemandChange }, { getState, dispatch }) => { // Destructure args
+  async ({ rootNodeId, externalDemandChange, _visitedRoots }, { getState, dispatch }) => { // Destructure args
+    // --- Cycle guard: prevent infinite recursion in cross-tree import cycles ---
+    const visitedRoots = new Set(_visitedRoots ?? []);
+    if (visitedRoots.has(rootNodeId)) {
+      logger.warn(`[Thunk/Recalc] Cycle guard: skipping already-visited root ${rootNodeId} to prevent infinite recursion.`);
+      return;
+    }
+    visitedRoots.add(rootNodeId);
+
     const state = getState();
     const rootNode = state.dependencies.dependencyTrees[rootNodeId];
 
@@ -1712,9 +1723,11 @@ export const recalculateAndUpdateRootAmountThunk = createAsyncThunk<
                             const childImportRef = getImportReference(childNode);
                             if (childImportRef?.targetTreeId) {
                                 // This child imports from another tree - recalculate that target
+                                // Thread visitedRoots to prevent infinite recursion in cyclic imports
                                 await dispatch(recalculateAndUpdateRootAmountThunk({
                                     rootNodeId: childImportRef.targetTreeId,
-                                    externalDemandChange: undefined
+                                    externalDemandChange: undefined,
+                                    _visitedRoots: [...visitedRoots]
                                 }));
                             } else if (childNode.children && childNode.children.length > 0) {
                                 // Not an import - recurse into this child's children
