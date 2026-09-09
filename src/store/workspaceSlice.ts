@@ -12,7 +12,7 @@ export interface WorkspaceState {
 
 let nextTabNumber = 1;
 
-function generateTabId(): string {
+export function generateTabId(): string {
   return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -114,8 +114,29 @@ const workspaceSlice = createSlice({
       state.activeTabId = action.payload.activeTabId;
       persistWorkspaceState(state);
     },
+    duplicateTab(state, action: PayloadAction<{ sourceTabId: string; newTabId: string; name: string }>) {
+      const sourceIndex = state.tabs.findIndex(t => t.tabId === action.payload.sourceTabId);
+      const newTab: TabInfo = {
+        tabId: action.payload.newTabId,
+        name: action.payload.name,
+      };
+      if (sourceIndex >= 0) {
+        state.tabs.splice(sourceIndex + 1, 0, newTab);
+      } else {
+        state.tabs.push(newTab);
+      }
+      state.activeTabId = newTab.tabId;
+      persistWorkspaceState(state);
+    },
+    closeOtherTabs(state, action: PayloadAction<string>) {
+      const tabToKeep = state.tabs.find(t => t.tabId === action.payload);
+      if (!tabToKeep) return;
+      state.tabs = [tabToKeep];
+      state.activeTabId = tabToKeep.tabId;
+      persistWorkspaceState(state);
+    },
   },
 });
 
-export const { addTab, removeTab, setActiveTab, renameTab, reorderTabs, setWorkspaceTabs } = workspaceSlice.actions;
+export const { addTab, removeTab, setActiveTab, renameTab, reorderTabs, setWorkspaceTabs, duplicateTab, closeOtherTabs } = workspaceSlice.actions;
 export default workspaceSlice.reducer;

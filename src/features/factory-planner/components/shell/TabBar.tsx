@@ -9,9 +9,11 @@ interface TabBarProps {
   linkedMap: Record<string, string | null>;
   saveNames: string[];
   onUnlinkTab: (tabId: string) => void;
+  onDuplicateTab: (tabId: string) => void;
+  onCloseOtherTabs: (tabId: string) => void;
 }
 
-const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlinkTab }) => {
+const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlinkTab, onDuplicateTab, onCloseOtherTabs }) => {
   const dispatch = useDispatch<AppDispatch>();
   const tabs = useSelector((state: RootState) => state.workspace.tabs);
   const activeTabId = useSelector((state: RootState) => state.workspace.activeTabId);
@@ -21,6 +23,12 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   const [confirmCloseTabId, setConfirmCloseTabId] = useState<string | null>(null);
   const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
   const [hoveredCloseTabId, setHoveredCloseTabId] = useState<string | null>(null);
+  const [hoveredDuplicateTabId, setHoveredDuplicateTabId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    tabId: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const [unlinkClickTimers, setUnlinkClickTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const handleDragEnd = (result: DropResult) => {
@@ -47,6 +55,23 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
       window.removeEventListener('keydown', handleKey);
     };
   }, [confirmCloseTabId]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleOutside = () => setContextMenu(null);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+    const handleScroll = () => setContextMenu(null);
+    window.addEventListener('click', handleOutside);
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('wheel', handleScroll);
+    return () => {
+      window.removeEventListener('click', handleOutside);
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('wheel', handleScroll);
+    };
+  }, [contextMenu]);
 
   const handleAddTab = () => {
     dispatch(addTab());
@@ -131,7 +156,8 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   const showWarning = tabs.length >= 10;
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <>
+      <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable droppableId="tab-bar" direction="horizontal">
         {(providedDroppable) => (
           <div
@@ -165,6 +191,14 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                       {...providedDraggable.draggableProps}
                       {...providedDraggable.dragHandleProps}
                       onClick={() => handleSelectTab(tab.tabId)}
+                      onContextMenu={(e) => {
+                        if (editingTabId !== null) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const x = Math.min(e.clientX, window.innerWidth - 180);
+                        const y = Math.min(e.clientY, window.innerHeight - 180);
+                        setContextMenu({ tabId: tab.tabId, x, y });
+                      }}
                       onMouseEnter={() => setHoveredTabId(tab.tabId)}
                       onMouseLeave={() => setHoveredTabId(null)}
                       onMouseDown={(e) => {
@@ -327,35 +361,65 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                   No
                 </button>
               </span>
-            ) : tabs.length > 1 && (
-              <span
-                onClick={e => {
-                  e.stopPropagation();
-                  if (editingTabId === tab.tabId) {
-                    setEditingTabId(null);
-                    setNameConflict(false);
-                    return;
-                  }
-                  requestCloseTab(tab.tabId);
-                }}
-                onMouseEnter={() => setHoveredCloseTabId(tab.tabId)}
-                onMouseLeave={() => setHoveredCloseTabId(null)}
-                style={{
-                  marginLeft: '4px',
-                  fontSize: '14px',
-                  color: hoveredCloseTabId === tab.tabId ? '#ff6b6b' : '#666',
-                  background: hoveredCloseTabId === tab.tabId ? 'rgba(255, 107, 107, 0.18)' : 'transparent',
-                  borderRadius: '3px',
-                  padding: '0 3px',
-                  cursor: 'pointer',
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}
-                title={editingTabId === tab.tabId ? "Cancel rename (Esc)" : "Close tab"}
-              >×</span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicateTab(tab.tabId);
+                  }}
+                  onMouseEnter={() => setHoveredDuplicateTabId(tab.tabId)}
+                  onMouseLeave={() => setHoveredDuplicateTabId(null)}
+                  style={{
+                    padding: '2px 3px',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: hoveredDuplicateTabId === tab.tabId ? '#fff' : '#777',
+                    background: hoveredDuplicateTabId === tab.tabId ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    opacity: (isHovered || isSelected) ? 1 : 0,
+                    transition: 'opacity 0.15s ease, color 0.15s ease, background 0.15s ease',
+                  }}
+                  title="Duplicate tab"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </span>
+                {tabs.length > 1 && (
+                  <span
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (editingTabId === tab.tabId) {
+                        setEditingTabId(null);
+                        setNameConflict(false);
+                        return;
+                      }
+                      requestCloseTab(tab.tabId);
+                    }}
+                    onMouseEnter={() => setHoveredCloseTabId(tab.tabId)}
+                    onMouseLeave={() => setHoveredCloseTabId(null)}
+                    style={{
+                      marginLeft: '2px',
+                      fontSize: '14px',
+                      color: hoveredCloseTabId === tab.tabId ? '#ff6b6b' : '#666',
+                      background: hoveredCloseTabId === tab.tabId ? 'rgba(255, 107, 107, 0.18)' : 'transparent',
+                      borderRadius: '3px',
+                      padding: '0 3px',
+                      cursor: 'pointer',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title={editingTabId === tab.tabId ? "Cancel rename (Esc)" : "Close tab"}
+                  >×</span>
+                )}
+              </span>
             )}
                     </div>
                   )}
@@ -390,6 +454,155 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
         )}
       </Droppable>
     </DragDropContext>
+    {contextMenu && (() => {
+      const targetTab = tabs.find(t => t.tabId === contextMenu.tabId);
+      if (!targetTab) return null;
+      const isLinked = linkedMap[targetTab.tabId] !== null && linkedMap[targetTab.tabId] !== undefined;
+
+      return (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+            background: '#252526',
+            border: '1px solid #454545',
+            borderRadius: '5px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+            minWidth: '160px',
+            padding: '4px 0',
+            color: '#ccc',
+            fontSize: '12px',
+            userSelect: 'none',
+          }}
+        >
+          {/* Duplicate Tab */}
+          <div
+            onClick={() => {
+              onDuplicateTab(targetTab.tabId);
+              setContextMenu(null);
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#094771')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            style={{
+              padding: '6px 12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#fff',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            <span>Duplicate Tab</span>
+          </div>
+
+          {/* Rename Tab */}
+          <div
+            onClick={() => {
+              if (isLinked) return;
+              handleDoubleClick(targetTab.tabId, targetTab.name);
+              setContextMenu(null);
+            }}
+            onMouseEnter={(e) => {
+              if (!isLinked) e.currentTarget.style.background = '#094771';
+            }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            style={{
+              padding: '6px 12px',
+              cursor: isLinked ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: isLinked ? '#666' : '#fff',
+            }}
+            title={isLinked ? 'Unlink to rename' : undefined}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </svg>
+            <span>Rename Tab</span>
+          </div>
+
+          {/* Unlink Setup (when linked) */}
+          {isLinked && (
+            <div
+              onClick={() => {
+                onUnlinkTab(targetTab.tabId);
+                setContextMenu(null);
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#094771')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              style={{
+                padding: '6px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#ff9f43',
+              }}
+            >
+              <span style={{ fontSize: '13px' }}>🔗</span>
+              <span>Unlink Setup</span>
+            </div>
+          )}
+
+          {tabs.length > 1 && (
+            <>
+              <div style={{ height: '1px', background: '#383838', margin: '4px 0' }} />
+
+              {/* Close Tab */}
+              <div
+                onClick={() => {
+                  requestCloseTab(targetTab.tabId);
+                  setContextMenu(null);
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#721c24')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#ff6b6b',
+                }}
+              >
+                <span style={{ fontSize: '14px', lineHeight: 1 }}>×</span>
+                <span>Close Tab</span>
+              </div>
+
+              {/* Close Other Tabs */}
+              <div
+                onClick={() => {
+                  onCloseOtherTabs(targetTab.tabId);
+                  setContextMenu(null);
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#721c24')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#ff6b6b',
+                }}
+              >
+                <span style={{ fontSize: '12px' }}>⨂</span>
+                <span>Close Other Tabs</span>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    })()}
+    </>
   );
 };
 
