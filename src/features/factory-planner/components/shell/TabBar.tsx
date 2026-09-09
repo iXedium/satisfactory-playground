@@ -618,6 +618,7 @@ const TabBar: React.FC<TabBarProps> = ({
           <WorkspaceMenu
             activeWorkspaceName={activeWorkspaceName}
             dirtyMap={dirtyMap}
+            tabs={tabs}
             onSaveWorkspace={onSaveWorkspace}
             onLoadWorkspace={onLoadWorkspace}
             onDeleteWorkspace={onDeleteWorkspace}

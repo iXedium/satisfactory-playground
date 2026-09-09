@@ -18,6 +18,7 @@ export interface FactoryPlannerShellRef {
   getFullState(): SavedPlannerState | null;
   unlinkSetup(): void;
   revertSetup(): void;
+  markSaved(savedState?: SavedPlannerState): void;
 }
 
 const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShellProps>(
@@ -30,6 +31,7 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
       getFullState: () => plannerRef.current?.getFullState() ?? null,
       unlinkSetup: () => plannerRef.current?.unlinkSetup(),
       revertSetup: () => plannerRef.current?.revertSetup(),
+      markSaved: (savedState?: SavedPlannerState) => plannerRef.current?.markSaved(savedState),
     }), []);
 
     return (

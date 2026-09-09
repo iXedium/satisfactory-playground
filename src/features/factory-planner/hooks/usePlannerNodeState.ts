@@ -25,11 +25,36 @@ export const usePlannerNodeState = (tabId: string): PlannerNodeState => {
     nodeOverrides: getNamespacedKey('plannerNodeExtensionOverrides', tabId),
   }), [tabId]);
 
-  const [excessMap, setExcessMap] = useState<Record<string, number>>({});
-  const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>({});
-  const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>({});
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
-  const [nodeExtensionOverrides, setNodeExtensionOverrides] = useState<Record<string, boolean>>({});
+  const [excessMap, setExcessMap] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedExcessMap', tabId));
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [machineCountMap, setMachineCountMap] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedMachineCountMap', tabId));
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [machineMultiplierMap, setMachineMultiplierMap] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedMachineMultiplierMap', tabId));
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('plannerExpandedNodes', tabId));
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [nodeExtensionOverrides, setNodeExtensionOverrides] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('plannerNodeExtensionOverrides', tabId));
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
 
   useEffect(() => {
     let loadedSomething = false;

@@ -149,6 +149,7 @@ export interface FactoryPlannerHookResult {
   isDirty: boolean;
   unlinkSetup: () => void;
   revertSetup: () => Promise<void>;
+  markSaved: (savedState?: import('./usePlannerSaveLoad').SavedPlannerState) => void;
   saveError: string | null;
   clearSaveError: () => void;
   getFullState: () => import('./usePlannerSaveLoad').SavedPlannerState;
@@ -585,6 +586,7 @@ export const useFactoryPlanner = (
     clearSaveError,
     unlinkSetup,
     revertSetup,
+    markSaved,
     gatherCurrentState,
   } = usePlannerSaveLoad({
     tabId,
@@ -798,6 +800,7 @@ export const useFactoryPlanner = (
     isDirty,
     unlinkSetup,
     revertSetup,
+    markSaved,
     saveError,
     clearSaveError,
     getFullState: gatherCurrentState,

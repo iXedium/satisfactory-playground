@@ -81,6 +81,19 @@ export function useWorkspaceSaveLoad(
     );
 
     if (result.ok) {
+      // Sync linked setups to SQLite and mark all open tabs as saved
+      for (const entry of entries) {
+        if (entry.linkedSetupName) {
+          try {
+            await saveService.save(entry.linkedSetupName, JSON.stringify(entry.plannerState));
+          } catch (e) {
+            console.warn(`Failed to sync linked setup "${entry.linkedSetupName}":`, e);
+          }
+        }
+        const ref = shellRefs.current.get(entry.tabId);
+        ref?.markSaved(entry.plannerState);
+      }
+
       setActiveWorkspaceName(trimmed);
       try {
         localStorage.setItem(ACTIVE_WORKSPACE_KEY, trimmed);
@@ -104,6 +117,20 @@ export function useWorkspaceSaveLoad(
       const payload: SaveWorkspacePayload = JSON.parse(result.data);
       if (payload.version !== 1 || !Array.isArray(payload.tabs) || payload.tabs.length === 0) {
         return false;
+      }
+
+      // Refresh linked tabs with their linked setup's state from the database so they are in sync
+      for (const t of payload.tabs) {
+        if (t.linkedSetupName) {
+          try {
+            const linkedResult = await saveService.get(t.linkedSetupName);
+            if (linkedResult.ok && linkedResult.data) {
+              t.plannerState = JSON.parse(linkedResult.data);
+            }
+          } catch (e) {
+            console.warn(`Failed to load linked setup "${t.linkedSetupName}":`, e);
+          }
+        }
       }
 
       // Clean up previous tabs' storage before loading new workspace

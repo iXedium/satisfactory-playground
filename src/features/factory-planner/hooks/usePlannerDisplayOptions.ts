@@ -36,13 +36,48 @@ export const usePlannerDisplayOptions = (tabId: string): PlannerDisplayOptions =
     showHiddenNodes: getNamespacedKey('showHiddenNodes', tabId),
   }), [tabId]);
 
-  const [viewDensity, setViewDensity] = useState<ViewDensity>('compact');
-  const [showExtensions, setShowExtensions] = useState(false);
-  const [accumulateExtensions, setAccumulateExtensions] = useState(true);
-  const [showMachines, setShowMachines] = useState(true);
-  const [showMachineMultiplier, setShowMachineMultiplier] = useState(false);
-  const [autoImport, setAutoImport] = useState(true);
-  const [showHiddenNodes, setShowHiddenNodes] = useState(false);
+  const [viewDensity, setViewDensity] = useState<ViewDensity>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedViewDensity', tabId));
+      return (saved as ViewDensity) || 'compact';
+    } catch { return 'compact'; }
+  });
+  const [showExtensions, setShowExtensions] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedShowExtensions', tabId));
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
+  const [accumulateExtensions, setAccumulateExtensions] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedAccumulateExtensions', tabId));
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch { return true; }
+  });
+  const [showMachines, setShowMachines] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedShowMachines', tabId));
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch { return true; }
+  });
+  const [showMachineMultiplier, setShowMachineMultiplier] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('savedShowMachineMultiplier', tabId));
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
+  const [autoImport, setAutoImport] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('plannerAutoImport', tabId));
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch { return true; }
+  });
+  const [showHiddenNodes, setShowHiddenNodes] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(getNamespacedKey('showHiddenNodes', tabId));
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
 
   useEffect(() => {
     try {

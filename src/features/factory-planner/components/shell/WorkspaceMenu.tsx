@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 interface WorkspaceMenuProps {
   activeWorkspaceName: string | null;
   dirtyMap: Record<string, boolean>;
+  tabs: { tabId: string; name: string }[];
   onSaveWorkspace: (name: string) => Promise<boolean>;
   onLoadWorkspace: (name: string) => Promise<boolean>;
   onDeleteWorkspace: (name: string) => Promise<boolean>;
@@ -13,6 +14,7 @@ interface WorkspaceMenuProps {
 const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
   activeWorkspaceName,
   dirtyMap,
+  tabs,
   onSaveWorkspace,
   onLoadWorkspace,
   onDeleteWorkspace,
@@ -35,7 +37,7 @@ const WorkspaceMenu: React.FC<WorkspaceMenuProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const saveInputRef = useRef<HTMLInputElement>(null);
 
-  const isAnyTabDirty = Object.values(dirtyMap).some(Boolean);
+  const isAnyTabDirty = tabs.some(t => !!dirtyMap[t.tabId]);
 
   const refreshNames = useCallback(async () => {
     setIsLoadingNames(true);

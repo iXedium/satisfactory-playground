@@ -19,6 +19,7 @@ import { toggleExternalImportThunk, beginHistoryTransaction, commitHistoryTransa
 export interface FactoryPlannerRef {
   unlinkSetup(): void;
   revertSetup(): void;
+  markSaved(savedState?: import('../hooks/usePlannerSaveLoad').SavedPlannerState): void;
   getFullState(): import('../hooks/usePlannerSaveLoad').SavedPlannerState;
 }
 
@@ -117,14 +118,16 @@ const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tab
     resetToSnapshot,
     unlinkSetup,
     revertSetup,
+    markSaved,
     getFullState,
   } = useFactoryPlanner(tabId, isActive, onDirtyChange, onLinkedSetupChange, initialState);
   
   useImperativeHandle(ref, () => ({
     unlinkSetup,
     revertSetup,
+    markSaved,
     getFullState,
-  }), [unlinkSetup, revertSetup, getFullState]);
+  }), [unlinkSetup, revertSetup, markSaved, getFullState]);
   
   const dispatch = useDispatch<PlannerAppDispatch>();
   const externalImports = useSelector((state: PlannerRootState) => state.dependencies.externalImports || {});

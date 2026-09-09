@@ -52,6 +52,7 @@ export interface UsePlannerSaveLoadResult {
     clearSaveError: () => void;
     unlinkSetup: () => void;
     revertSetup: () => Promise<void>;
+    markSaved: (savedState?: SavedPlannerState) => void;
     gatherCurrentState: () => SavedPlannerState;
 }
 
@@ -370,6 +371,12 @@ export const usePlannerSaveLoad = ({
         await loadSetup(activeSetupName);
     }, [activeSetupName, loadSetup]);
 
+    const markSaved = useCallback((savedState?: SavedPlannerState) => {
+        const s = savedState || gatherCurrentState();
+        setLastSavedStateInMemory(s);
+        setIsDirty(false);
+    }, [gatherCurrentState]);
+
     return {
         getSaveNames,
         saveSetup,
@@ -381,6 +388,7 @@ export const usePlannerSaveLoad = ({
         clearSaveError,
         unlinkSetup,
         revertSetup,
+        markSaved,
         gatherCurrentState,
     };
 };

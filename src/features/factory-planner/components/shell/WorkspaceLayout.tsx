@@ -29,6 +29,21 @@ const WorkspaceLayout: React.FC = () => {
       map[tab.tabId] = name || null;
     }
     setLinkedMap(map);
+
+    // Prune dirtyMap so unmounted/closed tabs can never keep dirtyMap alive
+    const validIds = new Set(tabs.map(t => t.tabId));
+    setDirtyMap(prev => {
+      let changed = false;
+      const next: Record<string, boolean> = {};
+      for (const [id, val] of Object.entries(prev)) {
+        if (validIds.has(id)) {
+          next[id] = val;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
   }, [tabs]);
 
   useEffect(() => {
