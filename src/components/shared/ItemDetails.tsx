@@ -104,26 +104,35 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
   }, [hoveredRecipe]); // Rerun when hoveredRecipe changes
 
   const handleMouseLeave = () => {
-    hoveredElementRef.current = null; // Clear the hovered element ref
-    
-    // Remove timeout for immediate hide
-    // hoverTimeoutRef.current = window.setTimeout(() => {
-      setHoveredRecipe(null);
-      setPopupPosition(null);
-    // }, 150); 
+    hoveredElementRef.current = null;
+    setHoveredRecipe(null);
+    setPopupPosition(null);
   };
 
-  // Remove useEffect for timeout cleanup
-  /*
+  // Dismiss recipe popup on page scroll or mouse wheel
+  useEffect(() => {
+    if (!hoveredRecipe) return;
+
+    const handleDismiss = () => {
+      handleMouseLeave();
+    };
+
+    window.addEventListener('wheel', handleDismiss, { passive: true });
+    window.addEventListener('scroll', handleDismiss, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('wheel', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, { capture: true });
+    };
+  }, [hoveredRecipe]);
+
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
-      }
+      hoveredElementRef.current = null;
+      setHoveredRecipe(null);
+      setPopupPosition(null);
     };
   }, []);
-  */
 
   // Helper to format the rate
   const formatRate = (rate: number, id: string): string => {
@@ -189,7 +198,10 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({
             {recipes && recipes.length > 0 && onRecipeChange && !isByproduct && !isImport && (
               <StyledSelect
                 value={selectedRecipeId || ""}
-                onChange={onRecipeChange}
+                onChange={(recipeId) => {
+                  handleMouseLeave();
+                  onRecipeChange(recipeId);
+                }}
                 options={recipes}
                 variant="compact"
                 renderOption={(option, isInDropdown) => (

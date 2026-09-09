@@ -102,6 +102,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   const hoverTimeoutRef = useRef<number | null>(null);
   const rateDisplayRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const isMouseInsideRef = useRef<boolean>(false);
   
   const clearHoverTimeout = () => {
     if (hoverTimeoutRef.current) {
@@ -110,7 +111,27 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     }
   };
 
-  // Close popup when clicking outside (only when persistent)
+  // Dismiss hover tooltip on page scroll or mouse wheel
+  useEffect(() => {
+    if (!isHoveringRate || isPersistent) return;
+
+    const handleWheelOrScroll = () => {
+      isMouseInsideRef.current = false;
+      setIsHoveringRate(false);
+      setConsumptionData([]);
+      setPopupPosition(null);
+      setTotalDemand(0);
+    };
+
+    window.addEventListener('wheel', handleWheelOrScroll, { passive: true });
+    window.addEventListener('scroll', handleWheelOrScroll, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('wheel', handleWheelOrScroll);
+      window.removeEventListener('scroll', handleWheelOrScroll, { capture: true });
+    };
+  }, [isHoveringRate, isPersistent]);
+
+  // Close popup when clicking outside or pressing Escape (only when persistent)
   useEffect(() => {
     if (!isPersistent) return;
 
@@ -132,14 +153,27 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
       setTotalDemand(0);
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPersistent(false);
+        setIsHoveringRate(false);
+        setConsumptionData([]);
+        setPopupPosition(null);
+        setTotalDemand(0);
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside as unknown as EventListener);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside as unknown as EventListener);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isPersistent]);
 
   const handleRateMouseEnter = async (event: MouseEvent<HTMLDivElement>) => {
     clearHoverTimeout();
+    isMouseInsideRef.current = true;
 
     if (!node) {
       logger.warn(`[EfficiencySection] Node not found for ID: ${nodeId} in tree: ${treeId}`);
@@ -166,6 +200,8 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     const rect = targetElement.getBoundingClientRect();
 
     const consumers = await findNodeConsumers(idToFetch, allTrees); // Use idToFetch
+    if (!isMouseInsideRef.current && !isPersistent) return; // Mouse left while awaiting
+
     const demand = consumers.reduce((sum, c) => sum + c.consumedAmount, 0);
     setConsumptionData(consumers);
     setTotalDemand(demand);
@@ -198,6 +234,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
     if (isPersistent) {
       // Already persistent, clicking again closes it
       logger.debug('[EfficiencySection] Closing persistent popup');
+      isMouseInsideRef.current = false;
       setIsPersistent(false);
       setIsHoveringRate(false);
       setConsumptionData([]);
@@ -220,6 +257,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   const handlePopupItemClick = useCallback((consumingTreeId: string, consumerNodeId: string) => {
     logger.debug('[EfficiencySection] handlePopupItemClick called', { consumingTreeId, consumerNodeId });
     // Close the popup after scrolling to the item
+    isMouseInsideRef.current = false;
     setIsPersistent(false);
     setIsHoveringRate(false);
     setConsumptionData([]);
@@ -228,6 +266,7 @@ const EfficiencySection: React.FC<EfficiencySectionProps> = ({
   }, []);
 
   const handleRateMouseLeave = () => {
+    isMouseInsideRef.current = false;
     // Don't close if popup is persistent
     if (isPersistent) return;
     

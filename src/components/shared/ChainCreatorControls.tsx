@@ -95,6 +95,35 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
     setPopupPosition(null);
   };
 
+  // Dismiss recipe popup on page scroll or mouse wheel
+  useEffect(() => {
+    if (!hoveredRecipe) return;
+
+    const handleDismiss = () => {
+      handleRecipeMouseLeave();
+    };
+
+    window.addEventListener('wheel', handleDismiss, { passive: true });
+    window.addEventListener('scroll', handleDismiss, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('wheel', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, { capture: true });
+    };
+  }, [hoveredRecipe]);
+
+  // Clean up on unmount or collapse
+  useEffect(() => {
+    if (isCollapsed) {
+      handleRecipeMouseLeave();
+    }
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    return () => {
+      handleRecipeMouseLeave();
+    };
+  }, []);
+
   const containerStyle: React.CSSProperties = {
       display: isCollapsed ? 'none' : 'flex',
       flexWrap: 'wrap',
@@ -146,7 +175,10 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
         
         <StyledSelect
           value={selectedRecipe}
-          onChange={onRecipeSelect}
+          onChange={(recipeId) => {
+            handleRecipeMouseLeave();
+            onRecipeSelect(recipeId);
+          }}
           options={filteredRecipes}
           placeholder={selectedItem ? "Select a Recipe" : "Select an item first"}
           style={{ 
@@ -177,7 +209,10 @@ const ChainCreatorControls: React.FC<ChainCreatorControlsProps> = ({
         />
         
         <button 
-          onClick={onCalculate}
+          onClick={() => {
+            handleRecipeMouseLeave();
+            onCalculate();
+          }}
           style={{
             ...buttonStyle,
             opacity: (selectedItem && selectedRecipe) ? 1 : 0.7,
