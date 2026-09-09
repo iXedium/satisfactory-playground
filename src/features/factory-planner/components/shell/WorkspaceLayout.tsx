@@ -120,7 +120,10 @@ const WorkspaceLayout: React.FC = () => {
     loadWorkspace,
     deleteWorkspace,
     newWorkspace,
-  } = useWorkspaceSaveLoad(tabs, activeTabId, shellRefs);
+    isWorkspaceStructureDirty,
+  } = useWorkspaceSaveLoad(tabs, activeTabId, shellRefs, linkedMap);
+
+  const isWorkspaceDirty = isWorkspaceStructureDirty || tabs.some(t => !!dirtyMap[t.tabId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -133,6 +136,7 @@ const WorkspaceLayout: React.FC = () => {
         onDuplicateTab={handleDuplicateTab}
         onCloseOtherTabs={handleCloseOtherTabs}
         activeWorkspaceName={activeWorkspaceName}
+        isWorkspaceDirty={isWorkspaceDirty}
         onSaveWorkspace={saveWorkspace}
         onLoadWorkspace={loadWorkspace}
         onDeleteWorkspace={deleteWorkspace}

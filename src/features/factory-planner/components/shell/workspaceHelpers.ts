@@ -81,6 +81,16 @@ export function purgeOrphanedTabState(activeTabIds: string[]): void {
         }
         continue;
       }
+
+      // Matches workspaceBaseline_<tabId>
+      const baselineMatch = key.match(/^workspaceBaseline_(.+)$/);
+      if (baselineMatch) {
+        const tabId = baselineMatch[1];
+        if (!activeSet.has(tabId)) {
+          keysToRemove.push(key);
+        }
+        continue;
+      }
     }
 
     for (const key of keysToRemove) {
@@ -123,6 +133,7 @@ export function cloneTabState(newTabId: string, state: SavedPlannerState): void 
   setTabInitialState(newTabId, state);
 
   try {
+    safeSetItem(`workspaceBaseline_${newTabId}`, JSON.stringify(state));
     if (state.dependencies) {
       safeSetItem(getNamespacedKey('savedDependencies', newTabId), JSON.stringify(state.dependencies));
     }

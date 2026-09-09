@@ -15,6 +15,7 @@ interface TabBarProps {
   onDuplicateTab: (tabId: string) => void;
   onCloseOtherTabs: (tabId: string) => void;
   activeWorkspaceName: string | null;
+  isWorkspaceDirty: boolean;
   onSaveWorkspace: (name: string) => Promise<boolean>;
   onLoadWorkspace: (name: string) => Promise<boolean>;
   onDeleteWorkspace: (name: string) => Promise<boolean>;
@@ -31,6 +32,7 @@ const TabBar: React.FC<TabBarProps> = ({
   onDuplicateTab,
   onCloseOtherTabs,
   activeWorkspaceName,
+  isWorkspaceDirty,
   onSaveWorkspace,
   onLoadWorkspace,
   onDeleteWorkspace,
@@ -131,9 +133,8 @@ const TabBar: React.FC<TabBarProps> = ({
   };
 
   const requestCloseTab = (tabId: string) => {
-    const isLinked = linkedMap[tabId] !== null && linkedMap[tabId] !== undefined;
     const isDirty = !!dirtyMap[tabId];
-    if (isLinked && isDirty) {
+    if (isDirty) {
       setConfirmCloseTabId(tabId);
       return;
     }
@@ -617,6 +618,7 @@ const TabBar: React.FC<TabBarProps> = ({
           )}
           <WorkspaceMenu
             activeWorkspaceName={activeWorkspaceName}
+            isWorkspaceDirty={isWorkspaceDirty}
             dirtyMap={dirtyMap}
             tabs={tabs}
             onSaveWorkspace={onSaveWorkspace}
@@ -725,8 +727,8 @@ const TabBar: React.FC<TabBarProps> = ({
             </div>
           )}
 
-          {/* Revert Tab Changes (when linked) */}
-          {isLinked && (
+          {/* Revert Tab Changes (when linked or dirty) */}
+          {(isLinked || dirtyMap[targetTab.tabId]) && (
             <div
               onClick={() => {
                 setConfirmRevertTabId(targetTab.tabId);

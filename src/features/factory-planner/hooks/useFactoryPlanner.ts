@@ -590,6 +590,7 @@ export const useFactoryPlanner = (
     gatherCurrentState,
   } = usePlannerSaveLoad({
     tabId,
+    initialState,
     // Pass setters
     setExcessMap,
     setMachineCountMap,

@@ -86,10 +86,46 @@ interface UsePlannerSaveLoadProps {
     currentTreeSortKey: TreeSortKey;
     currentTreeSortDirection: SortDirection;
     currentManualTreeOrder: string[];
+    initialState?: SavedPlannerState;
 }
 
 const LS_ACTIVE_NAME_PREFIX = 'activeSetupName_';
 const WORKSPACE_PREFIX = 'workspace:';
+
+function getEmptyPlannerState(): SavedPlannerState {
+    return {
+        dependencies: {
+            dependencyTrees: {},
+            accumulatedDependencies: {},
+            highlightedNodeId: null,
+            manualTreeOrder: [],
+            externalImports: {},
+            errors: [],
+            lastUpdateTime: 0,
+        } as any,
+        recipeSelections: {},
+        nodeState: {
+            excessMap: {},
+            machineCountMap: {},
+            machineMultiplierMap: {},
+            expandedNodes: {},
+            nodeExtensionOverrides: {},
+        },
+        displayOptions: {
+            viewDensity: 'compact',
+            showExtensions: false,
+            accumulateExtensions: true,
+            showMachines: true,
+            showMachineMultiplier: false,
+            autoImport: true,
+        },
+        sortOptions: {
+            key: 'originalDepth',
+            direction: 'asc',
+        },
+        manualTreeOrder: [],
+    };
+}
 
 export const usePlannerSaveLoad = ({
     tabId,
@@ -121,6 +157,7 @@ export const usePlannerSaveLoad = ({
     currentTreeSortKey,
     currentTreeSortDirection,
     currentManualTreeOrder,
+    initialState,
 }: UsePlannerSaveLoadProps): UsePlannerSaveLoadResult => {
     const dispatch: PlannerAppDispatch = useDispatch();
     const dependenciesState = useSelector((state: PlannerRootState) => state.dependencies);
@@ -148,11 +185,30 @@ export const usePlannerSaveLoad = ({
                 if (!cancelled && activeResult.ok && activeResult.data) {
                     setLastSavedStateInMemory(JSON.parse(activeResult.data));
                 }
+            } else if (!cancelled) {
+                // Unlinked tab: check for workspace baseline or initial state
+                let baseline: SavedPlannerState | null = initialState || null;
+                if (!baseline) {
+                    try {
+                        const storedBaseline = localStorage.getItem(`workspaceBaseline_${tabId}`);
+                        if (storedBaseline) {
+                            baseline = JSON.parse(storedBaseline);
+                        }
+                    } catch {
+                        // ignore
+                    }
+                }
+                if (baseline) {
+                    setLastSavedStateInMemory(baseline);
+                } else {
+                    // Option B: Baseline is empty state for a fresh blank tab
+                    setLastSavedStateInMemory(getEmptyPlannerState());
+                }
             }
         }
         init();
         return () => { cancelled = true; };
-    }, [tabId]);
+    }, [tabId, initialState]);
 
     const getSaveNames = useCallback((): string[] => {
         return saveNames;
@@ -216,6 +272,10 @@ export const usePlannerSaveLoad = ({
             if (!copy.comparison?.activeSnapshot) {
                 delete copy.comparison;
             }
+            if (copy.dependencies) {
+                delete copy.dependencies.lastUpdateTime;
+                delete copy.dependencies.errors;
+            }
             return copy;
         };
 
@@ -260,6 +320,7 @@ export const usePlannerSaveLoad = ({
         }
 
         localStorage.setItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`, name);
+        try { localStorage.removeItem(`workspaceBaseline_${tabId}`); } catch {}
         setLastSavedStateInMemory(currentState);
         setActiveSetupName(name);
         setIsDirty(false);
@@ -271,6 +332,66 @@ export const usePlannerSaveLoad = ({
         });
     }, [gatherCurrentState, tabId]);
 
+    const applyLoadedState = useCallback((stateToLoad: SavedPlannerState) => {
+        if (stateToLoad.dependencies) {
+            dispatch(loadSavedState(stateToLoad.dependencies));
+        } else {
+            dispatch(loadSavedState({ dependencyTrees: {}, accumulatedDependencies: {}, highlightedNodeId: null, manualTreeOrder: [], externalImports: {}, errors: [], lastUpdateTime: 0 }));
+        }
+        if (stateToLoad.recipeSelections) {
+            dispatch(loadRecipeSelections(stateToLoad.recipeSelections));
+        } else {
+            dispatch(loadRecipeSelections({}));
+        }
+
+        if (stateToLoad.nodeState) {
+            setExcessMap(stateToLoad.nodeState.excessMap || {});
+            setMachineCountMap(stateToLoad.nodeState.machineCountMap || {});
+            setMachineMultiplierMap(stateToLoad.nodeState.machineMultiplierMap || {});
+            setExpandedNodes(stateToLoad.nodeState.expandedNodes || {});
+            setNodeExtensionOverrides(stateToLoad.nodeState.nodeExtensionOverrides || {});
+        } else {
+            setExcessMap({});
+            setMachineCountMap({});
+            setMachineMultiplierMap({});
+            setExpandedNodes({});
+            setNodeExtensionOverrides({});
+        }
+
+        if (stateToLoad.displayOptions) {
+            const density = stateToLoad.displayOptions.viewDensity;
+            setViewDensity((density === 'compact' || density === 'relaxed') ? density : 'compact');
+            setShowExtensions(stateToLoad.displayOptions.showExtensions ?? false);
+            setAccumulateExtensions(stateToLoad.displayOptions.accumulateExtensions ?? true);
+            setShowMachines(stateToLoad.displayOptions.showMachines ?? true);
+            setShowMachineMultiplier(stateToLoad.displayOptions.showMachineMultiplier ?? false);
+            setAutoImport(stateToLoad.displayOptions.autoImport ?? true);
+        }
+
+        if (stateToLoad.sortOptions) {
+            setTreeSortKey(stateToLoad.sortOptions.key as TreeSortKey || 'originalDepth');
+            const direction = stateToLoad.sortOptions.direction;
+            setTreeSortDirection((direction === 'asc' || direction === 'desc') ? direction : 'asc');
+        }
+
+        if (stateToLoad.manualTreeOrder) {
+            setManualTreeOrder(stateToLoad.manualTreeOrder);
+        } else {
+            setManualTreeOrder([]);
+        }
+
+        if (stateToLoad.comparison) {
+            dispatch(loadComparisonState(stateToLoad.comparison));
+        } else {
+            dispatch(loadComparisonState(null));
+        }
+    }, [
+        dispatch,
+        setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides,
+        setViewDensity, setShowExtensions, setAccumulateExtensions, setShowMachines, setShowMachineMultiplier, setAutoImport,
+        setTreeSortKey, setTreeSortDirection, setManualTreeOrder
+    ]);
+
     const loadSetup = useCallback(async (name: string) => {
         const result = await saveService.get(name);
 
@@ -281,45 +402,10 @@ export const usePlannerSaveLoad = ({
 
         try {
             const stateToLoad: SavedPlannerState = JSON.parse(result.data);
-
-            if (stateToLoad.dependencies) {
-                dispatch(loadSavedState(stateToLoad.dependencies));
-            }
-            if (stateToLoad.recipeSelections) {
-                dispatch(loadRecipeSelections(stateToLoad.recipeSelections));
-            }
-
-            if (stateToLoad.nodeState) {
-                setExcessMap(stateToLoad.nodeState.excessMap || {});
-                setMachineCountMap(stateToLoad.nodeState.machineCountMap || {});
-                setMachineMultiplierMap(stateToLoad.nodeState.machineMultiplierMap || {});
-                setExpandedNodes(stateToLoad.nodeState.expandedNodes || {});
-                setNodeExtensionOverrides(stateToLoad.nodeState.nodeExtensionOverrides || {});
-            }
-            if (stateToLoad.displayOptions) {
-                const density = stateToLoad.displayOptions.viewDensity;
-                setViewDensity((density === 'compact' || density === 'relaxed') ? density : 'compact');
-                setShowExtensions(stateToLoad.displayOptions.showExtensions ?? false);
-                setAccumulateExtensions(stateToLoad.displayOptions.accumulateExtensions ?? true);
-                setShowMachines(stateToLoad.displayOptions.showMachines ?? true);
-                setShowMachineMultiplier(stateToLoad.displayOptions.showMachineMultiplier ?? false);
-                setAutoImport(stateToLoad.displayOptions.autoImport ?? true);
-            }
-            if (stateToLoad.sortOptions) {
-                setTreeSortKey(stateToLoad.sortOptions.key as TreeSortKey || 'originalDepth');
-                const direction = stateToLoad.sortOptions.direction;
-                setTreeSortDirection((direction === 'asc' || direction === 'desc') ? direction : 'asc');
-            }
-            if (stateToLoad.manualTreeOrder) {
-                setManualTreeOrder(stateToLoad.manualTreeOrder);
-            }
-            if (stateToLoad.comparison) {
-                dispatch(loadComparisonState(stateToLoad.comparison));
-            } else {
-                dispatch(loadComparisonState(null));
-            }
+            applyLoadedState(stateToLoad);
 
             localStorage.setItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`, name);
+            try { localStorage.removeItem(`workspaceBaseline_${tabId}`); } catch {}
             setLastSavedStateInMemory(stateToLoad);
             setActiveSetupName(name);
             setIsDirty(false);
@@ -329,13 +415,7 @@ export const usePlannerSaveLoad = ({
             logger.error(`[Load Setup] Error loading setup "${name}":`, error);
             setSaveError(`Failed to load "${name}": data may be corrupted`);
         }
-    }, [
-        dispatch, tabId,
-        setExcessMap, setMachineCountMap, setMachineMultiplierMap, setExpandedNodes, setNodeExtensionOverrides,
-        setViewDensity, setShowExtensions, setAccumulateExtensions, setShowMachines, setShowMachineMultiplier, setAutoImport,
-        setTreeSortKey, setTreeSortDirection,
-        setManualTreeOrder
-    ]);
+    }, [applyLoadedState, tabId]);
 
     const deleteSetup = useCallback(async (name: string) => {
         const result = await saveService.delete(name);
@@ -362,20 +442,27 @@ export const usePlannerSaveLoad = ({
     const unlinkSetup = useCallback(() => {
         localStorage.removeItem(`${LS_ACTIVE_NAME_PREFIX}${tabId}`);
         setActiveSetupName(null);
-        setLastSavedStateInMemory(null);
+        const current = gatherCurrentState();
+        try { localStorage.setItem(`workspaceBaseline_${tabId}`, JSON.stringify(current)); } catch {}
+        setLastSavedStateInMemory(current);
         setIsDirty(false);
-    }, [tabId]);
+    }, [tabId, gatherCurrentState]);
 
     const revertSetup = useCallback(async () => {
-        if (!activeSetupName) return;
-        await loadSetup(activeSetupName);
-    }, [activeSetupName, loadSetup]);
+        if (activeSetupName) {
+            await loadSetup(activeSetupName);
+        } else if (lastSavedStateInMemory) {
+            applyLoadedState(lastSavedStateInMemory);
+            setIsDirty(false);
+        }
+    }, [activeSetupName, loadSetup, lastSavedStateInMemory, applyLoadedState]);
 
     const markSaved = useCallback((savedState?: SavedPlannerState) => {
         const s = savedState || gatherCurrentState();
+        try { localStorage.setItem(`workspaceBaseline_${tabId}`, JSON.stringify(s)); } catch {}
         setLastSavedStateInMemory(s);
         setIsDirty(false);
-    }, [gatherCurrentState]);
+    }, [gatherCurrentState, tabId]);
 
     return {
         getSaveNames,

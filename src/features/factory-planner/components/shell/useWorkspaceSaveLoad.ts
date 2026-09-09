@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../../store';
 import { setWorkspaceTabs, generateTabId } from '../../../../store/workspaceSlice';
@@ -9,6 +9,11 @@ import { cloneTabState, purgeOrphanedTabState, cleanupSingleTabState } from './w
 
 const WORKSPACE_PREFIX = 'workspace:';
 const ACTIVE_WORKSPACE_KEY = 'activeWorkspaceName';
+
+export interface WorkspaceTabStructure {
+  name: string;
+  linkedSetupName: string | null;
+}
 
 export interface WorkspaceEntry {
   tabId: string;
@@ -26,7 +31,8 @@ export interface SaveWorkspacePayload {
 export function useWorkspaceSaveLoad(
   tabs: { tabId: string; name: string }[],
   activeTabId: string | null,
-  shellRefs: React.MutableRefObject<Map<string, FactoryPlannerShellRef>>
+  shellRefs: React.MutableRefObject<Map<string, FactoryPlannerShellRef>>,
+  linkedMap?: Record<string, string | null>
 ) {
   const dispatch = useDispatch<AppDispatch>();
   const [activeWorkspaceName, setActiveWorkspaceName] = useState<string | null>(() => {
@@ -36,6 +42,69 @@ export function useWorkspaceSaveLoad(
       return null;
     }
   });
+
+  const [savedStructure, setSavedStructure] = useState<WorkspaceTabStructure[] | null>(() => {
+    try {
+      const wsName = localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+      if (wsName) {
+        const stored = localStorage.getItem(`savedWorkspaceStructure_${wsName}`);
+        if (stored) return JSON.parse(stored);
+      } else {
+        const storedUnnamed = localStorage.getItem('savedWorkspaceStructure_unnamed');
+        if (storedUnnamed) return JSON.parse(storedUnnamed);
+        return [{ name: 'Planner 1', linkedSetupName: null }];
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (activeWorkspaceName && !savedStructure) {
+      let cancelled = false;
+      saveService.get(`${WORKSPACE_PREFIX}${activeWorkspaceName}`).then(res => {
+        if (!cancelled && res.ok && res.data) {
+          try {
+            const payload: SaveWorkspacePayload = JSON.parse(res.data);
+            if (Array.isArray(payload.tabs)) {
+              const structure: WorkspaceTabStructure[] = payload.tabs.map(t => ({
+                name: t.name,
+                linkedSetupName: t.linkedSetupName ?? null,
+              }));
+              setSavedStructure(structure);
+              try {
+                localStorage.setItem(`savedWorkspaceStructure_${activeWorkspaceName}`, JSON.stringify(structure));
+              } catch {
+                // ignore
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      });
+      return () => { cancelled = true; };
+    }
+  }, [activeWorkspaceName, savedStructure]);
+
+  const isWorkspaceStructureDirty = useMemo(() => {
+    if (!savedStructure) return false;
+    if (tabs.length !== savedStructure.length) return true;
+
+    for (let i = 0; i < tabs.length; i++) {
+      const tab = tabs[i];
+      const saved = savedStructure[i];
+      const currentLinkedSetup = (linkedMap && linkedMap[tab.tabId] !== undefined)
+        ? linkedMap[tab.tabId]
+        : (localStorage.getItem(`activeSetupName_${tab.tabId}`) || null);
+
+      if (tab.name !== saved.name || currentLinkedSetup !== saved.linkedSetupName) {
+        return true;
+      }
+    }
+    return false;
+  }, [tabs, savedStructure, linkedMap]);
 
   const getWorkspaceNames = useCallback(async (): Promise<string[]> => {
     const result = await saveService.getNames();
@@ -94,9 +163,15 @@ export function useWorkspaceSaveLoad(
         ref?.markSaved(entry.plannerState);
       }
 
+      const structure: WorkspaceTabStructure[] = entries.map(e => ({
+        name: e.name,
+        linkedSetupName: e.linkedSetupName || null,
+      }));
+      setSavedStructure(structure);
       setActiveWorkspaceName(trimmed);
       try {
         localStorage.setItem(ACTIVE_WORKSPACE_KEY, trimmed);
+        localStorage.setItem(`savedWorkspaceStructure_${trimmed}`, JSON.stringify(structure));
       } catch {
         // ignore storage errors
       }
@@ -165,9 +240,15 @@ export function useWorkspaceSaveLoad(
         activeTabId: loadedTabs[targetActiveIndex]?.tabId ?? loadedTabs[0]?.tabId ?? null,
       }));
 
+      const structure: WorkspaceTabStructure[] = payload.tabs.map(t => ({
+        name: t.name,
+        linkedSetupName: t.linkedSetupName || null,
+      }));
+      setSavedStructure(structure);
       setActiveWorkspaceName(trimmed);
       try {
         localStorage.setItem(ACTIVE_WORKSPACE_KEY, trimmed);
+        localStorage.setItem(`savedWorkspaceStructure_${trimmed}`, JSON.stringify(structure));
       } catch {
         // ignore storage errors
       }
@@ -186,8 +267,12 @@ export function useWorkspaceSaveLoad(
     if (result.ok) {
       if (activeWorkspaceName === trimmed) {
         setActiveWorkspaceName(null);
+        const defaultStructure: WorkspaceTabStructure[] = [{ name: 'Planner 1', linkedSetupName: null }];
+        setSavedStructure(defaultStructure);
         try {
           localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+          localStorage.removeItem(`savedWorkspaceStructure_${trimmed}`);
+          localStorage.setItem('savedWorkspaceStructure_unnamed', JSON.stringify(defaultStructure));
         } catch {
           // ignore
         }
@@ -207,9 +292,12 @@ export function useWorkspaceSaveLoad(
       tabs: [{ tabId: freshTabId, name: 'Planner 1' }],
       activeTabId: freshTabId,
     }));
+    const defaultStructure: WorkspaceTabStructure[] = [{ name: 'Planner 1', linkedSetupName: null }];
+    setSavedStructure(defaultStructure);
     setActiveWorkspaceName(null);
     try {
       localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+      localStorage.setItem('savedWorkspaceStructure_unnamed', JSON.stringify(defaultStructure));
     } catch {
       // ignore
     }
@@ -223,5 +311,6 @@ export function useWorkspaceSaveLoad(
     loadWorkspace,
     deleteWorkspace,
     newWorkspace,
+    isWorkspaceStructureDirty,
   };
 }
