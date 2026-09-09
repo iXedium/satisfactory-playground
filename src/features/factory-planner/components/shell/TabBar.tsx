@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../../store';
-import { addTab, removeTab, setActiveTab, renameTab } from '../../../../store/workspaceSlice';
+import { addTab, removeTab, setActiveTab, renameTab, reorderTabs } from '../../../../store/workspaceSlice';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface TabBarProps {
   dirtyMap: Record<string, boolean>;
@@ -18,7 +19,20 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   const [editName, setEditName] = useState('');
   const [nameConflict, setNameConflict] = useState(false);
   const [confirmCloseTabId, setConfirmCloseTabId] = useState<string | null>(null);
+  const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+  const [hoveredCloseTabId, setHoveredCloseTabId] = useState<string | null>(null);
   const [unlinkClickTimers, setUnlinkClickTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    if (result.destination.index === result.source.index) return;
+
+    const reordered = Array.from(tabs);
+    const [removed] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, removed);
+
+    dispatch(reorderTabs(reordered));
+  };
 
   useEffect(() => {
     if (!confirmCloseTabId) return;
@@ -117,59 +131,90 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
   const showWarning = tabs.length >= 10;
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      background: '#1e1e1e',
-      borderBottom: '1px solid #333',
-      padding: '4px 8px 0',
-      gap: '2px',
-      flexWrap: 'wrap',
-    }}>
-      {tabs.map(tab => {
-        const isLinked = linkedMap[tab.tabId] !== null && linkedMap[tab.tabId] !== undefined;
-        return (
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="tab-bar" direction="horizontal">
+        {(providedDroppable) => (
           <div
-            key={tab.tabId}
-            onClick={() => handleSelectTab(tab.tabId)}
-            onMouseDown={(e) => {
-              if (e.button === 1) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (tabs.length > 1) {
-                  if (editingTabId === tab.tabId) {
-                    setEditingTabId(null);
-                    setNameConflict(false);
-                  } else {
-                    requestCloseTab(tab.tabId);
-                  }
-                }
-              }
-            }}
-            onDoubleClick={() => handleDoubleClick(tab.tabId, tab.name)}
-            title={
-              isLinked && editingTabId !== tab.tabId
-                ? 'Unlink to rename'
-                : undefined
-            }
+            ref={providedDroppable.innerRef}
+            {...providedDroppable.droppableProps}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: tab.tabId === activeTabId ? '#2d2d2d' : 'transparent',
-              borderTop: tab.tabId === activeTabId ? '1px solid #444' : '1px solid transparent',
-              borderLeft: tab.tabId === activeTabId ? '1px solid #444' : '1px solid transparent',
-              borderRight: tab.tabId === activeTabId ? '1px solid #444' : '1px solid transparent',
-              borderBottom: 'none',
-              borderRadius: '4px 4px 0 0',
-              cursor: 'pointer',
-              color: '#ccc',
-              fontSize: '13px',
-              whiteSpace: 'nowrap',
-              userSelect: 'none',
+              background: '#1e1e1e',
+              borderBottom: '1px solid #333',
+              padding: '4px 8px 0',
+              gap: '2px',
+              flexWrap: 'wrap',
             }}
           >
+            {tabs.map((tab, index) => {
+              const isLinked = linkedMap[tab.tabId] !== null && linkedMap[tab.tabId] !== undefined;
+              const isSelected = tab.tabId === activeTabId;
+              const isHovered = hoveredTabId === tab.tabId && !isSelected;
+
+              return (
+                <Draggable
+                  key={tab.tabId}
+                  draggableId={tab.tabId}
+                  index={index}
+                  isDragDisabled={editingTabId !== null}
+                >
+                  {(providedDraggable, snapshot) => (
+                    <div
+                      ref={providedDraggable.innerRef}
+                      {...providedDraggable.draggableProps}
+                      {...providedDraggable.dragHandleProps}
+                      onClick={() => handleSelectTab(tab.tabId)}
+                      onMouseEnter={() => setHoveredTabId(tab.tabId)}
+                      onMouseLeave={() => setHoveredTabId(null)}
+                      onMouseDown={(e) => {
+                        if (e.button === 1) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (tabs.length > 1) {
+                            if (editingTabId === tab.tabId) {
+                              setEditingTabId(null);
+                              setNameConflict(false);
+                            } else {
+                              requestCloseTab(tab.tabId);
+                            }
+                          }
+                        }
+                      }}
+                      onDoubleClick={() => handleDoubleClick(tab.tabId, tab.name)}
+                      title={
+                        isLinked && editingTabId !== tab.tabId
+                          ? 'Unlink to rename'
+                          : undefined
+                      }
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        background: isSelected
+                          ? '#2d2d2d'
+                          : snapshot.isDragging
+                          ? '#383838'
+                          : isHovered
+                          ? '#242424'
+                          : 'transparent',
+                        borderTop: isSelected ? '1px solid #444' : isHovered ? '1px solid #333' : '1px solid transparent',
+                        borderLeft: isSelected ? '1px solid #444' : isHovered ? '1px solid #333' : '1px solid transparent',
+                        borderRight: isSelected ? '1px solid #444' : isHovered ? '1px solid #333' : '1px solid transparent',
+                        borderBottom: 'none',
+                        borderRadius: '4px 4px 0 0',
+                        cursor: snapshot.isDragging ? 'grabbing' : 'pointer',
+                        color: isSelected ? '#fff' : isHovered ? '#e2e2e2' : '#aaa',
+                        fontSize: '13px',
+                        whiteSpace: 'nowrap',
+                        userSelect: 'none',
+                        boxShadow: snapshot.isDragging ? '0 4px 12px rgba(0,0,0,0.5)' : undefined,
+                        zIndex: snapshot.isDragging ? 100 : undefined,
+                        transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+                        ...providedDraggable.draggableProps.style,
+                      }}
+                    >
             {dirtyMap[tab.tabId] && (
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff9f43', flexShrink: 0 }} />
             )}
@@ -293,43 +338,58 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                   }
                   requestCloseTab(tab.tabId);
                 }}
+                onMouseEnter={() => setHoveredCloseTabId(tab.tabId)}
+                onMouseLeave={() => setHoveredCloseTabId(null)}
                 style={{
                   marginLeft: '4px',
                   fontSize: '14px',
-                  color: '#666',
+                  color: hoveredCloseTabId === tab.tabId ? '#ff6b6b' : '#666',
+                  background: hoveredCloseTabId === tab.tabId ? 'rgba(255, 107, 107, 0.18)' : 'transparent',
+                  borderRadius: '3px',
+                  padding: '0 3px',
                   cursor: 'pointer',
                   lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
                 }}
                 title={editingTabId === tab.tabId ? "Cancel rename (Esc)" : "Close tab"}
               >×</span>
             )}
+                    </div>
+                  )}
+                </Draggable>
+              );
+            })}
+            {providedDroppable.placeholder}
+            <button
+              onClick={handleAddTab}
+              style={{
+                background: 'transparent',
+                border: '1px solid transparent',
+                color: '#888',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                lineHeight: 1,
+              }}
+              title="Add new tab"
+            >+</button>
+            {showWarning && (
+              <span style={{
+                marginLeft: '8px',
+                color: '#ff9f43',
+                fontSize: '12px',
+              }}>
+                ⚠ {tabs.length} tabs open
+              </span>
+            )}
           </div>
-        );
-      })}
-      <button
-        onClick={handleAddTab}
-        style={{
-          background: 'transparent',
-          border: '1px solid transparent',
-          color: '#888',
-          cursor: 'pointer',
-          fontSize: '18px',
-          padding: '2px 8px',
-          borderRadius: '4px',
-          lineHeight: 1,
-        }}
-        title="Add new tab"
-      >+</button>
-      {showWarning && (
-        <span style={{
-          marginLeft: '8px',
-          color: '#ff9f43',
-          fontSize: '12px',
-        }}>
-          ⚠ {tabs.length} tabs open
-        </span>
-      )}
-    </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 };
 
