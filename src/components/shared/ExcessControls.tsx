@@ -180,8 +180,8 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
                 setPreciseExcess(val);
                 onExcessChange?.(val);
               },
-              0.1, // Larger step for wheel
-              0    // min: 0
+              1, // baseStep: 1 (scroll = 1, ctrl = 10, shift = 100)
+              0  // min: 0
             );
           }
         }}
