@@ -155,13 +155,6 @@ const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tab
 
   const commandBarRef = useRef<HTMLDivElement>(null);
   const treeViewRef = useRef<HTMLDivElement>(null);
-  const [commandBarHeight, setCommandBarHeight] = useState(0);
-
-  useEffect(() => {
-    if (commandBarRef.current) {
-      setCommandBarHeight(commandBarRef.current.offsetHeight+12);
-    }
-  }, [isAddItemCollapsed]);
 
   // --- Item Summary Calculation (v4 using Category) ---
   const itemSummaryData = useMemo(() => {
@@ -463,7 +456,6 @@ const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tab
           onResetToSnapshot={resetToSnapshot}
         />
       }
-      commandBarHeight={commandBarHeight}
       content={
         <PlannerContent
           ref={treeViewRef}

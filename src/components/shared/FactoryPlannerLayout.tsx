@@ -5,7 +5,7 @@ interface FactoryPlannerLayoutProps {
   commandBar: ReactNode;
   content: ReactNode;
   sidebar?: ReactNode; // Add optional sidebar prop
-  commandBarHeight: number; // Add prop for height
+  commandBarHeight?: number; // Kept for backwards compatibility
   containerStyle?: React.CSSProperties;
   commandBarContainerStyle?: React.CSSProperties;
   contentContainerStyle?: React.CSSProperties;
@@ -19,7 +19,6 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
   commandBar,
   content,
   sidebar, // Destructure sidebar prop
-  commandBarHeight, // Destructure prop
   containerStyle,
   commandBarContainerStyle,
   contentContainerStyle
@@ -34,12 +33,10 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
       overflow: 'hidden',
       ...containerStyle
     }}>
-      {/* Command Bar Container - Absolute within layout */}
+      {/* Command Bar Container - Flex child */}
       <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
+        flexShrink: 0,
+        position: 'relative',
         zIndex: 100, 
         ...commandBarContainerStyle
       }}>
@@ -50,7 +47,8 @@ const FactoryPlannerLayout: React.FC<FactoryPlannerLayoutProps> = ({
       <div style={{
         display: 'flex',
         flex: 1, // Grow to fill remaining vertical space
-        marginTop: `${commandBarHeight}px`, 
+        minHeight: 0, // Allow flex child to scroll properly
+        marginTop: '8px',
         overflow: 'hidden', // Prevent this container from scrolling, children handle it
         ...contentContainerStyle // Apply outer styles here
       }}>
