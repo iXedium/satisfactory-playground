@@ -26,6 +26,7 @@ interface PlannerActionsProps {
   onDeleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean; // Add isDirty prop
   activeSetupName?: string | null; // Add activeSetupName prop
+  tabName?: string; // Current tab name
   // Save/load error state
   saveError?: string | null;
   onClearSaveError?: () => void;
@@ -60,6 +61,7 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
   onDeleteSetup,
   isDirty, // Destructure isDirty
   activeSetupName, // Destructure activeSetupName
+  tabName,
   saveError, // Destructure saveError
   onClearSaveError, // Destructure onClearSaveError
   // Comparison props
@@ -217,7 +219,8 @@ const PlannerActions: React.FC<PlannerActionsProps> = ({
 
   const handleSaveAsNewClick = () => {
     if (!onSaveSetup || !getSaveNames) return;
-    const name = prompt("Enter a new name for this setup:");
+    const defaultName = tabName || activeSetupName || "";
+    const name = prompt("Enter a new name for this setup:", defaultName);
     if (!name?.trim()) {
         if (name !== null) { alert("Save name cannot be empty."); }
         return;

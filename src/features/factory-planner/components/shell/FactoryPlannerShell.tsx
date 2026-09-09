@@ -6,6 +6,7 @@ import type { PlannerRootState } from '../../../../store/plannerStore';
 
 interface FactoryPlannerShellProps {
   tabId: string;
+  tabName?: string;
   isActive: boolean;
   initialState?: SavedPlannerState;
   onDirtyChange?: (dirty: boolean) => void;
@@ -18,7 +19,7 @@ export interface FactoryPlannerShellRef {
 }
 
 const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShellProps>(
-  ({ tabId, isActive, initialState, onDirtyChange, onLinkedSetupChange }, ref) => {
+  ({ tabId, tabName, isActive, initialState, onDirtyChange, onLinkedSetupChange }, ref) => {
     const store = useStore<PlannerRootState>();
     const plannerRef = useRef<FactoryPlannerRef>(null);
 
@@ -60,6 +61,7 @@ const FactoryPlannerShell = forwardRef<FactoryPlannerShellRef, FactoryPlannerShe
         <FactoryPlanner
           ref={plannerRef}
           tabId={tabId}
+          tabName={tabName}
           isActive={isActive}
           onDirtyChange={onDirtyChange}
           onLinkedSetupChange={onLinkedSetupChange}

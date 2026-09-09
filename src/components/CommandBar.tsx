@@ -66,6 +66,7 @@ interface CommandBarProps {
   deleteSetup?: (name: string) => Promise<void>;
   isDirty?: boolean;
   activeSetupName?: string | null;
+  tabName?: string;
   // Save/load error state
   saveError?: string | null;
   onClearSaveError?: () => void;
@@ -126,6 +127,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
     deleteSetup,
     isDirty,
     activeSetupName,
+    tabName,
     // Save/load error state
     saveError,
     onClearSaveError,
@@ -211,6 +213,7 @@ const CommandBar: ForwardRefRenderFunction<HTMLDivElement, CommandBarProps> = (
           onDeleteSetup={deleteSetup}
           isDirty={isDirty}
           activeSetupName={activeSetupName}
+          tabName={tabName}
           saveError={saveError}
           onClearSaveError={onClearSaveError}
           // Pass comparison props down

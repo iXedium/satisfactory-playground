@@ -22,6 +22,7 @@ export interface FactoryPlannerRef {
 
 interface FactoryPlannerProps {
   tabId: string;
+  tabName?: string;
   isActive: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   onLinkedSetupChange?: (name: string | null) => void;
@@ -31,7 +32,7 @@ interface FactoryPlannerProps {
  * Main component for the Factory Planner application
  * Orchestrates the layout and data flow between components
  */
-const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tabId, isActive, onDirtyChange, onLinkedSetupChange }, ref) => {
+const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tabId, tabName, isActive, onDirtyChange, onLinkedSetupChange }, ref) => {
   const {
     // State
     dependencies,
@@ -449,6 +450,7 @@ const FactoryPlanner = forwardRef<FactoryPlannerRef, FactoryPlannerProps>(({ tab
           deleteSetup={deleteSetup}
           isDirty={isDirty}
           activeSetupName={activeSetupName}
+          tabName={tabName}
           saveError={saveError}
           onClearSaveError={clearSaveError}
           // Pass comparison props down

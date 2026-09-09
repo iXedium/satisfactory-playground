@@ -72,6 +72,7 @@ const WorkspaceLayout: React.FC = () => {
                 else shellRefs.current.delete(tab.tabId);
               }}
               tabId={tab.tabId}
+              tabName={tab.name}
               isActive={tab.tabId === activeTabId}
               onDirtyChange={handleDirtyChange(tab.tabId)}
               onLinkedSetupChange={handleLinkedSetupChange(tab.tabId)}
