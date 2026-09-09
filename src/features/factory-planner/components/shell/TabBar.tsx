@@ -161,6 +161,8 @@ const TabBar: React.FC<TabBarProps> = ({ dirtyMap, linkedMap, saveNames, onUnlin
                   }}
                   onKeyDown={handleRenameKeyDown}
                   autoFocus
+                  onFocus={e => e.target.select()}
+                  ref={el => el?.select()}
                   style={{
                     background: '#3d3d3d',
                     border: `1px solid ${nameConflict ? '#ff6b6b' : '#555'}`,
