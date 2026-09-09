@@ -71,19 +71,20 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
     e: React.KeyboardEvent<HTMLInputElement>,
     currentValue: number,
     setter: (value: number) => void,
+    baseStep: number = 1,
     min: number = 0
   ) => {
-    let step = 1;
-    if (e.ctrlKey) step = 10;
-    if (e.shiftKey) step = 100;
+    let step = baseStep;
+    if (e.ctrlKey) step = baseStep * 10;
+    if (e.shiftKey) step = baseStep * 100;
 
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      const newValue = Math.max(min, currentValue + step);
+      const newValue = Math.max(min, Math.round((currentValue + step) * 10000) / 10000);
       setter(newValue); // Store full precision
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      const newValue = Math.max(min, currentValue - step);
+      const newValue = Math.max(min, Math.round((currentValue - step) * 10000) / 10000);
       setter(newValue); // Store full precision
     }
   };
@@ -92,17 +93,18 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
     e: React.WheelEvent<HTMLInputElement>,
     currentValue: number,
     setter: (value: number) => void,
+    baseStep: number = 1,
     min: number = 0
   ) => { 
     e.preventDefault(); // Prevent page scrolling
     
-    let step = 1;
-    if (e.ctrlKey) step = 10;
-    if (e.shiftKey) step = 100;
+    let step = baseStep;
+    if (e.ctrlKey) step = baseStep * 10;
+    if (e.shiftKey) step = baseStep * 100;
     
     // Wheel delta is negative when scrolling down, positive when scrolling up
     const delta = e.deltaY < 0 ? 1 : -1;
-    const newValue = Math.max(min, currentValue + (delta * step));
+    const newValue = Math.max(min, Math.round((currentValue + (delta * step)) * 10000) / 10000);
     setter(newValue); // Store full precision
   };
 
@@ -164,7 +166,8 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
               setPreciseExcess(val);
               onExcessChange?.(val);
             },
-            0.01 // Use a smaller step for excess
+            0.01, // Use a smaller step for excess
+            0     // min: 0
           );
         }}
         onWheel={(e) => {
@@ -177,7 +180,8 @@ const ExcessControls: React.FC<ExcessControlsProps> = ({
                 setPreciseExcess(val);
                 onExcessChange?.(val);
               },
-              0.1 // Larger step for wheel
+              0.1, // Larger step for wheel
+              0    // min: 0
             );
           }
         }}
