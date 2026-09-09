@@ -188,7 +188,7 @@ export const usePlannerTreeCalculation = ({
         }
       };
       resetValues(newTree);
-      setExpandedNodes(prev => ({ ...prev, [treeId]: true })); // Expand manual trees
+      setExpandedNodes(prev => ({ ...prev, [treeId]: false })); // Start collapsed
     }
   }, [dispatch, recipeSelections, dependencies.dependencyTrees, generateTreeId, setMachineCountMap, setMachineMultiplierMap, setExcessMap, setExpandedNodes]);
 
@@ -231,19 +231,14 @@ export const usePlannerTreeCalculation = ({
         }
         
         
-        // Set expanded state (Keep this part)
+        // Set all newly created root nodes as collapsed
         setExpandedNodes(prev => {
           const newState = { ...prev };
-          // Collapse new roots that might have been created
           result.newRootIds.forEach(id => { 
-              // Only collapse if it wasn't the main tree added
-              if (id !== result.mainTreeId) { 
-                  newState[id] = false; 
-              }
+            newState[id] = false; 
           });
-          // Expand the main root that was just added
           if (result.mainTreeId) {
-            newState[result.mainTreeId] = true;
+            newState[result.mainTreeId] = false;
           }
           return newState;
         });
@@ -279,7 +274,7 @@ export const usePlannerTreeCalculation = ({
             }
           };
           resetValues(tree);
-          setExpandedNodes(prev => ({ ...prev, [treeId]: true }));
+          setExpandedNodes(prev => ({ ...prev, [treeId]: false }));
         } else {
           logger.error("Failed to calculate non-auto-import tree");
         }
